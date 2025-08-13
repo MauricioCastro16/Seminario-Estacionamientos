@@ -4,23 +4,26 @@ namespace estacionamientos.Models;
 
 public class PlayaEstacionamiento
 {
-    [Key]
-    public int PlyID { get; set; }
+    public int Id { get; set; }
 
     [Required, StringLength(100)]
-    public string PlyProv { get; set; } = default!; // Provincia
+    public string Provincia { get; set; } = default!;
 
     [Required, StringLength(100)]
-    public string PlyCiu { get; set; } = default!; // Ciudad
+    public string Ciudad { get; set; } = default!;
 
     [Required, StringLength(200)]
-    public string PlyDir { get; set; } = default!; // Dirección
+    public string Direccion { get; set; } = default!;
 
     [Required, StringLength(50)]
-    public string PlyTipoPiso { get; set; } = default!; // Tipo de piso
+    public string TipoPiso { get; set; } = default!; // hormigón, asfalto, etc.
 
     [Range(0, double.MaxValue)]
-    public decimal PlyValProm { get; set; } // Valor promedio
+    public decimal ValoracionPromedio { get; private set; }
 
-    public bool PlyLlavReq { get; set; } // ¿Requiere dejar llave?
+    public bool LlaveRequerida { get; set; }
+
+    public ICollection<PlazaEstacionamiento>? Plazas { get; set; }
+    public ICollection<Tarifario>? Tarifas { get; set; }
+    public ICollection<Servicio>? Servicios { get; set; }
 }

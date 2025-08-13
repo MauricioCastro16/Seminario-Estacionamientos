@@ -16,7 +16,7 @@ dotnet tool install --global dotnet-ef
 
 ⚙️ Configuración inicial
 Clonar el repositorio
-git clone <URL_DEL_REPO>
+git clone https://github.com/MauricioCastro16/Seminario-Estacionamientos
 cd Seminario-Estacionamientos/estacionamientos
 
 Crear base de datos en PostgreSQL
@@ -57,4 +57,20 @@ dotnet ef database update
 Ejecutar en desarrollo:
 dotnet run
 El archivo .env no debe subirse a Git. Está en .gitignore.
+```
+
+# Reiniciar la base de datos
+``` bash
+(a) Tirar la base (usa la connection string actual)
+dotnet ef database drop -f
+
+(b) Borrar carpeta de migraciones (en el proyecto)
+Remove-Item -Recurse -Force .\Migrations
+
+(c) Crear migración inicial nueva
+dotnet ef migrations add InitialCreate
+
+(d) Aplicarla
+dotnet ef database update
+
 ```
