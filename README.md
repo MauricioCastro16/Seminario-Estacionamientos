@@ -56,6 +56,10 @@ dotnet ef database update
 
 Ejecutar en desarrollo:
 dotnet run
+
+Ejecutar con hot reload:
+dotnet watch run
+
 El archivo .env no debe subirse a Git. Está en .gitignore.
 ```
 
@@ -74,3 +78,26 @@ dotnet ef migrations add InitialCreate
 dotnet ef database update
 
 ```
+
+#Capas y su explicación
+##Controllers
+Orquestan la request → llaman servicios → devuelven View/JSON.
+No deberían contener reglas de negocio ni queries complejas.
+
+##Services
+Lógica de negocio
+Acá van reglas, validaciones de dominio, cálculos, casos de uso (crear turno, cerrar caja, recalcular promedio, etc.).
+Se exponen como interfaces (p. ej. IPlayasService) e implementaciones inyectables.
+
+##Data
+Acceso a datos: AppDbContext (EF Core) y, si querés, repositorios finos para consultas específicas.
+El service usa el DbContext (o repos), maneja transacciones y unit of work.
+
+##Models
+Entidades (EF), Value Objects, enums. Sin dependencias de UI.
+
+##Views
+Formatos para entrada/salida (lo que recibe y devuelve el controller). Usá AutoMapper si te gusta.
+
+##Validators
+Reglas de validación de entrada (FluentValidation) separadas del controller.

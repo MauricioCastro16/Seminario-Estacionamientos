@@ -1,21 +1,23 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace estacionamientos.Models;
-
-public enum TipoVehiculo { Auto = 1, Camioneta = 2, Moto = 3, Otro = 99 }
-
-public class Vehiculo
+namespace estacionamientos.Models
 {
-    public int Id { get; set; }
+    public class Vehiculo
+    {
+        [Key]
+        [StringLength(10)]
+        public string VehPtnt { get; set; } = string.Empty;
 
-    [Required, StringLength(10)]
-    public string Patente { get; set; } = default!;
+        [Required, StringLength(80)]
+        public string VehMarc { get; set; } = string.Empty;
 
-    [StringLength(50)] public string? Marca { get; set; }
-    [StringLength(50)] public string? Modelo { get; set; }
-    [StringLength(30)] public string? Color { get; set; }
+        // FK requerido a ClasificacionVehiculo
+        [Required]
+        public int ClasVehID { get; set; }
 
-    public TipoVehiculo Tipo { get; set; } = TipoVehiculo.Auto;
+        // Navegación
+        public ClasificacionVehiculo Clasificacion { get; set; } = default!;
 
-    public ICollection<Ocupacion>? Ocupaciones { get; set; }
+        public ICollection<Conduce> Conducciones { get; set; } = new List<Conduce>();
+    }
 }

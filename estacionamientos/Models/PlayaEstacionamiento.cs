@@ -1,29 +1,31 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace estacionamientos.Models;
-
-public class PlayaEstacionamiento
+namespace estacionamientos.Models
 {
-    public int Id { get; set; }
+    public class PlayaEstacionamiento
+    {
+        [Key]
+        public int PlyID { get; set; } // Identity
 
-    [Required, StringLength(100)]
-    public string Provincia { get; set; } = default!;
+        [Required, StringLength(50)]
+        public string PlyProv { get; set; } = string.Empty;
 
-    [Required, StringLength(100)]
-    public string Ciudad { get; set; } = default!;
+        [Required, StringLength(80)]
+        public string PlyCiu { get; set; } = string.Empty;
 
-    [Required, StringLength(200)]
-    public string Direccion { get; set; } = default!;
+        [Required, StringLength(120)]
+        public string PlyDir { get; set; } = string.Empty;
 
-    [Required, StringLength(50)]
-    public string TipoPiso { get; set; } = default!; // hormigón, asfalto, etc.
+        [StringLength(30)]
+        public string? PlyTipoPiso { get; set; } // hormigón, ripio, tierra…
 
-    [Range(0, double.MaxValue)]
-    public decimal ValoracionPromedio { get; private set; }
+        // Promedio de Valoracion.ValNumEst (persistido)
+        public decimal PlyValProm { get; set; } // 0..5 por ejemplo
 
-    public bool LlaveRequerida { get; set; }
+        public bool PlyLlavReq { get; set; } // ¿requiere dejar llaves?
 
-    public ICollection<PlazaEstacionamiento>? Plazas { get; set; }
-    public ICollection<Tarifario>? Tarifas { get; set; }
-    public ICollection<Servicio>? Servicios { get; set; }
+        // Navegaciones
+        public ICollection<Valoracion> Valoraciones { get; set; } = new List<Valoracion>();
+        public ICollection<AdministraPlaya> Administradores { get; set; } = new List<AdministraPlaya>();
+    }
 }

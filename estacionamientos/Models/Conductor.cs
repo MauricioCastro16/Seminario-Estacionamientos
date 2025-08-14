@@ -1,25 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace estacionamientos.Models;
-
-public class Conductor
+namespace estacionamientos.Models
 {
-    public int Id { get; set; }
+    // Hereda toda la info de Usuario
+    public class Conductor : Usuario
+    {
+        // Sin campos adicionales por ahora
+        public ICollection<Conduce> Conducciones { get; set; } = new List<Conduce>();
+        public ICollection<UbicacionFavorita> UbicacionesFavoritas { get; set; } = new List<UbicacionFavorita>();
+        public ICollection<Valoracion> Valoraciones { get; set; } = new List<Valoracion>();
 
-    [Required, StringLength(100)]
-    public string Nombre { get; set; } = default!;
-
-    [Required, StringLength(100)]
-    public string Apellido { get; set; } = default!;
-
-    [StringLength(20)]
-    public string? Documento { get; set; }
-
-    [StringLength(100)]
-    public string? Email { get; set; }
-
-    [StringLength(30)]
-    public string? Telefono { get; set; }
-
-    public ICollection<Ocupacion>? Ocupaciones { get; set; }
+    }
 }
