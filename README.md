@@ -15,55 +15,45 @@ Instalar herramientas necesarias:
 dotnet tool install --global dotnet-ef
 
 ⚙️ Configuración inicial
-Clonar el repositorio
+
+►Clonar el repositorio
 git clone https://github.com/MauricioCastro16/Seminario-Estacionamientos
 cd Seminario-Estacionamientos/estacionamientos
 
-Crear base de datos en PostgreSQL
+►Crear base de datos en PostgreSQL
 CREATE DATABASE estacionamientosdb;
 
-Crear el archivo .env en la carpeta del proyecto
+►Crear el archivo .env en la carpeta del proyecto
 Seminario-Estacionamientos/estacionamientos/.env según el .env.example
 
-Restaurar dependencias
+►Restaurar dependencias
 dotnet restore
-🛠️ Base de datos y migraciones
-Aplicar migraciones iniciales:
-dotnet ef database update
-🚀 Ejecutar el proyecto
-Desde la carpeta estacionamientos:
-dotnet run
-Abrir en el navegador la URL que aparezca en consola, por ejemplo:
-https://localhost:7254
 
-📦 Estructura del proyecto
-Seminario-Estacionamientos/
-└── estacionamientos/
-    ├── Controllers/
-    ├── Data/
-    ├── Models/
-    ├── Views/
-    ├── .env
-    ├── Program.cs
-    ├── appsettings.json
-    └── estacionamientos.csproj
+🛠️ Base de datos y migraciones
+►Aplicar migraciones iniciales:
+dotnet ef database update
+
+🚀 Ejecutar el proyecto
+cd estacionamientos
+dotnet run
+
 🧪 Comandos útiles
-Crear nueva migración:
+►Crear nueva migración:
 dotnet ef migrations add NombreMigracion
 
-Aplicar migraciones:
+►Aplicar migraciones:
 dotnet ef database update
 
-Ejecutar en desarrollo:
+►Ejecutar en desarrollo:
 dotnet run
 
-Ejecutar con hot reload:
+►Ejecutar con hot reload:
 dotnet watch run
 
-El archivo .env no debe subirse a Git. Está en .gitignore.
+# El archivo .env no debe subirse a Git. Está en .gitignore.
 ```
 
-# Reiniciar la base de datos
+## Reiniciar la base de datos
 ``` bash
 (a) Tirar la base (usa la connection string actual)
 dotnet ef database drop -f
@@ -101,3 +91,23 @@ Formatos para entrada/salida (lo que recibe y devuelve el controller). Usá Auto
 
 ## Validators
 Reglas de validación de entrada (FluentValidation) separadas del controller.
+
+# Estrategia de ramificación - GitFlow
+
+## **main**
+Rama principal y estable. Contiene únicamente versiones listas para producción.
+
+## hotfix/*
+Rama para arreglar rápido errores críticos en producción. Parte de **main** y luego se fusiona en **main** y **develop**.
+
+## release/*
+Rama para preparar una nueva versión (solo fixes y ajustes menores). Parte de **develop** y luego se fusiona en **main** y **develop**.
+
+## **develop**
+Rama de integración donde se juntan todas las nuevas funcionalidades antes de un release.
+
+## feature/*
+Rama temporal para desarrollar una nueva funcionalidad. Parte de **develop** y vuelve a **develop**.
+
+
+
