@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using estacionamientos.Helpers;
 
 namespace estacionamientos.Models
 {
@@ -7,13 +8,13 @@ namespace estacionamientos.Models
         [Key]
         public int PlyID { get; set; } // Identity
 
-        [Required, StringLength(50)]
+        [Required(ErrorMessage = ErrorMessages.CampoObligatorio), StringLength(50)]
         public string PlyProv { get; set; } = string.Empty;
 
-        [Required, StringLength(80)]
+        [Required(ErrorMessage = ErrorMessages.CampoObligatorio), StringLength(80)]
         public string PlyCiu { get; set; } = string.Empty;
 
-        [Required, StringLength(120)]
+        [Required(ErrorMessage = ErrorMessages.CampoObligatorio), StringLength(120)]
         public string PlyDir { get; set; } = string.Empty;
 
         [StringLength(30)]
