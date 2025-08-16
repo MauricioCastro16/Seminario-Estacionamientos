@@ -74,6 +74,21 @@ namespace estacionamientos.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Servicio",
+                columns: table => new
+                {
+                    SerID = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    SerNom = table.Column<string>(type: "character varying(80)", maxLength: 80, nullable: false),
+                    SerTipo = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: true),
+                    SerDesc = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Servicio", x => x.SerID);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Usuario",
                 columns: table => new
                 {
@@ -182,6 +197,48 @@ namespace estacionamientos.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ServicioProveido",
+                columns: table => new
+                {
+                    PlyID = table.Column<int>(type: "integer", nullable: false),
+                    SerID = table.Column<int>(type: "integer", nullable: false),
+                    SerProvHab = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ServicioProveido", x => new { x.PlyID, x.SerID });
+                    table.ForeignKey(
+                        name: "FK_ServicioProveido_PlayaEstacionamiento_PlyID",
+                        column: x => x.PlyID,
+                        principalTable: "PlayaEstacionamiento",
+                        principalColumn: "PlyID",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ServicioProveido_Servicio_SerID",
+                        column: x => x.SerID,
+                        principalTable: "Servicio",
+                        principalColumn: "SerID",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Administrador",
+                columns: table => new
+                {
+                    UsuNU = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Administrador", x => x.UsuNU);
+                    table.ForeignKey(
+                        name: "FK_Administrador_Usuario_UsuNU",
+                        column: x => x.UsuNU,
+                        principalTable: "Usuario",
+                        principalColumn: "UsuNU",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Conductor",
                 columns: table => new
                 {
@@ -270,6 +327,53 @@ namespace estacionamientos.Migrations
                         principalTable: "PlayaEstacionamiento",
                         principalColumn: "PlyID",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TarifaServicio",
+                columns: table => new
+                {
+                    PlyID = table.Column<int>(type: "integer", nullable: false),
+                    SerID = table.Column<int>(type: "integer", nullable: false),
+                    ClasVehID = table.Column<int>(type: "integer", nullable: false),
+                    TasFecIni = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    TasFecFin = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    TasMonto = table.Column<decimal>(type: "numeric(12,2)", precision: 12, scale: 2, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TarifaServicio", x => new { x.PlyID, x.SerID, x.ClasVehID, x.TasFecIni });
+                    table.ForeignKey(
+                        name: "FK_TarifaServicio_ClasificacionVehiculo_ClasVehID",
+                        column: x => x.ClasVehID,
+                        principalTable: "ClasificacionVehiculo",
+                        principalColumn: "ClasVehID",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_TarifaServicio_ServicioProveido_PlyID_SerID",
+                        columns: x => new { x.PlyID, x.SerID },
+                        principalTable: "ServicioProveido",
+                        principalColumns: new[] { "PlyID", "SerID" },
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Abonado",
+                columns: table => new
+                {
+                    AboDNI = table.Column<string>(type: "character varying(15)", maxLength: 15, nullable: false),
+                    AboNom = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
+                    ConNU = table.Column<int>(type: "integer", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Abonado", x => x.AboDNI);
+                    table.ForeignKey(
+                        name: "FK_Abonado_Conductor_ConNU",
+                        column: x => x.ConNU,
+                        principalTable: "Conductor",
+                        principalColumn: "UsuNU",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -428,6 +532,75 @@ namespace estacionamientos.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ServicioExtraRealizado",
+                columns: table => new
+                {
+                    PlyID = table.Column<int>(type: "integer", nullable: false),
+                    SerID = table.Column<int>(type: "integer", nullable: false),
+                    VehPtnt = table.Column<string>(type: "character varying(10)", nullable: false),
+                    ServExFyHIni = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ServExFyHFin = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ServExComp = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    PagNum = table.Column<int>(type: "integer", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ServicioExtraRealizado", x => new { x.PlyID, x.SerID, x.VehPtnt, x.ServExFyHIni });
+                    table.ForeignKey(
+                        name: "FK_ServicioExtraRealizado_Pago_PlyID_PagNum",
+                        columns: x => new { x.PlyID, x.PagNum },
+                        principalTable: "Pago",
+                        principalColumns: new[] { "PlyID", "PagNum" },
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_ServicioExtraRealizado_ServicioProveido_PlyID_SerID",
+                        columns: x => new { x.PlyID, x.SerID },
+                        principalTable: "ServicioProveido",
+                        principalColumns: new[] { "PlyID", "SerID" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_ServicioExtraRealizado_Vehiculo_VehPtnt",
+                        column: x => x.VehPtnt,
+                        principalTable: "Vehiculo",
+                        principalColumn: "VehPtnt",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Abono",
+                columns: table => new
+                {
+                    PlyID = table.Column<int>(type: "integer", nullable: false),
+                    PlzNum = table.Column<int>(type: "integer", nullable: false),
+                    AboFyhIni = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    AboFyhFin = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    AboDNI = table.Column<string>(type: "character varying(15)", maxLength: 15, nullable: false),
+                    PagNum = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Abono", x => new { x.PlyID, x.PlzNum, x.AboFyhIni });
+                    table.ForeignKey(
+                        name: "FK_Abono_Abonado_AboDNI",
+                        column: x => x.AboDNI,
+                        principalTable: "Abonado",
+                        principalColumn: "AboDNI",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Abono_Pago_PlyID_PagNum",
+                        columns: x => new { x.PlyID, x.PagNum },
+                        principalTable: "Pago",
+                        principalColumns: new[] { "PlyID", "PagNum" },
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Abono_PlazaEstacionamiento_PlyID_PlzNum",
+                        columns: x => new { x.PlyID, x.PlzNum },
+                        principalTable: "PlazaEstacionamiento",
+                        principalColumns: new[] { "PlyID", "PlzNum" },
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Turno",
                 columns: table => new
                 {
@@ -460,6 +633,47 @@ namespace estacionamientos.Migrations
                         principalColumns: new[] { "PlyID", "PlaNU" },
                         onDelete: ReferentialAction.Restrict);
                 });
+
+            migrationBuilder.CreateTable(
+                name: "VehiculoAbonado",
+                columns: table => new
+                {
+                    PlyID = table.Column<int>(type: "integer", nullable: false),
+                    PlzNum = table.Column<int>(type: "integer", nullable: false),
+                    AboFyhIni = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    VehPtnt = table.Column<string>(type: "character varying(10)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_VehiculoAbonado", x => new { x.PlyID, x.PlzNum, x.AboFyhIni, x.VehPtnt });
+                    table.ForeignKey(
+                        name: "FK_VehiculoAbonado_Abono_PlyID_PlzNum_AboFyhIni",
+                        columns: x => new { x.PlyID, x.PlzNum, x.AboFyhIni },
+                        principalTable: "Abono",
+                        principalColumns: new[] { "PlyID", "PlzNum", "AboFyhIni" },
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_VehiculoAbonado_Vehiculo_VehPtnt",
+                        column: x => x.VehPtnt,
+                        principalTable: "Vehiculo",
+                        principalColumn: "VehPtnt",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Abonado_ConNU",
+                table: "Abonado",
+                column: "ConNU");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Abono_AboDNI",
+                table: "Abono",
+                column: "AboDNI");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Abono_PlyID_PagNum",
+                table: "Abono",
+                columns: new[] { "PlyID", "PagNum" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_AceptaMetodoPago_MepID",
@@ -546,6 +760,42 @@ namespace estacionamientos.Migrations
                 columns: new[] { "PlyID", "PagFyh" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Servicio_SerNom",
+                table: "Servicio",
+                column: "SerNom",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ServicioExtraRealizado_PlyID_PagNum",
+                table: "ServicioExtraRealizado",
+                columns: new[] { "PlyID", "PagNum" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ServicioExtraRealizado_PlyID_SerID_ServExFyHIni",
+                table: "ServicioExtraRealizado",
+                columns: new[] { "PlyID", "SerID", "ServExFyHIni" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ServicioExtraRealizado_VehPtnt",
+                table: "ServicioExtraRealizado",
+                column: "VehPtnt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ServicioProveido_SerID",
+                table: "ServicioProveido",
+                column: "SerID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TarifaServicio_ClasVehID",
+                table: "TarifaServicio",
+                column: "ClasVehID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TarifaServicio_PlyID_SerID_ClasVehID_TasFecIni",
+                table: "TarifaServicio",
+                columns: new[] { "PlyID", "SerID", "ClasVehID", "TasFecIni" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_TrabajaEn_PlaNU",
                 table: "TrabajaEn",
                 column: "PlaNU");
@@ -575,11 +825,19 @@ namespace estacionamientos.Migrations
                 name: "IX_Vehiculo_ClasVehID",
                 table: "Vehiculo",
                 column: "ClasVehID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VehiculoAbonado_VehPtnt",
+                table: "VehiculoAbonado",
+                column: "VehPtnt");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "Administrador");
+
             migrationBuilder.DropTable(
                 name: "AdministraPlaya");
 
@@ -593,6 +851,12 @@ namespace estacionamientos.Migrations
                 name: "Ocupacion");
 
             migrationBuilder.DropTable(
+                name: "ServicioExtraRealizado");
+
+            migrationBuilder.DropTable(
+                name: "TarifaServicio");
+
+            migrationBuilder.DropTable(
                 name: "Turno");
 
             migrationBuilder.DropTable(
@@ -602,10 +866,34 @@ namespace estacionamientos.Migrations
                 name: "Valoracion");
 
             migrationBuilder.DropTable(
+                name: "VehiculoAbonado");
+
+            migrationBuilder.DropTable(
                 name: "Duenio");
 
             migrationBuilder.DropTable(
                 name: "ClasificacionDias");
+
+            migrationBuilder.DropTable(
+                name: "ServicioProveido");
+
+            migrationBuilder.DropTable(
+                name: "TrabajaEn");
+
+            migrationBuilder.DropTable(
+                name: "Abono");
+
+            migrationBuilder.DropTable(
+                name: "Vehiculo");
+
+            migrationBuilder.DropTable(
+                name: "Servicio");
+
+            migrationBuilder.DropTable(
+                name: "Playero");
+
+            migrationBuilder.DropTable(
+                name: "Abonado");
 
             migrationBuilder.DropTable(
                 name: "Pago");
@@ -614,10 +902,7 @@ namespace estacionamientos.Migrations
                 name: "PlazaEstacionamiento");
 
             migrationBuilder.DropTable(
-                name: "Vehiculo");
-
-            migrationBuilder.DropTable(
-                name: "TrabajaEn");
+                name: "ClasificacionVehiculo");
 
             migrationBuilder.DropTable(
                 name: "Conductor");
@@ -626,19 +911,13 @@ namespace estacionamientos.Migrations
                 name: "AceptaMetodoPago");
 
             migrationBuilder.DropTable(
-                name: "ClasificacionVehiculo");
-
-            migrationBuilder.DropTable(
-                name: "Playero");
+                name: "Usuario");
 
             migrationBuilder.DropTable(
                 name: "MetodoPago");
 
             migrationBuilder.DropTable(
                 name: "PlayaEstacionamiento");
-
-            migrationBuilder.DropTable(
-                name: "Usuario");
         }
     }
 }

@@ -22,6 +22,58 @@ namespace estacionamientos.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("estacionamientos.Models.Abonado", b =>
+                {
+                    b.Property<string>("AboDNI")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)");
+
+                    b.Property<string>("AboNom")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int?>("ConNU")
+                        .HasColumnType("integer");
+
+                    b.HasKey("AboDNI");
+
+                    b.HasIndex("ConNU");
+
+                    b.ToTable("Abonado", (string)null);
+                });
+
+            modelBuilder.Entity("estacionamientos.Models.Abono", b =>
+                {
+                    b.Property<int>("PlyID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PlzNum")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("AboFyhIni")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AboDNI")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)");
+
+                    b.Property<DateTime?>("AboFyhFin")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("PagNum")
+                        .HasColumnType("integer");
+
+                    b.HasKey("PlyID", "PlzNum", "AboFyhIni");
+
+                    b.HasIndex("AboDNI");
+
+                    b.HasIndex("PlyID", "PagNum");
+
+                    b.ToTable("Abono", (string)null);
+                });
+
             modelBuilder.Entity("estacionamientos.Models.AceptaMetodoPago", b =>
                 {
                     b.Property<int>("PlyID")
@@ -310,6 +362,120 @@ namespace estacionamientos.Migrations
                     b.ToTable("PlazaEstacionamiento", (string)null);
                 });
 
+            modelBuilder.Entity("estacionamientos.Models.Servicio", b =>
+                {
+                    b.Property<int>("SerID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("SerID"));
+
+                    b.Property<string>("SerDesc")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("SerNom")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("SerTipo")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.HasKey("SerID");
+
+                    b.HasIndex("SerNom")
+                        .IsUnique();
+
+                    b.ToTable("Servicio", (string)null);
+                });
+
+            modelBuilder.Entity("estacionamientos.Models.ServicioExtraRealizado", b =>
+                {
+                    b.Property<int>("PlyID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SerID")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("VehPtnt")
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<DateTime>("ServExFyHIni")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("PagNum")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ServExComp")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("ServExFyHFin")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PlyID", "SerID", "VehPtnt", "ServExFyHIni");
+
+                    b.HasIndex("VehPtnt");
+
+                    b.HasIndex("PlyID", "PagNum");
+
+                    b.HasIndex("PlyID", "SerID", "ServExFyHIni");
+
+                    b.ToTable("ServicioExtraRealizado", (string)null);
+                });
+
+            modelBuilder.Entity("estacionamientos.Models.ServicioProveido", b =>
+                {
+                    b.Property<int>("PlyID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SerID")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("SerProvHab")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.HasKey("PlyID", "SerID");
+
+                    b.HasIndex("SerID");
+
+                    b.ToTable("ServicioProveido", (string)null);
+                });
+
+            modelBuilder.Entity("estacionamientos.Models.TarifaServicio", b =>
+                {
+                    b.Property<int>("PlyID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SerID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ClasVehID")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("TasFecIni")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("TasFecFin")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("TasMonto")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.HasKey("PlyID", "SerID", "ClasVehID", "TasFecIni");
+
+                    b.HasIndex("ClasVehID");
+
+                    b.HasIndex("PlyID", "SerID", "ClasVehID", "TasFecIni");
+
+                    b.ToTable("TarifaServicio", (string)null);
+                });
+
             modelBuilder.Entity("estacionamientos.Models.TrabajaEn", b =>
                 {
                     b.Property<int>("PlyID")
@@ -391,33 +557,28 @@ namespace estacionamientos.Migrations
                 {
                     b.Property<int>("UsuNU")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("UsuNU");
+                        .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("UsuNU"));
 
                     b.Property<string>("UsuEmail")
                         .IsRequired()
                         .HasMaxLength(254)
-                        .HasColumnType("character varying(254)")
-                        .HasColumnName("UsuEmail");
+                        .HasColumnType("character varying(254)");
 
                     b.Property<string>("UsuNumTel")
                         .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("UsuNumTel");
+                        .HasColumnType("character varying(30)");
 
                     b.Property<string>("UsuNyA")
                         .IsRequired()
                         .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("UsuNyA");
+                        .HasColumnType("character varying(120)");
 
                     b.Property<string>("UsuPswd")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("UsuPswd");
+                        .HasColumnType("character varying(200)");
 
                     b.HasKey("UsuNU");
 
@@ -471,6 +632,34 @@ namespace estacionamientos.Migrations
                     b.ToTable("Vehiculo", (string)null);
                 });
 
+            modelBuilder.Entity("estacionamientos.Models.VehiculoAbonado", b =>
+                {
+                    b.Property<int>("PlyID")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PlzNum")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("AboFyhIni")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VehPtnt")
+                        .HasColumnType("character varying(10)");
+
+                    b.HasKey("PlyID", "PlzNum", "AboFyhIni", "VehPtnt");
+
+                    b.HasIndex("VehPtnt");
+
+                    b.ToTable("VehiculoAbonado", (string)null);
+                });
+
+            modelBuilder.Entity("estacionamientos.Models.Administrador", b =>
+                {
+                    b.HasBaseType("estacionamientos.Models.Usuario");
+
+                    b.ToTable("Administrador", (string)null);
+                });
+
             modelBuilder.Entity("estacionamientos.Models.Conductor", b =>
                 {
                     b.HasBaseType("estacionamientos.Models.Usuario");
@@ -499,6 +688,43 @@ namespace estacionamientos.Migrations
                     b.HasBaseType("estacionamientos.Models.Usuario");
 
                     b.ToTable("Playero", (string)null);
+                });
+
+            modelBuilder.Entity("estacionamientos.Models.Abonado", b =>
+                {
+                    b.HasOne("estacionamientos.Models.Conductor", "Conductor")
+                        .WithMany()
+                        .HasForeignKey("ConNU")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Conductor");
+                });
+
+            modelBuilder.Entity("estacionamientos.Models.Abono", b =>
+                {
+                    b.HasOne("estacionamientos.Models.Abonado", "Abonado")
+                        .WithMany("Abonos")
+                        .HasForeignKey("AboDNI")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("estacionamientos.Models.Pago", "Pago")
+                        .WithMany()
+                        .HasForeignKey("PlyID", "PagNum")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("estacionamientos.Models.PlazaEstacionamiento", "Plaza")
+                        .WithMany("Abonos")
+                        .HasForeignKey("PlyID", "PlzNum")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Abonado");
+
+                    b.Navigation("Pago");
+
+                    b.Navigation("Plaza");
                 });
 
             modelBuilder.Entity("estacionamientos.Models.AceptaMetodoPago", b =>
@@ -645,6 +871,70 @@ namespace estacionamientos.Migrations
                     b.Navigation("Playa");
                 });
 
+            modelBuilder.Entity("estacionamientos.Models.ServicioExtraRealizado", b =>
+                {
+                    b.HasOne("estacionamientos.Models.Vehiculo", "Vehiculo")
+                        .WithMany()
+                        .HasForeignKey("VehPtnt")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("estacionamientos.Models.Pago", "Pago")
+                        .WithMany()
+                        .HasForeignKey("PlyID", "PagNum")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("estacionamientos.Models.ServicioProveido", "ServicioProveido")
+                        .WithMany("ServiciosExtras")
+                        .HasForeignKey("PlyID", "SerID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Pago");
+
+                    b.Navigation("ServicioProveido");
+
+                    b.Navigation("Vehiculo");
+                });
+
+            modelBuilder.Entity("estacionamientos.Models.ServicioProveido", b =>
+                {
+                    b.HasOne("estacionamientos.Models.PlayaEstacionamiento", "Playa")
+                        .WithMany("ServiciosProveidos")
+                        .HasForeignKey("PlyID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("estacionamientos.Models.Servicio", "Servicio")
+                        .WithMany("Proveidos")
+                        .HasForeignKey("SerID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Playa");
+
+                    b.Navigation("Servicio");
+                });
+
+            modelBuilder.Entity("estacionamientos.Models.TarifaServicio", b =>
+                {
+                    b.HasOne("estacionamientos.Models.ClasificacionVehiculo", "ClasificacionVehiculo")
+                        .WithMany()
+                        .HasForeignKey("ClasVehID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("estacionamientos.Models.ServicioProveido", "ServicioProveido")
+                        .WithMany("Tarifas")
+                        .HasForeignKey("PlyID", "SerID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ClasificacionVehiculo");
+
+                    b.Navigation("ServicioProveido");
+                });
+
             modelBuilder.Entity("estacionamientos.Models.TrabajaEn", b =>
                 {
                     b.HasOne("estacionamientos.Models.Playero", "Playero")
@@ -732,6 +1022,34 @@ namespace estacionamientos.Migrations
                     b.Navigation("Clasificacion");
                 });
 
+            modelBuilder.Entity("estacionamientos.Models.VehiculoAbonado", b =>
+                {
+                    b.HasOne("estacionamientos.Models.Vehiculo", "Vehiculo")
+                        .WithMany()
+                        .HasForeignKey("VehPtnt")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("estacionamientos.Models.Abono", "Abono")
+                        .WithMany("Vehiculos")
+                        .HasForeignKey("PlyID", "PlzNum", "AboFyhIni")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Abono");
+
+                    b.Navigation("Vehiculo");
+                });
+
+            modelBuilder.Entity("estacionamientos.Models.Administrador", b =>
+                {
+                    b.HasOne("estacionamientos.Models.Usuario", null)
+                        .WithOne()
+                        .HasForeignKey("estacionamientos.Models.Administrador", "UsuNU")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("estacionamientos.Models.Conductor", b =>
                 {
                     b.HasOne("estacionamientos.Models.Usuario", null)
@@ -757,6 +1075,16 @@ namespace estacionamientos.Migrations
                         .HasForeignKey("estacionamientos.Models.Playero", "UsuNU")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("estacionamientos.Models.Abonado", b =>
+                {
+                    b.Navigation("Abonos");
+                });
+
+            modelBuilder.Entity("estacionamientos.Models.Abono", b =>
+                {
+                    b.Navigation("Vehiculos");
                 });
 
             modelBuilder.Entity("estacionamientos.Models.AceptaMetodoPago", b =>
@@ -791,12 +1119,28 @@ namespace estacionamientos.Migrations
 
                     b.Navigation("Plazas");
 
+                    b.Navigation("ServiciosProveidos");
+
                     b.Navigation("Valoraciones");
                 });
 
             modelBuilder.Entity("estacionamientos.Models.PlazaEstacionamiento", b =>
                 {
+                    b.Navigation("Abonos");
+
                     b.Navigation("Ocupaciones");
+                });
+
+            modelBuilder.Entity("estacionamientos.Models.Servicio", b =>
+                {
+                    b.Navigation("Proveidos");
+                });
+
+            modelBuilder.Entity("estacionamientos.Models.ServicioProveido", b =>
+                {
+                    b.Navigation("ServiciosExtras");
+
+                    b.Navigation("Tarifas");
                 });
 
             modelBuilder.Entity("estacionamientos.Models.Vehiculo", b =>
