@@ -12,8 +12,8 @@ using estacionamientos.Data;
 namespace estacionamientos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250815004553_prueba3")]
-    partial class prueba3
+    [Migration("20250816194303_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -261,6 +261,11 @@ namespace estacionamientos.Migrations
 
                     b.Property<bool>("PlyLlavReq")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("PlyNom")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("PlyProv")
                         .IsRequired()

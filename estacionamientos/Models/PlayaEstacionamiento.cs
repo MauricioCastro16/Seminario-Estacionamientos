@@ -9,6 +9,9 @@ namespace estacionamientos.Models
         public int PlyID { get; set; } // Identity
 
         [Required(ErrorMessage = ErrorMessages.CampoObligatorio), StringLength(50)]
+        public string PlyNom { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = ErrorMessages.CampoObligatorio), StringLength(50)]
         public string PlyProv { get; set; } = string.Empty;
 
         [Required(ErrorMessage = ErrorMessages.CampoObligatorio), StringLength(80)]

@@ -9,11 +9,13 @@
 
     <form asp-action="Create" method="post">
         <div class="d-flex flex-column gap-3">
-            <!-- <div class="form-group">
-                <label asp-for="Nombre"></label>
-                <input asp-for="Nombre" class="form-control"/>
-                <span asp-validation-for="Nombre" class="text-danger"></span>
-            </div> -->
+
+            <!-- Nombre -->
+            <div class="form-group">
+                <label asp-for="PlyNom">Nombre</label>
+                <input asp-for="PlyNom" class="form-control"/>
+                <span asp-validation-for="PlyNom" class="text-danger"></span>
+            </div>
 
             <!-- Provincia -->
             <div class="form-group">

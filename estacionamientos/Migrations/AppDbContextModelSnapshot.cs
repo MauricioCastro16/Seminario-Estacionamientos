@@ -259,6 +259,11 @@ namespace estacionamientos.Migrations
                     b.Property<bool>("PlyLlavReq")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("PlyNom")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<string>("PlyProv")
                         .IsRequired()
                         .HasMaxLength(50)
