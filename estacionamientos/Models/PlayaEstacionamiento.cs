@@ -31,6 +31,7 @@ namespace estacionamientos.Models
         public ICollection<AceptaMetodoPago> Aceptaciones { get; set; } = new List<AceptaMetodoPago>();
         public ICollection<Pago> Pagos { get; set; } = new List<Pago>();
         public ICollection<PlazaEstacionamiento> Plazas { get; set; } = new List<PlazaEstacionamiento>();
+        public ICollection<ServicioProveido> ServiciosProveidos { get; set; } = new List<ServicioProveido>();
 
     }
 }

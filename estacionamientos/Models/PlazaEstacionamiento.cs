@@ -16,5 +16,6 @@ namespace estacionamientos.Models
         // Navs
         public PlayaEstacionamiento Playa { get; set; } = default!;
         public ICollection<Ocupacion> Ocupaciones { get; set; } = new List<Ocupacion>();
+        public ICollection<Abono> Abonos { get; set; } = new List<Abono>();
     }
 }

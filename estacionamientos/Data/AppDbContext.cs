@@ -26,43 +26,34 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Pago> Pagos { get; set; } = default!;
     public DbSet<PlazaEstacionamiento> Plazas { get; set; } = default!;
     public DbSet<Ocupacion> Ocupaciones { get; set; } = default!;
+    public DbSet<Administrador> Administradores { get; set; } = default!;
+    public DbSet<Servicio> Servicios { get; set; } = default!;
+    public DbSet<ServicioProveido> ServiciosProveidos { get; set; } = default!;
+    public DbSet<TarifaServicio> TarifasServicio { get; set; } = default!;
+    public DbSet<ServicioExtraRealizado> ServiciosExtrasRealizados { get; set; } = default!;
+    public DbSet<Abonado> Abonados { get; set; } = default!;
+    public DbSet<Abono> Abonos { get; set; } = default!;
+    public DbSet<VehiculoAbonado> VehiculosAbonados { get; set; } = default!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.Entity<Usuario>(entity =>
             {
-                entity.ToTable("Usuario"); // nombre de la tabla
-
+                entity.ToTable("Usuario");
                 entity.HasKey(e => e.UsuNU);
 
-                entity.Property(e => e.UsuNU)
-                      .HasColumnName("UsuNU")
-#if NET8_0_OR_GREATER
-                    .UseIdentityByDefaultColumn(); // PostgreSQL identity
-#endif
+            #if NET8_0_OR_GREATER
+                entity.Property(e => e.UsuNU).UseIdentityByDefaultColumn();
+            #endif
 
-                entity.Property(e => e.UsuNyA)
-                      .HasColumnName("UsuNyA")
-                      .HasMaxLength(120)
-                      .IsRequired();
-
-                entity.Property(e => e.UsuEmail)
-                      .HasColumnName("UsuEmail")
-                      .HasMaxLength(254)
-                      .IsRequired();
-
-                entity.Property(e => e.UsuPswd)
-                      .HasColumnName("UsuPswd")
-                      .HasMaxLength(200)
-                      .IsRequired();
-
-                entity.Property(e => e.UsuNumTel)
-                      .HasColumnName("UsuNumTel")
-                      .HasMaxLength(30);
-
-                // Ejemplo de índice único en email (útil normalmente)
+                entity.Property(e => e.UsuNyA).HasMaxLength(120).IsRequired();
+                entity.Property(e => e.UsuEmail).HasMaxLength(254).IsRequired();
+                entity.Property(e => e.UsuPswd).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.UsuNumTel).HasMaxLength(30);
                 entity.HasIndex(e => e.UsuEmail).IsUnique();
             });
+
         modelBuilder.Entity<Duenio>(entity =>
             {
                 entity.ToTable("Duenio");       // tabla hija
@@ -282,7 +273,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 e.Property(a => a.AmpHab).HasDefaultValue(true);
 
                 e.HasOne(a => a.Playa)
-                .WithMany(p => p.Aceptaciones) 
+                .WithMany(p => p.Aceptaciones)
                 .HasForeignKey(a => a.PlyID)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -364,6 +355,138 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 e.HasIndex(o => new { o.PlyID, o.PlzNum, o.OcufFyhIni });
                 e.HasIndex(o => new { o.VehPtnt, o.OcufFyhIni });
             });
+        modelBuilder.Entity<Administrador>(e =>
+        {
+            e.ToTable("Administrador");
+            e.HasBaseType<Usuario>();
+        });
+
+        modelBuilder.Entity<Servicio>(e =>
+            {
+                e.ToTable("Servicio");
+                e.HasKey(s => s.SerID);
+                e.Property(s => s.SerNom).HasMaxLength(80).IsRequired();
+                e.Property(s => s.SerTipo).HasMaxLength(40);
+                e.Property(s => s.SerDesc).HasMaxLength(200);
+                e.HasIndex(s => s.SerNom).IsUnique(); // opcional
+            });
+        modelBuilder.Entity<ServicioProveido>(e =>
+            {
+                e.ToTable("ServicioProveido");
+                e.HasKey(sp => new { sp.PlyID, sp.SerID });
+
+                e.Property(sp => sp.SerProvHab).HasDefaultValue(true);
+
+                e.HasOne(sp => sp.Playa)
+                .WithMany(p => p.ServiciosProveidos /* o crea p.ServiciosProveidos si preferís */)
+                .HasForeignKey(sp => sp.PlyID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(sp => sp.Servicio)
+                .WithMany(s => s.Proveidos)
+                .HasForeignKey(sp => sp.SerID)
+                .OnDelete(DeleteBehavior.Cascade);
+            });
+        modelBuilder.Entity<TarifaServicio>(e =>
+            {
+                e.ToTable("TarifaServicio");
+                e.HasKey(t => new { t.PlyID, t.SerID, t.ClasVehID, t.TasFecIni });
+
+                e.Property(t => t.TasMonto).HasPrecision(12, 2).IsRequired();
+
+                // FK a ServicioProveido (PlyID, SerID)
+                e.HasOne(t => t.ServicioProveido)
+                .WithMany(sp => sp.Tarifas)
+                .HasForeignKey(t => new { t.PlyID, t.SerID })
+                .OnDelete(DeleteBehavior.Cascade);
+
+                // FK a ClasificacionVehiculo
+                e.HasOne(t => t.ClasificacionVehiculo)
+                .WithMany()
+                .HasForeignKey(t => t.ClasVehID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+                // Índice auxiliar para buscar la tarifa vigente
+                e.HasIndex(t => new { t.PlyID, t.SerID, t.ClasVehID, t.TasFecIni });
+            });
+        modelBuilder.Entity<ServicioExtraRealizado>(e =>
+            {
+                e.ToTable("ServicioExtraRealizado");
+                e.HasKey(se => new { se.PlyID, se.SerID, se.VehPtnt, se.ServExFyHIni });
+
+                // Debe existir el servicio proveído en esa playa
+                e.HasOne(se => se.ServicioProveido)
+                .WithMany(sp => sp.ServiciosExtras)
+                .HasForeignKey(se => new { se.PlyID, se.SerID })
+                .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(se => se.Vehiculo)
+                .WithMany()
+                .HasForeignKey(se => se.VehPtnt)
+                .OnDelete(DeleteBehavior.Restrict);
+
+                // Pago opcional (PlyID, PagNum)
+                e.HasOne(se => se.Pago)
+                .WithMany()
+                .HasForeignKey(se => new { se.PlyID, se.PagNum })
+                .OnDelete(DeleteBehavior.SetNull);
+
+                e.HasIndex(se => new { se.PlyID, se.SerID, se.ServExFyHIni });
+            });
+        modelBuilder.Entity<Abonado>(e =>
+        {
+            e.ToTable("Abonado");
+            e.HasKey(a => a.AboDNI);
+            e.Property(a => a.AboDNI).HasMaxLength(15);
+            e.Property(a => a.AboNom).HasMaxLength(120).IsRequired();
+
+            e.HasOne(a => a.Conductor)               // 0..1
+             .WithMany()                             // si querés inversa: Conductor.Abonados
+             .HasForeignKey(a => a.ConNU)
+             .OnDelete(DeleteBehavior.SetNull);
+        });
+        modelBuilder.Entity<Abono>(e =>
+        {
+            e.ToTable("Abono");
+            e.HasKey(a => new { a.PlyID, a.PlzNum, a.AboFyhIni });
+
+            // Plaza (PlyID, PlzNum)
+            e.HasOne(a => a.Plaza)
+             .WithMany(p => p.Abonos /* o crea p.Abonos si querés */)
+             .HasForeignKey(a => new { a.PlyID, a.PlzNum })
+             .OnDelete(DeleteBehavior.Restrict);
+
+            // Abonado
+            e.HasOne(a => a.Abonado)
+             .WithMany(ab => ab.Abonos)
+             .HasForeignKey(a => a.AboDNI)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            // Pago requerido (PlyID, PagNum)
+            e.HasOne(a => a.Pago)
+             .WithMany() // el Pago puede o no tener abono; no forzamos inversa
+             .HasForeignKey(a => new { a.PlyID, a.PagNum })
+             .OnDelete(DeleteBehavior.Restrict);     // no permitir borrar pago usado por abono
+        });
+        modelBuilder.Entity<VehiculoAbonado>(e =>
+        {
+            e.ToTable("VehiculoAbonado");
+            e.HasKey(v => new { v.PlyID, v.PlzNum, v.AboFyhIni, v.VehPtnt });
+
+            // FK al Abono
+            e.HasOne(v => v.Abono)
+             .WithMany(a => a.Vehiculos)
+             .HasForeignKey(v => new { v.PlyID, v.PlzNum, v.AboFyhIni })
+             .OnDelete(DeleteBehavior.Cascade);
+
+            // FK al Vehiculo
+            e.HasOne(v => v.Vehiculo)
+             .WithMany() // si querés inversa: Vehiculo.Abonos
+             .HasForeignKey(v => v.VehPtnt)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+
     }
 
     // ---- Recalcular promedio de una/s playa/s cuando cambian valoraciones

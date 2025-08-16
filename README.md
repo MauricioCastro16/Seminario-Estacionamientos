@@ -4,11 +4,13 @@ Proyecto ASP.NET Core MVC con conexión a PostgreSQL, usando Entity Framework Co
 
 ---
 
+Para más infomación del repo, está creada una deepwiki:
+https://deepwiki.com/MauricioCastro16/Seminario-Estacionamientos/
+
 ## 📋 Requisitos previos
 
 - [.NET 9 SDK](https://dotnet.microsoft.com/en-us/download)
 - [PostgreSQL](https://www.postgresql.org/download/)
-- [dotnet-ef](https://learn.microsoft.com/en-us/ef/core/cli/dotnet)
 
 Instalar herramientas necesarias:
 ```bash
@@ -18,7 +20,6 @@ dotnet tool install --global dotnet-ef
 
 ►Clonar el repositorio
 git clone https://github.com/MauricioCastro16/Seminario-Estacionamientos
-cd Seminario-Estacionamientos/estacionamientos
 
 ►Crear base de datos en PostgreSQL
 CREATE DATABASE estacionamientosdb;
@@ -31,10 +32,13 @@ dotnet restore
 
 🛠️ Base de datos y migraciones
 ►Aplicar migraciones iniciales:
+
+cd estacionamientos
 dotnet ef database update
 
 🚀 Ejecutar el proyecto
-cd estacionamientos
+
+cd estacionamientos #Si no lo hiciste
 dotnet run
 
 🧪 Comandos útiles
