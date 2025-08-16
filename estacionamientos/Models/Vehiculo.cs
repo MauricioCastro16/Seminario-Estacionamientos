@@ -19,5 +19,6 @@ namespace estacionamientos.Models
         public ClasificacionVehiculo Clasificacion { get; set; } = default!;
 
         public ICollection<Conduce> Conducciones { get; set; } = new List<Conduce>();
+        public ICollection<Ocupacion> Ocupaciones { get; set; } = new List<Ocupacion>();
     }
 }

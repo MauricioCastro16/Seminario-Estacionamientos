@@ -1,0 +1,50 @@
+@model IEnumerable<estacionamientos.Controllers.SchemaController.TableInfo>
+@{
+    ViewData["Title"] = "Esquema de BD";
+}
+
+<h1 class="mb-3">Esquema de BD (según EF Core)</h1>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-warning">No se encontraron entidades mapeadas.</div>
+}
+else
+{
+    foreach (var t in Model)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <strong>@t.Schema.@t.Table</strong>
+                <span class="text-muted">(@t.EntityName)</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Columna</th>
+                            <th>Tipo .NET</th>
+                            <th>Tipo SQL</th>
+                            <th>¿Null?</th>
+                            <th>PK</th>
+                            <th>FK</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in t.Columns)
+                        {
+                            <tr>
+                                <td>@c.ColumnName</td>
+                                <td>@c.ClrType</td>
+                                <td>@(string.IsNullOrEmpty(c.ColumnType) ? "-" : c.ColumnType)</td>
+                                <td>@(c.IsNullable ? "Sí" : "No")</td>
+                                <td>@(c.IsKey ? "✔" : "")</td>
+                                <td>@(c.IsForeignKey ? "✔" : "")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}

@@ -19,7 +19,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AdministraPlaya> AdministraPlayas { get; set; } = default!;
     public DbSet<TrabajaEn> Trabajos { get; set; } = default!;
     public DbSet<Turno> Turnos { get; set; } = default!;
-
+    public DbSet<ClasificacionDias> ClasificacionesDias { get; set; } = default!;
+    public DbSet<Horario> Horarios { get; set; } = default!;
+    public DbSet<MetodoPago> MetodosPago { get; set; } = default!;
+    public DbSet<AceptaMetodoPago> AceptaMetodosPago { get; set; } = default!;
+    public DbSet<Pago> Pagos { get; set; } = default!;
+    public DbSet<PlazaEstacionamiento> Plazas { get; set; } = default!;
+    public DbSet<Ocupacion> Ocupaciones { get; set; } = default!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -32,7 +38,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 entity.Property(e => e.UsuNU)
                       .HasColumnName("UsuNU")
 #if NET8_0_OR_GREATER
-                .UseIdentityByDefaultColumn(); // PostgreSQL identity
+                    .UseIdentityByDefaultColumn(); // PostgreSQL identity
 #endif
 
                 entity.Property(e => e.UsuNyA)
@@ -227,6 +233,136 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
                 // Índice útil para búsquedas por playa y fechas
                 e.HasIndex(t => new { t.PlyID, t.TurFyhIni });
+            });
+        modelBuilder.Entity<ClasificacionDias>(e =>
+            {
+                e.ToTable("ClasificacionDias");
+                e.HasKey(c => c.ClaDiasID);
+                e.Property(c => c.ClaDiasTipo).HasMaxLength(40).IsRequired();
+                e.Property(c => c.ClaDiasDesc).HasMaxLength(200);
+
+                // (Opcional) único por nombre/tipo
+                e.HasIndex(c => c.ClaDiasTipo).IsUnique();
+            });
+        modelBuilder.Entity<Horario>(e =>
+            {
+                e.ToTable("Horario");
+
+                // PK compuesta
+                e.HasKey(h => new { h.PlyID, h.ClaDiasID, h.HorFyhIni });
+
+                // FK a Playa
+                e.HasOne(h => h.Playa)
+                .WithMany(p => p.Horarios)     // si querés, agregá esta colección en PlayaEstacionamiento
+                .HasForeignKey(h => h.PlyID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+                // FK a ClasificacionDias
+                e.HasOne(h => h.ClasificacionDias)
+                .WithMany(c => c.Horarios)
+                .HasForeignKey(h => h.ClaDiasID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+                // Índice útil para consultas por Playa/Clasificación
+                e.HasIndex(h => new { h.PlyID, h.ClaDiasID, h.HorFyhIni });
+            });
+        modelBuilder.Entity<MetodoPago>(e =>
+            {
+                e.ToTable("MetodoPago");
+                e.HasKey(m => m.MepID);
+                e.Property(m => m.MepNom).HasMaxLength(40).IsRequired();
+                e.Property(m => m.MepDesc).HasMaxLength(200);
+                e.HasIndex(m => m.MepNom).IsUnique();
+            });
+        modelBuilder.Entity<AceptaMetodoPago>(e =>
+            {
+                e.ToTable("AceptaMetodoPago");
+                e.HasKey(a => new { a.PlyID, a.MepID });
+
+                e.Property(a => a.AmpHab).HasDefaultValue(true);
+
+                e.HasOne(a => a.Playa)
+                .WithMany(p => p.Aceptaciones) 
+                .HasForeignKey(a => a.PlyID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(a => a.MetodoPago)
+                .WithMany(m => m.Aceptaciones)
+                .HasForeignKey(a => a.MepID)
+                .OnDelete(DeleteBehavior.Cascade);
+            });
+        modelBuilder.Entity<Pago>(e =>
+            {
+                e.ToTable("Pago");
+
+                // PK compuesta (PlyID, PagNum)
+                e.HasKey(p => new { p.PlyID, p.PagNum });
+
+                e.Property(p => p.PagMonto)
+                    .HasColumnType("decimal(12,2)")
+                    .IsRequired();
+
+                e.Property(p => p.PagFyh).IsRequired();
+
+                // FK directa a Playa (comodidad)
+                e.HasOne(p => p.Playa)
+                .WithMany()                     // o .WithMany(pl => pl.Pagos) si agregás colección
+                .HasForeignKey(p => p.PlyID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+                // FK directa a MetodoPago (comodidad)
+                e.HasOne(p => p.MetodoPago)
+                .WithMany()                     // o .WithMany(m => m.Pagos) si querés colección
+                .HasForeignKey(p => p.MepID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+                // FK compuesta a AceptaMetodoPago => garantiza que (PlyID, MepID) está aceptado por esa Playa
+                e.HasOne(p => p.AceptaMetodoPago)
+                .WithMany(a => a.Pagos)
+                .HasForeignKey(p => new { p.PlyID, p.MepID })
+                .OnDelete(DeleteBehavior.Restrict);
+
+                // (Opcional) índice para consultas por fecha
+                e.HasIndex(p => new { p.PlyID, p.PagFyh });
+            });
+        modelBuilder.Entity<PlazaEstacionamiento>(e =>
+            {
+                e.ToTable("PlazaEstacionamiento");
+                e.HasKey(p => new { p.PlyID, p.PlzNum });
+
+                e.Property(p => p.PlzAlt).HasPrecision(5, 2); // por ej. 3.50 m
+
+                e.HasOne(p => p.Playa)
+                .WithMany(pl => pl.Plazas)        // colección en PlayaEstacionamiento
+                .HasForeignKey(p => p.PlyID)
+                .OnDelete(DeleteBehavior.Cascade);
+            });
+        modelBuilder.Entity<Ocupacion>(e =>
+            {
+                e.ToTable("Ocupacion");
+                e.HasKey(o => new { o.PlyID, o.PlzNum, o.VehPtnt, o.OcufFyhIni });
+
+                // FK compuesta a Plaza (PlyID, PlzNum)
+                e.HasOne(o => o.Plaza)
+                .WithMany(p => p.Ocupaciones)
+                .HasForeignKey(o => new { o.PlyID, o.PlzNum })
+                .OnDelete(DeleteBehavior.Restrict);
+
+                // FK a Vehiculo (VehPtnt)
+                e.HasOne(o => o.Vehiculo)
+                .WithMany(v => v.Ocupaciones)
+                .HasForeignKey(o => o.VehPtnt)
+                .OnDelete(DeleteBehavior.Restrict);
+
+                // FK opcional a Pago: (PlyID, PagNum)
+                e.HasOne(o => o.Pago)
+                .WithMany() // el Pago no necesita colección ahora
+                .HasForeignKey(o => new { o.PlyID, o.PagNum })  // PagNum puede ser null
+                .OnDelete(DeleteBehavior.SetNull); // si se borra el pago, la ocupación queda sin pago
+
+                // índices útiles
+                e.HasIndex(o => new { o.PlyID, o.PlzNum, o.OcufFyhIni });
+                e.HasIndex(o => new { o.VehPtnt, o.OcufFyhIni });
             });
     }
 

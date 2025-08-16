@@ -27,5 +27,10 @@ namespace estacionamientos.Models
         // Navegaciones
         public ICollection<Valoracion> Valoraciones { get; set; } = new List<Valoracion>();
         public ICollection<AdministraPlaya> Administradores { get; set; } = new List<AdministraPlaya>();
+        public ICollection<Horario> Horarios { get; set; } = new List<Horario>();
+        public ICollection<AceptaMetodoPago> Aceptaciones { get; set; } = new List<AceptaMetodoPago>();
+        public ICollection<Pago> Pagos { get; set; } = new List<Pago>();
+        public ICollection<PlazaEstacionamiento> Plazas { get; set; } = new List<PlazaEstacionamiento>();
+
     }
 }
