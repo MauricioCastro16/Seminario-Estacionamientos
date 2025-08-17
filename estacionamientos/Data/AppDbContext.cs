@@ -264,6 +264,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 e.Property(m => m.MepNom).HasMaxLength(40).IsRequired();
                 e.Property(m => m.MepDesc).HasMaxLength(200);
                 e.HasIndex(m => m.MepNom).IsUnique();
+                // Inserta los datos por defecto
+                e.HasData(
+                    new MetodoPago { MepID = 1, MepNom = "Efectivo", MepDesc = "Pago en efectivo" },
+                    new MetodoPago { MepID = 2, MepNom = "Tarjeta de Crédito", MepDesc = "Visa, Mastercard, etc." },
+                    new MetodoPago { MepID = 3, MepNom = "Tarjeta de Débito", MepDesc = "Pago con tarjeta de débito" },
+                    new MetodoPago { MepID = 4, MepNom = "QR", MepDesc = "Mediante el uso de un QR" }
+                );
             });
         modelBuilder.Entity<AceptaMetodoPago>(e =>
             {
