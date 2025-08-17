@@ -12,7 +12,7 @@ using estacionamientos.Data;
 namespace estacionamientos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250816171537_InitialCreate")]
+    [Migration("20250817152859_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

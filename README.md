@@ -4,9 +4,6 @@ Proyecto ASP.NET Core MVC con conexión a PostgreSQL, usando Entity Framework Co
 
 ---
 
-Para más infomación del repo, está creada una deepwiki:
-https://deepwiki.com/MauricioCastro16/Seminario-Estacionamientos/
-
 ## 📋 Requisitos previos
 
 - [.NET 9 SDK](https://dotnet.microsoft.com/en-us/download)

@@ -1,0 +1,39 @@
+@model IEnumerable<estacionamientos.Models.Usuario>
+@{
+    ViewData["Title"] = "Usuarios";
+}
+
+<h1>Usuarios</h1>
+
+<p>
+    <a asp-controller="Usuario" asp-action="CreateDuenio" class="btn btn-success">Crear dueño</a>
+</p>
+
+@if (Model is null || !Model.Any())
+{
+    <div class="alert alert-info">No hay usuarios aún.</div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Nombre y Apellido</th>
+                <th>Email</th>
+                <th>Teléfono</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var u in Model)
+        {
+            <tr>
+                <td>@u.UsuNU</td>
+                <td>@u.UsuNyA</td>
+                <td>@u.UsuEmail</td>
+                <td>@u.UsuNumTel</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
