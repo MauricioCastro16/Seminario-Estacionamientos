@@ -8,9 +8,9 @@ namespace estacionamientos.Models
 
         public bool AmpHab { get; set; } = true; // habilitado/deshabilitado
 
-        public PlayaEstacionamiento Playa { get; set; } = default!;
-        public MetodoPago MetodoPago { get; set; } = default!;
+        public PlayaEstacionamiento? Playa { get; set; } = default!;
+        public MetodoPago? MetodoPago { get; set; } = default!;
 
-        public ICollection<Pago> Pagos { get; set; } = new List<Pago>(); // comodidad
+        public ICollection<Pago>? Pagos { get; set; } = new List<Pago>(); // comodidad
     }
 }
