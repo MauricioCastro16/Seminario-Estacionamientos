@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
+using estacionamientos.Models.ViewModels;
 
 namespace estacionamientos.Controllers
 {
@@ -98,5 +99,51 @@ namespace estacionamientos.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
+
+        // GET: /Usuario/CreateDuenio
+        public IActionResult CreateDuenio() => View(new CreateDuenioVM());
+
+        // POST: /Usuario/CreateDuenio
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateDuenio(CreateDuenioVM vm)
+        {
+            if (!ModelState.IsValid) return View(vm);
+
+            // Validación de unicidad de email (evita excepción por índice único)
+            var emailEnUso = await _context.Usuarios
+                .AsNoTracking()
+                .AnyAsync(u => u.UsuEmail == vm.UsuEmail);
+            if (emailEnUso)
+            {
+                ModelState.AddModelError(nameof(vm.UsuEmail), "El email ya está en uso.");
+                return View(vm);
+            }
+
+            // Mapear VM -> entidad derivada (Duenio : Usuario)
+            var duenio = new Duenio
+            {
+                UsuNyA = vm.UsuNyA,
+                UsuEmail = vm.UsuEmail,
+                // ⚠️ En producción, guardar HASH en lugar de texto plano
+                UsuPswd = vm.UsuPswd,
+                UsuNumTel = vm.UsuNumTel,
+                DueCuit = vm.DueCuit
+            };
+
+            _context.Duenios.Add(duenio);
+            try
+            {
+                await _context.SaveChangesAsync();
+                TempData["Msg"] = "Dueño creado correctamente.";
+                return RedirectToAction(nameof(Index)); // índice de usuarios (o redirigí a Duenio/Index si preferís)
+            }
+            catch (DbUpdateException ex)
+            {
+                ModelState.AddModelError(string.Empty, $"Error guardando: {ex.InnerException?.Message ?? ex.Message}");
+                return View(vm);
+            }
+        }
     }
 }
+
