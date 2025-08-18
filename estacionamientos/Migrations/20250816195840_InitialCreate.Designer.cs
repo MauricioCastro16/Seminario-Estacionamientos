@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using estacionamientos.Data;
@@ -11,9 +12,11 @@ using estacionamientos.Data;
 namespace estacionamientos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250816195840_InitialCreate")]
+    partial class InitialCreate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -221,32 +224,6 @@ namespace estacionamientos.Migrations
                         .IsUnique();
 
                     b.ToTable("MetodoPago", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            MepID = 1,
-                            MepDesc = "Pago en efectivo",
-                            MepNom = "Efectivo"
-                        },
-                        new
-                        {
-                            MepID = 2,
-                            MepDesc = "Visa, Mastercard, etc.",
-                            MepNom = "Tarjeta de Crédito"
-                        },
-                        new
-                        {
-                            MepID = 3,
-                            MepDesc = "Pago con tarjeta de débito",
-                            MepNom = "Tarjeta de Débito"
-                        },
-                        new
-                        {
-                            MepID = 4,
-                            MepDesc = "Mediante el uso de un QR",
-                            MepNom = "QR"
-                        });
                 });
 
             modelBuilder.Entity("estacionamientos.Models.Ocupacion", b =>
