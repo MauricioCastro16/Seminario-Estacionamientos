@@ -1,39 +1,168 @@
-@model IEnumerable<estacionamientos.Models.Usuario>
+@using estacionamientos.Models.ViewModels
+@model UsuariosIndexVM
+
 @{
     ViewData["Title"] = "Usuarios";
 }
 
 <h1>Usuarios</h1>
 
-<p>
-    <a asp-controller="Usuario" asp-action="CreateDuenio" class="btn btn-success">Crear dueño</a>
+<p class="mb-3">
+    <a asp-controller="Usuario" asp-action="CreateDuenio" class="btn btn-success me-2">Crear dueño</a>
+    <a asp-controller="Usuario" asp-action="CreateConductor" class="btn btn-info">Crear conductor</a>
+    <a asp-controller="Usuario" asp-action="CreateAdministrador" class="btn btn-warning me-2">Crear administrador</a>
+    <a asp-controller="Usuario" asp-action="CreatePlayero" class="btn btn-primary">Crear playero</a>
 </p>
 
-@if (Model is null || !Model.Any())
+@if (!Model.Duenios.Any() && !Model.Conductores.Any())
 {
     <div class="alert alert-info">No hay usuarios aún.</div>
 }
 else
 {
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Id</th>
-                <th>Nombre y Apellido</th>
-                <th>Email</th>
-                <th>Teléfono</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach (var u in Model)
-        {
-            <tr>
-                <td>@u.UsuNU</td>
-                <td>@u.UsuNyA</td>
-                <td>@u.UsuEmail</td>
-                <td>@u.UsuNumTel</td>
-            </tr>
-        }
-        </tbody>
-    </table>
+    <h3 class="mt-4">Dueños (@Model.Duenios.Count)</h3>
+    @if (!Model.Duenios.Any())
+    {
+        <div class="alert alert-secondary">No hay dueños cargados.</div>
+    }
+    else
+    {
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Nombre y Apellido</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>CUIT</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var d in Model.Duenios)
+            {
+                <tr>
+                    <td>@d.UsuNU</td>
+                    <td>@d.UsuNyA</td>
+                    <td>@d.UsuEmail</td>
+                    <td>@d.UsuNumTel</td>
+                    <td>@d.DueCuit</td>
+                    <td>
+                        <a asp-controller="Usuario" asp-action="EditDuenio" asp-route-id="@d.UsuNU" class="btn btn-sm btn-warning">Editar</a>
+                        <a asp-controller="Usuario" asp-action="DetailsDuenio" asp-route-id="@d.UsuNU" class="btn btn-sm btn-info">Detalles</a>
+                        <a asp-controller="Usuario" asp-action="DeleteDuenio" asp-route-id="@d.UsuNU" class="btn btn-sm btn-danger">Eliminar</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+
+    <h3 class="mt-4">Conductores (@Model.Conductores.Count)</h3>
+    @if (!Model.Conductores.Any())
+    {
+        <div class="alert alert-secondary">No hay conductores cargados.</div>
+    }
+    else
+    {
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Nombre y Apellido</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var c in Model.Conductores)
+            {
+                <tr>
+                    <td>@c.UsuNU</td>
+                    <td>@c.UsuNyA</td>
+                    <td>@c.UsuEmail</td>
+                    <td>@c.UsuNumTel</td>
+                    <td>
+                        <a asp-controller="Usuario" asp-action="EditConductor" asp-route-id="@c.UsuNU" class="btn btn-sm btn-warning">Editar</a>
+                        <a asp-controller="Usuario" asp-action="DetailsConductor" asp-route-id="@c.UsuNU" class="btn btn-sm btn-info">Detalles</a>
+                        <a asp-controller="Usuario" asp-action="DeleteConductor" asp-route-id="@c.UsuNU" class="btn btn-sm btn-danger">Eliminar</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+
+    <h3 class="mt-4">Administradores (@Model.Administradores.Count)</h3>
+    @if (!Model.Administradores.Any())
+    {
+        <div class="alert alert-secondary">No hay administradores cargados.</div>
+    }
+    else
+    {
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Nombre y Apellido</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var a in Model.Administradores)
+            {
+                <tr>
+                    <td>@a.UsuNU</td>
+                    <td>@a.UsuNyA</td>
+                    <td>@a.UsuEmail</td>
+                    <td>@a.UsuNumTel</td>
+                    <td>
+                        <a asp-controller="Usuario" asp-action="EditAdministrador" asp-route-id="@a.UsuNU" class="btn btn-sm btn-warning">Editar</a>
+                        <a asp-controller="Usuario" asp-action="DetailsAdministrador" asp-route-id="@a.UsuNU" class="btn btn-sm btn-info">Detalles</a>
+                        <a asp-controller="Usuario" asp-action="DeleteAdministrador" asp-route-id="@a.UsuNU" class="btn btn-sm btn-danger">Eliminar</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+
+    <h3 class="mt-4">Playeros (@Model.Playeros.Count)</h3>
+    @if (!Model.Playeros.Any())
+    {
+        <div class="alert alert-secondary">No hay playeros cargados.</div>
+    }
+    else
+    {
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Nombre y Apellido</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var p in Model.Playeros)
+            {
+                <tr>
+                    <td>@p.UsuNU</td>
+                    <td>@p.UsuNyA</td>
+                    <td>@p.UsuEmail</td>
+                    <td>@p.UsuNumTel</td>
+                    <td>
+                        <a asp-controller="Usuario" asp-action="EditPlayero" asp-route-id="@p.UsuNU" class="btn btn-sm btn-warning">Editar</a>
+                        <a asp-controller="Usuario" asp-action="DetailsPlayero" asp-route-id="@p.UsuNU" class="btn btn-sm btn-info">Detalles</a>
+                        <a asp-controller="Usuario" asp-action="DeletePlayero" asp-route-id="@p.UsuNU" class="btn btn-sm btn-danger">Eliminar</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
 }

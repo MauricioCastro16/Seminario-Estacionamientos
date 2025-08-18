@@ -1,0 +1,18 @@
+@model estacionamientos.Models.Conductor
+@{
+    ViewData["Title"] = "Detalles del Conductor";
+}
+<h1>@ViewData["Title"]</h1>
+<hr />
+
+<dl class="row">
+    <dt class="col-sm-3">Id</dt><dd class="col-sm-9">@Model.UsuNU</dd>
+    <dt class="col-sm-3">Nombre y Apellido</dt><dd class="col-sm-9">@Model.UsuNyA</dd>
+    <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@Model.UsuEmail</dd>
+    <dt class="col-sm-3">Teléfono</dt><dd class="col-sm-9">@Model.UsuNumTel</dd>
+</dl>
+
+<div class="d-flex gap-2">
+    <a asp-action="Edit" asp-route-id="@Model.UsuNU" class="btn btn-warning">Editar</a>
+    <a asp-action="Index" class="btn btn-secondary">Volver</a>
+</div>
