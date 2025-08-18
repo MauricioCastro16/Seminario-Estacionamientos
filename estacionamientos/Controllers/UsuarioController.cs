@@ -14,8 +14,13 @@ namespace estacionamientos.Controllers
         // GET: /Usuario
         public async Task<IActionResult> Index()
         {
-            var lista = await _context.Usuarios.AsNoTracking().ToListAsync();
-            return View(lista);
+            var vm = new UsuariosIndexVM
+            {
+                Duenios = await _context.Duenios.AsNoTracking().OrderBy(d => d.UsuNyA).ToListAsync(),
+                Conductores = await _context.Conductores.AsNoTracking().OrderBy(c => c.UsuNyA).ToListAsync()
+            };
+
+            return View(vm);
         }
 
         // GET: /Usuario/Details/5
@@ -137,6 +142,49 @@ namespace estacionamientos.Controllers
                 await _context.SaveChangesAsync();
                 TempData["Msg"] = "Dueño creado correctamente.";
                 return RedirectToAction(nameof(Index)); // índice de usuarios (o redirigí a Duenio/Index si preferís)
+            }
+            catch (DbUpdateException ex)
+            {
+                ModelState.AddModelError(string.Empty, $"Error guardando: {ex.InnerException?.Message ?? ex.Message}");
+                return View(vm);
+            }
+        }
+
+        // GET: /Usuario/CreateConductor
+        public IActionResult CreateConductor() => View(new CreateConductorVM());
+
+        // POST: /Usuario/CreateConductor
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateConductor(CreateConductorVM vm)
+        {
+            if (!ModelState.IsValid) return View(vm);
+
+            // Email único (evita romper índice único)
+            var emailUsado = await _context.Usuarios
+                .AsNoTracking()
+                .AnyAsync(u => u.UsuEmail == vm.UsuEmail);
+            if (emailUsado)
+            {
+                ModelState.AddModelError(nameof(vm.UsuEmail), "El email ya está en uso.");
+                return View(vm);
+            }
+
+            // Map VM -> entidad derivada (Conductor : Usuario)
+            var entity = new Conductor
+            {
+                UsuNyA = vm.UsuNyA,
+                UsuEmail = vm.UsuEmail,
+                UsuPswd = vm.UsuPswd,   // ⚠️ en prod: usar hash
+                UsuNumTel = vm.UsuNumTel
+            };
+
+            _context.Conductores.Add(entity);
+            try
+            {
+                await _context.SaveChangesAsync();
+                TempData["Msg"] = "Conductor creado correctamente.";
+                return RedirectToAction(nameof(Index)); // o a Index del Conductor si preferís
             }
             catch (DbUpdateException ex)
             {

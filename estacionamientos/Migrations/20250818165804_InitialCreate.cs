@@ -4,6 +4,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+
 namespace estacionamientos.Migrations
 {
     /// <inheritdoc />
@@ -657,6 +659,56 @@ namespace estacionamientos.Migrations
                         principalTable: "Vehiculo",
                         principalColumn: "VehPtnt",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.InsertData(
+                table: "ClasificacionDias",
+                columns: new[] { "ClaDiasID", "ClaDiasDesc", "ClaDiasTipo" },
+                values: new object[,]
+                {
+                    { 1, "Lunes a Viernes", "Hábil" },
+                    { 2, "Sábado y Domingo", "Fin de semana" },
+                    { 3, "Feriados no laborables", "Feriado" }
+                });
+
+            migrationBuilder.InsertData(
+                table: "ClasificacionVehiculo",
+                columns: new[] { "ClasVehID", "ClasVehDesc", "ClasVehTipo" },
+                values: new object[,]
+                {
+                    { 1, "Vehículo de pasajeros", "Automóvil" },
+                    { 2, "Vehículo utilitario", "Camioneta" },
+                    { 3, "Vehículo de carga", "Camión" },
+                    { 4, "Vehículo de dos ruedas", "Motocicleta" },
+                    { 5, "Vehículo de dos ruedas sin motor", "Bicicleta" },
+                    { 6, "Otro tipo de vehículo", "Otro" }
+                });
+
+            migrationBuilder.InsertData(
+                table: "MetodoPago",
+                columns: new[] { "MepID", "MepDesc", "MepNom" },
+                values: new object[,]
+                {
+                    { 1, "Pago en efectivo", "Efectivo" },
+                    { 2, "Pago con tarjeta de crédito", "Tarjeta de crédito" },
+                    { 3, "Pago con tarjeta de débito", "Tarjeta de débito" },
+                    { 4, "Pago mediante transferencia bancaria", "Transferencia bancaria" }
+                });
+
+            migrationBuilder.InsertData(
+                table: "Servicio",
+                columns: new[] { "SerID", "SerDesc", "SerNom", "SerTipo" },
+                values: new object[,]
+                {
+                    { 1, "Lavado exterior e interior del vehículo", "Lavado de vehículo", "ServicioExtra" },
+                    { 2, "Revisión y mantenimiento mecánico del vehículo", "Mantenimiento de vehículo", "ServicioExtra" },
+                    { 3, "Carga de combustible en el vehículo", "Carga de combustible", "ServicioExtra" },
+                    { 4, "Revisión técnica del vehículo para verificar su estado", "Revisión técnica", "ServicioExtra" },
+                    { 5, "Servicio de estacionamiento por 1 hora en playa", "Estacionamiento por 1 Hora", "Estacionamiento" },
+                    { 6, "Servicio de estacionamiento por 6 hora en playa", "Estacionamiento por 6 Hora", "Estacionamiento" },
+                    { 7, "Servicio de estacionamiento por 1 día en playa", "Estacionamiento por 1 Día", "Estacionamiento" },
+                    { 8, "Servicio de estacionamiento por 1 semana en playa", "Estacionamiento por 1 Semana", "Estacionamiento" },
+                    { 9, "Servicio de estacionamiento por 1 mes en playa", "Estacionamiento por 1 Mes", "Estacionamiento" }
                 });
 
             migrationBuilder.CreateIndex(

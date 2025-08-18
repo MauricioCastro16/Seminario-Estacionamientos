@@ -132,6 +132,26 @@ namespace estacionamientos.Migrations
                         .IsUnique();
 
                     b.ToTable("ClasificacionDias", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            ClaDiasID = 1,
+                            ClaDiasDesc = "Lunes a Viernes",
+                            ClaDiasTipo = "Hábil"
+                        },
+                        new
+                        {
+                            ClaDiasID = 2,
+                            ClaDiasDesc = "Sábado y Domingo",
+                            ClaDiasTipo = "Fin de semana"
+                        },
+                        new
+                        {
+                            ClaDiasID = 3,
+                            ClaDiasDesc = "Feriados no laborables",
+                            ClaDiasTipo = "Feriado"
+                        });
                 });
 
             modelBuilder.Entity("estacionamientos.Models.ClasificacionVehiculo", b =>
@@ -157,6 +177,44 @@ namespace estacionamientos.Migrations
                         .IsUnique();
 
                     b.ToTable("ClasificacionVehiculo", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            ClasVehID = 1,
+                            ClasVehDesc = "Vehículo de pasajeros",
+                            ClasVehTipo = "Automóvil"
+                        },
+                        new
+                        {
+                            ClasVehID = 2,
+                            ClasVehDesc = "Vehículo utilitario",
+                            ClasVehTipo = "Camioneta"
+                        },
+                        new
+                        {
+                            ClasVehID = 3,
+                            ClasVehDesc = "Vehículo de carga",
+                            ClasVehTipo = "Camión"
+                        },
+                        new
+                        {
+                            ClasVehID = 4,
+                            ClasVehDesc = "Vehículo de dos ruedas",
+                            ClasVehTipo = "Motocicleta"
+                        },
+                        new
+                        {
+                            ClasVehID = 5,
+                            ClasVehDesc = "Vehículo de dos ruedas sin motor",
+                            ClasVehTipo = "Bicicleta"
+                        },
+                        new
+                        {
+                            ClasVehID = 6,
+                            ClasVehDesc = "Otro tipo de vehículo",
+                            ClasVehTipo = "Otro"
+                        });
                 });
 
             modelBuilder.Entity("estacionamientos.Models.Conduce", b =>
@@ -221,6 +279,32 @@ namespace estacionamientos.Migrations
                         .IsUnique();
 
                     b.ToTable("MetodoPago", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            MepID = 1,
+                            MepDesc = "Pago en efectivo",
+                            MepNom = "Efectivo"
+                        },
+                        new
+                        {
+                            MepID = 2,
+                            MepDesc = "Pago con tarjeta de crédito",
+                            MepNom = "Tarjeta de crédito"
+                        },
+                        new
+                        {
+                            MepID = 3,
+                            MepDesc = "Pago con tarjeta de débito",
+                            MepNom = "Tarjeta de débito"
+                        },
+                        new
+                        {
+                            MepID = 4,
+                            MepDesc = "Pago mediante transferencia bancaria",
+                            MepNom = "Transferencia bancaria"
+                        });
                 });
 
             modelBuilder.Entity("estacionamientos.Models.Ocupacion", b =>
@@ -384,6 +468,71 @@ namespace estacionamientos.Migrations
                         .IsUnique();
 
                     b.ToTable("Servicio", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            SerID = 1,
+                            SerDesc = "Lavado exterior e interior del vehículo",
+                            SerNom = "Lavado de vehículo",
+                            SerTipo = "ServicioExtra"
+                        },
+                        new
+                        {
+                            SerID = 2,
+                            SerDesc = "Revisión y mantenimiento mecánico del vehículo",
+                            SerNom = "Mantenimiento de vehículo",
+                            SerTipo = "ServicioExtra"
+                        },
+                        new
+                        {
+                            SerID = 3,
+                            SerDesc = "Carga de combustible en el vehículo",
+                            SerNom = "Carga de combustible",
+                            SerTipo = "ServicioExtra"
+                        },
+                        new
+                        {
+                            SerID = 4,
+                            SerDesc = "Revisión técnica del vehículo para verificar su estado",
+                            SerNom = "Revisión técnica",
+                            SerTipo = "ServicioExtra"
+                        },
+                        new
+                        {
+                            SerID = 5,
+                            SerDesc = "Servicio de estacionamiento por 1 hora en playa",
+                            SerNom = "Estacionamiento por 1 Hora",
+                            SerTipo = "Estacionamiento"
+                        },
+                        new
+                        {
+                            SerID = 6,
+                            SerDesc = "Servicio de estacionamiento por 6 hora en playa",
+                            SerNom = "Estacionamiento por 6 Hora",
+                            SerTipo = "Estacionamiento"
+                        },
+                        new
+                        {
+                            SerID = 7,
+                            SerDesc = "Servicio de estacionamiento por 1 día en playa",
+                            SerNom = "Estacionamiento por 1 Día",
+                            SerTipo = "Estacionamiento"
+                        },
+                        new
+                        {
+                            SerID = 8,
+                            SerDesc = "Servicio de estacionamiento por 1 semana en playa",
+                            SerNom = "Estacionamiento por 1 Semana",
+                            SerTipo = "Estacionamiento"
+                        },
+                        new
+                        {
+                            SerID = 9,
+                            SerDesc = "Servicio de estacionamiento por 1 mes en playa",
+                            SerNom = "Estacionamiento por 1 Mes",
+                            SerTipo = "Estacionamiento"
+                        });
                 });
 
             modelBuilder.Entity("estacionamientos.Models.ServicioExtraRealizado", b =>
