@@ -33,11 +33,59 @@ namespace estacionamientos.Controllers
             return item is null ? NotFound() : View(item);
         }
 
-        public async Task<IActionResult> Create()
+        [HttpGet("Playas/{PlyID}/[controller]")]
+        public async Task<IActionResult> ConfigurarPlazas(int PlyID)
         {
-            await LoadPlayas();
-            return View(new PlazaEstacionamiento());
+            var playa = await _ctx.Playas
+                .Include(p => p.Plazas)
+                .FirstOrDefaultAsync(p => p.PlyID == PlyID);
+            
+            if (playa == null)
+            {
+                return NotFound();
+            }
+
+            ViewBag.PlyID = PlyID;
+            return View(playa.Plazas);
         }
+
+        [HttpPost("Playas/{PlyID}/[controller]")]
+        public async Task<IActionResult> ConfigurarPlazas(
+            int plyID,
+            int cantidad,
+            bool plzTecho,
+            decimal? plzAlt)
+        {
+            var playa = await _ctx.Playas
+                .Include(p => p.Plazas)
+                .FirstOrDefaultAsync(p => p.PlyID == plyID);
+
+            if (playa == null)
+            {
+                return NotFound();
+            }
+
+            // calcular desde qué número crear
+            int nextNum = playa.Plazas.Any() ? playa.Plazas.Max(pl => pl.PlzNum) + 1 : 1;
+
+            for (int i = 0; i < cantidad; i++)
+            {
+                var plaza = new PlazaEstacionamiento
+                {
+                    PlyID = plyID,
+                    PlzNum = nextNum + i,
+                    PlzTecho = plzTecho,
+                    PlzAlt = plzAlt,
+                    PlzHab = true
+                };
+                _ctx.Plazas.Add(plaza);
+            }
+
+            await _ctx.SaveChangesAsync();
+
+            return RedirectToAction(nameof(ConfigurarPlazas), new { PlyID = plyID });
+        }
+
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(PlazaEstacionamiento model)
