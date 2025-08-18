@@ -1,0 +1,63 @@
+@model IEnumerable<estacionamientos.Models.PlazaEstacionamiento>
+
+@{
+    ViewData["Title"] = "Añadir plaza de estacionamiento";
+}
+
+<div class="container" style="max-width: max-content">
+    <h6 class="text-black text-center mb-3">Estacionamiento @ViewBag.PlyID</h6>
+
+    <form asp-action="ConfigurarPlazas" method="post">
+        <div class="form-group justify-content-between align-items-end card d-flex flex-row gap-5 p-3">
+            <div class="d-flex flex-row gap-3">
+                <div>
+                    <label class="mb-2">Cantidad de plazas</label>
+                    <input name="cantidad" placeholder="Ej: 3" class="form-control"/>
+                </div>
+
+                <div>
+                    <label class="mb-2">Techo</label>
+                    <select name="plzTecho"  class="form-select">
+                        <option selected disabled>-- Selecciona una opción --</option>
+                        <option value="true">Sí</option>
+                        <option value="false">No</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="mb-2">Altura (m)</label>
+                    <input name="plzAlt" placeholder="Ej: 3,00" class="form-control"/>
+                </div>
+            </div>
+
+            <input type="hidden" name="plyID" value="@ViewBag.PlyID" />
+
+            <button type="submit" class="btn btn-primary" style="min-width: max-content; height: max-content">Añadir plazas</button>
+        </div>
+    </form>
+
+    <h4 class="text-black mt-5">Plazas actuales</h3>
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>N° plaza</th>
+                <th>Techo</th>
+                <th>Altura (m)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var plaza in Model)
+            {
+                <tr>
+                    <td>@plaza.PlzNum</td>
+                    <td>@(plaza.PlzTecho ? "Si" : "No")</td>
+                    <td>@(plaza.PlzAlt.HasValue ? plaza.PlzAlt.Value.ToString() : "-")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
