@@ -36,6 +36,19 @@ public static class DbInitializer
             db.Duenios.AddRange(duenios);
         }
 
+        // ===== Playeros Fake =====
+        if (!db.Playeros.Any())
+        {
+            var fakerPlayero = new Faker<Playero>("es")
+                .RuleFor(p => p.UsuNyA, f => f.Name.FullName())
+                .RuleFor(p => p.UsuEmail, f => f.Internet.Email())
+                .RuleFor(p => p.UsuPswd, _ => "12345678")
+                .RuleFor(p => p.UsuNumTel, f => f.Phone.PhoneNumber());
+
+            var playeros = fakerPlayero.Generate(5);
+            db.Playeros.AddRange(playeros);
+        }
+
         await db.SaveChangesAsync();
     }
 }

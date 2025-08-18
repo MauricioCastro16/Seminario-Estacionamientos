@@ -120,6 +120,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 SerTipo = "Estacionamiento", SerDesc = "Servicio de estacionamiento por 1 mes en playa" }
             );
 
+        modelBuilder.Entity<Administrador>(e =>
+        {
+            e.ToTable("Administrador");
+            e.HasBaseType<Usuario>();
+        });
+        modelBuilder.Entity<Administrador>().HasData(
+            new Administrador { UsuNU = 1, UsuNyA = "Mauricio Nicolás Castro", UsuEmail = "castromauricionicolas@hotmail.com", UsuPswd = "12345678", UsuNumTel = "1234567890" },
+            new Administrador { UsuNU = 2, UsuNyA = "Yoel Brizuela Silvestri", UsuEmail = "brizuelajoelelian@gmail.com", UsuPswd = "12345678", UsuNumTel = "0987654321" },
+            new Administrador { UsuNU = 3, UsuNyA = "Nadine Andrea Peralta Ruiz", UsuEmail = "nadineperaltaruiz@gmail.com", UsuPswd = "12345678", UsuNumTel = "1122334455" },
+            new Administrador { UsuNU = 4, UsuNyA = "Mateo Beneyto", UsuEmail = "mateobeneyto@gmail.com", UsuPswd = "12345678", UsuNumTel = "5566778899" },
+            new Administrador { UsuNU = 5, UsuNyA = "Iván Josué Nikcevich", UsuEmail = "ivan.nikcevich@hotmail.com", UsuPswd = "12345678", UsuNumTel = "2233445566" },
+            new Administrador { UsuNU = 6, UsuNyA = "Adriano Nikcevich", UsuEmail = "adri.nikce30@gmail.com", UsuPswd = "12345678", UsuNumTel = "6677889900" },
+            new Administrador { UsuNU = 7, UsuNyA = "Solana Livio", UsuEmail = "solana.livio1976@gmail.com", UsuPswd = "12345678", UsuNumTel = "3344556677" },
+            new Administrador { UsuNU = 8, UsuNyA = "Elías Obregón", UsuEmail = "eliasobregon@gmail.com", UsuPswd = "12345678", UsuNumTel = "7788990011" }
+        );
+
         //Tablas dinámicas
 
         modelBuilder.Entity<Usuario>(entity =>
@@ -411,11 +427,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 e.HasIndex(o => new { o.PlyID, o.PlzNum, o.OcufFyhIni });
                 e.HasIndex(o => new { o.VehPtnt, o.OcufFyhIni });
             });
-        modelBuilder.Entity<Administrador>(e =>
-        {
-            e.ToTable("Administrador");
-            e.HasBaseType<Usuario>();
-        });
         modelBuilder.Entity<ServicioProveido>(e =>
             {
                 e.ToTable("ServicioProveido");

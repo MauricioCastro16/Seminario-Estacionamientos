@@ -60,7 +60,10 @@ dotnet watch run
 dotnet ef database drop -f
 
 (b) Borrar carpeta de migraciones (en el proyecto)
+#En Windows
 Remove-Item -Recurse -Force .\Migrations
+#En Mac
+rm -rf ./Migrations
 
 (c) Crear migración inicial nueva
 dotnet ef migrations add InitialCreate

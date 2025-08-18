@@ -711,6 +711,36 @@ namespace estacionamientos.Migrations
                     { 9, "Servicio de estacionamiento por 1 mes en playa", "Estacionamiento por 1 Mes", "Estacionamiento" }
                 });
 
+            migrationBuilder.InsertData(
+                table: "Usuario",
+                columns: new[] { "UsuNU", "UsuEmail", "UsuNumTel", "UsuNyA", "UsuPswd" },
+                values: new object[,]
+                {
+                    { 1, "castromauricionicolas@hotmail.com", "1234567890", "Mauricio Nicolás Castro", "12345678" },
+                    { 2, "brizuelajoelelian@gmail.com", "0987654321", "Yoel Brizuela Silvestri", "12345678" },
+                    { 3, "nadineperaltaruiz@gmail.com", "1122334455", "Nadine Andrea Peralta Ruiz", "12345678" },
+                    { 4, "mateobeneyto@gmail.com", "5566778899", "Mateo Beneyto", "12345678" },
+                    { 5, "ivan.nikcevich@hotmail.com", "2233445566", "Iván Josué Nikcevich", "12345678" },
+                    { 6, "adri.nikce30@gmail.com", "6677889900", "Adriano Nikcevich", "12345678" },
+                    { 7, "solana.livio1976@gmail.com", "3344556677", "Solana Livio", "12345678" },
+                    { 8, "eliasobregon@gmail.com", "7788990011", "Elías Obregón", "12345678" }
+                });
+
+            migrationBuilder.InsertData(
+                table: "Administrador",
+                column: "UsuNU",
+                values: new object[]
+                {
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_Abonado_ConNU",
                 table: "Abonado",

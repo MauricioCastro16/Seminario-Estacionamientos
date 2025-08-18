@@ -12,7 +12,7 @@ using estacionamientos.Data;
 namespace estacionamientos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250818165804_InitialCreate")]
+    [Migration("20250818182035_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -805,6 +805,72 @@ namespace estacionamientos.Migrations
                     b.HasBaseType("estacionamientos.Models.Usuario");
 
                     b.ToTable("Administrador", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            UsuNU = 1,
+                            UsuEmail = "castromauricionicolas@hotmail.com",
+                            UsuNumTel = "1234567890",
+                            UsuNyA = "Mauricio Nicolás Castro",
+                            UsuPswd = "12345678"
+                        },
+                        new
+                        {
+                            UsuNU = 2,
+                            UsuEmail = "brizuelajoelelian@gmail.com",
+                            UsuNumTel = "0987654321",
+                            UsuNyA = "Yoel Brizuela Silvestri",
+                            UsuPswd = "12345678"
+                        },
+                        new
+                        {
+                            UsuNU = 3,
+                            UsuEmail = "nadineperaltaruiz@gmail.com",
+                            UsuNumTel = "1122334455",
+                            UsuNyA = "Nadine Andrea Peralta Ruiz",
+                            UsuPswd = "12345678"
+                        },
+                        new
+                        {
+                            UsuNU = 4,
+                            UsuEmail = "mateobeneyto@gmail.com",
+                            UsuNumTel = "5566778899",
+                            UsuNyA = "Mateo Beneyto",
+                            UsuPswd = "12345678"
+                        },
+                        new
+                        {
+                            UsuNU = 5,
+                            UsuEmail = "ivan.nikcevich@hotmail.com",
+                            UsuNumTel = "2233445566",
+                            UsuNyA = "Iván Josué Nikcevich",
+                            UsuPswd = "12345678"
+                        },
+                        new
+                        {
+                            UsuNU = 6,
+                            UsuEmail = "adri.nikce30@gmail.com",
+                            UsuNumTel = "6677889900",
+                            UsuNyA = "Adriano Nikcevich",
+                            UsuPswd = "12345678"
+                        },
+                        new
+                        {
+                            UsuNU = 7,
+                            UsuEmail = "solana.livio1976@gmail.com",
+                            UsuNumTel = "3344556677",
+                            UsuNyA = "Solana Livio",
+                            UsuPswd = "12345678"
+                        },
+                        new
+                        {
+                            UsuNU = 8,
+                            UsuEmail = "eliasobregon@gmail.com",
+                            UsuNumTel = "7788990011",
+                            UsuNyA = "Elías Obregón",
+                            UsuPswd = "12345678"
+                        });
                 });
 
             modelBuilder.Entity("estacionamientos.Models.Conductor", b =>
