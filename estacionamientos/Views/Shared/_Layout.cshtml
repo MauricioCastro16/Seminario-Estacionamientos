@@ -26,13 +26,25 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Usuario" asp-action="Index">Usuarios</a>
                         </li>
-                        <li class="nav-item"></li>
+                        <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Schema" asp-action="Index">Schema</a>
                         </li>
-                        <li class="nav-item"></li>
-                        <a class="nav-link text-dark" asp-area="" asp-controller="PlayaEstacionamiento"
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="PlayaEstacionamiento"
                             asp-action="Create">Nueva Playa</a>
                         </li>
+                        @if (User.Identity?.IsAuthenticated ?? false)
+                        {
+                            <a class="nav-link text-dark">Usuario: @User.Identity.Name</a>
+                            <a class="nav-link text-dark" asp-controller="Account" asp-action="Logout">Cerrar sesión</a>
+                        } 
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="Login">Iniciar Sesión</a>
+                            </li>
+                        }
+
                     </ul>
                 </div>
             </div>

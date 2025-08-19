@@ -113,5 +113,48 @@ Rama de integración donde se juntan todas las nuevas funcionalidades antes de u
 ## feature/*
 Rama temporal para desarrollar una nueva funcionalidad. Parte de **develop** y vuelve a **develop**.
 
+# Autenticación y Roles en el Proyecto
 
+## 📌 Autorización en Controladores o Acciones
+## .cs
+### Restringir a un rol específico:
+``` bash
+[Authorize(Roles = "Administrador")]
+public IActionResult InterfazAdministrador()
+{
+    // Lógica Administrador
+}
+```
+### Permitir varios roles:
+``` bash
+[Authorize(Roles = "Administrador, Playero")]
+public IActionResult InterfazAdministradorYPlayero()
+{
+    // Lógica Administrador y Playero
+}
+```
+### Chequear en código:
+``` bash
+if (User.IsInRole("Conductor"))
+{
+    // Lógica Conductores
+}
+```
 
+## .cshtml
+``` bash
+@if (User.IsInRole("Administrador"))
+{
+    //Lógica Administrador
+}
+@using System.Security.Claims
+
+@if (User.Identity?.IsAuthenticated ?? false)
+{
+    //Lógica Loguineado
+}
+else
+{
+    //Lógica No loguineado
+}
+```

@@ -1,8 +1,21 @@
-﻿@{
+﻿@using System.Security.Claims
+@{
     ViewData["Title"] = "Home Page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+@if (User.Identity?.IsAuthenticated ?? false)
+{
+    var rol = User.FindFirst(ClaimTypes.Role)?.Value ?? "Usuario";
+    if (rol == "Duenio")
+    {
+        <h1 class="display-4">Bienvenido Dueño</h1>
+    }    
+    else 
+    {
+        <h1 class="display-4">Bienvenido @rol</h1>
+    }
+}
+else
+{
+    <h1 class="display-4">Bienvenido Usuario</h1>
+}
