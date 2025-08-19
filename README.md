@@ -141,6 +141,12 @@ if (User.IsInRole("Conductor"))
 }
 ```
 
+### Obtener el UsuNU para realizar una consulta a la base de datos
+``` bash
+using System.Security.Claims;
+var usuNu = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+```
+
 ## .cshtml
 ``` bash
 @if (User.IsInRole("Administrador"))
