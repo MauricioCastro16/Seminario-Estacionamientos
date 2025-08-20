@@ -38,6 +38,106 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        //Tablas genéricas con data seeding
+        modelBuilder.Entity<ClasificacionVehiculo>(entity =>
+            {
+                entity.ToTable("ClasificacionVehiculo");
+                entity.HasKey(c => c.ClasVehID);
+                entity.Property(c => c.ClasVehTipo).HasMaxLength(40).IsRequired();
+                entity.Property(c => c.ClasVehDesc).HasMaxLength(200);
+
+                entity.HasIndex(c => c.ClasVehTipo).IsUnique();
+            });
+        modelBuilder.Entity<ClasificacionVehiculo>().HasData(
+            new ClasificacionVehiculo { ClasVehID = 1, ClasVehTipo = "Automóvil", ClasVehDesc = "Vehículo de pasajeros" },
+            new ClasificacionVehiculo { ClasVehID = 2, ClasVehTipo = "Camioneta", ClasVehDesc = "Vehículo utilitario" },
+            new ClasificacionVehiculo { ClasVehID = 3, ClasVehTipo = "Camión", ClasVehDesc = "Vehículo de carga" },
+            new ClasificacionVehiculo { ClasVehID = 4, ClasVehTipo = "Motocicleta", ClasVehDesc = "Vehículo de dos ruedas" },
+            new ClasificacionVehiculo { ClasVehID = 5, ClasVehTipo = "Bicicleta", ClasVehDesc = "Vehículo de dos ruedas sin motor" },
+            new ClasificacionVehiculo { ClasVehID = 6, ClasVehTipo = "Otro", ClasVehDesc = "Otro tipo de vehículo" }
+        );
+
+        modelBuilder.Entity<ClasificacionDias>(e =>
+            {
+                e.ToTable("ClasificacionDias");
+                e.HasKey(c => c.ClaDiasID);
+                e.Property(c => c.ClaDiasTipo).HasMaxLength(40).IsRequired();
+                e.Property(c => c.ClaDiasDesc).HasMaxLength(200);
+
+                // (Opcional) único por nombre/tipo
+                e.HasIndex(c => c.ClaDiasTipo).IsUnique();
+            });
+        modelBuilder.Entity<ClasificacionDias>().HasData(
+            new ClasificacionDias { ClaDiasID = 1, ClaDiasTipo = "Hábil", ClaDiasDesc = "Lunes a Viernes" },
+            new ClasificacionDias { ClaDiasID = 2, ClaDiasTipo = "Fin de semana", ClaDiasDesc = "Sábado y Domingo" },
+            new ClasificacionDias { ClaDiasID = 3, ClaDiasTipo = "Feriado", ClaDiasDesc = "Feriados no laborables" }
+
+        );
+
+        modelBuilder.Entity<MetodoPago>(e =>
+            {
+                e.ToTable("MetodoPago");
+                e.HasKey(m => m.MepID);
+                e.Property(m => m.MepNom).HasMaxLength(40).IsRequired();
+                e.Property(m => m.MepDesc).HasMaxLength(200);
+                e.HasIndex(m => m.MepNom).IsUnique();
+            });
+        modelBuilder.Entity<MetodoPago>().HasData(
+            new MetodoPago { MepID = 1, MepNom = "Efectivo", MepDesc = "Pago en efectivo" },
+            new MetodoPago { MepID = 2, MepNom = "Tarjeta de crédito", MepDesc = "Pago con tarjeta de crédito" },
+            new MetodoPago { MepID = 3, MepNom = "Tarjeta de débito", MepDesc = "Pago con tarjeta de débito" },
+            new MetodoPago { MepID = 4, MepNom = "Transferencia bancaria", MepDesc = "Pago mediante transferencia bancaria" }
+        );
+
+        modelBuilder.Entity<Servicio>(e =>
+            {
+                e.ToTable("Servicio");
+                e.HasKey(s => s.SerID);
+                e.Property(s => s.SerNom).HasMaxLength(80).IsRequired();
+                e.Property(s => s.SerTipo).HasMaxLength(40);
+                e.Property(s => s.SerDesc).HasMaxLength(200);
+                e.HasIndex(s => s.SerNom).IsUnique(); // opcional
+            });
+        modelBuilder.Entity<Servicio>().HasData(
+            new Servicio { SerID = 1, SerNom = "Lavado de vehículo",
+                SerTipo = "ServicioExtra", SerDesc = "Lavado exterior e interior del vehículo" },
+            new Servicio { SerID = 2, SerNom = "Mantenimiento de vehículo",
+                SerTipo = "ServicioExtra", SerDesc = "Revisión y mantenimiento mecánico del vehículo" },
+            new Servicio { SerID = 3, SerNom = "Carga de combustible",
+                SerTipo = "ServicioExtra", SerDesc = "Carga de combustible en el vehículo" },
+            new Servicio { SerID = 4, SerNom = "Revisión técnica",
+                SerTipo = "ServicioExtra", SerDesc = "Revisión técnica del vehículo para verificar su estado" },
+            new Servicio { SerID = 5, SerNom = "Estacionamiento por 1 Hora",
+                SerTipo = "Estacionamiento", SerDesc = "Servicio de estacionamiento por 1 hora en playa" },
+            new Servicio { SerID = 6, SerNom = "Estacionamiento por 6 Hora",
+                SerTipo = "Estacionamiento", SerDesc = "Servicio de estacionamiento por 6 hora en playa" },
+            new Servicio { SerID = 7, SerNom = "Estacionamiento por 1 Día",
+                SerTipo = "Estacionamiento", SerDesc = "Servicio de estacionamiento por 1 día en playa" },
+            new Servicio { SerID = 8, SerNom = "Estacionamiento por 1 Semana",
+                SerTipo = "Estacionamiento", SerDesc = "Servicio de estacionamiento por 1 semana en playa" },
+            new Servicio { SerID = 9, SerNom = "Estacionamiento por 1 Mes",
+                SerTipo = "Estacionamiento", SerDesc = "Servicio de estacionamiento por 1 mes en playa" }
+            );
+
+        modelBuilder.Entity<Administrador>(e =>
+        {
+            e.ToTable("Administrador");
+            e.HasBaseType<Usuario>();
+        });
+        modelBuilder.Entity<Administrador>().HasData(
+            new Administrador { UsuNU = 1, UsuNyA = "Mauricio Nicolás Castro", UsuEmail = "castromauricionicolas@hotmail.com", UsuPswd = "12345678", UsuNumTel = "1234567890" },
+            new Administrador { UsuNU = 2, UsuNyA = "Yoel Brizuela Silvestri", UsuEmail = "brizuelajoelelian@gmail.com", UsuPswd = "12345678", UsuNumTel = "0987654321" },
+            new Administrador { UsuNU = 3, UsuNyA = "Nadine Andrea Peralta Ruiz", UsuEmail = "nadineperaltaruiz@gmail.com", UsuPswd = "12345678", UsuNumTel = "1122334455" },
+            new Administrador { UsuNU = 4, UsuNyA = "Mateo Beneyto", UsuEmail = "mateobeneyto@gmail.com", UsuPswd = "12345678", UsuNumTel = "5566778899" },
+            new Administrador { UsuNU = 5, UsuNyA = "Iván Josué Nikcevich", UsuEmail = "ivan.nikcevich@hotmail.com", UsuPswd = "12345678", UsuNumTel = "2233445566" },
+            new Administrador { UsuNU = 6, UsuNyA = "Adriano Nikcevich", UsuEmail = "adri.nikce30@gmail.com", UsuPswd = "12345678", UsuNumTel = "6677889900" },
+            new Administrador { UsuNU = 7, UsuNyA = "Solana Livio", UsuEmail = "solana.livio1976@gmail.com", UsuPswd = "12345678", UsuNumTel = "3344556677" },
+            new Administrador { UsuNU = 8, UsuNyA = "Elías Obregón", UsuEmail = "eliasobregon@gmail.com", UsuPswd = "12345678", UsuNumTel = "7788990011" }
+        );
+
+        //Tablas dinámicas
+
         modelBuilder.Entity<Usuario>(entity =>
             {
                 entity.ToTable("Usuario");
@@ -53,7 +153,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 entity.Property(e => e.UsuNumTel).HasMaxLength(30);
                 entity.HasIndex(e => e.UsuEmail).IsUnique();
             });
-
         modelBuilder.Entity<Duenio>(entity =>
             {
                 entity.ToTable("Duenio");       // tabla hija
@@ -76,15 +175,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             {
                 entity.ToTable("Playero");     // PK/FK a Usuario.UsuNU (automático por TPT)
                 entity.HasBaseType<Usuario>();
-            });
-        modelBuilder.Entity<ClasificacionVehiculo>(entity =>
-            {
-                entity.ToTable("ClasificacionVehiculo");
-                entity.HasKey(c => c.ClasVehID);
-                entity.Property(c => c.ClasVehTipo).HasMaxLength(40).IsRequired();
-                entity.Property(c => c.ClasVehDesc).HasMaxLength(200);
-
-                entity.HasIndex(c => c.ClasVehTipo).IsUnique();
             });
         modelBuilder.Entity<Vehiculo>(entity =>
             {
@@ -225,16 +315,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 // Índice útil para búsquedas por playa y fechas
                 e.HasIndex(t => new { t.PlyID, t.TurFyhIni });
             });
-        modelBuilder.Entity<ClasificacionDias>(e =>
-            {
-                e.ToTable("ClasificacionDias");
-                e.HasKey(c => c.ClaDiasID);
-                e.Property(c => c.ClaDiasTipo).HasMaxLength(40).IsRequired();
-                e.Property(c => c.ClaDiasDesc).HasMaxLength(200);
-
-                // (Opcional) único por nombre/tipo
-                e.HasIndex(c => c.ClaDiasTipo).IsUnique();
-            });
         modelBuilder.Entity<Horario>(e =>
             {
                 e.ToTable("Horario");
@@ -256,14 +336,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
                 // Índice útil para consultas por Playa/Clasificación
                 e.HasIndex(h => new { h.PlyID, h.ClaDiasID, h.HorFyhIni });
-            });
-        modelBuilder.Entity<MetodoPago>(e =>
-            {
-                e.ToTable("MetodoPago");
-                e.HasKey(m => m.MepID);
-                e.Property(m => m.MepNom).HasMaxLength(40).IsRequired();
-                e.Property(m => m.MepDesc).HasMaxLength(200);
-                e.HasIndex(m => m.MepNom).IsUnique();
             });
         modelBuilder.Entity<AceptaMetodoPago>(e =>
             {
@@ -354,21 +426,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 // índices útiles
                 e.HasIndex(o => new { o.PlyID, o.PlzNum, o.OcufFyhIni });
                 e.HasIndex(o => new { o.VehPtnt, o.OcufFyhIni });
-            });
-        modelBuilder.Entity<Administrador>(e =>
-        {
-            e.ToTable("Administrador");
-            e.HasBaseType<Usuario>();
-        });
-
-        modelBuilder.Entity<Servicio>(e =>
-            {
-                e.ToTable("Servicio");
-                e.HasKey(s => s.SerID);
-                e.Property(s => s.SerNom).HasMaxLength(80).IsRequired();
-                e.Property(s => s.SerTipo).HasMaxLength(40);
-                e.Property(s => s.SerDesc).HasMaxLength(200);
-                e.HasIndex(s => s.SerNom).IsUnique(); // opcional
             });
         modelBuilder.Entity<ServicioProveido>(e =>
             {
@@ -485,8 +542,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .HasForeignKey(v => v.VehPtnt)
              .OnDelete(DeleteBehavior.Restrict);
         });
-
-
     }
 
     // ---- Recalcular promedio de una/s playa/s cuando cambian valoraciones

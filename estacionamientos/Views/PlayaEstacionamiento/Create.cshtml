@@ -1,0 +1,73 @@
+@model estacionamientos.Models.PlayaEstacionamiento
+
+@{
+    ViewData["Title"] = "Alta estacionamiento";
+}
+
+<div class="container" style="max-width: 700px">
+    <h2 class="text-center my-3">Registrar playa de estacionamiento</h2>
+
+    <form asp-action="Create" method="post">
+        <div class="d-flex flex-column gap-3">
+
+            <!-- Nombre -->
+            <div class="form-group">
+                <label asp-for="PlyNom">Nombre</label>
+                <input asp-for="PlyNom" class="form-control"/>
+                <span asp-validation-for="PlyNom" class="text-danger"></span>
+            </div>
+
+            <!-- Provincia -->
+            <div class="form-group">
+                <label asp-for="PlyProv">Provincia</label>
+                <input asp-for="PlyProv" class="form-control"/>
+                <span asp-validation-for="PlyProv" class="text-danger"></span>
+            </div>
+
+            <!-- Ciudad -->
+            <div class="form-group">
+                <label asp-for="PlyCiu">Ciudad</label>
+                <input asp-for="PlyCiu" class="form-control"/>
+                <span asp-validation-for="PlyCiu" class="text-danger"></span>
+            </div>
+
+            <!-- Dirección -->
+            <div class="form-group">
+                <label asp-for="PlyDir">Dirección</label>
+                <input asp-for="PlyDir" class="form-control"/>
+                <span asp-validation-for="PlyDir" class="text-danger"></span>
+            </div>
+
+            <!-- PlyTipoPiso -->
+            <div class="form-group">
+                <label asp-for="PlyTipoPiso">Tipo de piso</label>
+                <select asp-for="PlyTipoPiso" class="form-select">
+                    <option value="" selected disabled>-- Selecciona una opción --</option>
+                    <option value="Asfalto">Asfalto</option>
+                    <option value="Ripio">Ripio</option>
+                    <option value="Tierra">Tierra</option>
+                </select>
+                <span asp-validation-for="PlyTipoPiso" class="text-danger"></span>
+            </div>
+
+            <!-- Llave requerida -->
+            <div class="form-group d-flex flex-column">
+                <label>Llave requerida</label>
+                <div class="btn-group w-25" role="group" asp-for="PlyLlavReq">
+                    <input type="radio" class="btn-check" name="PlyLlavReq" id="llaveSi" value="true" autocomplete="off">
+                    <label class="btn btn-outline-success" for="llaveSi">Sí</label>
+
+                    <input type="radio" class="btn-check" name="PlyLlavReq" id="llaveNo" value="false" autocomplete="off" checked>
+                    <label class="btn btn-outline-danger" for="llaveNo">No</label>
+                </div>
+                <span asp-validation-for="PlyLlavReq" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary my-2">Guardar</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,24 @@
+@model estacionamientos.Models.Conductor
+@{
+    ViewData["Title"] = "Eliminar Conductor";
+}
+<h1>@ViewData["Title"]</h1>
+<hr />
+
+<div class="alert alert-danger">
+    ¿Confirmás que querés eliminar este conductor?
+</div>
+
+<dl class="row">
+    <dt class="col-sm-3">Id</dt><dd class="col-sm-9">@Model.UsuNU</dd>
+    <dt class="col-sm-3">Nombre y Apellido</dt><dd class="col-sm-9">@Model.UsuNyA</dd>
+    <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@Model.UsuEmail</dd>
+    <dt class="col-sm-3">Teléfono</dt><dd class="col-sm-9">@Model.UsuNumTel</dd>
+</dl>
+
+<form asp-action="Delete" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="UsuNU" />
+    <button type="submit" class="btn btn-danger">Eliminar</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+</form>

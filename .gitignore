@@ -57,3 +57,4 @@ nunit-*.xml
 .env
 
 .fake
+Migrations/

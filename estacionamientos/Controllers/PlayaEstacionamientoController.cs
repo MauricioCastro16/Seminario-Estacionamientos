@@ -8,8 +8,12 @@ namespace estacionamientos.Controllers
     public class PlayaEstacionamientoController : Controller
     {
         private readonly AppDbContext _context;
+
         public PlayaEstacionamientoController(AppDbContext context) => _context = context;
 
+        // Muestra todas las playas de estacionamiento
+        [HttpGet]
+        [Route("Playas")]
         public async Task<IActionResult> Index()
         {
             var lista = await _context.Playas.AsNoTracking().ToListAsync();
@@ -34,7 +38,7 @@ namespace estacionamientos.Controllers
             if (!ModelState.IsValid) return View(model);
             _context.Playas.Add(model);
             await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction("Index", "Home");
         }
 
         public async Task<IActionResult> Edit(int id)
@@ -71,5 +75,7 @@ namespace estacionamientos.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
+
+
     }
 }

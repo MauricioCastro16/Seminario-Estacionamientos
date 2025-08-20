@@ -1,0 +1,53 @@
+﻿@{
+    ViewData["Title"] = "Métodos de Pago";
+}
+
+@model (List<estacionamientos.Models.MetodoPago> Metodos, List<int> Aceptados, estacionamientos.Models.PlayaEstacionamiento playa)
+
+<form asp-action="Guardar" asp-route-plyID="@Model.playa.PlyID" method="post" class="container d-flex flex-column gap-2 align-items-center" style="width:500px;">
+    <h1>@ViewData["Title"]</h1>
+    <h6>Estacionamiento @Model.playa.PlyID</h6>
+    @foreach (var metodo in Model.Metodos)
+    {
+        bool seleccionado = Model.Aceptados.Contains(metodo.MepID);
+
+        var claseExtra = seleccionado ? "" : "not-selected";
+
+        <label class="card d-flex gap-2 flex-row px-2 justify-content-center w-100 @claseExtra" style="cursor:pointer;">
+            <input type="checkbox" 
+                   name="metodosSeleccionados" 
+                   value="@metodo.MepID" 
+                   style="width:24px" 
+                   class="ms-3 toggle-class"
+                   @(seleccionado ? "checked" : "") />
+            <div class="card-body text-center">
+                <h5>@metodo.MepNom</h5>
+                <p class="m-0">@metodo.MepDesc</p>
+            </div>
+        </label>
+    }
+
+    <input type="hidden" name="plyID" value="@Model.playa.PlyID" />
+
+    <div class="d-flex w-100 mt-4">
+        <button type="submit" class="btn btn-primary" id="btnGuardar">Guardar</button>
+        <a asp-action="Index" asp-route-plyID="@Context.Request.Query["plyID"]" class="btn btn-secondary ms-2">Cancelar</a>
+    </div>
+</form>
+
+@section AceptaMetodoPagoScript{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.toggle-class').forEach(chk => {
+                chk.addEventListener('change', function () {
+                    const label = this.closest('label');
+                    if (this.checked) {
+                        label.classList.remove('not-selected');
+                    } else {
+                        label.classList.add('not-selected');
+                    }
+                });
+            });
+        });
+    </script>
+}

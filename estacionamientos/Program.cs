@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using DotNetEnv;
 using System.IO;
+using Microsoft.AspNetCore.Authentication.Cookies; // ★
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,8 +25,25 @@ var cs =
 builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(cs));
 
+// ★ Autenticación por cookies
+builder.Services
+    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Account/Login";
+        options.LogoutPath = "/Account/Logout";
+        options.AccessDeniedPath = "/Account/Denied";
+        options.SlidingExpiration = true;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        // options.Cookie.Name = "Estacionamientos.Auth"; // opcional
+    });
+
+// ★ Autorización (políticas/roles si luego las usás)
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
+// Test de conexión
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -40,7 +58,6 @@ using (var scope = app.Services.CreateScope())
         Console.WriteLine("❌ Error conectando a PostgreSQL: " + ex.Message);
     }
 }
-
 
 // (opcional) aplicar migraciones al arrancar
 using (var scope = app.Services.CreateScope())
@@ -57,11 +74,22 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
 app.UseRouting();
+
+// ★ MUY IMPORTANTE: primero autenticación, luego autorización
+app.UseAuthentication(); // ★
 app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+//Populado de la base de datos con datos de prueba
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await DbInitializer.SeedAsync(db);
+}
 
 app.Run();

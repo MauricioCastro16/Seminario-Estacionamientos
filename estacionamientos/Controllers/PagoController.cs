@@ -26,7 +26,7 @@ namespace estacionamientos.Controllers
                 .Where(a => a.PlyID == plyID && a.AmpHab)
                 .Include(a => a.MetodoPago)
                 .AsNoTracking()
-                .Select(a => new { a.MepID, a.MetodoPago.MepNom })
+                .Select(a => new { a.MepID, MepNom = a.MetodoPago != null ? a.MetodoPago.MepNom : "(Sin método)" })
                 .ToListAsync();
 
             ViewBag.MepID = new SelectList(metodos, "MepID", "MepNom", selectedMep);
@@ -142,7 +142,7 @@ namespace estacionamientos.Controllers
             var metodos = await _ctx.AceptaMetodosPago
                 .Where(a => a.PlyID == plyID && a.AmpHab)
                 .Include(a => a.MetodoPago)
-                .Select(a => new { a.MepID, a.MetodoPago.MepNom })
+                .Select(a => new { a.MepID, MepNom = a.MetodoPago != null ? a.MetodoPago.MepNom : "(Sin método)" })
                 .ToListAsync();
 
             return Json(metodos);

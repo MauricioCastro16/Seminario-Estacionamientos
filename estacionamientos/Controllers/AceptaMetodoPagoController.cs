@@ -26,16 +26,66 @@ namespace estacionamientos.Controllers
             ViewBag.MepID = new SelectList(metodos, "MepID", "MepNom", mepSel);
         }
 
-        public async Task<IActionResult> Index()
+        //Retorna la vista principal con los todos los métodos de pago y los métodos de pago aceptados por una playa específica
+        [HttpGet("Playas/{plyID}/[controller]")]
+        public async Task<IActionResult> Index(int plyId)
         {
-            var q = _ctx.AceptaMetodosPago
-                .Include(a => a.Playa)
-                .Include(a => a.MetodoPago)
-                .AsNoTracking();
+            var metodosAceptados = await _ctx.AceptaMetodosPago
+                .Where(a => a.PlyID == plyId)
+                .AsNoTracking()
+                .Select(a => a.MepID)
+                .ToListAsync();
 
-            return View(await q.ToListAsync());
+            var metodos = await _ctx.MetodosPago.AsNoTracking()
+                .OrderBy(m => m.MepNom)
+                .ToListAsync();
+
+            var playa = await _ctx.Playas.FirstOrDefaultAsync(p => p.PlyID == plyId);
+
+            if (playa == null)
+                return NotFound();
+
+            return View((metodos, metodosAceptados, playa));
         }
 
+        [HttpPost]
+        public async Task<IActionResult> Guardar(int plyID, List<int> metodosSeleccionados)
+        {
+            // Traigo todos los aceptados actuales
+            var aceptadosActuales = await _ctx.AceptaMetodosPago
+                .Where(a => a.PlyID == plyID)
+                .Select(a => a.MepID)
+                .ToListAsync();
+
+            // Métodos a agregar (están seleccionados pero no estaban en la BD)
+            var nuevos = metodosSeleccionados.Except(aceptadosActuales).ToList();
+
+            foreach (var mepID in nuevos)
+            {
+                _ctx.AceptaMetodosPago.Add(new AceptaMetodoPago
+                {
+                    PlyID = plyID,
+                    MepID = mepID,
+                });
+            }
+
+            // Métodos a eliminar (estaban en la BD pero ya no están seleccionados)
+            var eliminar = aceptadosActuales.Except(metodosSeleccionados).ToList();
+
+            if (eliminar.Any())
+            {
+                var registrosAEliminar = await _ctx.AceptaMetodosPago
+                    .Where(a => a.PlyID == plyID && eliminar.Contains(a.MepID))
+                    .ToListAsync();
+
+                _ctx.AceptaMetodosPago.RemoveRange(registrosAEliminar);
+            }
+
+            await _ctx.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Index), new { plyId = plyID });
+        }
+        
         public async Task<IActionResult> Details(int plyID, int mepID)
         {
             var item = await _ctx.AceptaMetodosPago
