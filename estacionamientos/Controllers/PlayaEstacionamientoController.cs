@@ -11,6 +11,9 @@ namespace estacionamientos.Controllers
 
         public PlayaEstacionamientoController(AppDbContext context) => _context = context;
 
+        // Muestra todas las playas de estacionamiento
+        [HttpGet]
+        [Route("Playas")]
         public async Task<IActionResult> Index()
         {
             var lista = await _context.Playas.AsNoTracking().ToListAsync();
@@ -72,5 +75,7 @@ namespace estacionamientos.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
+
+
     }
 }
