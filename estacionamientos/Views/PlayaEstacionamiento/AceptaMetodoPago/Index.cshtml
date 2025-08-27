@@ -31,7 +31,8 @@
 
     <div class="d-flex w-100 mt-4">
         <button type="submit" class="btn btn-primary" id="btnGuardar">Guardar</button>
-        <a asp-action="Index" asp-route-plyID="@Context.Request.Query["plyID"]" class="btn btn-secondary ms-2">Cancelar</a>
+        <a asp-controller="Playas" asp-action="Index" class="btn btn-secondary ms-2">Cancelar</a>
+
     </div>
 </form>
 
