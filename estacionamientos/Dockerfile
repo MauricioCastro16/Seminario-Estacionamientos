@@ -12,13 +12,16 @@ RUN dotnet restore ./estacionamientos.csproj
 
 # Copiamos el resto del código y publicamos
 COPY . .
-RUN dotnet publish ./estacionamientos.csproj -c $CONFIGURATION -o /app/publish --no-restore
+RUN dotnet publish ./estacionamientos.csproj \
+    --configuration ${CONFIGURATION} \
+    --output /app/publish \
+    --no-restore
 
 # ============ Runtime ============
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 WORKDIR /app
 
-# Puerto usual para contenedores (Render usa 8080)
+# Puerto usual para Render / contenedores
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 EXPOSE 8080
 
