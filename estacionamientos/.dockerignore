@@ -1,0 +1,7 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+.env
+TestResults/
+node_modules/
