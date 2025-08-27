@@ -1,0 +1,30 @@
+@model estacionamientos.ViewModels.PlayeroCreateVM
+
+<form asp-action="Create" method="post">
+    <div class="mb-3">
+        <label asp-for="Playero.UsuNyA" class="form-label"></label>
+        <input asp-for="Playero.UsuNyA" class="form-control" />
+        <span asp-validation-for="Playero.UsuNyA" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Playero.UsuEmail" class="form-label"></label>
+        <input asp-for="Playero.UsuEmail" class="form-control" />
+        <span asp-validation-for="Playero.UsuEmail" class="text-danger"></span>
+    </div>
+
+    <!-- agregá los demás campos de Usuario/Playero que uses (teléfono, password hash si corresponde, etc.) -->
+
+    <div class="mb-3">
+        <label class="form-label">Playa donde trabajará</label>
+        <select asp-for="PlayaId" asp-items="ViewBag.Playas" class="form-select"></select>
+        <span asp-validation-for="PlayaId" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Crear y asignar</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
