@@ -1,0 +1,49 @@
+name: CI (.NET)
+
+on:
+  push:
+    branches: [ main, develop, actions ]
+  pull_request:
+    branches: [ main, develop, actions ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            8.0.x
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (Release, sin restaurar)
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test (con cobertura)
+        run: dotnet test --configuration Release --no-build --collect:"XPlat Code Coverage" --verbosity normal
+
+      - name: Publicar artefacto (si tenés una Web/API)
+        if: always()
+        run: dotnet publish src/*/*.csproj -c Release -o out
+
+      - name: Subir artefacto
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-app
+          path: out
