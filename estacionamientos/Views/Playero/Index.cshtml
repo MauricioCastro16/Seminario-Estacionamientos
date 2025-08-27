@@ -1,0 +1,105 @@
+@using estacionamientos.ViewModels
+@model List<PlayeroIndexVM>
+
+@{
+    ViewData["Title"] = "Playeros";
+}
+
+<div class="d-flex align-items-center mb-4">
+    <h1 class="mb-0 me-2">Playeros</h1>
+    <a class="btn btn-outline-secondary btn-sm"
+       asp-controller="Playero"
+       asp-action="Create"
+       title="Nuevo playero">
+        <i class="bi bi-plus-lg"></i>
+    </a>
+</div>
+
+<div class="container">
+    <h5 class="text-center mt-3">Mis Playeros</h5>
+
+    <table class="table table-striped align-middle mt-3">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Teléfono</th>
+                <th>Playas asignadas</th>
+                <th class="text-center">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+        @if (Model is { Count: > 0 })
+        {
+            foreach (var row in Model)
+            {
+                var p = row.Playero;
+                <tr>
+                    <td>@p.UsuNyA</td>
+                    <td>@p.UsuEmail</td>
+                    <td>@p.UsuNumTel</td>
+                    <td>
+                        @if (row.Playas.Count == 0)
+                        {
+                            <span class="text-muted">Sin asignaciones</span>
+                        }
+                        else
+                        {
+                            foreach (var playa in row.Playas)
+                            {
+                                // Mostrá el nombre si lo tenés; si no, Ciudad - Dirección
+                                var etiqueta = !string.IsNullOrWhiteSpace(playa.PlyNom)
+                                    ? playa.PlyNom
+                                    : $"{playa.PlyCiu} - {playa.PlyDir}";
+                                <span class="badge text-bg-secondary me-1 mb-1">@etiqueta</span>
+                            }
+                        }
+                    </td>
+                    <td class="text-center">
+                        <a class="btn btn-outline-info btn-sm me-2"
+                           asp-controller="Playero"
+                           asp-action="Details"
+                           asp-route-id="@p.UsuNU"
+                           title="Detalles">
+                            <i class="bi bi-eye"></i>
+                        </a>
+
+                        <a class="btn btn-outline-primary btn-sm me-2"
+                           asp-controller="Playero"
+                           asp-action="Edit"
+                           asp-route-id="@p.UsuNU"
+                           title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+
+                        <!-- Asignar a otra playa (opcional: a una acción de TrabajaEnController) -->
+                        <a class="btn btn-outline-secondary btn-sm me-2"
+                           asp-controller="TrabajaEn"
+                           asp-action="Create" 
+                           asp-route-plaNU="@p.UsuNU"
+                           title="Asignar a playa">
+                            <i class="bi bi-link-45deg"></i>
+                        </a>
+
+                        <a class="btn btn-outline-danger btn-sm"
+                           asp-controller="Playero"
+                           asp-action="Delete"
+                           asp-route-id="@p.UsuNU"
+                           title="Eliminar">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="5" class="text-center text-muted">
+                    No tenés playeros asignados en tus playas.
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

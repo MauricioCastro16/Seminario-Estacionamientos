@@ -14,25 +14,39 @@ namespace estacionamientos.Controllers
         public PlayeroController(AppDbContext context) => _context = context;
 
         // INDEX: muestra sólo playeros que trabajan en playas administradas por el dueño logueado
+        // En PlayeroController.cs
         public async Task<IActionResult> Index()
         {
             var dueId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            // PlyIDs que administra el dueño
+            // PlyIDs que administra el dueño logueado
             var misPlyIds = await _context.Set<AdministraPlaya>()
                 .Where(a => a.DueNU == dueId)
                 .Select(a => a.PlyID)
                 .ToListAsync();
 
-            // Playeros con relación TrabajaEn a alguna de esas playas
-            var playeros = await _context.Playeros
-                .Where(pl => _context.Set<TrabajaEn>()
-                    .Any(t => t.PlaNU == pl.UsuNU && misPlyIds.Contains(t.PlyID)))
+            // Todos los trabajos (Playero ↔ Playa) de esas playas
+            var trabajos = await _context.Set<TrabajaEn>()
+                .Include(t => t.Playero)
+                .Include(t => t.Playa)
+                .Where(t => misPlyIds.Contains(t.PlyID))
                 .AsNoTracking()
                 .ToListAsync();
 
-            return View(playeros);
+            // Agrupar por playero y armar VM
+            var porPlayero = trabajos
+                .GroupBy(t => t.Playero.UsuNU)
+                .Select(g => new PlayeroIndexVM
+                {
+                    Playero = g.First().Playero,
+                    Playas = g.Select(x => x.Playa).Distinct().ToList()
+                })
+                .OrderBy(vm => vm.Playero.UsuNyA)
+                .ToList();
+
+            return View(porPlayero);
         }
+
 
         public async Task<IActionResult> Details(int id)
         {
@@ -93,6 +107,13 @@ namespace estacionamientos.Controllers
                     .ToListAsync();
 
                 ViewBag.Playas = new SelectList(misPlayas, "PlyID", "Nombre", vm.PlayaId);
+                // log mínimo de debugging
+                foreach (var kv in ModelState)
+                {
+                    var key = kv.Key;
+                    var errs = string.Join(" | ", kv.Value.Errors.Select(e => e.ErrorMessage));
+                    Console.WriteLine($"[ModelState] {key}: {errs}");
+                }
                 return View(vm);
             }
 

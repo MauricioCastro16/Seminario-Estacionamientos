@@ -1,6 +1,10 @@
 @model estacionamientos.ViewModels.PlayeroCreateVM
 
 <form asp-action="Create" method="post">
+    @Html.AntiForgeryToken()
+
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
     <div class="mb-3">
         <label asp-for="Playero.UsuNyA" class="form-label"></label>
         <input asp-for="Playero.UsuNyA" class="form-control" />
@@ -13,7 +17,18 @@
         <span asp-validation-for="Playero.UsuEmail" class="text-danger"></span>
     </div>
 
-    <!-- agregá los demás campos de Usuario/Playero que uses (teléfono, password hash si corresponde, etc.) -->
+    <div class="mb-3">
+        <label asp-for="Playero.UsuNumTel" class="form-label"></label>
+        <input asp-for="Playero.UsuNumTel" class="form-control" />
+        <span asp-validation-for="Playero.UsuNumTel" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Playero.UsuPswd" class="form-label"></label>
+        <input asp-for="Playero.UsuPswd" type="password" class="form-control" />
+        <small class="form-text text-muted">Mínimo 8 caracteres.</small>
+        <span asp-validation-for="Playero.UsuPswd" class="text-danger"></span>
+    </div>
 
     <div class="mb-3">
         <label class="form-label">Playa donde trabajará</label>
@@ -25,6 +40,4 @@
     <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
 </form>
 
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-}
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }
