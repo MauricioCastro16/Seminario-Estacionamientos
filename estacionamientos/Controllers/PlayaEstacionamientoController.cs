@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
+using System.Security.Claims;
 
 namespace estacionamientos.Controllers
 {
@@ -16,8 +17,14 @@ namespace estacionamientos.Controllers
         [Route("Playas")]
         public async Task<IActionResult> Index()
         {
-            var lista = await _context.Playas.AsNoTracking().ToListAsync();
-            return View(lista);
+            var usuNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var playas = await _context.AdministraPlayas
+            .Where(ap => ap.DueNU == usuNU)
+            .Include(ap => ap.Playa)
+            .Select(ap => ap.Playa)
+            .AsNoTracking()
+            .ToListAsync();
+            return View(playas);
         }
 
         public async Task<IActionResult> Details(int id)
@@ -38,7 +45,15 @@ namespace estacionamientos.Controllers
             if (!ModelState.IsValid) return View(model);
             _context.Playas.Add(model);
             await _context.SaveChangesAsync();
-            return RedirectToAction("Index", "Home");
+            // Asociar la playa creada con el dueño actual
+            var usuNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            _context.AdministraPlayas.Add(new AdministraPlaya
+            {
+                PlyID = model.PlyID,
+                DueNU = usuNU
+            });
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
         }
 
         public async Task<IActionResult> Edit(int id)

@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using DotNetEnv;
 using System.IO;
-using Microsoft.AspNetCore.Authentication.Cookies; // ★
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Mvc.Razor;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +25,13 @@ var cs =
     $"Include Error Detail=true";
 
 builder.Services.AddControllersWithViews();
+builder.Services.Configure<RazorViewEngineOptions>(o =>
+{
+    // {1} = nombre del Controller sin "Controller" (p. ej. PlazaEstacionamiento)
+    // {0} = nombre de la View/Action (p. ej. ConfigurarPlazas)
+    o.ViewLocationFormats.Add("/Views/PlayaEstacionamiento/{1}/{0}.cshtml");
+});
+
 builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(cs));
 
 // ★ Autenticación por cookies

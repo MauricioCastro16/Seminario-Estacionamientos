@@ -6,6 +6,9 @@
 <h2>@ViewData["Title"]</h2>
 <hr />
 
+<!-- Para mostrar mensaje en caso de errores -->
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
 <form asp-action="Login" method="post">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="ReturnUrl" />
