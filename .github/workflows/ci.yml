@@ -10,11 +10,13 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
 
+    env:
+      CONFIGURATION: Release
+      PUBLISH_DIR: out
+      PROJECT_PATH: estacionamientos/estacionamientos.csproj   # 👈 ruta fija al .csproj
+      IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
+
     steps:
-
-      - name: moverse
-        run: cd estacionamientos
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -33,21 +35,57 @@ jobs:
           restore-keys: ${{ runner.os }}-nuget-
 
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore $PROJECT_PATH
 
-      - name: Build (Release, sin restaurar)
-        run: dotnet build --configuration Release --no-restore
+      - name: Build
+        run: dotnet build $PROJECT_PATH -c $CONFIGURATION --no-restore
 
-      - name: Test (con cobertura)
-        run: dotnet test --configuration Release --no-build --collect:"XPlat Code Coverage" --verbosity normal
+      - name: Test
+        run: dotnet test $PROJECT_PATH -c $CONFIGURATION --no-build --collect:"XPlat Code Coverage"
 
-      - name: Publicar artefacto (si tenés una Web/API)
-        if: always()
-        run: dotnet publish src/*/*.csproj -c Release -o out
+      - name: Publish
+        run: |
+          rm -rf "$PUBLISH_DIR"
+          dotnet publish $PROJECT_PATH -c $CONFIGURATION -o "$PUBLISH_DIR"
+          ls -la "$PUBLISH_DIR"
 
-      - name: Subir artefacto
-        if: always()
+      - name: Subir artefacto (publish)
         uses: actions/upload-artifact@v4
         with:
           name: published-app
-          path: out
+          path: ${{ env.PUBLISH_DIR }}
+
+      # ---------- Docker: Build & Push a Docker Hub ----------
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=sha
+
+      - name: Build & Push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: estacionamientos
+          file: estacionamientos/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            CONFIGURATION=${{ env.CONFIGURATION }}
