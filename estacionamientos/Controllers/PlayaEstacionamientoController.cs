@@ -38,7 +38,7 @@ namespace estacionamientos.Controllers
             if (!ModelState.IsValid) return View(model);
             _context.Playas.Add(model);
             await _context.SaveChangesAsync();
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction(nameof(Index));
         }
 
         public async Task<IActionResult> Edit(int id)

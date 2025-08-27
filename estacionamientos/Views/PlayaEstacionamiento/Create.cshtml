@@ -4,70 +4,256 @@
     ViewData["Title"] = "Alta estacionamiento";
 }
 
-<div class="container" style="max-width: 700px">
-    <h2 class="text-center my-3">Registrar playa de estacionamiento</h2>
+<div class="container py-4" style="max-width: 760px">
+    <h2 class="text-center mb-4">Registrar playa de estacionamiento</h2>
 
-    <form asp-action="Create" method="post">
-        <div class="d-flex flex-column gap-3">
+    <form asp-action="Create" method="post" class="needs-validation" novalidate>
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-            <!-- Nombre -->
-            <div class="form-group">
-                <label asp-for="PlyNom">Nombre</label>
-                <input asp-for="PlyNom" class="form-control"/>
-                <span asp-validation-for="PlyNom" class="text-danger"></span>
-            </div>
-
-            <!-- Provincia -->
-            <div class="form-group">
-                <label asp-for="PlyProv">Provincia</label>
-                <input asp-for="PlyProv" class="form-control"/>
-                <span asp-validation-for="PlyProv" class="text-danger"></span>
-            </div>
-
-            <!-- Ciudad -->
-            <div class="form-group">
-                <label asp-for="PlyCiu">Ciudad</label>
-                <input asp-for="PlyCiu" class="form-control"/>
-                <span asp-validation-for="PlyCiu" class="text-danger"></span>
-            </div>
-
-            <!-- Dirección -->
-            <div class="form-group">
-                <label asp-for="PlyDir">Dirección</label>
-                <input asp-for="PlyDir" class="form-control"/>
-                <span asp-validation-for="PlyDir" class="text-danger"></span>
-            </div>
-
-            <!-- PlyTipoPiso -->
-            <div class="form-group">
-                <label asp-for="PlyTipoPiso">Tipo de piso</label>
-                <select asp-for="PlyTipoPiso" class="form-select">
-                    <option value="" selected disabled>-- Selecciona una opción --</option>
-                    <option value="Asfalto">Asfalto</option>
-                    <option value="Ripio">Ripio</option>
-                    <option value="Tierra">Tierra</option>
-                </select>
-                <span asp-validation-for="PlyTipoPiso" class="text-danger"></span>
-            </div>
-
-            <!-- Llave requerida -->
-            <div class="form-group d-flex flex-column">
-                <label>Llave requerida</label>
-                <div class="btn-group w-25" role="group" asp-for="PlyLlavReq">
-                    <input type="radio" class="btn-check" name="PlyLlavReq" id="llaveSi" value="true" autocomplete="off">
-                    <label class="btn btn-outline-success" for="llaveSi">Sí</label>
-
-                    <input type="radio" class="btn-check" name="PlyLlavReq" id="llaveNo" value="false" autocomplete="off" checked>
-                    <label class="btn btn-outline-danger" for="llaveNo">No</label>
-                </div>
-                <span asp-validation-for="PlyLlavReq" class="text-danger"></span>
-            </div>
-
-            <button type="submit" class="btn btn-primary my-2">Guardar</button>
+        <!-- Nombre -->
+        <div class="mb-3">
+            <label asp-for="PlyNom" class="form-label">Nombre</label>
+            <input asp-for="PlyNom" class="form-control" id="nombreInput" autocomplete="off" required />
+            <span asp-validation-for="PlyNom" class="text-danger"></span>
         </div>
+
+        <!-- Provincia -->
+        <div class="mb-3">
+            <label asp-for="PlyProv" class="form-label">Provincia</label>
+            <select asp-for="PlyProv" class="form-select" id="provinciaSelect" required>
+                <option value="" selected disabled>-- Selecciona una provincia --</option>
+                <option>Buenos Aires</option>
+                <option>Catamarca</option>
+                <option>Chaco</option>
+                <option>Chubut</option>
+                <option>Córdoba</option>
+                <option>Corrientes</option>
+                <option>Entre Ríos</option>
+                <option>Formosa</option>
+                <option>Jujuy</option>
+                <option>La Pampa</option>
+                <option>La Rioja</option>
+                <option>Mendoza</option>
+                <option>Misiones</option>
+                <option>Neuquén</option>
+                <option>Río Negro</option>
+                <option>Salta</option>
+                <option>San Juan</option>
+                <option>San Luis</option>
+                <option>Santa Cruz</option>
+                <option>Santa Fe</option>
+                <option>Santiago del Estero</option>
+                <option>Tierra del Fuego</option>
+                <option>Tucumán</option>
+            </select>
+            <div class="invalid-feedback">Seleccioná una provincia.</div>
+            <span asp-validation-for="PlyProv" class="text-danger"></span>
+        </div>
+
+        <!-- Ciudad (select dependiente + "Otra") -->
+        <div class="mb-3">
+            <label class="form-label">Ciudad</label>
+
+            <!-- input real que se postea -->
+            <input type="hidden" asp-for="PlyCiu" id="ciudadHidden" />
+
+            <select class="form-select mb-2" id="ciudadSelect" required>
+                <option value="" selected disabled>-- Selecciona una ciudad --</option>
+            </select>
+
+            <input type="text" class="form-control d-none" id="ciudadInput"
+                   placeholder="Escribí la ciudad" autocomplete="off" />
+            <span asp-validation-for="PlyCiu" class="text-danger"></span>
+        </div>
+
+        <!-- Dirección -->
+        <div class="mb-3">
+            <label asp-for="PlyDir" class="form-label">Dirección</label>
+            <input asp-for="PlyDir" class="form-control" id="direccionInput" autocomplete="off" required />
+            <span asp-validation-for="PlyDir" class="text-danger"></span>
+        </div>
+
+        <!-- Tipo de piso -->
+        <div class="mb-3">
+            <label asp-for="PlyTipoPiso" class="form-label">Tipo de piso</label>
+            <select asp-for="PlyTipoPiso" class="form-select" required>
+                <option value="" selected disabled>-- Selecciona una opción --</option>
+                <option>Asfalto</option>
+                <option>Ripio</option>
+                <option>Tierra</option>
+            </select>
+            <span asp-validation-for="PlyTipoPiso" class="text-danger"></span>
+        </div>
+
+        <!-- Llave requerida -->
+        <div class="mb-3">
+            <label class="form-label d-block">Llave requerida</label>
+            <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="PlyLlavReq" id="llaveSi" value="true">
+                <label class="btn btn-outline-success" for="llaveSi">Sí</label>
+
+                <input type="radio" class="btn-check" name="PlyLlavReq" id="llaveNo" value="false" checked>
+                <label class="btn btn-outline-danger" for="llaveNo">No</label>
+            </div>
+            <span asp-validation-for="PlyLlavReq" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Guardar</button>
     </form>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        // --- Datos: ciudades por provincia (extendible) ---
+        const ciudadesPorProvincia = {
+            "Buenos Aires": ["Avellaneda", "Bahía Blanca", "La Plata", "Lomas de Zamora", "Mar del Plata", "Morón", "Quilmes", "San Isidro", "Tandil", "Tres de Febrero"],
+            "Catamarca": ["San Fernando del Valle de Catamarca", "Belén", "Tinogasta"],
+            "Chaco": ["Barranqueras", "Charata", "Gancedo", "Machagai", "Presidencia Roque Sáenz Peña", "Quitilipi", "Resistencia", "Villa Ángela"],
+            "Chubut": ["Comodoro Rivadavia", "Esquel", "Madryn", "Rawson", "Trelew"],
+            "Córdoba": ["Alta Gracia", "Bell Ville", "Córdoba", "Río Cuarto", "San Francisco", "Villa María"],
+            "Corrientes": ["Corrientes", "Goya", "Paso de los Libres"],
+            "Entre Ríos": ["Concordia", "Gualeguaychú", "Paraná"],
+            "Formosa": ["Clorinda", "Formosa"],
+            "Jujuy": ["Palpalá", "Perico", "San Salvador de Jujuy"],
+            "La Pampa": ["General Pico", "Santa Rosa"],
+            "La Rioja": ["Chilecito", "La Rioja"],
+            "Mendoza": ["Godoy Cruz", "Guaymallén", "Luján de Cuyo", "Mendoza", "San Rafael"],
+            "Misiones": ["Eldorado", "Oberá", "Posadas"],
+            "Neuquén": ["Cutral Có", "Neuquén", "Plottier"],
+            "Río Negro": ["Bariloche", "Cipolletti", "General Roca", "Viedma"],
+            "Salta": ["Orán", "Salta", "Tartagal"],
+            "San Juan": ["Rawson", "Rivadavia", "San Juan", "Santa Lucía"],
+            "San Luis": ["San Luis", "Villa Mercedes"],
+            "Santa Cruz": ["Caleta Olivia", "Río Gallegos"],
+            "Santa Fe": ["Rafaela", "Reconquista", "Rosario", "Santa Fe", "Venado Tuerto"],
+            "Santiago del Estero": ["La Banda", "Santiago del Estero"],
+            "Tierra del Fuego": ["Río Grande", "Ushuaia"],
+            "Tucumán": ["Concepción", "San Miguel de Tucumán", "Tafí Viejo"]
+        };
+        const collator = new Intl.Collator('es-AR');
+
+        // --- Elementos ---
+        const provinciaSelect = document.getElementById('provinciaSelect');
+        const ciudadSelect   = document.getElementById('ciudadSelect');
+        const ciudadInput    = document.getElementById('ciudadInput');
+        const ciudadHidden   = document.getElementById('ciudadHidden');
+        const nombreInput    = document.getElementById('nombreInput');
+        const direccionInput = document.getElementById('direccionInput');
+
+        // --- Cargar ciudades por provincia ---
+        function cargarCiudades(prov) {
+            ciudadSelect.innerHTML = '<option value="" selected disabled>-- Selecciona una ciudad --</option>';
+
+            const lista = (ciudadesPorProvincia[prov] || []).slice().sort((a,b)=>collator.compare(a,b));
+            for (const c of lista) {
+                const op = document.createElement('option');
+                op.value = op.textContent = c;
+                ciudadSelect.appendChild(op);
+            }
+
+            // Opción "Otra (escribir)"
+            const otra = document.createElement('option');
+            otra.value = '__OTRA__';
+            otra.textContent = 'Otra (escribir)';
+            ciudadSelect.appendChild(otra);
+
+            // Reset estado
+            ciudadSelect.value = "";
+            ciudadInput.classList.add('d-none');
+            ciudadInput.disabled = true;
+            ciudadInput.required = false;
+            ciudadInput.value = '';
+            ciudadHidden.value = '';
+
+            toggleCiudadOtra(); // asegura estado correcto
+        }
+        provinciaSelect.addEventListener('change', e => cargarCiudades(e.target.value));
+
+        // --- Type-ahead dentro del select de ciudades ---
+        let typeBuffer = '';
+        let lastTypeTs = 0;
+        ciudadSelect.addEventListener('keydown', (ev) => {
+            if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Home','End','PageUp','PageDown','Tab','Enter','Escape'].includes(ev.key)) return;
+            const now = Date.now();
+            if (now - lastTypeTs > 800) typeBuffer = '';
+            lastTypeTs = now;
+
+            const key = ev.key.length === 1 ? ev.key : '';
+            if (!key || !key.match(/[A-Za-zÁÉÍÓÚáéíóúÑñ\s\-.]/)) return;
+
+            typeBuffer += key.toLowerCase();
+            for (const opt of ciudadSelect.options) {
+                if (opt.value === '' || opt.value === '__OTRA__') continue;
+                if (opt.textContent.toLowerCase().startsWith(typeBuffer)) {
+                    ciudadSelect.value = opt.value;
+                    ciudadSelect.dispatchEvent(new Event('change'));
+                    break;
+                }
+            }
+            ev.preventDefault();
+        });
+
+        // --- Mostrar/ocultar input "Otra (escribir)" ---
+        function toggleCiudadOtra() {
+            const val = ciudadSelect.value;
+            const esOtra = (val === '__OTRA__');
+
+            ciudadInput.classList.toggle('d-none', !esOtra);
+            ciudadInput.disabled = !esOtra;
+            ciudadInput.required = esOtra;
+
+            if (esOtra) {
+                ciudadHidden.value = ciudadInput.value.trim();
+                ciudadInput.focus();
+            } else {
+                ciudadHidden.value = val || '';
+                ciudadInput.value = '';
+            }
+        }
+        ciudadSelect.addEventListener('change', toggleCiudadOtra);
+        ciudadSelect.addEventListener('input',  toggleCiudadOtra);
+
+        // --- Ciudad escrita: sanitiza caracteres al tipear ---
+        const ciudadRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s\-\.]+$/;
+        ciudadInput.addEventListener('input', () => {
+            ciudadInput.value = ciudadInput.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s\-.]/g, '');
+            ciudadHidden.value = ciudadInput.value.trim();
+        });
+
+        // --- Nombre: mayúscula inicial automática ---
+        nombreInput.addEventListener('input', () => {
+            const v = nombreInput.value;
+            if (v.length > 0) nombreInput.value = v.charAt(0).toUpperCase() + v.slice(1);
+        });
+
+        // --- Dirección: SOLO mayúscula inicial (sin tocar espacios/números) ---
+        direccionInput.addEventListener('input', () => {
+            const v = direccionInput.value;
+            if (v.length > 0) direccionInput.value = v.charAt(0).toUpperCase() + v.slice(1);
+        });
+
+                // -Otra Ciudad input solo mayuscula---
+        ciudadInput.addEventListener('input', () => {
+            const v = ciudadInput.value;
+            if (v.length > 0) ciudadInput.value = v.charAt(0).toUpperCase() + v.slice(1);
+        });
+
+        // --- Validación al enviar ---
+        document.querySelector('form').addEventListener('submit', (e) => {
+            if (ciudadSelect.value === '__OTRA__') {
+                ciudadHidden.value = ciudadInput.value.trim();
+            } else {
+                ciudadHidden.value = ciudadSelect.value || '';
+            }
+            const nombreOk = nombreInput.value.trim().length > 0;
+            const ciudadOk = ciudadHidden.value.length > 0 &&
+                             (ciudadSelect.value !== '__OTRA__' || ciudadRegex.test(ciudadHidden.value));
+            if (!nombreOk || !ciudadOk) {
+                e.preventDefault();
+                e.stopPropagation();
+                alert("Revisá los campos: nombre y ciudad.");
+            }
+        });
+    </script>
 }

@@ -7,56 +7,99 @@
 
 <h1>Usuarios</h1>
 
-<p class="mb-3">
-    <a asp-controller="Usuario" asp-action="CreateDuenio" class="btn btn-success me-2">Crear dueño</a>
-    <a asp-controller="Usuario" asp-action="CreateConductor" class="btn btn-info">Crear conductor</a>
-    <a asp-controller="Usuario" asp-action="CreateAdministrador" class="btn btn-warning me-2">Crear administrador</a>
-    <a asp-controller="Usuario" asp-action="CreatePlayero" class="btn btn-primary">Crear playero</a>
-</p>
+<div class="mb-3">
+    <div class="dropdown d-inline-block">
+        <button class="btn btn-primary dropdown-toggle" type="button" id="agregarMenu"
+                data-bs-toggle="dropdown" aria-expanded="false">
+            Agregar usuario
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="agregarMenu">
+            <li>
+                <a class="dropdown-item"
+                   asp-controller="Usuario" asp-action="CreateDuenio">
+                    Dueño
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item"
+                   asp-controller="Usuario" asp-action="CreateConductor">
+                    Conductor
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item"
+                   asp-controller="Usuario" asp-action="CreateAdministrador">
+                    Administrador
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item"
+                   asp-controller="Usuario" asp-action="CreatePlayero">
+                    Playero
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
 
-@if (!Model.Duenios.Any() && !Model.Conductores.Any())
-{
-    <div class="alert alert-info">No hay usuarios aún.</div>
-}
-else
-{
-    <h3 class="mt-4">Dueños (@Model.Duenios.Count)</h3>
-    @if (!Model.Duenios.Any())
-    {
-        <div class="alert alert-secondary">No hay dueños cargados.</div>
-    }
-    else
-    {
-        <table class="table table-striped align-middle">
-            <thead>
-                <tr>
-                    <th>Id</th>
-                    <th>Nombre y Apellido</th>
-                    <th>Email</th>
-                    <th>Teléfono</th>
-                    <th>CUIT</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var d in Model.Duenios)
-            {
-                <tr>
-                    <td>@d.UsuNU</td>
-                    <td>@d.UsuNyA</td>
-                    <td>@d.UsuEmail</td>
-                    <td>@d.UsuNumTel</td>
-                    <td>@d.DueCuit</td>
-                    <td>
-                        <a asp-controller="Usuario" asp-action="EditDuenio" asp-route-id="@d.UsuNU" class="btn btn-sm btn-warning">Editar</a>
-                        <a asp-controller="Usuario" asp-action="DetailsDuenio" asp-route-id="@d.UsuNU" class="btn btn-sm btn-info">Detalles</a>
-                        <a asp-controller="Usuario" asp-action="DeleteDuenio" asp-route-id="@d.UsuNU" class="btn btn-sm btn-danger">Eliminar</a>
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    }
+@if (!Model.Duenios.Any() && 
+!Model.Conductores.Any()) 
+{ 
+    <div class="alert alert-info">No hay usuarios aún.
+    </div> 
+    } 
+    else 
+    { 
+        <h3 class="mt-4">Dueños (@Model.Duenios.Count)
+        </h3> 
+        @if (!Model.Duenios.Any()) 
+        { 
+            <div class="alert alert-secondary">No hay dueños cargados.
+
+            </div> 
+            } 
+            else 
+            { 
+                <table class="table table-striped align-middle"> 
+                    <thead> 
+                        <tr> 
+                            <th>Id</th> 
+                            <th>Nombre y Apellido</th> 
+                            <th>Email</th> 
+                            <th>Teléfono</th> 
+                            <th>CUIT</th> 
+                            <th>Acciones</th> 
+                            </tr> 
+                            </thead> 
+                            <tbody> 
+                            @foreach (var d in Model.Duenios) 
+                            { 
+                                <tr> 
+                                    <td>@d.UsuNU</td> 
+                                    <td>@d.UsuNyA</td> 
+                                    <td>@d.UsuEmail</td> 
+                                    <td>@d.UsuNumTel</td> 
+                                    <td>@d.DueCuit</td> 
+                                    <td> 
+                                        
+                                        <a asp-controller="Usuario" asp-action="EditDuenio" asp-route-id="@d.UsuNU" class="btn btn-sm btn-outline-secondary me-1" title="Editar"> 
+                                            <i class="bi bi-pencil"></i> 
+                                        </a> 
+                                            
+                                        <a asp-controller="Usuario" asp-action="DetailsDuenio" asp-route-id="@d.UsuNU" class="btn btn-sm btn-outline-primary me-1" title="Detalles"> 
+                                            <i class="bi bi-eye"></i> 
+                                        </a> 
+                                                
+                                        <a asp-controller="Usuario" asp-action="DeleteDuenio" asp-route-id="@d.UsuNU" class="btn btn-sm btn-outline-secondary" title="Eliminar"> 
+                                            <i class="bi bi-trash"></i> 
+                                        </a> 
+
+                                    </td> 
+                                </tr> 
+                            } 
+                        </tbody> 
+                    </table> 
+                }
 
     <h3 class="mt-4">Conductores (@Model.Conductores.Count)</h3>
     @if (!Model.Conductores.Any())
@@ -84,9 +127,20 @@ else
                     <td>@c.UsuEmail</td>
                     <td>@c.UsuNumTel</td>
                     <td>
-                        <a asp-controller="Usuario" asp-action="EditConductor" asp-route-id="@c.UsuNU" class="btn btn-sm btn-warning">Editar</a>
-                        <a asp-controller="Usuario" asp-action="DetailsConductor" asp-route-id="@c.UsuNU" class="btn btn-sm btn-info">Detalles</a>
-                        <a asp-controller="Usuario" asp-action="DeleteConductor" asp-route-id="@c.UsuNU" class="btn btn-sm btn-danger">Eliminar</a>
+                        <a asp-controller="Usuario" asp-action="EditConductor" asp-route-id="@c.UsuNU" 
+                        class="btn btn-sm btn-outline-secondary me-1" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                        </a>
+
+                        <a asp-controller="Usuario" asp-action="DetailsConductor" asp-route-id="@c.UsuNU" 
+                        class="btn btn-sm btn-outline-primary me-1" title="Detalles">
+                        <i class="bi bi-eye"></i>
+                        </a>
+
+                        <a asp-controller="Usuario" asp-action="DeleteConductor" asp-route-id="@c.UsuNU" 
+                        class="btn btn-sm btn-outline-secondary" title="Eliminar">
+                        <i class="bi bi-trash"></i>
+                        </a>
                     </td>
                 </tr>
             }
@@ -120,9 +174,20 @@ else
                     <td>@a.UsuEmail</td>
                     <td>@a.UsuNumTel</td>
                     <td>
-                        <a asp-controller="Usuario" asp-action="EditAdministrador" asp-route-id="@a.UsuNU" class="btn btn-sm btn-warning">Editar</a>
-                        <a asp-controller="Usuario" asp-action="DetailsAdministrador" asp-route-id="@a.UsuNU" class="btn btn-sm btn-info">Detalles</a>
-                        <a asp-controller="Usuario" asp-action="DeleteAdministrador" asp-route-id="@a.UsuNU" class="btn btn-sm btn-danger">Eliminar</a>
+                        <a asp-controller="Usuario" asp-action="EditAdministrador" asp-route-id="@a.UsuNU" 
+                        class="btn btn-sm btn-outline-secondary me-1" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                        </a>
+
+                        <a asp-controller="Usuario" asp-action="DetailsAdministrador" asp-route-id="@a.UsuNU" 
+                        class="btn btn-sm btn-outline-primary me-1" title="Detalles">
+                        <i class="bi bi-eye"></i>
+                        </a>
+
+                        <a asp-controller="Usuario" asp-action="DeleteAdministrador" asp-route-id="@a.UsuNU" 
+                        class="btn btn-sm btn-outline-secondary" title="Eliminar">
+                        <i class="bi bi-trash"></i>
+                        </a>
                     </td>
                 </tr>
             }
@@ -156,9 +221,21 @@ else
                     <td>@p.UsuEmail</td>
                     <td>@p.UsuNumTel</td>
                     <td>
-                        <a asp-controller="Usuario" asp-action="EditPlayero" asp-route-id="@p.UsuNU" class="btn btn-sm btn-warning">Editar</a>
-                        <a asp-controller="Usuario" asp-action="DetailsPlayero" asp-route-id="@p.UsuNU" class="btn btn-sm btn-info">Detalles</a>
-                        <a asp-controller="Usuario" asp-action="DeletePlayero" asp-route-id="@p.UsuNU" class="btn btn-sm btn-danger">Eliminar</a>
+                    <td>
+                        <a asp-controller="Usuario" asp-action="EditPlayero" asp-route-id="@p.UsuNU" 
+                        class="btn btn-sm btn-outline-secondary me-1" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                        </a>
+
+                        <a asp-controller="Usuario" asp-action="DetailsPlayero" asp-route-id="@p.UsuNU" 
+                        class="btn btn-sm btn-outline-primary me-1" title="Detalles">
+                        <i class="bi bi-eye"></i>
+                        </a>
+
+                        <a asp-controller="Usuario" asp-action="DeletePlayero" asp-route-id="@p.UsuNU" 
+                        class="btn btn-sm btn-outline-secondary" title="Eliminar">
+                        <i class="bi bi-trash"></i>
+                        </a>
                     </td>
                 </tr>
             }

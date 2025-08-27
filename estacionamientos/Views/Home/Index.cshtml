@@ -1,7 +1,10 @@
 ﻿@using System.Security.Claims
 @{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Inicio";
 }
+
+<div class="d-flex justify-content-center align-items-center" style="min-height:60vh;">
+    <div class="text-center text-secondary">
 
 @if (User.Identity?.IsAuthenticated ?? false)
 {
@@ -17,5 +20,7 @@
 }
 else
 {
-    <h1 class="display-4">Bienvenido Usuario</h1>
+    <i><h1 class="display-4">Bienvenido/a</h1></i>
 }
+    </div>
+</div>

@@ -4,35 +4,56 @@
 
 @model List<estacionamientos.Models.PlayaEstacionamiento>
 
-<div class="container">
-    <h1 class="text-center mb-4">@ViewData["Title"]</h1>
+<div class="d-flex align-items-center mb-4">
+    <h1 class="mb-0 me-2">Playas</h1>
+    <a class="btn btn-outline-secondary btn-sm" 
+       asp-controller="PlayaEstacionamiento" 
+       asp-action="Create" 
+       title="Nueva playa">
+        <i class="bi bi-plus-lg"></i>
+    </a>
+</div>
 
-    @foreach (var playa in Model)
-    {
-        <div class="card mb-3 w-100">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="card-title mb-1">@playa.PlyNom</h5>
-                    <p class="mb-0"><strong>ID:</strong> @playa.PlyID</p>
-                    <p class="mb-0"><strong>Provincia:</strong> @playa.PlyProv</p>
-                    <p class="mb-0"><strong>Ciudad:</strong> @playa.PlyCiu</p>
-                    <p class="mb-0"><strong>Dirección:</strong> @playa.PlyDir</p>
-                </div>
-                <div>
-                    <a class="btn btn-primary btn-sm me-2" 
-                       asp-action="ConfigurarPlazas" 
+
+<div class="container">
+    <h5 class="text-center mt-3">Mis Playas</h5>
+
+    <table class="table table-striped align-middle mt-3">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Provincia</th>
+                <th>Ciudad</th>
+                <th>Dirección</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var playa in Model)
+        {
+            <tr>
+                <td>@playa.PlyNom</td>
+                <td>@playa.PlyProv</td>
+                <td>@playa.PlyCiu</td>
+                <td>@playa.PlyDir</td>
+                <td class="text-center">
+                    <a class="btn btn-outline-primary btn-sm me-2"
+                       asp-action="ConfigurarPlazas"
                        asp-controller="PlazaEstacionamiento"
-                       asp-route-plyID="@playa.PlyID">
-                        Configurar Plazas
+                       asp-route-plyID="@playa.PlyID"
+                       title="Configurar Plazas">
+                        <i class="bi bi-grid"></i>
                     </a>
-                    <a class="btn btn-secondary btn-sm" 
-                       asp-action="Index" 
+                    <a class="btn btn-outline-secondary btn-sm"
+                       asp-action="Index"
                        asp-controller="AceptaMetodoPago"
-                       asp-route-plyID="@playa.PlyID">
-                        Métodos de Pago
+                       asp-route-plyID="@playa.PlyID"
+                       title="Métodos de Pago">
+                        <i class="bi bi-credit-card"></i>
                     </a>
-                </div>
-            </div>
-        </div>
-    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
 </div>
