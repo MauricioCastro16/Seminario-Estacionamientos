@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using estacionamientos.ViewModels;
 
 namespace estacionamientos.Controllers
 {
@@ -10,8 +13,40 @@ namespace estacionamientos.Controllers
         private readonly AppDbContext _context;
         public PlayeroController(AppDbContext context) => _context = context;
 
+        // INDEX: muestra sólo playeros que trabajan en playas administradas por el dueño logueado
+        // En PlayeroController.cs
         public async Task<IActionResult> Index()
-            => View(await _context.Playeros.AsNoTracking().ToListAsync());
+        {
+            var dueId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            // PlyIDs que administra el dueño logueado
+            var misPlyIds = await _context.Set<AdministraPlaya>()
+                .Where(a => a.DueNU == dueId)
+                .Select(a => a.PlyID)
+                .ToListAsync();
+
+            // Todos los trabajos (Playero ↔ Playa) de esas playas
+            var trabajos = await _context.Set<TrabajaEn>()
+                .Include(t => t.Playero)
+                .Include(t => t.Playa)
+                .Where(t => misPlyIds.Contains(t.PlyID))
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Agrupar por playero y armar VM
+            var porPlayero = trabajos
+                .GroupBy(t => t.Playero.UsuNU)
+                .Select(g => new PlayeroIndexVM
+                {
+                    Playero = g.First().Playero,
+                    Playas = g.Select(x => x.Playa).Distinct().ToList()
+                })
+                .OrderBy(vm => vm.Playero.UsuNyA)
+                .ToList();
+
+            return View(porPlayero);
+        }
+
 
         public async Task<IActionResult> Details(int id)
         {
@@ -19,14 +54,83 @@ namespace estacionamientos.Controllers
             return entity is null ? NotFound() : View(entity);
         }
 
-        public IActionResult Create() => View(new Playero());
-
-        [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Playero model)
+        // ===== CREATE (GET): carga sólo las playas del dueño =====
+        public async Task<IActionResult> Create()
         {
-            if (!ModelState.IsValid) return View(model);
-            _context.Playeros.Add(model); // Inserta en Usuario y luego en Playero (TPT)
+            var dueId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            var misPlayas = await _context.Set<AdministraPlaya>()
+                .Where(a => a.DueNU == dueId)
+                .Select(a => a.Playa)
+                .OrderBy(p => p.PlyID) // ajustá si querés por nombre/ciudad/dirección
+                .Select(p => new
+                {
+                    p.PlyID,
+                    Nombre = "Playa #" + p.PlyID // cambiá por p.PlyNombre / p.PlyCiu+" - "+p.PlyDir si tenés
+                })
+                .ToListAsync();
+
+            ViewBag.Playas = new SelectList(misPlayas, "PlyID", "Nombre");
+
+            return View(new PlayeroCreateVM
+            {
+                Playero = new Playero()
+            });
+        }
+
+        // ===== CREATE (POST): crea Playero + TrabajaEn =====
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(PlayeroCreateVM vm)
+        {
+            var dueId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            // Guard: la playa elegida debe pertenecer al dueño logueado
+            var esMia = await _context.Set<AdministraPlaya>()
+                .AnyAsync(a => a.DueNU == dueId && a.PlyID == vm.PlayaId);
+
+            if (!esMia)
+            {
+                ModelState.AddModelError(nameof(vm.PlayaId), "No podés asignar a una playa que no administrás.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                var misPlayas = await _context.Set<AdministraPlaya>()
+                    .Where(a => a.DueNU == dueId)
+                    .Select(a => a.Playa)
+                    .OrderBy(p => p.PlyID)
+                    .Select(p => new
+                    {
+                        p.PlyID,
+                        Nombre = "Playa #" + p.PlyID
+                    })
+                    .ToListAsync();
+
+                ViewBag.Playas = new SelectList(misPlayas, "PlyID", "Nombre", vm.PlayaId);
+                // log mínimo de debugging
+                foreach (var kv in ModelState)
+                {
+                    var key = kv.Key;
+                    var errs = string.Join(" | ", kv.Value.Errors.Select(e => e.ErrorMessage));
+                    Console.WriteLine($"[ModelState] {key}: {errs}");
+                }
+                return View(vm);
+            }
+
+            // 1) Alta de Playero
+            _context.Playeros.Add(vm.Playero);
+            await _context.SaveChangesAsync(); // genera UsuNU
+
+            // 2) Vincular a la playa (TrabajaEn)
+            var trabajo = new TrabajaEn
+            {
+                PlaNU = vm.Playero.UsuNU, // FK -> Playero (UsuNU)
+                PlyID = vm.PlayaId        // FK -> PlayaEstacionamiento
+            };
+
+            _context.Set<TrabajaEn>().Add(trabajo);
             await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
 
@@ -57,6 +161,13 @@ namespace estacionamientos.Controllers
         {
             var entity = await _context.Playeros.FindAsync(id);
             if (entity is null) return NotFound();
+
+            // (opcional) eliminá también relaciones TrabajaEn del playero para evitar FKs
+            var relaciones = await _context.Set<TrabajaEn>()
+                .Where(t => t.PlaNU == id)
+                .ToListAsync();
+            _context.Set<TrabajaEn>().RemoveRange(relaciones);
+
             _context.Playeros.Remove(entity);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
