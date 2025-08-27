@@ -73,11 +73,12 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE_NAME }}
+          images: ${{ env.IMAGE_NAME }}              
+          flavor: |
+            latest=auto                              
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=branch
-            type=sha
+            type=ref,event=branch                    
+            type=sha                                
 
       - name: Build & Push Docker image
         uses: docker/build-push-action@v6
