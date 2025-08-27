@@ -9,19 +9,6 @@ public static class DbInitializer
     {
         await db.Database.EnsureCreatedAsync();
 
-        // ===== Conductores Fake =====
-        if (!db.Conductores.Any())
-        {
-            var fakerConductor = new Faker<Conductor>("es")
-                .RuleFor(c => c.UsuNyA, f => f.Name.FullName())
-                .RuleFor(c => c.UsuEmail, f => f.Internet.Email())
-                .RuleFor(c => c.UsuPswd, _ => "12345678") // ⚠️ En prod: hashear
-                .RuleFor(c => c.UsuNumTel, f => f.Random.ReplaceNumbers("##########"));
-
-            var conductores = fakerConductor.Generate(20);
-            db.Conductores.AddRange(conductores);
-        }
-
         // ===== Dueños Fake =====
         if (!db.Duenios.Any())
         {
@@ -34,19 +21,6 @@ public static class DbInitializer
 
             var duenios = fakerDuenio.Generate(10);
             db.Duenios.AddRange(duenios);
-        }
-
-        // ===== Playeros Fake =====
-        if (!db.Playeros.Any())
-        {
-            var fakerPlayero = new Faker<Playero>("es")
-                .RuleFor(p => p.UsuNyA, f => f.Name.FullName())
-                .RuleFor(p => p.UsuEmail, f => f.Internet.Email())
-                .RuleFor(p => p.UsuPswd, _ => "12345678")
-                .RuleFor(p => p.UsuNumTel, f => f.Random.ReplaceNumbers("##########"));
-
-            var playeros = fakerPlayero.Generate(5);
-            db.Playeros.AddRange(playeros);
         }
 
         await db.SaveChangesAsync();
