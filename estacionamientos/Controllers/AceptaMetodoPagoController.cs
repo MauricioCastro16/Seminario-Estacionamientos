@@ -83,7 +83,7 @@ namespace estacionamientos.Controllers
 
             await _ctx.SaveChangesAsync();
 
-            return RedirectToAction(nameof(Index), new { plyId = plyID });
+            return RedirectToAction("", "Playas");
         }
         
         public async Task<IActionResult> Details(int plyID, int mepID)

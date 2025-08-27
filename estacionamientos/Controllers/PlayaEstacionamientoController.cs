@@ -45,6 +45,14 @@ namespace estacionamientos.Controllers
             if (!ModelState.IsValid) return View(model);
             _context.Playas.Add(model);
             await _context.SaveChangesAsync();
+            // Asociar la playa creada con el dueño actual
+            var usuNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            _context.AdministraPlayas.Add(new AdministraPlaya
+            {
+                PlyID = model.PlyID,
+                DueNU = usuNU
+            });
+            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
