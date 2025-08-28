@@ -161,5 +161,23 @@ namespace estacionamientos.Controllers
             await _ctx.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
+
+         [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteInline(int plyID, int plzNum)
+        {
+            var plaza = await _ctx.Plazas.FindAsync(plyID, plzNum);
+            if (plaza is null)
+            {
+                TempData["Error"] = $"No se encontró la plaza {plzNum}.";
+                return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
+            }
+
+            _ctx.Plazas.Remove(plaza);
+            await _ctx.SaveChangesAsync();
+
+            TempData["Ok"] = $"Plaza {plzNum} eliminada.";
+            return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
+        }
     }
 }
