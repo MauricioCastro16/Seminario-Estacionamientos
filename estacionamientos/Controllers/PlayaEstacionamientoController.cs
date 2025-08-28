@@ -13,11 +13,20 @@ namespace estacionamientos.Controllers
 
         public PlayaEstacionamientoController(AppDbContext context) => _context = context;
 
-
         [HttpGet]
         [Route("Playas")]
         public async Task<IActionResult> Index([FromQuery] PlayasIndexVM vm)
         {
+            // 1) Usuario actual (seguro ante parseo)
+            int usuNU = 0;
+            int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out usuNU);
+
+            // 2) Query base: SOLO las playas administradas por el usuario
+            var baseQuery = _context.Playas
+                .AsNoTracking()
+                .Where(p => _context.AdministraPlayas
+                    .Any(ap => ap.PlyID == p.PlyID && ap.DueNU == usuNU));
+
             vm.ProvinciasCombo = await _context.Playas.AsNoTracking()
                 .Where(p => !string.IsNullOrEmpty(p.PlyProv))
                 .Select(p => p.PlyProv!)
@@ -49,8 +58,6 @@ namespace estacionamientos.Controllers
             Normalize(vm.Direcciones);
             Normalize(vm.Todos);
 
-
-
             if (!string.IsNullOrWhiteSpace(vm.Remove) && vm.Remove.Contains(':'))
             {
                 var parts = vm.Remove.Split(':', 2);
@@ -75,8 +82,8 @@ namespace estacionamientos.Controllers
                 vm.Remove = null;
             }
 
-            var query = _context.Playas.AsNoTracking().AsQueryable();
-            
+            var query = baseQuery.AsQueryable();
+                    
             if (!string.IsNullOrWhiteSpace(vm.Q))
             {
                 var q = $"%{vm.Q.Trim()}%";
@@ -166,9 +173,7 @@ namespace estacionamientos.Controllers
                     EF.Functions.ILike(p.PlyCiu!,  pat) ||
                     EF.Functions.ILike(p.PlyDir!,  pat)));
             }
-
-
-
+            
             vm.Playas = await query.OrderBy(p => p.PlyNom).ToListAsync();
 
             if (!vm.HayFiltros && Request.QueryString.HasValue)
