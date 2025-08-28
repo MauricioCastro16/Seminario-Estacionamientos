@@ -1,59 +1,435 @@
+@model estacionamientos.Models.ViewModels.PlayasIndexVM
 @{
     ViewData["Title"] = "Playas";
+    string LabelFiltro(string v) => v switch {
+        "nombre" => "Nombre",
+        "provincia" => "Provincia",
+        "ciudad" => "Ciudad",
+        "direccion" => "Dirección",
+        _ => "Todos"
+    };
+    bool hayFiltros = Model.FilterBy != "all"
+                   || !string.IsNullOrWhiteSpace(Model.Q)
+                   || !string.IsNullOrWhiteSpace(Model.SelectedOption);
+
+    bool showAddButton =
+
+            (!string.IsNullOrWhiteSpace(Model.Q) && Model.FilterBy != "provincia")
+
+            || (Model.FilterBy == "provincia" && !string.IsNullOrWhiteSpace(Model.SelectedOption));
 }
 
-@model List<estacionamientos.Models.PlayaEstacionamiento>
-
-<div class="d-flex align-items-center mb-4">
-    <h1 class="mb-0 me-2">Playas</h1>
-    <a class="btn btn-outline-secondary btn-sm" 
-       asp-controller="PlayaEstacionamiento" 
-       asp-action="Create" 
-       title="Nueva playa">
-        <i class="bi bi-plus-lg"></i>
-    </a>
-</div>
-
-
 <div class="container">
-    <h5 class="text-center mt-3">Mis Playas</h5>
 
-    <table class="table table-striped align-middle mt-3">
+    <!-- Título -->
+    <div class="mb-3">
+        <h1 class="mb-0">Mis Playas</h1>
+    </div>
+    <form method="get" id="searchForm" class="row g-2 align-items-center">
+
+        <!-- Campo de texto -->
+        <div class="col-md-5 @(Model.FilterBy == "provincia" ? "d-none" : "")" id="qWrapper">
+            <input name="Q" id="qInput" value="@Model.Q" class="form-control" placeholder="Buscar..." />
+        </div>
+
+        <!-- Select de provincias -->
+        <div class="col-md-5 @(Model.FilterBy == "provincia" ? "" : "d-none")" id="provWrapper">
+            <select name="SelectedOption" id="provSelect" class="form-select">
+                <option value="">Seleccionar provincia…</option>
+                @foreach (var pr in Model.ProvinciasCombo)
+                {
+                    <option value="@pr" selected="@(Model.SelectedOption == pr ? "selected" : null)">@pr</option>
+                }
+            </select>
+        </div>
+
+        <!-- Botón Filtrar -->
+        <div class="col-auto">
+            <div class="btn-group">
+                <input type="hidden" name="FilterBy" id="filterBy" value="@Model.FilterBy" />
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle"
+                        data-bs-toggle="dropdown" aria-expanded="false" id="filterBtn">
+                    <i class="bi bi-funnel"></i> Filtrar: @LabelFiltro(Model.FilterBy)
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" data-value="all">Todos</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="nombre">Nombre</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="provincia">Provincia</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="ciudad">Ciudad</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="direccion">Dirección</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Buscar + Limpiar -->
+        <div class="col-auto">
+            <button type="submit" class="btn btn-secondary" title="Buscar">
+                <i class="bi bi-search"></i>
+            </button>
+            <a id="btnLimpiar"
+            class="btn btn-outline-secondary @(hayFiltros ? "" : "d-none")"
+            asp-action="Index"
+            title="Limpiar filtros">
+                <i class="bi bi-x-circle"></i>
+            </a>
+        </div>
+
+        <!-- Botón Agregar Playa alineado a la derecha -->
+        <div class="col-auto ms-auto">
+            <a class="btn btn-primary"
+            asp-controller="PlayaEstacionamiento"
+            asp-action="Create"
+            title="Agregar playa">
+                <i class="bi bi-plus-lg me-1"></i> Agregar Playa
+            </a>
+        </div>
+
+        <!-- Botón Añadir filtro SIEMPRE (habilitado por JS) -->
+        <div class="w-100"></div>
+        <div class="col-md-5 mt-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnAddOne" disabled>
+                Añadir filtro
+            </button>
+        </div>
+
+        <!-- Inputs ocultos para preservar filtros acumulados -->
+        @for (int i = 0; i < Model.Nombres.Count; i++)
+        {
+            <input type="hidden" name="Nombres[@i]" value="@Model.Nombres[i]" />
+        }
+        @for (int i = 0; i < Model.Provincias.Count; i++)
+        {
+            <input type="hidden" name="Provincias[@i]" value="@Model.Provincias[i]" />
+        }
+        @for (int i = 0; i < Model.Ciudades.Count; i++)
+        {
+            <input type="hidden" name="Ciudades[@i]" value="@Model.Ciudades[i]" />
+        }
+        @for (int i = 0; i < Model.Direcciones.Count; i++)
+        {
+            <input type="hidden" name="Direcciones[@i]" value="@Model.Direcciones[i]" />
+        }
+        @for (int i = 0; i < Model.Todos.Count; i++)
+        {
+            <input type="hidden" name="Todos[@i]" value="@Model.Todos[i]" />
+        }
+    </form>
+
+
+    
+
+@if ((Model.Nombres?.Any() ?? false) ||
+     (Model.Provincias?.Any() ?? false) ||
+     (Model.Ciudades?.Any() ?? false) ||
+     (Model.Direcciones?.Any() ?? false) ||
+     (Model.Todos?.Any() ?? false))
+{
+    <div class="mt-2 d-flex flex-wrap gap-2">
+        @* TODOS *@
+        @foreach (var v in Model.Todos)
+        {
+            <span class="badge rounded-pill text-bg-light border">
+                @v
+                <a class="ms-2 text-decoration-none"
+                   asp-action="Index"
+                   asp-route-Q="@Model.Q"
+                   asp-route-FilterBy="@Model.FilterBy"
+                   asp-route-SelectedOption="@Model.SelectedOption"
+                   asp-route-Remove="todos:@v"
+                   asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                   asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
+                   asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
+                   asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
+                   asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                   title="Quitar">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+            </span>
+        }
+
+        @* NOMBRES *@
+        @foreach (var v in Model.Nombres)
+        {
+            <span class="badge rounded-pill text-bg-light border">
+                @v
+                <a class="ms-2 text-decoration-none"
+                   asp-action="Index"
+                   asp-route-Q="@Model.Q"
+                   asp-route-FilterBy="@Model.FilterBy"
+                   asp-route-SelectedOption="@Model.SelectedOption"
+                   asp-route-Remove="nombre:@v"
+                   asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                   asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
+                   asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
+                   asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
+                   asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                   title="Quitar">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+            </span>
+        }
+
+        @* PROVINCIAS *@
+        @foreach (var v in Model.Provincias)
+        {
+            <span class="badge rounded-pill text-bg-light border">
+                @v
+                <a class="ms-2 text-decoration-none"
+                   asp-action="Index"
+                   asp-route-Q="@Model.Q"
+                   asp-route-FilterBy="@Model.FilterBy"
+                   asp-route-SelectedOption="@Model.SelectedOption"
+                   asp-route-Remove="provincia:@v"
+                   asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                   asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
+                   asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
+                   asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
+                   asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                   title="Quitar">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+            </span>
+        }
+
+        @* CIUDADES *@
+        @foreach (var v in Model.Ciudades)
+        {
+            <span class="badge rounded-pill text-bg-light border">
+                @v
+                <a class="ms-2 text-decoration-none"
+                   asp-action="Index"
+                   asp-route-Q="@Model.Q"
+                   asp-route-FilterBy="@Model.FilterBy"
+                   asp-route-SelectedOption="@Model.SelectedOption"
+                   asp-route-Remove="ciudad:@v"
+                   asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                   asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
+                   asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
+                   asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
+                   asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                   title="Quitar">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+            </span>
+        }
+
+        @* DIRECCIONES *@
+        @foreach (var v in Model.Direcciones)
+        {
+            <span class="badge rounded-pill text-bg-light border">
+                @v
+                <a class="ms-2 text-decoration-none"
+                   asp-action="Index"
+                   asp-route-Q="@Model.Q"
+                   asp-route-FilterBy="@Model.FilterBy"
+                   asp-route-SelectedOption="@Model.SelectedOption"
+                   asp-route-Remove="direccion:@v"
+                   asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                   asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
+                   asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
+                   asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
+                   asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                   title="Quitar">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+            </span>
+        }
+    </div>
+}
+
+<!-- TABLA de resultados -->
+<div class="table-responsive mt-3">
+    <table class="table table-striped align-middle">
         <thead>
-            <tr>
-                <th>Nombre</th>
-                <th>Provincia</th>
-                <th>Ciudad</th>
-                <th>Dirección</th>
-                <th>Acciones</th>
-            </tr>
+        <tr>
+            <th>Nombre</th>
+            <th>Provincia</th>
+            <th>Ciudad</th>
+            <th>Dirección</th>
+            <th class="text-center">Acciones</th>
+        </tr>
         </thead>
         <tbody>
-        @foreach (var playa in Model)
+        @if (Model.Playas == null || Model.Playas.Count == 0)
         {
             <tr>
-                <td>@playa.PlyNom</td>
-                <td>@playa.PlyProv</td>
-                <td>@playa.PlyCiu</td>
-                <td>@playa.PlyDir</td>
-                <td class="text-center">
-                    <a class="btn btn-outline-primary btn-sm me-2"
-                       asp-action="ConfigurarPlazas"
-                       asp-controller="PlazaEstacionamiento"
-                       asp-route-plyID="@playa.PlyID"
-                       title="Configurar Plazas">
-                        <i class="bi bi-grid"></i>
-                    </a>
-                    <a class="btn btn-outline-secondary btn-sm"
-                       asp-action="Index"
-                       asp-controller="AceptaMetodoPago"
-                       asp-route-plyID="@playa.PlyID"
-                       title="Métodos de Pago">
-                        <i class="bi bi-credit-card"></i>
-                    </a>
+                <td colspan="5" class="text-center text-muted py-4">
+                    No se encontraron resultados.
                 </td>
             </tr>
+        }
+        else
+        {
+            @foreach (var playa in Model.Playas)
+            {
+                <tr>
+                    <td>@playa.PlyNom</td>
+                    <td>@playa.PlyProv</td>
+                    <td>@playa.PlyCiu</td>
+                    <td>@playa.PlyDir</td>
+                    <td class="text-center">
+                        <a class="btn btn-outline-primary btn-sm me-2"
+                           asp-action="ConfigurarPlazas"
+                           asp-controller="PlazaEstacionamiento"
+                           asp-route-plyID="@playa.PlyID"
+                           title="Configurar Plazas">
+                            <i class="bi bi-grid"></i>
+                        </a>
+                        <a class="btn btn-outline-secondary btn-sm"
+                           asp-action="Index"
+                           asp-controller="AceptaMetodoPago"
+                           asp-route-plyID="@playa.PlyID"
+                           title="Métodos de Pago">
+                            <i class="bi bi-credit-card"></i>
+                        </a>
+                    </td>
+                </tr>
+            }
         }
         </tbody>
     </table>
 </div>
+
+
+<script>
+  const mapLbl = {all:'Todos', nombre:'Nombre', provincia:'Provincia', ciudad:'Ciudad', direccion:'Dirección'};
+
+  // Habilita/oculta inputs de búsqueda según el filtro elegido y actualiza la etiqueta
+  function updateFilterUI() {
+    const fb = document.getElementById('filterBy').value;
+    const qW = document.getElementById('qWrapper');
+    const pW = document.getElementById('provWrapper');
+    const qI = document.getElementById('qInput');
+    const pS = document.getElementById('provSelect');
+
+    if (fb === 'provincia') {
+      qW?.classList.add('d-none');
+      pW?.classList.remove('d-none');
+      if (qI) qI.value = '';
+    } else {
+      pW?.classList.add('d-none');
+      if (pS) pS.value = '';
+      qW?.classList.remove('d-none');
+    }
+
+    document.getElementById('filterBtn').innerHTML =
+      '<i class="bi bi-funnel"></i> Filtrar: ' + (mapLbl[fb] || 'Todos');
+
+    toggleLimpiar();
+    toggleAddButton(); // << clave: actualizar el estado del botón al cambiar de filtro
+  }
+
+  // Muestra/oculta el botón "Limpiar" según haya algo que limpiar
+  function toggleLimpiar() {
+    const fb = document.getElementById('filterBy')?.value || 'all';
+    const q  = document.getElementById('qInput')?.value?.trim() || '';
+    const so = document.getElementById('provSelect')?.value?.trim() || '';
+    const show = (fb && fb !== 'all') || q.length > 0 || so.length > 0;
+    const limpiar = document.getElementById('btnLimpiar');
+    if (limpiar) limpiar.classList.toggle('d-none', !show);
+  }
+
+  // ¿Hay algo que se pueda añadir como filtro según el tipo actual?
+  function canAddCurrent() {
+    const fb = document.getElementById('filterBy')?.value || 'all';
+    const q  = document.getElementById('qInput')?.value?.trim() || '';
+    const so = document.getElementById('provSelect')?.value?.trim() || '';
+    return fb === 'provincia' ? so.length > 0 : q.length > 0;
+  }
+
+  // Habilita/Deshabilita el botón "Añadir filtro"
+  function toggleAddButton() {
+    const btn = document.getElementById('btnAddOne');
+    if (btn) btn.disabled = !canAddCurrent();
+  }
+
+    const formEl = document.getElementById('searchForm');
+
+
+  // Cambiar filtro desde el dropdown
+  document.querySelectorAll('.dropdown-menu .dropdown-item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('filterBy').value = el.getAttribute('data-value');
+      updateFilterUI();
+    });
+  });
+
+  // Escribir en el input de texto
+  document.getElementById('qInput')?.addEventListener('input', () => {
+    toggleLimpiar();
+    toggleAddButton();
+  });
+
+  // Enter en el input de texto => Buscar
+  document.getElementById('qInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      formEl?.submit();
+    }
+  });
+
+  // Cambiar provincia
+  document.getElementById('provSelect')?.addEventListener('change', () => {
+    toggleLimpiar();
+    toggleAddButton();
+    const v = document.getElementById('provSelect')?.value?.trim() || '';
+    if (v.length) formEl?.submit(); // auto-buscar si hay una provincia elegida
+  });
+
+  // Enter en el combo de provincias => Buscar
+  document.getElementById('provSelect')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      formEl?.submit();
+    }
+  });
+
+  // Click en "Añadir filtro"
+  document.getElementById('btnAddOne')?.addEventListener('click', () => {
+    const fb   = document.getElementById('filterBy')?.value || 'all';
+    const form = formEl;
+    if (!form) return;
+
+    let value = '';
+    let listName = '';
+
+    if (fb === 'provincia') {
+      value = (document.getElementById('provSelect')?.value || '').trim();
+      listName = 'Provincias';
+    } else if (fb === 'nombre') {
+      value = (document.getElementById('qInput')?.value || '').trim();
+      listName = 'Nombres';
+    } else if (fb === 'ciudad') {
+      value = (document.getElementById('qInput')?.value || '').trim();
+      listName = 'Ciudades';
+    } else if (fb === 'direccion') {
+      value = (document.getElementById('qInput')?.value || '').trim();
+      listName = 'Direcciones';
+    } else if (fb === 'all') {
+      value = (document.getElementById('qInput')?.value || '').trim();
+      listName = 'Todos';
+    }
+
+    if (!value) return;
+
+    const idx = form.querySelectorAll(`input[name^="${listName}["]`).length;
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = `${listName}[${idx}]`;
+    hidden.value = value;
+    form.appendChild(hidden);
+
+    if (fb === 'provincia') {
+      document.getElementById('provSelect').value = '';
+    } else {
+      document.getElementById('qInput').value = '';
+    }
+
+    form.submit();
+  });
+
+  // Inicialización
+  updateFilterUI();
+  toggleAddButton();
+</script>

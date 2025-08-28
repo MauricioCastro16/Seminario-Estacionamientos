@@ -73,17 +73,27 @@
             <span asp-validation-for="PlyDir" class="text-danger"></span>
         </div>
 
-        <!-- Tipo de piso -->
+        <!-- Tipo de piso (opcional, con 'Otros (escribir)') -->
         <div class="mb-3">
-            <label asp-for="PlyTipoPiso" class="form-label">Tipo de piso</label>
-            <select asp-for="PlyTipoPiso" class="form-select" required>
-                <option value="" selected disabled>-- Selecciona una opción --</option>
-                <option>Asfalto</option>
-                <option>Ripio</option>
-                <option>Tierra</option>
-            </select>
-            <span asp-validation-for="PlyTipoPiso" class="text-danger"></span>
+        <label class="form-label">Tipo de piso <span class="text-muted">(opcional)</span></label>
+
+        <!-- Campo real que se postea -->
+        <input type="hidden" asp-for="PlyTipoPiso" id="pisoHidden" />
+
+        <select class="form-select mb-2" id="pisoSelect" data-val="false">
+            <option value="" selected>-- Selecciona una opción --</option>
+            <option>Asfalto</option>
+            <option>Ripio</option>
+            <option>Tierra</option>
+            <option value="__OTRO__">Otros (escribir)</option>
+        </select>
+
+        <input type="text" class="form-control d-none" id="pisoInput"
+                placeholder="Escribí el tipo de piso" autocomplete="off" />
+
+        <span asp-validation-for="PlyTipoPiso" class="text-danger"></span>
         </div>
+
 
         <!-- Llave requerida -->
         <div class="mb-3">
@@ -104,6 +114,17 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+
+    <script>
+    // jQuery Validate normalmente ignora inputs ocultos
+    if (window.jQuery && $.validator) {
+        $.validator.setDefaults({ ignore: [] });
+        $.extend($.validator.messages, { required: "Este campo es obligatorio" });
+    }
+    </script>
+
+
+
     <script>
         // --- Datos: ciudades por provincia (extendible) ---
         const ciudadesPorProvincia = {
@@ -239,21 +260,52 @@
             if (v.length > 0) ciudadInput.value = v.charAt(0).toUpperCase() + v.slice(1);
         });
 
-        // --- Validación al enviar ---
-        document.querySelector('form').addEventListener('submit', (e) => {
-            if (ciudadSelect.value === '__OTRA__') {
-                ciudadHidden.value = ciudadInput.value.trim();
-            } else {
-                ciudadHidden.value = ciudadSelect.value || '';
-            }
-            const nombreOk = nombreInput.value.trim().length > 0;
-            const ciudadOk = ciudadHidden.value.length > 0 &&
-                             (ciudadSelect.value !== '__OTRA__' || ciudadRegex.test(ciudadHidden.value));
-            if (!nombreOk || !ciudadOk) {
-                e.preventDefault();
-                e.stopPropagation();
-                alert("Revisá los campos: nombre y ciudad.");
-            }
+                // ---- Tipo de piso: lógica igual a Ciudad (opcional) ----
+        const pisoSelect = document.getElementById('pisoSelect');
+        const pisoInput  = document.getElementById('pisoInput');
+        const pisoHidden = document.getElementById('pisoHidden');
+
+        function togglePisoOtro() {
+        const esOtro = (pisoSelect.value === '__OTRO__');
+        pisoInput.classList.toggle('d-none', !esOtro);
+        pisoInput.disabled = !esOtro;
+
+        if (esOtro) {
+            pisoHidden.value = (pisoInput.value || '').trim();
+            pisoInput.focus();
+        } else {
+            pisoHidden.value = pisoSelect.value || ''; // vacío es válido porque es opcional
+            pisoInput.value = '';
+        }
+        }
+        pisoSelect.addEventListener('change', togglePisoOtro);
+        pisoSelect.addEventListener('input',  togglePisoOtro);
+
+        // Sanitiza y mayúscula inicial para piso escrito
+        pisoInput.addEventListener('input', () => {
+        pisoInput.value = pisoInput.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s\-.]/g, '');
+        const v = pisoInput.value;
+        if (v.length > 0) pisoInput.value = v.charAt(0).toUpperCase() + v.slice(1);
+        pisoHidden.value = pisoInput.value.trim();
         });
+
+        // En el submit, sincronizamos también el piso (por si quedó '__OTRO__')
+        document.querySelector('form').addEventListener('submit', () => {
+        if (pisoSelect.value === '__OTRO__') {
+            pisoHidden.value = (pisoInput.value || '').trim();
+        } else {
+            pisoHidden.value = pisoSelect.value || '';
+        }
+        });
+
+
+        // --- Validación al enviar ---
+        // --- Sin alert y sin preventDefault ---
+        document.querySelector('form').addEventListener('submit', (e) => {
+        ciudadHidden.value = (ciudadSelect.value === '__OTRA__')
+            ? ciudadInput.value.trim()
+            : (ciudadSelect.value || '');
+        });
+
     </script>
 }
