@@ -32,6 +32,7 @@ namespace estacionamientos.Controllers
             var q = _ctx.Trabajos
                 .Include(t => t.Playa)
                 .Include(t => t.Playero)
+                .Where(t => t.TrabEnActual)
                 .AsNoTracking();
             return View(await q.ToListAsync());
         }
@@ -54,6 +55,7 @@ namespace estacionamientos.Controllers
                 return View(model);
             }
 
+            model.TrabEnActual = true;
             _ctx.Trabajos.Add(model);
             await _ctx.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
@@ -76,7 +78,7 @@ namespace estacionamientos.Controllers
             var item = await _ctx.Trabajos.FindAsync(plyID, plaNU);
             if (item is null) return NotFound();
 
-            _ctx.Trabajos.Remove(item);
+            item.TrabEnActual = false;
             await _ctx.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }

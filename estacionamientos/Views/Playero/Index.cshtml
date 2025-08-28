@@ -56,37 +56,28 @@
                         }
                     </td>
                     <td class="text-center">
-                        <a class="btn btn-outline-info btn-sm me-2"
-                           asp-controller="Playero"
-                           asp-action="Details"
-                           asp-route-id="@p.UsuNU"
-                           title="Detalles">
-                            <i class="bi bi-eye"></i>
-                        </a>
-
                         <a class="btn btn-outline-primary btn-sm me-2"
-                           asp-controller="Playero"
-                           asp-action="Edit"
-                           asp-route-id="@p.UsuNU"
-                           title="Editar">
-                            <i class="bi bi-pencil"></i>
+                        asp-controller="Playero"
+                        asp-action="Edit"
+                        asp-route-id="@p.UsuNU"
+                        title="Editar">
+                        <i class="bi bi-pencil"></i>
                         </a>
 
-                        <!-- Asignar a otra playa (opcional: a una acción de TrabajaEnController) -->
                         <a class="btn btn-outline-secondary btn-sm me-2"
-                           asp-controller="TrabajaEn"
-                           asp-action="Create" 
-                           asp-route-plaNU="@p.UsuNU"
-                           title="Asignar a playa">
-                            <i class="bi bi-link-45deg"></i>
+                        asp-controller="Playero"
+                        asp-action="Assign"
+                        asp-route-id="@p.UsuNU"
+                        title="Vincular a playa">
+                        <i class="bi bi-link-45deg"></i>
                         </a>
 
                         <a class="btn btn-outline-danger btn-sm"
-                           asp-controller="Playero"
-                           asp-action="Delete"
-                           asp-route-id="@p.UsuNU"
-                           title="Eliminar">
-                            <i class="bi bi-trash"></i>
+                        asp-controller="Playero"
+                        asp-action="Delete"
+                        asp-route-id="@p.UsuNU"
+                        title="Eliminar">
+                        <i class="bi bi-trash"></i>
                         </a>
                     </td>
                 </tr>

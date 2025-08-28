@@ -1,0 +1,19 @@
+@model estacionamientos.Models.Playero
+@{
+    ViewData["Title"] = "Eliminar playero";
+}
+
+<div class="alert alert-warning" role="alert">
+    <h4 class="alert-heading">¿Eliminar playero?</h4>
+    <p>Vas a eliminar al playero <strong>@Model.UsuNyA</strong> (ID @Model.UsuNU).
+        Se eliminarán también sus vinculaciones a playas.</p>
+</div>
+
+<form asp-action="Delete" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="UsuNU" />
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+        <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+    </div>
+</form>

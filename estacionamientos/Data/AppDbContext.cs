@@ -278,6 +278,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                e.ToTable("TrabajaEn");
                e.HasKey(x => new { x.PlyID, x.PlaNU });   // PK compuesta
 
+               e.Property(x => x.TrabEnActual).HasDefaultValue(true);
+
                e.HasOne(x => x.Playa)
                 .WithMany()                                // podés crear p.Trabajos si querés
                 .HasForeignKey(x => x.PlyID)
