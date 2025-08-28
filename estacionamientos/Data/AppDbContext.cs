@@ -133,7 +133,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             new Administrador { UsuNU = 5, UsuNyA = "Iván Josué Nikcevich", UsuEmail = "ivan.nikcevich@hotmail.com", UsuPswd = "12345678", UsuNumTel = "2233445566" },
             new Administrador { UsuNU = 6, UsuNyA = "Adriano Nikcevich", UsuEmail = "adri.nikce30@gmail.com", UsuPswd = "12345678", UsuNumTel = "6677889900" },
             new Administrador { UsuNU = 7, UsuNyA = "Solana Livio", UsuEmail = "solana.livio1976@gmail.com", UsuPswd = "12345678", UsuNumTel = "3344556677" },
-            new Administrador { UsuNU = 8, UsuNyA = "Elías Obregón", UsuEmail = "eliasobregon@gmail.com", UsuPswd = "12345678", UsuNumTel = "7788990011" }
+            new Administrador { UsuNU = 8, UsuNyA = "Elías Obregón", UsuEmail = "obregon.elias@gmail.com", UsuPswd = "12345678", UsuNumTel = "7788990011" }
         );
 
         //Tablas dinámicas

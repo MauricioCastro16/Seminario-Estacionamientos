@@ -66,7 +66,7 @@ namespace estacionamientos.Controllers
                 .Select(p => new
                 {
                     p.PlyID,
-                    Nombre = "Playa #" + p.PlyID // cambiá por p.PlyNombre / p.PlyCiu+" - "+p.PlyDir si tenés
+                    Nombre = p.PlyNom +" ("+ p.PlyCiu +")"
                 })
                 .ToListAsync();
 
