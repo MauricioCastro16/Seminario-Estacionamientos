@@ -5,38 +5,51 @@
 }
 
 <div class="container" style="max-width: max-content">
-    <h6 class="text-black text-center mb-3">Estacionamiento @ViewBag.PlyID</h6>
+    <h6 class="text-black text-center mb-3">Estacionamiento @ViewBag.PlyNom</h6>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
 
     <form asp-action="ConfigurarPlazas" method="post">
+        @Html.AntiForgeryToken()
         <div class="form-group justify-content-between align-items-end card d-flex flex-row gap-5 p-3">
             <div class="d-flex flex-row gap-3">
                 <div>
-                    <label class="mb-2">Cantidad de plazas</label>
-                    <input name="cantidad" placeholder="Ej: 3" class="form-control"/>
+                    <label class="mb-2" for="cantidad">Cantidad de plazas</label>
+                    <input id="cantidad" name="cantidad"
+                           class="form-control"
+                           type="number" min="1" step="1"
+                           value="@(ViewBag.DefaultCantidad ?? 1)"
+                           required/>
                 </div>
 
                 <div>
-                    <label class="mb-2">Techo</label>
-                    <select name="plzTecho"  class="form-select">
-                        <option selected disabled>-- Selecciona una opción --</option>
+                    <label class="mb-2" for="plzTecho">Techo</label>
+                    <select id="plzTecho" name="plzTecho" class="form-select" required>
+                        <option value="" selected disabled>-- Selecciona una opción --</option>
                         <option value="true">Sí</option>
                         <option value="false">No</option>
                     </select>
                 </div>
 
                 <div>
-                    <label class="mb-2">Altura (m)</label>
-                    <input name="plzAlt" placeholder="Ej: 3,00" class="form-control"/>
+                    <label class="mb-2" for="plzAlt">Altura (m)</label>
+                    <input id="plzAlt" name="plzAlt"
+                           class="form-control"
+                           type="number" step="0.01" min="0"
+                           required
+                           placeholder="Ej: 3.00" />
                 </div>
             </div>
 
             <input type="hidden" name="plyID" value="@ViewBag.PlyID" />
 
-            <button type="submit" class="btn btn-primary" style="min-width: max-content; height: max-content">Añadir plazas</button>
+            <button type="submit" class="btn btn-primary" style="min-width: max-content; height: max-content">
+                Añadir plazas
+            </button>
         </div>
     </form>
 
-    <h4 class="text-black mt-5">Plazas actuales</h3>
+    <h4 class="text-black mt-5">Plazas actuales</h4>
     <table class="table table-sm">
         <thead>
             <tr>
@@ -50,8 +63,8 @@
             {
                 <tr>
                     <td>@plaza.PlzNum</td>
-                    <td>@(plaza.PlzTecho ? "Si" : "No")</td>
-                    <td>@(plaza.PlzAlt.HasValue ? plaza.PlzAlt.Value.ToString() : "-")</td>
+                    <td>@(plaza.PlzTecho ? "Sí" : "No")</td>
+                    <td>@(plaza.PlzAlt.HasValue ? plaza.PlzAlt.Value.ToString("0.00") : "-")</td>
                 </tr>
             }
         </tbody>
@@ -60,4 +73,23 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const techo  = document.getElementById('plzTecho');
+            const altura = document.getElementById('plzAlt');
+
+            function toggleRequired() {
+                const requiereAltura = (techo.value === 'true');
+                altura.required = requiereAltura;
+                if (!requiereAltura) {
+                    altura.value = ''; // limpiar si no aplica
+                    altura.setCustomValidity(''); // por si quedó inválido
+                }
+            }
+
+            techo.addEventListener('change', toggleRequired);
+            // correr una vez al cargar (por si vuelve con valores)
+            toggleRequired();
+        })();
+    </script>
 }

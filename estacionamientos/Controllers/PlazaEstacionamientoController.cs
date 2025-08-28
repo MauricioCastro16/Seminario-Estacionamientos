@@ -33,37 +33,53 @@ namespace estacionamientos.Controllers
             return item is null ? NotFound() : View(item);
         }
 
-        [HttpGet("Playas/{PlyID}/[controller]")]
-        public async Task<IActionResult> ConfigurarPlazas(int PlyID)
+        [HttpGet("Playas/{plyID}/[controller]")]         
+        public async Task<IActionResult> ConfigurarPlazas(int plyID)
         {
             var playa = await _ctx.Playas
-                .Include(p => p.Plazas)
-                .FirstOrDefaultAsync(p => p.PlyID == PlyID);
-            
-            if (playa == null)
-            {
-                return NotFound();
-            }
+             .Include(p => p.Plazas)
+             .AsNoTracking()
+             .FirstOrDefaultAsync(p => p.PlyID == plyID);
 
-            ViewBag.PlyID = PlyID;
-            return View(playa.Plazas);
+            if (playa == null) return NotFound();
+
+            ViewBag.PlyID  = playa.PlyID;
+            ViewBag.PlyNom = playa.PlyNom;
+            ViewBag.DefaultCantidad = 1; 
+
+            return View(playa.Plazas.OrderBy(z => z.PlzNum));
         }
 
-        [HttpPost("Playas/{PlyID}/[controller]")]
-        public async Task<IActionResult> ConfigurarPlazas(
+
+        [HttpPost("Playas/{plyID}/[controller]")]
+        [ValidateAntiForgeryToken]
+            public async Task<IActionResult> ConfigurarPlazas(
             int plyID,
-            int cantidad,
-            bool plzTecho,
-            decimal? plzAlt)
+            int cantidad = 1,
+            bool? plzTecho = null,
+            decimal? plzAlt = null)
         {
             var playa = await _ctx.Playas
                 .Include(p => p.Plazas)
                 .FirstOrDefaultAsync(p => p.PlyID == plyID);
 
-            if (playa == null)
+            if (playa == null) return NotFound();
+
+            if (cantidad < 1 || plzTecho == null || (plzTecho == true && plzAlt == null))
             {
-                return NotFound();
-            }
+               ViewBag.PlyID = playa.PlyID;
+               ViewBag.PlyNom = playa.PlyNom;
+               ViewBag.DefaultCantidad = 1;
+
+              var plazas = playa.Plazas.OrderBy(z => z.PlzNum).ToList();
+
+            if (plzTecho == true && plzAlt == null)
+                ModelState.AddModelError("plzAlt", "Si selecciona Techo = Sí, debe ingresar una altura.");
+            else
+                ModelState.AddModelError(string.Empty, "Todos los campos son obligatorios y la cantidad debe ser mayor a 0.");
+
+            return View(plazas);
+    }
 
             // calcular desde qué número crear
             int nextNum = playa.Plazas.Any() ? playa.Plazas.Max(pl => pl.PlzNum) + 1 : 1;
@@ -74,7 +90,7 @@ namespace estacionamientos.Controllers
                 {
                     PlyID = plyID,
                     PlzNum = nextNum + i,
-                    PlzTecho = plzTecho,
+                    PlzTecho = plzTecho.Value,
                     PlzAlt = plzAlt,
                     PlzHab = true
                 };
@@ -82,8 +98,7 @@ namespace estacionamientos.Controllers
             }
 
             await _ctx.SaveChangesAsync();
-
-            return RedirectToAction(nameof(ConfigurarPlazas), new { PlyID = plyID });
+            return RedirectToAction(nameof(ConfigurarPlazas), new { plyID =plyID });
         }
 
 
