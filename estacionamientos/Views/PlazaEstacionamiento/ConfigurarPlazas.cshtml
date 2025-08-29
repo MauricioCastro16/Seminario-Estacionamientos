@@ -7,7 +7,6 @@
 <div class="container" style="max-width: max-content">
     <h6 class="text-black text-center mb-3">Estacionamiento @ViewBag.PlyNom</h6>
 
-    @* Mensajes del controlador opcionales *@
     @if (TempData["Error"] is string err) {
         <div class="alert alert-danger py-2 my-2">@err</div>
     }
@@ -17,7 +16,7 @@
 
     <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
 
-    <!-- Form de alta (lo dejo como lo tenías) -->
+    <!--Form de alta-->
     <form asp-action="ConfigurarPlazas" method="post">
         @Html.AntiForgeryToken()
         <div class="form-group justify-content-between align-items-end card d-flex flex-row gap-5 p-3">
@@ -43,11 +42,13 @@
                 <div>
                     <label class="mb-2" for="plzAlt">Altura (m)</label>
                     <input id="plzAlt" name="plzAlt"
-                           class="form-control"
-                           type="number" step="0.01" min="0"
-                           required
-                           placeholder="Ej: 3.00" />
+                        class="form-control"
+                        type="number" step="0.01"
+                        placeholder="Ej: 2.10" />
+                    @Html.ValidationMessage("plzAlt", null, new { @class = "text-danger" })
+
                 </div>
+
             </div>
 
             <input type="hidden" name="plyID" value="@ViewBag.PlyID" />
@@ -76,7 +77,7 @@
                     <td>@(plaza.PlzTecho ? "Sí" : "No")</td>
                     <td>@(plaza.PlzAlt.HasValue ? plaza.PlzAlt.Value.ToString("0.00") : "-")</td>
                     <td class="text-center">
-                        <!-- Eliminar inline (ícono de basurero) -->
+                        <!-- Eliminar plaza cargada -->
                         <form asp-controller="PlazaEstacionamiento"
                               asp-action="DeleteInline"
                               method="post"
@@ -102,23 +103,31 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        (function () {
-            const techo  = document.getElementById('plzTecho');
-            const altura = document.getElementById('plzAlt');
+    (function () {
+        const techo  = document.getElementById('plzTecho');
+        const altura = document.getElementById('plzAlt');
 
-            function toggleRequired() {
-                const requiereAltura = (techo.value === 'true');
-                altura.required = requiereAltura;
-                if (!requiereAltura) {
-                    altura.value = '';
-                    altura.setCustomValidity('');
-                }
-            }
+        function syncAlturaState() {
+            const conTecho = (techo.value === 'true');
 
-            if (techo && altura) {
-                techo.addEventListener('change', toggleRequired);
-                toggleRequired();
+            altura.disabled = !conTecho;
+            altura.required = conTecho;
+
+            if (!conTecho) {
+                altura.value = '';
+                altura.setCustomValidity('');
+            
+            } else {
+                // dejamos que el servidor muestre el error.
+                altura.setCustomValidity('');
             }
-        })();
+        }
+
+        if (techo && altura) {
+            techo.addEventListener('change', syncAlturaState);
+            altura.addEventListener('input', syncAlturaState);
+            syncAlturaState();
+        }
+    })();
     </script>
 }

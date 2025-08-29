@@ -50,10 +50,9 @@ namespace estacionamientos.Controllers
             return View(playa.Plazas.OrderBy(z => z.PlzNum));
         }
 
-
         [HttpPost("Playas/{plyID}/[controller]")]
         [ValidateAntiForgeryToken]
-            public async Task<IActionResult> ConfigurarPlazas(
+        public async Task<IActionResult> ConfigurarPlazas(
             int plyID,
             int cantidad = 1,
             bool? plzTecho = null,
@@ -65,21 +64,36 @@ namespace estacionamientos.Controllers
 
             if (playa == null) return NotFound();
 
-            if (cantidad < 1 || plzTecho == null || (plzTecho == true && plzAlt == null))
+            //si no hay techo, no hay altura
+            if (plzTecho == false)
+                plzAlt = null;
+
+            // Validar altura según techo
+            bool alturaValida =
+                (plzTecho == true  && plzAlt.HasValue && plzAlt.Value >= 2m) ||
+                (plzTecho == false && plzAlt == null);
+
+            if (cantidad < 1 || plzTecho == null || !alturaValida)
             {
-               ViewBag.PlyID = playa.PlyID;
-               ViewBag.PlyNom = playa.PlyNom;
-               ViewBag.DefaultCantidad = 1;
+                ViewBag.PlyID = playa.PlyID;
+                ViewBag.PlyNom = playa.PlyNom;
+                ViewBag.DefaultCantidad = 1;
 
-              var plazas = playa.Plazas.OrderBy(z => z.PlzNum).ToList();
+                var plazas = playa.Plazas.OrderBy(z => z.PlzNum).ToList();
 
-            if (plzTecho == true && plzAlt == null)
-                ModelState.AddModelError("plzAlt", "Si selecciona Techo = Sí, debe ingresar una altura.");
-            else
-                ModelState.AddModelError(string.Empty, "Todos los campos son obligatorios y la cantidad debe ser mayor a 0.");
+                if (plzTecho == true && (!plzAlt.HasValue || plzAlt.Value < 2m))
+                {
+                    ModelState.AddModelError("plzAlt",
+                        "La altura mínima permitida es 2m.");
+                }
+                else
+                {
+                    ModelState.AddModelError(string.Empty,
+                        "Todos los campos son obligatorios.");
+                }
 
-            return View(plazas);
-    }
+                return View(plazas);
+            }
 
             // calcular desde qué número crear
             int nextNum = playa.Plazas.Any() ? playa.Plazas.Max(pl => pl.PlzNum) + 1 : 1;
@@ -88,81 +102,20 @@ namespace estacionamientos.Controllers
             {
                 var plaza = new PlazaEstacionamiento
                 {
-                    PlyID = plyID,
-                    PlzNum = nextNum + i,
-                    PlzTecho = plzTecho.Value,
-                    PlzAlt = plzAlt,
-                    PlzHab = true
+                    PlyID   = plyID,
+                    PlzNum  = nextNum + i,
+                    PlzTecho= plzTecho.Value,
+                    PlzAlt  = plzTecho.Value ? plzAlt : null,
+                    PlzHab  = true
                 };
                 _ctx.Plazas.Add(plaza);
             }
 
             await _ctx.SaveChangesAsync();
-            return RedirectToAction(nameof(ConfigurarPlazas), new { plyID =plyID });
+            return RedirectToAction(nameof(ConfigurarPlazas), new { plyID = plyID });
         }
 
-
-        [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(PlazaEstacionamiento model)
-        {
-            if (await _ctx.Plazas.AnyAsync(p => p.PlyID == model.PlyID && p.PlzNum == model.PlzNum))
-                ModelState.AddModelError(nameof(model.PlzNum), "Ya existe esa plaza en la playa seleccionada.");
-
-            if (!ModelState.IsValid)
-            {
-                await LoadPlayas(model.PlyID);
-                return View(model);
-            }
-
-            _ctx.Plazas.Add(model);
-            await _ctx.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        public async Task<IActionResult> Edit(int plyID, int plzNum)
-        {
-            var item = await _ctx.Plazas.FindAsync(plyID, plzNum);
-            if (item is null) return NotFound();
-
-            await LoadPlayas(item.PlyID);
-            return View(item);
-        }
-
-        [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int plyID, int plzNum, PlazaEstacionamiento model)
-        {
-            if (plyID != model.PlyID || plzNum != model.PlzNum) return BadRequest();
-
-            if (!ModelState.IsValid)
-            {
-                await LoadPlayas(model.PlyID);
-                return View(model);
-            }
-
-            _ctx.Entry(model).State = EntityState.Modified;
-            await _ctx.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        public async Task<IActionResult> Delete(int plyID, int plzNum)
-        {
-            var item = await _ctx.Plazas.Include(p => p.Playa).AsNoTracking()
-                .FirstOrDefaultAsync(p => p.PlyID == plyID && p.PlzNum == plzNum);
-            return item is null ? NotFound() : View(item);
-        }
-
-        [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int plyID, int plzNum)
-        {
-            var item = await _ctx.Plazas.FindAsync(plyID, plzNum);
-            if (item is null) return NotFound();
-
-            _ctx.Plazas.Remove(item);
-            await _ctx.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-         [HttpPost]
+        [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteInline(int plyID, int plzNum)
         {
