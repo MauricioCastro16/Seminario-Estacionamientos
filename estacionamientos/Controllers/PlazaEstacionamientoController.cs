@@ -117,6 +117,36 @@ namespace estacionamientos.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditInline(int plyID, int plzNum, bool plzTecho, decimal? plzAlt)
+        {
+            var plaza = await _ctx.Plazas.FindAsync(plyID, plzNum);
+            if (plaza is null)
+            {
+                TempData["Error"] = $"No se encontró la plaza {plzNum}.";
+                return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
+            }
+
+            //sin techo => sin altura
+            if (!plzTecho) plzAlt = null;
+
+            // con techo => altura >= 2
+            if (plzTecho && (!plzAlt.HasValue || plzAlt.Value < 2m))
+            {
+                TempData["Error"] = "La altura mínima permitida es 2m";
+                return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
+            }
+
+            plaza.PlzTecho = plzTecho;
+            plaza.PlzAlt   = plzAlt;
+
+            await _ctx.SaveChangesAsync();
+            TempData["Ok"] = $"Plaza {plzNum} actualizada.";
+            return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
+        }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteInline(int plyID, int plzNum)
         {
             var plaza = await _ctx.Plazas.FindAsync(plyID, plzNum);
