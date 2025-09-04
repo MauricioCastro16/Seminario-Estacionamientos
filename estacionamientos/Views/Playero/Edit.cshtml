@@ -1,0 +1,41 @@
+@model estacionamientos.Models.Playero
+
+@{
+    ViewData["Title"] = "Editar Playero";
+}
+
+<div class="container" style="max-width: 600px;">
+    <h2 class="mb-4">Editar Playero</h2>
+
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="UsuNU" />
+
+        <div class="mb-3">
+            <label asp-for="UsuNyA" class="form-label"></label>
+            <input asp-for="UsuNyA" class="form-control" />
+            <span asp-validation-for="UsuNyA" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="UsuEmail" class="form-label"></label>
+            <input asp-for="UsuEmail" class="form-control" />
+            <span asp-validation-for="UsuEmail" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="UsuNumTel" class="form-label"></label>
+            <input asp-for="UsuNumTel" class="form-control" />
+            <span asp-validation-for="UsuNumTel" class="text-danger"></span>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-success me-2">Guardar</button>
+            <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

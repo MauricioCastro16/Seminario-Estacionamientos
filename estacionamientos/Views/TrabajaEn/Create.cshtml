@@ -7,20 +7,29 @@
 <div class="container" style="max-width: 600px;">
     <h2 class="mb-4">Asignar Playero a Playa</h2>
 
-    <form asp-action="Create" method="post">
+    <form asp-action="NuevaAsignacionPost" method="post">
         @Html.AntiForgeryToken()
+
+        <!-- Mostrar todos los errores de validación -->
+        <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
         <div class="mb-3">
             <label asp-for="PlaNU" class="form-label">Playero</label>
             <select asp-for="PlaNU" asp-items="ViewBag.PlaNU" class="form-select"></select>
+            <span asp-validation-for="PlaNU" class="text-danger"></span>
         </div>
 
         <div class="mb-3">
             <label asp-for="PlyID" class="form-label">Playa</label>
             <select asp-for="PlyID" asp-items="ViewBag.PlyID" class="form-select"></select>
+            <span asp-validation-for="PlyID" class="text-danger"></span>
         </div>
 
         <button type="submit" class="btn btn-success me-2">Asignar</button>
-        <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+        <a asp-controller="Playero" asp-action="Index" class="btn btn-secondary">Cancelar</a>
     </form>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

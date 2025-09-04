@@ -152,24 +152,17 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> Delete(int id)
         {
-            var entity = await _context.Playeros.AsNoTracking().FirstOrDefaultAsync(e => e.UsuNU == id);
-            return entity is null ? NotFound() : View(entity);
-        }
-
-        [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
             var entity = await _context.Playeros.FindAsync(id);
-            if (entity is null) return NotFound();
+            if (entity == null) return NotFound();
 
-            // (opcional) eliminá también relaciones TrabajaEn del playero para evitar FKs
             var relaciones = await _context.Set<TrabajaEn>()
                 .Where(t => t.PlaNU == id)
                 .ToListAsync();
-            _context.Set<TrabajaEn>().RemoveRange(relaciones);
 
+            _context.Set<TrabajaEn>().RemoveRange(relaciones);
             _context.Playeros.Remove(entity);
             await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
     }
