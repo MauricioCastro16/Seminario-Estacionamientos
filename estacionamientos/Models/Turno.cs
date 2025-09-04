@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace estacionamientos.Models
 {
@@ -15,13 +17,16 @@ namespace estacionamientos.Models
 
         public DateTime? TurFyhFin { get; set; }
 
-        // Tiempos de apertura/cierre de caja (ajustá tipos si querés monetarios u otro sentido)
-        public DateTime? TurApertCaja { get; set; }
-        public DateTime? TurCierrCaja { get; set; }
+        //  Apertura/cierre de caja 
+        [Column(TypeName = "numeric(12,2)")]
+        public decimal? TurApertCaja { get; set; }    // Importe de apertura de caja
 
-        // Navegaciones
-        public TrabajaEn TrabajaEn { get; set; } = default!;               // asegura la relación válida
-        public PlayaEstacionamiento Playa { get; set; } = default!;        // comodidad para Include
-        public Playero Playero { get; set; } = default!;                   // comodidad para Include
+        [Column(TypeName = "numeric(12,2)")]
+        public decimal? TurCierrCaja { get; set; }    // Importe real al cierre de caja
+
+        // Navegaciones (no se validan en POST)
+        [ValidateNever] public TrabajaEn TrabajaEn { get; set; } = default!;
+        [ValidateNever] public PlayaEstacionamiento Playa { get; set; } = default!;
+        [ValidateNever] public Playero Playero { get; set; } = default!;
     }
 }

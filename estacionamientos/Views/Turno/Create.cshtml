@@ -1,0 +1,71 @@
+@model estacionamientos.Models.Turno
+@{
+    ViewData["Title"] = "Iniciar turno";
+    var esPlayero = User.IsInRole("Playero");
+}
+
+<div class="container py-3" style="max-width: 720px">
+    <h3 class="mb-3">Iniciar turno</h3>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+
+        <div class="mb-3">
+            <label class="form-label">Playa</label>
+            <select asp-for="PlyID" class="form-select" asp-items="ViewBag.PlyID"></select>
+            <span asp-validation-for="PlyID" class="text-danger"></span>
+        </div>
+
+        @if (!esPlayero)
+        {
+            <div class="mb-3">
+                <label class="form-label">Playero</label>
+                <select asp-for="PlaNU" class="form-select" asp-items="ViewBag.PlaNU"></select>
+                <span asp-validation-for="PlaNU" class="text-danger"></span>
+            </div>
+        }
+        else
+        {
+            <!-- Playero logueado: se fija automáticamente en el POST -->
+            <input type="hidden" asp-for="PlaNU" />
+        }
+
+        @* Playero: la fecha/hora de inicio NO se edita (se fija a ahora en POST) *@
+        @if (!esPlayero)
+        {
+            <div class="mb-3">
+                <label class="form-label">Fecha/Hora inicio</label>
+                <input asp-for="TurFyhIni" class="form-control" type="datetime-local"
+                       value="@(Model.TurFyhIni == default ? DateTime.Now.ToString("yyyy-MM-ddTHH:mm") : Model.TurFyhIni.ToString("yyyy-MM-ddTHH:mm"))" />
+                <span asp-validation-for="TurFyhIni" class="text-danger"></span>
+            </div>
+        }
+        else
+        {
+            <div class="mb-2 text-muted">
+                La hora de inicio se registrará automáticamente al guardar.
+            </div>
+        }
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Importe apertura de caja</label>
+                <input asp-for="TurApertCaja" class="form-control" type="number" step="0.01" min="0" inputmode="decimal" />
+                <span asp-validation-for="TurApertCaja" class="text-danger"></span>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Importe cierre de caja</label>
+                <input asp-for="TurCierrCaja" class="form-control" type="number" step="0.01" min="0" inputmode="decimal" disabled />
+                <div class="form-text">Se completa al cerrar el turno.</div>
+                <span asp-validation-for="TurCierrCaja" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a class="btn btn-secondary" asp-action="Index">Cancelar</a>
+            <button class="btn btn-primary" type="submit">Guardar</button>
+        </div>
+    </form>
+</div>

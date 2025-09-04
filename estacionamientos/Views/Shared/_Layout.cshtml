@@ -40,6 +40,15 @@
                         </li>
                     }
 
+                    @if (User.IsInRole("Playero"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Turno" asp-action="Index">
+                                Mis turnos
+                            </a>
+                        </li>
+                    }
+
                     @if (User.IsInRole("Duenio"))
                     {
                         <li class="nav-item">

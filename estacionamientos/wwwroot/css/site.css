@@ -33,3 +33,18 @@ body {
 .not-selected{
   opacity:0.4;
 }
+
+.dot-live {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #28a745; /* verde Bootstrap */
+  margin-right: 6px;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

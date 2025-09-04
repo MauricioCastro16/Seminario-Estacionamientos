@@ -1,0 +1,47 @@
+@model estacionamientos.Models.Turno
+@using System
+
+@{
+    ViewData["Title"] = "Detalle de turno";
+
+    DateTime ToCba(DateTime dt)
+    {
+        if (dt.Kind == DateTimeKind.Unspecified)
+            dt = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+        if (dt.Kind == DateTimeKind.Local)
+            dt = dt.ToUniversalTime();
+
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("America/Argentina/Cordoba");
+        return TimeZoneInfo.ConvertTimeFromUtc(dt, tz);
+    }
+
+    string Fmt(DateTime? dt) => dt.HasValue ? ToCba(dt.Value).ToString("dd/MM/yyyy HH:mm") : "-";
+}
+
+<div class="container py-3">
+    <h3 class="mb-3">Detalle de turno</h3>
+
+    <dl class="row">
+        <dt class="col-sm-3">Playa</dt>
+        <dd class="col-sm-9">@Model.PlyID — @Model.Playa?.PlyCiu @Model.Playa?.PlyDir</dd>
+
+        <dt class="col-sm-3">Playero</dt>
+        <dd class="col-sm-9">@Model.PlaNU — @Model.Playero?.UsuNyA</dd>
+
+        <dt class="col-sm-3">Inicio</dt>
+        <dd class="col-sm-9">@Fmt(Model.TurFyhIni)</dd>
+
+        <dt class="col-sm-3">Fin</dt>
+        <dd class="col-sm-9">@Fmt(Model.TurFyhFin)</dd>
+
+        <dt class="col-sm-3">Apertura de caja</dt>
+        <dd class="col-sm-9">@((Model.TurApertCaja?.ToString("N2") ?? "-"))</dd>
+
+        <dt class="col-sm-3">Cierre de caja</dt>
+        <dd class="col-sm-9">@((Model.TurCierrCaja?.ToString("N2") ?? "-"))</dd>
+    </dl>
+
+    <div class="d-flex gap-2">
+        <a class="btn btn-secondary" asp-action="Index">Volver</a>
+    </div>
+</div>

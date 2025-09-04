@@ -1,0 +1,57 @@
+@model estacionamientos.Models.Turno
+@{
+    ViewData["Title"] = "Cerrar turno";
+    var esPlayero = User.IsInRole("Playero");
+    var nowLocal = ViewBag.NowLocal as DateTime? ?? DateTime.Now;
+}
+
+<div class="container py-3" style="max-width: 720px">
+    <h3 class="mb-3">Cerrar turno</h3>
+
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        @* Claves *@
+        <input type="hidden" asp-for="PlyID" />
+        <input type="hidden" asp-for="PlaNU" />
+        <input type="hidden" asp-for="TurFyhIni" />
+
+        <div class="mb-3">
+            <label class="form-label">Playa</label>
+            <input type="text" class="form-control" value="@(Model.Playa?.PlyNom ?? ("Playa " + Model.PlyID))" disabled />
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Inicio</label>
+                <input type="text" class="form-control"
+                       value="@Model.TurFyhIni.ToLocalTime().ToString("dd/MM/yyyy HH:mm")" disabled />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Fin</label>
+                <input type="text" class="form-control"
+                       value="@nowLocal.ToString("dd/MM/yyyy HH:mm")" disabled />
+                <div class="form-text">Se registrará automáticamente al guardar.</div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Apertura de caja</label>
+                <input class="form-control" value="@((Model.TurApertCaja ?? 0m).ToString("N2"))" disabled />
+                <span asp-validation-for="TurApertCaja" class="text-danger"></span>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Cierre de caja</label>
+                <input asp-for="TurCierrCaja" class="form-control" type="number" step="0.01" min="0" inputmode="decimal" />
+                <span asp-validation-for="TurCierrCaja" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a class="btn btn-secondary" asp-action="Index">Cancelar</a>
+            <button class="btn btn-primary" type="submit">Guardar</button>
+        </div>
+    </form>
+</div>

@@ -1,0 +1,27 @@
+@model estacionamientos.Models.Turno
+@{
+    ViewData["Title"] = "Eliminar turno";
+}
+
+<div class="container py-3" style="max-width:720px">
+    <h3 class="mb-3 text-danger">Eliminar turno</h3>
+    <p>¿Confirmás eliminar este turno?</p>
+
+    <ul>
+        <li><strong>Playa:</strong> @Model.PlyID — @Model.Playa?.PlyCiu @Model.Playa?.PlyDir</li>
+        <li><strong>Playero:</strong> @Model.PlaNU — @Model.Playero?.UsuNyA</li>
+        <li><strong>Inicio:</strong> @Model.TurFyhIni</li>
+        <li><strong>Fin:</strong> @(Model.TurFyhFin?.ToString() ?? "-")</li>
+        <li><strong>Apertura caja:</strong> @(Model.TurApertCaja?.ToString("N2") ?? "-")</li>
+        <li><strong>Cierre caja:</strong> @(Model.TurCierrCaja?.ToString("N2") ?? "-")</li>
+    </ul>
+
+    <form asp-action="Delete" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="plyID" value="@Model.PlyID" />
+        <input type="hidden" name="plaNU" value="@Model.PlaNU" />
+        <input type="hidden" name="turFyhIni" value="@Model.TurFyhIni.ToString("O")" />
+        <a class="btn btn-secondary" asp-action="Index">Cancelar</a>
+        <button class="btn btn-danger" type="submit">Eliminar</button>
+    </form>
+</div>

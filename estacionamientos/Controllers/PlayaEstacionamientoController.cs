@@ -189,8 +189,20 @@ namespace estacionamientos.Controllers
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.PlyID == id);
 
-            return playa is null ? NotFound() : View(playa);
+            if (playa is null) return NotFound();
+
+            // Turno abierto más reciente en esta playa (si hay)
+            var turnoAbierto = await _context.Turnos
+                .Include(t => t.Playero)
+                .AsNoTracking()
+                .Where(t => t.PlyID == id && t.TurFyhFin == null)
+                .OrderByDescending(t => t.TurFyhIni)
+                .FirstOrDefaultAsync();
+
+            ViewBag.TurnoAbierto = turnoAbierto; // lo usamos en la vista
+            return View(playa);
         }
+
 
         public IActionResult Create() => View(new PlayaEstacionamiento());
 
