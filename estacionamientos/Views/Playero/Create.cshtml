@@ -38,11 +38,13 @@
             <span asp-validation-for="Playero.UsuNumTel" ></span>
         </div>
 
-        <div class="mb-3">
+      <div class="mb-3">
             <label class="form-label">Playa donde trabajará</label>
-            <select asp-for="PlayaId" asp-items="ViewBag.Playas" class="form-select"></select>
-            <span asp-validation-for="PlayaId" ></span>
-        </div>
+            <select asp-for="PlayaId" asp-items="ViewBag.Playas" class="form-select">
+            <option value="" selected disabled>-- Selecciona una playa --</option>
+            </select>
+            <span asp-validation-for="PlayaId"></span>
+    </div>
 
         <button type="submit" class="btn btn-success me-2">Crear</button>
         <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
