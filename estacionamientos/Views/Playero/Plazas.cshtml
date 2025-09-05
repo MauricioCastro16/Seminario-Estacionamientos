@@ -1,0 +1,55 @@
+@model IEnumerable<estacionamientos.Models.PlazaEstacionamiento>
+@{
+    ViewData["Title"] = "Plazas de la Playa";
+    var sinTurno = ViewBag.SinTurno as bool? ?? false;
+}
+
+<div class="container py-3">
+    <h2 class="mb-3">Plazas de la Playa</h2>
+
+    @if (sinTurno)
+    {
+        <div class="alert alert-warning">
+            No tenés ningún turno iniciado.
+        </div>
+    }
+    else if (Model == null || !Model.Any())
+    {
+        <div class="alert alert-info">
+            No hay plazas registradas en esta playa.
+        </div>
+    }
+    else
+    {
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Número</th>
+                    <th>Techo</th>
+                    <th>Altura</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var plaza in Model)
+            {
+                <tr>
+                    <td>@plaza.PlzNum</td>
+                    <td>@(plaza.PlzTecho ? "Sí" : "No")</td>
+                    <td>@plaza.PlzAlt</td>
+                    <td>
+                        @if (plaza.PlzOcupada)
+                        {
+                            <span class="badge bg-danger">Ocupada</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">Libre</span>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>

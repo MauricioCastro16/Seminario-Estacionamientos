@@ -14,18 +14,15 @@ namespace estacionamientos.Controllers
         public PlayeroController(AppDbContext context) => _context = context;
 
         // INDEX: muestra sólo playeros que trabajan en playas administradas por el dueño logueado
-        // En PlayeroController.cs
         public async Task<IActionResult> Index()
         {
             var dueId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            // PlyIDs que administra el dueño logueado
             var misPlyIds = await _context.Set<AdministraPlaya>()
                 .Where(a => a.DueNU == dueId)
                 .Select(a => a.PlyID)
                 .ToListAsync();
 
-            // Todos los trabajos (Playero ↔ Playa) de esas playas
             var trabajos = await _context.Set<TrabajaEn>()
                 .Include(t => t.Playero)
                 .Include(t => t.Playa)
@@ -33,7 +30,6 @@ namespace estacionamientos.Controllers
                 .AsNoTracking()
                 .ToListAsync();
 
-            // Agrupar por playero y armar VM
             var porPlayero = trabajos
                 .GroupBy(t => t.Playero.UsuNU)
                 .Select(g => new PlayeroIndexVM
@@ -47,10 +43,10 @@ namespace estacionamientos.Controllers
             return View(porPlayero);
         }
 
-
         public async Task<IActionResult> Details(int id)
         {
-            var entity = await _context.Playeros.AsNoTracking().FirstOrDefaultAsync(e => e.UsuNU == id);
+            var entity = await _context.Playeros.AsNoTracking()
+                .FirstOrDefaultAsync(e => e.UsuNU == id);
             return entity is null ? NotFound() : View(entity);
         }
 
@@ -62,11 +58,11 @@ namespace estacionamientos.Controllers
             var misPlayas = await _context.Set<AdministraPlaya>()
                 .Where(a => a.DueNU == dueId)
                 .Select(a => a.Playa)
-                .OrderBy(p => p.PlyID) // ajustá si querés por nombre/ciudad/dirección
+                .OrderBy(p => p.PlyID)
                 .Select(p => new
                 {
                     p.PlyID,
-                    Nombre = p.PlyNom +" ("+ p.PlyCiu +")"
+                    Nombre = p.PlyNom + " (" + p.PlyCiu + ")"
                 })
                 .ToListAsync();
 
@@ -84,7 +80,6 @@ namespace estacionamientos.Controllers
         {
             var dueId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            // Guard: la playa elegida debe pertenecer al dueño logueado
             var esMia = await _context.Set<AdministraPlaya>()
                 .AnyAsync(a => a.DueNU == dueId && a.PlyID == vm.PlayaId);
 
@@ -107,7 +102,7 @@ namespace estacionamientos.Controllers
                     .ToListAsync();
 
                 ViewBag.Playas = new SelectList(misPlayas, "PlyID", "Nombre", vm.PlayaId);
-                // log mínimo de debugging
+
                 foreach (var kv in ModelState)
                 {
                     var key = kv.Key;
@@ -117,15 +112,13 @@ namespace estacionamientos.Controllers
                 return View(vm);
             }
 
-            // 1) Alta de Playero
             _context.Playeros.Add(vm.Playero);
-            await _context.SaveChangesAsync(); // genera UsuNU
+            await _context.SaveChangesAsync();
 
-            // 2) Vincular a la playa (TrabajaEn)
             var trabajo = new TrabajaEn
             {
-                PlaNU = vm.Playero.UsuNU, // FK -> Playero (UsuNU)
-                PlyID = vm.PlayaId        // FK -> PlayaEstacionamiento
+                PlaNU = vm.Playero.UsuNU,
+                PlyID = vm.PlayaId
             };
 
             _context.Set<TrabajaEn>().Add(trabajo);
@@ -164,6 +157,32 @@ namespace estacionamientos.Controllers
             await _context.SaveChangesAsync();
 
             return RedirectToAction(nameof(Index));
+        }
+
+        // ===== NUEVO: ver plazas de la playa del turno activo =====
+        public async Task<IActionResult> Plazas()
+        {
+            var usuId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            // turno abierto del playero logueado
+            var turno = await _context.Turnos
+                .Include(t => t.Playa)
+                .FirstOrDefaultAsync(t => t.PlaNU == usuId && t.TurFyhFin == null);
+
+            if (turno == null)
+            {
+                ViewBag.SinTurno = true;
+                return View((IEnumerable<PlazaEstacionamiento>?)null);
+            }
+
+            var plazas = await _context.Plazas
+                .Where(p => p.PlyID == turno.PlyID)
+                .OrderBy(p => p.PlzNum)
+                .AsNoTracking()
+                .ToListAsync();
+
+            ViewBag.SinTurno = false;
+            return View(plazas);
         }
     }
 }
