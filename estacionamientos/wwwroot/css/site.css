@@ -8,7 +8,11 @@ html {
   }
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-check-input:focus {
   box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
@@ -21,19 +25,24 @@ body {
   margin-bottom: 60px;
 }
 
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
+/* place­holders en floating labels */
+.form-floating > .form-control-plaintext::placeholder,
+.form-floating > .form-control::placeholder {
   color: var(--bs-secondary-color);
   text-align: end;
 }
 
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
+.form-floating > .form-control-plaintext:focus::placeholder,
+.form-floating > .form-control:focus::placeholder {
   text-align: start;
 }
 
-.not-selected{
-  opacity:0.4;
+/* estado genérico de “no seleccionado” */
+.not-selected {
+  opacity: 0.4;
 }
 
+/* dot verde titilante (turno activo) */
 .dot-live {
   display: inline-block;
   width: 12px;
@@ -46,9 +55,10 @@ body {
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  50%      { opacity: 0.3; }
 }
 
+/* validación */
 span.field-validation-error,
 span.text-danger[data-valmsg-for] {
   display: block;
@@ -59,14 +69,13 @@ span.text-danger[data-valmsg-for] {
   font-weight: 400;
 }
 
-
-/* Placeholders sin error */
+/* place­holders sin error */
 span.field-validation-valid,
 .validation-summary-valid {
   display: none;
 }
 
-/* Estilo del resumen de validación */
+/* resumen de validación */
 .validation-summary-errors {
   font-size: .875rem;
 }
@@ -74,4 +83,25 @@ span.field-validation-valid,
   margin-bottom: .25rem;
 }
 
+/* === Métodos de Pago (versión con tarjetas) === */
 
+/* tarjeta base */
+.pago-card {
+  transition: all .2s ease-in-out;
+  border: 1px solid var(--bs-border-color);
+  border-radius: .75rem;
+}
+
+/* no seleccionado */
+.pago-card:not(:has(input:checked)) {
+  opacity: .6;
+  background-color: var(--bs-light);
+}
+
+/* seleccionado */
+.pago-card:has(input:checked) {
+  opacity: 1;
+  background-color: var(--bs-primary-bg-subtle);
+  box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .2);
+  border-color: rgba(var(--bs-primary-rgb), .5);
+}
