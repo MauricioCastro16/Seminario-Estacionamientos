@@ -1,0 +1,10 @@
+// Importa funciones y variables de Bootstrap
+@import "node_modules/bootstrap/scss/functions";
+@import "node_modules/bootstrap/scss/variables";
+
+// Activa todo el mapa extendido de colores
+$theme-colors: map-merge($theme-colors, $colors);
+
+// Importa Bootstrap completo con la nueva configuración
+@import "node_modules/bootstrap/scss/bootstrap";
+

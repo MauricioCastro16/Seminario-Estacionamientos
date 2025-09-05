@@ -53,7 +53,8 @@ namespace estacionamientos.Controllers
 
             var playasQuery = _ctx.Playas.AsNoTracking()
                 .OrderBy(p => p.PlyCiu).ThenBy(p => p.PlyDir)
-                .Select(p => new { p.PlyID, Nombre = p.PlyCiu + " - " + p.PlyDir });
+                .Select(p => new { p.PlyID, Nombre = p.PlyNom + " (" + p.PlyCiu + ")" });
+
 
             if (filterPlaNU is int filterPla && filterPla > 0)
             {

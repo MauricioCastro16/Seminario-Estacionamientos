@@ -19,7 +19,9 @@ namespace estacionamientos.Controllers
         // GET: /Account/Login
         [HttpGet]
         public IActionResult Login(string? returnUrl = null)
-            => View(new LoginViewModel { ReturnUrl = returnUrl });
+        {
+            return View(new LoginViewModel { ReturnUrl = returnUrl });
+        }
 
         // POST: /Account/Login
         [HttpPost, ValidateAntiForgeryToken]
@@ -35,10 +37,10 @@ namespace estacionamientos.Controllers
             var passwordOk = false;
             if (user is not null)
             {
-                // ✅ Plano (como lo tenés hoy)
+                // ⚠️ Plano (actual)
                 passwordOk = user.UsuPswd == model.Password;
 
-                // 🔐 Recomendado (cuando migres a hash):
+                // 🔐 Recomendado futuro:
                 // passwordOk = BCrypt.Net.BCrypt.Verify(model.Password, user.UsuPswd);
             }
 
@@ -58,7 +60,7 @@ namespace estacionamientos.Controllers
             var esDuenio = await _ctx.Duenios.AsNoTracking()
                 .AnyAsync(d => d.UsuNU == user.UsuNU);
 
-            // 4) Claims (lo mínimo: ID, nombre, email, rol si aplica)
+            // 4) Claims
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.UsuNU.ToString()),
@@ -67,21 +69,13 @@ namespace estacionamientos.Controllers
             };
 
             if (esAdmin)
-            {
                 claims.Add(new Claim(ClaimTypes.Role, "Administrador"));
-            } 
             else if (esPlayero)
-            {
                 claims.Add(new Claim(ClaimTypes.Role, "Playero"));
-            } 
             else if (esConductor)
-            {
                 claims.Add(new Claim(ClaimTypes.Role, "Conductor"));
-            } 
             else if (esDuenio)
-            {
                 claims.Add(new Claim(ClaimTypes.Role, "Duenio"));
-            }
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var principal = new ClaimsPrincipal(identity);
@@ -102,16 +96,16 @@ namespace estacionamientos.Controllers
             return RedirectToAction("Index", "Home");
         }
 
+        // POST: /Account/Logout
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return RedirectToAction("Login", "Account");
+            return RedirectToAction(nameof(Login));
         }
 
-
-        // (Opcional) Acceso denegado
+        // Acceso denegado
         [HttpGet]
         public IActionResult Denied() => View();
     }
