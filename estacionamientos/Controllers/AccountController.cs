@@ -19,9 +19,7 @@ namespace estacionamientos.Controllers
         // GET: /Account/Login
         [HttpGet]
         public IActionResult Login(string? returnUrl = null)
-        {
-            return View(new LoginViewModel { ReturnUrl = returnUrl });
-        }
+            => View(new LoginViewModel { ReturnUrl = returnUrl });
 
         // POST: /Account/Login
         [HttpPost, ValidateAntiForgeryToken]
@@ -104,14 +102,12 @@ namespace estacionamientos.Controllers
             return RedirectToAction("Index", "Home");
         }
 
-        // GET: /Account/Logout
-        [HttpGet]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> LogoutPost()
+        public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return RedirectToAction(nameof(Login));
+            return RedirectToAction("Login", "Account");
         }
 
 

@@ -20,8 +20,12 @@ namespace estacionamientos.Controllers
             var playas = await _ctx.Set<AdministraPlaya>()
                 .Where(a => a.DueNU == dueId)
                 .Select(a => a.Playa)
-                .OrderBy(p => p.PlyCiu).ThenBy(p => p.PlyDir)
-                .Select(p => new { p.PlyID, Nombre = p.PlyCiu + " - " + p.PlyDir })
+                .OrderBy(p => p.PlyNom)
+                .Select(p => new 
+                { 
+                    p.PlyID, 
+                    Nombre = p.PlyNom + " (" + p.PlyCiu + ")" 
+                })
                 .ToListAsync();
 
             var playeros = await _ctx.Playeros.AsNoTracking()

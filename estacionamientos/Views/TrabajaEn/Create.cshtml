@@ -13,18 +13,25 @@
         <!-- Mostrar todos los errores de validación -->
         <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
+        <!-- Playero -->
         <div class="mb-3">
             <label asp-for="PlaNU" class="form-label">Playero</label>
-            <select asp-for="PlaNU" asp-items="ViewBag.PlaNU" class="form-select"></select>
+            <select asp-for="PlaNU" asp-items="ViewBag.PlaNU" class="form-select">
+                <option value="" selected disabled>-- Selecciona un playero --</option>
+            </select>
             <span asp-validation-for="PlaNU" class="text-danger"></span>
         </div>
 
+        <!-- Playa -->
         <div class="mb-3">
             <label asp-for="PlyID" class="form-label">Playa</label>
-            <select asp-for="PlyID" asp-items="ViewBag.PlyID" class="form-select"></select>
+            <select asp-for="PlyID" asp-items="ViewBag.PlyID" class="form-select">
+                <option value="" selected disabled>-- Selecciona una playa --</option>
+            </select>
             <span asp-validation-for="PlyID" class="text-danger"></span>
         </div>
 
+        <!-- Botones -->
         <button type="submit" class="btn btn-success me-2">Asignar</button>
         <a asp-controller="Playero" asp-action="Index" class="btn btn-secondary">Cancelar</a>
     </form>
