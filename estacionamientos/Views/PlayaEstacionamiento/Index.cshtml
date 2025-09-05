@@ -23,13 +23,13 @@
 
     <!-- Título -->
     <div class="mb-3">
-        <h1 class="mb-0">Mis Playas</h1>
+        <h1 class="mb-0">Playas</h1>
     </div>
     <form method="get" id="searchForm" class="row g-2 align-items-center">
 
         <!-- Campo de texto -->
         <div class="col-md-5 @(Model.FilterBy == "provincia" ? "d-none" : "")" id="qWrapper">
-            <input name="Q" id="qInput" value="@Model.Q" class="form-control" placeholder="Buscar..." />
+            <input name="Q" id="qInput" value="@Model.Q" class="form-control" placeholder="Buscar Playas..." />
         </div>
 
         <!-- Select de provincias -->

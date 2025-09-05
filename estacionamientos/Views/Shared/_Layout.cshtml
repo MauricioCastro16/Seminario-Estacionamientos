@@ -72,7 +72,11 @@
                                 <li><h6 class="dropdown-header">@User.Identity!.Name</h6></li>
                                 <li><hr class="dropdown-divider" /></li>
                                 <li>
-                                    <a class="dropdown-item" asp-controller="Account" asp-action="Logout">Cerrar sesión</a>
+                                <form asp-controller="Account" asp-action="LogoutPost" method="post" class="px-3 m-0">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="dropdown-item p-0">Cerrar sesión</button>
+                                </form>
+
                                 </li>
                             </ul>
                         </li>
@@ -100,6 +104,19 @@
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.alert[data-autohide]').forEach(el => {
+            const ms = parseInt(el.getAttribute('data-autohide'), 10) || 3000;
+            setTimeout(() => {
+            const inst = bootstrap.Alert.getOrCreateInstance(el);
+            inst.close();
+            }, ms);
+        });
+        });
+        </script>
+
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)

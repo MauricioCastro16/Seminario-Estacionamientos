@@ -5,15 +5,18 @@
     ViewData["Title"] = "Playeros";
 }
 
-<div class="d-flex align-items-center mb-4">
-    <h1 class="mb-0 me-2">Playeros</h1>
-    <a class="btn btn-outline-secondary btn-sm"
-       asp-controller="Playero"
-       asp-action="Create"
-       title="Nuevo playero">
-        <i class="bi bi-plus-lg"></i>
-    </a>
-</div>
+<div class="container">
+    <!-- Encabezado: título + botón Agregar a la derecha -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Playeros</h1>
+        <a class="btn btn-primary"
+           asp-controller="Playero"
+           asp-action="Create"
+           title="Agregar playero">
+            <i class="bi bi-plus-lg me-1"></i> Agregar Playero
+        </a>
+    </div>
+
 
 <div class="container">
     <h5 class="text-center mt-3">Mis Playeros</h5>

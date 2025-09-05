@@ -14,7 +14,7 @@
         <div class="mb-3">
             <label asp-for="PlyNom" class="form-label">Nombre</label>
             <input asp-for="PlyNom" class="form-control" id="nombreInput" autocomplete="off" required />
-            <span asp-validation-for="PlyNom" class="text-danger"></span>
+            <span asp-validation-for="PlyNom" ></span>
         </div>
 
         <!-- Provincia -->
@@ -47,7 +47,7 @@
                 <option>Tucumán</option>
             </select>
             <div class="invalid-feedback">Seleccioná una provincia.</div>
-            <span asp-validation-for="PlyProv" class="text-danger"></span>
+            <span asp-validation-for="PlyProv" ></span>
         </div>
 
         <!-- Ciudad (select dependiente + "Otra") -->
@@ -63,14 +63,14 @@
 
             <input type="text" class="form-control d-none" id="ciudadInput"
                    placeholder="Escribí la ciudad" autocomplete="off" />
-            <span asp-validation-for="PlyCiu" class="text-danger"></span>
+            <span asp-validation-for="PlyCiu" ></span>
         </div>
 
         <!-- Dirección -->
         <div class="mb-3">
             <label asp-for="PlyDir" class="form-label">Dirección</label>
             <input asp-for="PlyDir" class="form-control" id="direccionInput" autocomplete="off" required />
-            <span asp-validation-for="PlyDir" class="text-danger"></span>
+            <span asp-validation-for="PlyDir" ></span>
         </div>
 
         <!-- Tipo de piso (opcional, con 'Otros (escribir)') -->
@@ -91,7 +91,7 @@
         <input type="text" class="form-control d-none" id="pisoInput"
                 placeholder="Escribí el tipo de piso" autocomplete="off" />
 
-        <span asp-validation-for="PlyTipoPiso" class="text-danger"></span>
+        <span asp-validation-for="PlyTipoPiso" ></span>
         </div>
 
 
@@ -105,7 +105,7 @@
                 <input type="radio" class="btn-check" name="PlyLlavReq" id="llaveNo" value="false" checked>
                 <label class="btn btn-outline-danger" for="llaveNo">No</label>
             </div>
-            <span asp-validation-for="PlyLlavReq" class="text-danger"></span>
+            <span asp-validation-for="PlyLlavReq" ></span>
         </div>
 
         <button type="submit" class="btn btn-primary w-100">Guardar</button>

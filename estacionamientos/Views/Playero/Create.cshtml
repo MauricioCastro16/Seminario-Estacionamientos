@@ -1,26 +1,55 @@
-@model estacionamientos.Models.TrabajaEn
+@model estacionamientos.ViewModels.PlayeroCreateVM
+
 
 @{
     ViewData["Title"] = "Asignar Playero a Playa";
 }
+
 
 <div class="container" style="max-width: 600px;">
     <h2 class="mb-4">Asignar Playero a Playa</h2>
 
     <form asp-action="Create" method="post">
         @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
         <div class="mb-3">
-            <label asp-for="PlaNU" class="form-label">Playero</label>
-            <select asp-for="PlaNU" asp-items="ViewBag.PlaNU" class="form-select"></select>
+            <label asp-for="Playero.UsuNyA" class="form-label">Nombre y Apellido</label>
+            <input asp-for="Playero.UsuNyA" class="form-control" />
+            <span asp-validation-for="Playero.UsuNyA" ></span>
         </div>
 
         <div class="mb-3">
-            <label asp-for="PlyID" class="form-label">Playa</label>
-            <select asp-for="PlyID" asp-items="ViewBag.PlyID" class="form-select"></select>
+            <label asp-for="Playero.UsuEmail" class="form-label">Correo electrónico</label>
+            <input asp-for="Playero.UsuEmail" class="form-control" />
+            <span asp-validation-for="Playero.UsuEmail" ></span>
         </div>
 
-        <button type="submit" class="btn btn-success me-2">Asignar</button>
+        <div class="mb-3">
+            <label asp-for="Playero.UsuPswd" class="form-label">Contraseña</label>
+            <input asp-for="Playero.UsuPswd" type="UsuPswd" class="form-control" />
+            <small class="form-text text-muted">Mínimo 8 caracteres.</small>
+            <span asp-validation-for="Playero.UsuPswd" ></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Playero.UsuNumTel" class="form-label">Número de teléfono</label>
+            <input asp-for="Playero.UsuNumTel" class="form-control" />
+            <span asp-validation-for="Playero.UsuNumTel" ></span>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Playa donde trabajará</label>
+            <select asp-for="PlayaId" asp-items="ViewBag.Playas" class="form-select"></select>
+            <span asp-validation-for="PlayaId" ></span>
+        </div>
+
+        <button type="submit" class="btn btn-success me-2">Crear</button>
         <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+
+        @section Scripts { <partial name="_ValidationScriptsPartial" /> }
+
     </form>
 </div>
+
+

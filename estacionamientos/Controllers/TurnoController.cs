@@ -49,8 +49,7 @@ namespace estacionamientos.Controllers
             if (filterPlaNU is int onlyPla && onlyPla > 0)
                 playerosQuery = playerosQuery.Where(p => p.UsuNU == onlyPla);
 
-            var playeros = await playerosQuery.ToListAsync();
-            ViewBag.PlaNU = new SelectList(playeros, "UsuNU", "UsuNyA", plaSel);
+            ViewBag.PlaNU = new SelectList(await playerosQuery.ToListAsync(), "UsuNU", "UsuNyA", plaSel);
 
             var playasQuery = _ctx.Playas.AsNoTracking()
                 .OrderBy(p => p.PlyCiu).ThenBy(p => p.PlyDir)
@@ -68,8 +67,7 @@ namespace estacionamientos.Controllers
                 playasQuery = playasQuery.Where(p => plyIDs.Contains(p.PlyID));
             }
 
-            var playas = await playasQuery.ToListAsync();
-            ViewBag.PlyID = new SelectList(playas, "PlyID", "Nombre", plySel);
+            ViewBag.PlyID = new SelectList(await playasQuery.ToListAsync(), "PlyID", "Nombre", plySel);
         }
 
         // -------------------- Acciones --------------------
@@ -145,7 +143,8 @@ namespace estacionamientos.Controllers
         public async Task<IActionResult> Create(Turno model)
         {
             model.TurApertCaja = ParseMoney(Request.Form[nameof(model.TurApertCaja)]);
-            if (ModelState.ContainsKey(nameof(model.TurApertCaja))) ModelState[nameof(model.TurApertCaja)]!.Errors.Clear();
+            if (ModelState.ContainsKey(nameof(model.TurApertCaja)))
+                ModelState[nameof(model.TurApertCaja)]!.Errors.Clear();
 
             ModelState.Remove(nameof(model.TrabajaEn));
             ModelState.Remove(nameof(model.Playa));
@@ -163,7 +162,7 @@ namespace estacionamientos.Controllers
                 if (!await TrabajaEnAsync(model.PlyID, plaNU))
                     ModelState.AddModelError(string.Empty, "No trabajás en esa playa.");
 
-                model.TurFyhIni = DateTime.UtcNow; // 🔒 siempre ahora
+                model.TurFyhIni = DateTime.UtcNow;
             }
             else
             {
@@ -188,15 +187,17 @@ namespace estacionamientos.Controllers
             _ctx.Turnos.Add(model);
             await _ctx.SaveChangesAsync();
 
-            TempData["Ok"] = $"Turno iniciado en la playa #{model.PlyID}.";
+            TempData["Ok"] = "Turno iniciado.";
             return RedirectToAction(nameof(Index));
         }
 
         public async Task<IActionResult> Edit(int plyID, int plaNU, DateTime turFyhIni)
         {
-            var item = await _ctx.Turnos.FindAsync(plyID, plaNU, turFyhIni);
-            if (item is null) return NotFound();
+            var item = await _ctx.Turnos
+                .Include(t => t.Playa)
+                .FirstOrDefaultAsync(t => t.PlyID == plyID && t.PlaNU == plaNU && t.TurFyhIni == turFyhIni);
 
+            if (item is null) return NotFound();
             if (User.IsInRole("Playero") && plaNU != GetCurrentPlaNU())
                 return Forbid();
 
@@ -218,11 +219,15 @@ namespace estacionamientos.Controllers
             if (User.IsInRole("Playero") && plaNU != GetCurrentPlaNU())
                 return Forbid();
 
-            var db = await _ctx.Turnos.FindAsync(plyID, plaNU, turFyhIni);
+            var db = await _ctx.Turnos
+                .Include(t => t.Playa)
+                .FirstOrDefaultAsync(t => t.PlyID == plyID && t.PlaNU == plaNU && t.TurFyhIni == turFyhIni);
+
             if (db is null) return NotFound();
 
             var parsedCierre = ParseMoney(Request.Form[nameof(model.TurCierrCaja)]);
-            if (ModelState.ContainsKey(nameof(model.TurCierrCaja))) ModelState[nameof(model.TurCierrCaja)]!.Errors.Clear();
+            if (ModelState.ContainsKey(nameof(model.TurCierrCaja)))
+                ModelState[nameof(model.TurCierrCaja)]!.Errors.Clear();
 
             ModelState.Remove(nameof(model.TrabajaEn));
             ModelState.Remove(nameof(model.Playa));
@@ -231,12 +236,21 @@ namespace estacionamientos.Controllers
             if (!await TrabajaEnAsync(db.PlyID, db.PlaNU))
                 ModelState.AddModelError(string.Empty, "El playero no trabaja en esa playa.");
 
-            if (!ModelState.IsValid) return View(db);
+            if (!ModelState.IsValid)
+            {
+                if (User.IsInRole("Playero"))
+                    await LoadSelects(db.PlaNU, db.PlyID, filterPlaNU: db.PlaNU);
+                else
+                    await LoadSelects(db.PlaNU, db.PlyID);
+
+                ViewBag.NowLocal = DateTime.Now;
+                return View(db);
+            }
 
             if (User.IsInRole("Playero"))
             {
-                db.TurFyhFin = DateTime.UtcNow;     // 🔒 se fija ahora
-                db.TurCierrCaja = parsedCierre;    // solo cierre editable
+                db.TurFyhFin = DateTime.UtcNow;
+                db.TurCierrCaja = parsedCierre;
             }
             else
             {

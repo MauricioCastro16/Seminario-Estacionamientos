@@ -48,3 +48,30 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
+
+span.field-validation-error,
+span.text-danger[data-valmsg-for] {
+  display: block;
+  margin-top: .25rem;
+  font-size: .875rem;        /* tamaño chico (~14px) */
+  line-height: 1.25;
+  color: #dc3545;            /* rojo Bootstrap */
+  font-weight: 400;
+}
+
+
+/* Placeholders sin error */
+span.field-validation-valid,
+.validation-summary-valid {
+  display: none;
+}
+
+/* Estilo del resumen de validación */
+.validation-summary-errors {
+  font-size: .875rem;
+}
+.validation-summary-errors li {
+  margin-bottom: .25rem;
+}
+
+

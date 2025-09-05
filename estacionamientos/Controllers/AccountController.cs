@@ -106,11 +106,14 @@ namespace estacionamientos.Controllers
 
         // GET: /Account/Logout
         [HttpGet]
-        public async Task<IActionResult> Logout()
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> LogoutPost()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return RedirectToAction(nameof(Login));
         }
+
 
         // (Opcional) Acceso denegado
         [HttpGet]

@@ -23,10 +23,10 @@
 
     <dl class="row">
         <dt class="col-sm-3">Playa</dt>
-        <dd class="col-sm-9">@Model.PlyID — @Model.Playa?.PlyCiu @Model.Playa?.PlyDir</dd>
+        <dd class="col-sm-9">@Model.Playa?.PlyCiu @Model.Playa?.PlyDir</dd>
 
         <dt class="col-sm-3">Playero</dt>
-        <dd class="col-sm-9">@Model.PlaNU — @Model.Playero?.UsuNyA</dd>
+        <dd class="col-sm-9">@Model.Playero?.UsuNyA</dd>
 
         <dt class="col-sm-3">Inicio</dt>
         <dd class="col-sm-9">@Fmt(Model.TurFyhIni)</dd>
@@ -39,6 +39,17 @@
 
         <dt class="col-sm-3">Cierre de caja</dt>
         <dd class="col-sm-9">@((Model.TurCierrCaja?.ToString("N2") ?? "-"))</dd>
+
+        @{
+            decimal? total = (Model.TurApertCaja.HasValue || Model.TurCierrCaja.HasValue)
+                ? (Model.TurApertCaja ?? 0) + (Model.TurCierrCaja ?? 0)
+                : (decimal?)null;
+        }
+        <dt class="col-sm-3">Total del turno</dt>
+        <dd class="col-sm-9">@((total?.ToString("N2") ?? "-"))</dd>
+
+
+
     </dl>
 
     <div class="d-flex gap-2">
