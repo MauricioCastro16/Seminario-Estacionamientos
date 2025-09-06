@@ -1,26 +1,104 @@
 ﻿@using System.Security.Claims
+@using estacionamientos.Models
+@using System
+
 @{
     ViewData["Title"] = "Inicio";
+    var rol = User.FindFirst(ClaimTypes.Role)?.Value ?? "Usuario";
+    Turno? abierto = ViewBag.TurnoAbierto as Turno; // lo carga el controller
+
+    // === Helper local: igual que en "Gestionar turno" ===
+    DateTime ToCba(DateTime dt)
+    {
+        if (dt.Kind == DateTimeKind.Unspecified)
+            dt = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+        if (dt.Kind == DateTimeKind.Local)
+            dt = dt.ToUniversalTime();
+
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("America/Argentina/Cordoba");
+        return TimeZoneInfo.ConvertTimeFromUtc(dt, tz);
+    }
 }
 
 <div class="d-flex justify-content-center align-items-center" style="min-height:60vh;">
     <div class="text-center text-secondary">
 
-@if (User.Identity?.IsAuthenticated ?? false)
-{
-    var rol = User.FindFirst(ClaimTypes.Role)?.Value ?? "Usuario";
-    if (rol == "Duenio")
-    {
-        <h1 class="display-4">Bienvenido Dueño</h1>
-    }    
-    else 
-    {
-        <h1 class="display-4">Bienvenido @rol</h1>
-    }
-}
-else
-{
-    <i><h1 class="display-4">Bienvenido/a</h1></i>
-}
+        @if (User.Identity?.IsAuthenticated ?? false)
+        {
+            if (rol == "Duenio")
+            {
+                <h1 class="display-4">Bienvenido Dueño</h1>
+            }
+            else
+            {
+                <h1 class="display-4">Bienvenido @rol</h1>
+            }
+        }
+        else
+        {
+            <i><h1 class="display-4">Bienvenido/a</h1></i>
+        }
+
+        @* --- agregado: si es Playero mostramos la card debajo --- *@
+        @if (rol?.Trim().Equals("Playero", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            <div class="mt-4 text-start">
+                @if (abierto == null)
+                {
+                    <div class="card mb-3 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">Sin turno abierto</h5>
+                            <p class="text-muted mb-3">No tenés un turno abierto.</p>
+                            <a class="btn btn-primary"
+                                asp-action="Create" asp-controller="Turno"
+                                asp-route-returnUrl="@Url.Action("Index","Home")">
+                                <i class="bi bi-play-circle me-1"></i> Abrir turno
+                            </a>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="card mb-3 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title d-flex align-items-center">
+                                <span class="dot-live"></span>
+                                Turno en curso
+                            </h5>
+                            <div class="row gy-2">
+                                <div class="col-md-4">
+                                    <div class="text-muted small">Playa</div>
+                                    <div class="fw-semibold">@abierto.Playa?.PlyNom (@abierto.PlyID)</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-muted small">Inicio</div>
+                                    <div class="fw-semibold">@ToCba(abierto.TurFyhIni).ToString("dd/MM/yyyy HH:mm")</div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2 mt-3">
+                                <a class="btn btn-primary"
+                                    asp-action="Edit" asp-controller="Turno"
+                                    asp-route-plyID="@abierto.PlyID"
+                                    asp-route-plaNU="@abierto.PlaNU"
+                                    asp-route-turFyhIni="@abierto.TurFyhIni.ToString("o")"
+                                    asp-route-returnUrl="@Url.Action("Index","Home")">
+                                    <i class="bi bi-stop-circle me-1"></i> Finalizar turno
+                                </a>
+                                <a class="btn btn-outline-secondary"
+                                    asp-controller="Turno" asp-action="Details"
+                                    asp-route-plyID="@abierto.PlyID"
+                                    asp-route-plaNU="@abierto.PlaNU"
+                                    asp-route-turFyhIni="@abierto.TurFyhIni.ToString("o")"
+                                    asp-route-returnUrl="@Url.Action("Index","Home")">
+                                    <i class="bi bi-eye me-1"></i>
+                                </a>
+
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
     </div>
 </div>

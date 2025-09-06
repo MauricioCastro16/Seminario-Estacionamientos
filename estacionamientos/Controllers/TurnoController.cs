@@ -55,7 +55,6 @@ namespace estacionamientos.Controllers
                 .OrderBy(p => p.PlyCiu).ThenBy(p => p.PlyDir)
                 .Select(p => new { p.PlyID, Nombre = p.PlyNom + " (" + p.PlyCiu + ")" });
 
-
             if (filterPlaNU is int filterPla && filterPla > 0)
             {
                 var plyIDs = await _ctx.Trabajos
@@ -117,8 +116,11 @@ namespace estacionamientos.Controllers
             return item is null ? NotFound() : View(item);
         }
 
-        public async Task<IActionResult> Create()
+        // --- CAMBIO mínimo: aceptar returnUrl y guardarlo en ViewBag ---
+        public async Task<IActionResult> Create(string? returnUrl = null)
         {
+            ViewBag.ReturnUrl = returnUrl;
+
             if (User.IsInRole("Playero"))
             {
                 var plaNU = GetCurrentPlaNU();
@@ -129,6 +131,9 @@ namespace estacionamientos.Controllers
                 if (yaAbierto)
                 {
                     TempData["Error"] = "Ya tenés un turno en curso.";
+                    if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+                        return Redirect(returnUrl);
+
                     return RedirectToAction(nameof(Index));
                 }
 
@@ -189,11 +194,20 @@ namespace estacionamientos.Controllers
             await _ctx.SaveChangesAsync();
 
             TempData["Ok"] = "Turno iniciado.";
+
+            // --- CAMBIO mínimo: respetar returnUrl (query o form) ---
+            var returnUrl = Request.Form["returnUrl"].FirstOrDefault() ?? Request.Query["returnUrl"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+                return Redirect(returnUrl);
+
             return RedirectToAction(nameof(Index));
         }
 
-        public async Task<IActionResult> Edit(int plyID, int plaNU, DateTime turFyhIni)
+        // --- CAMBIO mínimo: aceptar returnUrl y guardarlo en ViewBag ---
+        public async Task<IActionResult> Edit(int plyID, int plaNU, DateTime turFyhIni, string? returnUrl = null)
         {
+            ViewBag.ReturnUrl = returnUrl;
+
             var item = await _ctx.Turnos
                 .Include(t => t.Playa)
                 .FirstOrDefaultAsync(t => t.PlyID == plyID && t.PlaNU == plaNU && t.TurFyhIni == turFyhIni);
@@ -264,6 +278,12 @@ namespace estacionamientos.Controllers
             _ctx.Update(db);
             await _ctx.SaveChangesAsync();
             TempData["Ok"] = "Turno actualizado.";
+
+            // --- CAMBIO mínimo: respetar returnUrl (query o form) ---
+            var returnUrl = Request.Form["returnUrl"].FirstOrDefault() ?? Request.Query["returnUrl"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+                return Redirect(returnUrl);
+
             return RedirectToAction(nameof(Index));
         }
 

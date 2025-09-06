@@ -12,13 +12,16 @@
     <form asp-action="Create" method="post">
         @Html.AntiForgeryToken()
 
-<div class="mb-3">
-    <label class="form-label">Playa</label>
-    <select asp-for="PlyID" class="form-select" asp-items="ViewBag.PlyID">
-        <option value="">-- Seleccionar Playa --</option>
-    </select>
-    <span asp-validation-for="PlyID" class="text-danger"></span>
-</div>
+        <input type="hidden" name="returnUrl" 
+           value="@(ViewBag.ReturnUrl ?? Context.Request.Query["returnUrl"].ToString())" />
+
+        <div class="mb-3">
+            <label class="form-label">Playa</label>
+            <select asp-for="PlyID" class="form-select" asp-items="ViewBag.PlyID">
+                <option value="">-- Seleccionar Playa --</option>
+            </select>
+            <span asp-validation-for="PlyID" class="text-danger"></span>
+        </div>
 
         @if (!esPlayero)
         {
@@ -66,8 +69,8 @@
         </div>
 
         <div class="d-flex gap-2">
-            <a class="btn btn-secondary" asp-action="Index">Cancelar</a>
-            <button class="btn btn-primary" type="submit">Guardar</button>
-        </div>
+        <a class="btn btn-secondary" asp-action="Index" asp-controller="Home">Cancelar</a>
+        <button class="btn btn-primary" type="submit">Guardar</button>
+    </div>
     </form>
 </div>

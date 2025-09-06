@@ -4,6 +4,10 @@
 @{
     ViewData["Title"] = "Detalle de turno";
 
+    // --- NUEVO: tomar returnUrl si viene por query ---
+    var returnUrl = Context.Request.Query["returnUrl"].ToString();
+    var backHref  = !string.IsNullOrWhiteSpace(returnUrl) ? returnUrl : Url.Action("Index","Turno");
+
     DateTime ToCba(DateTime dt)
     {
         if (dt.Kind == DateTimeKind.Unspecified)
@@ -47,12 +51,10 @@
         }
         <dt class="col-sm-3">Total del turno</dt>
         <dd class="col-sm-9">@((total?.ToString("N2") ?? "-"))</dd>
-
-
-
     </dl>
 
     <div class="d-flex gap-2">
-        <a class="btn btn-secondary" asp-action="Index">Volver</a>
+        <!-- NUEVO: usa backHref (Home si vino returnUrl, Turno/Index si no) -->
+        <a class="btn btn-secondary" href="@backHref">Volver</a>
     </div>
 </div>
