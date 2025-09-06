@@ -48,6 +48,29 @@ namespace estacionamientos.Controllers
             return View((metodos, metodosAceptados, playa));
         }
 
+        // Vista simplificada de Métodos de Pago (solo lectura, para el Playero)
+        [HttpGet("Playas/{plyID}/MetodosPago")]
+        public async Task<IActionResult> Lista(int plyID)
+        {
+            var playa = await _ctx.Playas
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.PlyID == plyID);
+
+            if (playa == null)
+                return NotFound();
+
+            var metodosAceptados = await _ctx.AceptaMetodosPago
+                .Include(a => a.MetodoPago)
+                .AsNoTracking()
+                .Where(a => a.PlyID == plyID)
+                .ToListAsync();
+
+            ViewBag.Playa = playa;
+            return View(metodosAceptados);
+        }
+
+
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Guardar(int plyID, List<int> metodosSeleccionados)

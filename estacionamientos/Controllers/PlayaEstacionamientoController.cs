@@ -203,6 +203,18 @@ namespace estacionamientos.Controllers
             return View(playa);
         }
 
+        public async Task<IActionResult> DetailsPlayero(int id)
+        {
+            var playa = await _context.Playas
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.PlyID == id);
+
+            if (playa is null) return NotFound();
+
+            return View(playa);
+        }
+
+
 
         public IActionResult Create() => View(new PlayaEstacionamiento());
 
