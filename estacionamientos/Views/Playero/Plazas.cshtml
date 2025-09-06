@@ -7,6 +7,16 @@
 <div class="container py-3">
     <h2 class="mb-3">Plazas de la Playa</h2>
 
+    @if (TempData["Mensaje"] != null)
+    {
+        var cssClass = TempData["MensajeCss"]?.ToString() ?? "success";
+
+        <div id="alertMensaje" class="alert alert-@cssClass alert-dismissible fade show" role="alert">
+            @TempData["Mensaje"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
     @if (sinTurno)
     {
         <div class="alert alert-warning">
@@ -28,6 +38,7 @@
                     <th>Techo</th>
                     <th>Altura</th>
                     <th>Estado</th>
+                    <th>Habilitada</th>
                 </tr>
             </thead>
             <tbody>
@@ -47,9 +58,33 @@
                             <span class="badge bg-success">Libre</span>
                         }
                     </td>
+                    <td>
+                        <form asp-action="ToggleHabilitada" asp-controller="Playero" method="post" class="d-inline">
+                            <input type="hidden" name="PlyID" value="@plaza.PlyID" />
+                            <input type="hidden" name="PlzNum" value="@plaza.PlzNum" />
+
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox"
+                                    onchange="this.form.submit();"
+                                    @(plaza.PlzHab ? "checked" : "") />
+                            </div>
+                        </form>
+                    </td>
                 </tr>
             }
             </tbody>
         </table>
     }
 </div>
+
+@section Scripts {
+    <script>
+        // desaparecer automáticamente el alert a los 3 segundos
+        setTimeout(() => {
+            const alert = document.getElementById('alertMensaje');
+            if (alert) {
+                bootstrap.Alert.getOrCreateInstance(alert).close();
+            }
+        }, 3000);
+    </script>
+}

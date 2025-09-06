@@ -33,7 +33,7 @@ namespace estacionamientos.Controllers
             return item is null ? NotFound() : View(item);
         }
 
-        [HttpGet("Playas/{plyID}/[controller]")]         
+        [HttpGet("Playas/{plyID}/[controller]")]
         public async Task<IActionResult> ConfigurarPlazas(int plyID)
         {
             var playa = await _ctx.Playas
@@ -43,9 +43,9 @@ namespace estacionamientos.Controllers
 
             if (playa == null) return NotFound();
 
-            ViewBag.PlyID  = playa.PlyID;
+            ViewBag.PlyID = playa.PlyID;
             ViewBag.PlyNom = playa.PlyNom;
-            ViewBag.DefaultCantidad = 1; 
+            ViewBag.DefaultCantidad = 1;
 
             return View(playa.Plazas.OrderBy(z => z.PlzNum));
         }
@@ -70,7 +70,7 @@ namespace estacionamientos.Controllers
 
             // Validar altura según techo
             bool alturaValida =
-                (plzTecho == true  && plzAlt.HasValue && plzAlt.Value >= 2m) ||
+                (plzTecho == true && plzAlt.HasValue && plzAlt.Value >= 2m) ||
                 (plzTecho == false && plzAlt == null);
 
             if (cantidad < 1 || plzTecho == null || !alturaValida)
@@ -102,11 +102,11 @@ namespace estacionamientos.Controllers
             {
                 var plaza = new PlazaEstacionamiento
                 {
-                    PlyID   = plyID,
-                    PlzNum  = nextNum + i,
-                    PlzTecho= plzTecho.Value,
-                    PlzAlt  = plzTecho.Value ? plzAlt : null,
-                    PlzHab  = true
+                    PlyID = plyID,
+                    PlzNum = nextNum + i,
+                    PlzTecho = plzTecho.Value,
+                    PlzAlt = plzTecho.Value ? plzAlt : null,
+                    PlzHab = true
                 };
                 _ctx.Plazas.Add(plaza);
             }
@@ -137,7 +137,7 @@ namespace estacionamientos.Controllers
             }
 
             plaza.PlzTecho = plzTecho;
-            plaza.PlzAlt   = plzAlt;
+            plaza.PlzAlt = plzAlt;
 
             await _ctx.SaveChangesAsync();
             TempData["Ok"] = $"Plaza {plzNum} actualizada.";
@@ -162,5 +162,28 @@ namespace estacionamientos.Controllers
             TempData["Ok"] = $"Plaza {plzNum} eliminada.";
             return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
         }
+        
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleHabilitadaDueño(int plyID, int plzNum)
+        {
+            var plaza = await _ctx.Plazas.FindAsync(plyID, plzNum);
+            if (plaza is null)
+            {
+                TempData["Error"] = $"No se encontró la plaza {plzNum}.";
+                TempData["MensajeCss"] = "danger";
+                return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
+            }
+
+            plaza.PlzHab = !plaza.PlzHab;
+            await _ctx.SaveChangesAsync();
+
+            TempData["Ok"] = $"Plaza {plzNum} {(plaza.PlzHab ? "habilitada" : "deshabilitada")}.";
+            TempData["MensajeCss"] = plaza.PlzHab ? "success" : "danger";
+
+            return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
+        }
+
+
     }
 }

@@ -184,5 +184,27 @@ namespace estacionamientos.Controllers
             ViewBag.SinTurno = false;
             return View(plazas);
         }
+
+        // Cambiar habilitación de una plaza =====
+        [HttpPost]
+        public async Task<IActionResult> ToggleHabilitada(int PlyID, int PlzNum)
+        {
+            var plaza = await _context.Plazas
+                .FirstOrDefaultAsync(p => p.PlyID == PlyID && p.PlzNum == PlzNum);
+
+            if (plaza == null)
+            {
+                return NotFound();
+            }
+
+            plaza.PlzHab = !plaza.PlzHab;
+            _context.Update(plaza);
+            await _context.SaveChangesAsync();
+
+            TempData["Mensaje"] = $"Plaza {plaza.PlzNum} {(plaza.PlzHab ? "habilitada" : "deshabilitada")}.";
+            TempData["MensajeCss"] = plaza.PlzHab ? "success" : "danger";
+
+            return RedirectToAction(nameof(Plazas));
+        }
     }
 }
