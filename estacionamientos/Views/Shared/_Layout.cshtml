@@ -70,7 +70,16 @@
                                 Mis turnos
                             </a>
                         </li>
+
+                        <li class="nav-item">
+
+                            <a class="nav-link text-dark" asp-controller="Playero" asp-action="Plazas">
+                                Plazas
+                            </a>
+                        </li>
+
                     }
+                    
 
                     @if (User.IsInRole("Duenio"))
                     {
@@ -90,12 +99,12 @@
                         @* Badge de playa activa si corresponde *@
                         @if (!string.IsNullOrEmpty(playaActiva))
                         {
-                            <li class="nav-item me-3">
-                                <span class="badge rounded-pill bg-light text-dark shadow-sm px-3 py-2">
-                                    <i class="bi bi-geo-alt text-primary me-1"></i>
-                                    <strong class="text-primary">@playaActiva</strong>
-                                </span>
-                            </li>
+<li class="nav-item me-3">
+    <span class="badge rounded-pill bg-light text-dark shadow-sm px-3 py-2">
+        <i class="bi bi-geo-alt text-primary me-1"></i>
+        Estás en:  <strong class="text-primary">@playaActiva</strong>
+    </span>
+</li>
                         }
 
                         <li class="nav-item dropdown">
