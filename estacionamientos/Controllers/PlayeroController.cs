@@ -164,16 +164,9 @@ namespace estacionamientos.Controllers
         {
             var usuId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            // turno abierto del playero logueado
             var turno = await _context.Turnos
                 .Include(t => t.Playa)
-                .FirstOrDefaultAsync(t => t.PlaNU == usuId && t.TurFyhFin == null);
-
-            if (turno == null)
-            {
-                ViewBag.SinTurno = true;
-                return View((IEnumerable<PlazaEstacionamiento>?)null);
-            }
+                .FirstAsync(t => t.PlaNU == usuId && t.TurFyhFin == null);
 
             var plazas = await _context.Plazas
                 .Where(p => p.PlyID == turno.PlyID)
@@ -181,7 +174,8 @@ namespace estacionamientos.Controllers
                 .AsNoTracking()
                 .ToListAsync();
 
-            ViewBag.SinTurno = false;
+            ViewBag.PlyID = turno.PlyID;
+
             return View(plazas);
         }
 
