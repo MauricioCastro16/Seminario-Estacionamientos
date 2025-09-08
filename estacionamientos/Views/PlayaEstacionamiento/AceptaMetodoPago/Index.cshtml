@@ -1,54 +1,96 @@
 ﻿@{
     ViewData["Title"] = "Métodos de Pago";
 }
-
 @model (List<estacionamientos.Models.MetodoPago> Metodos, List<int> Aceptados, estacionamientos.Models.PlayaEstacionamiento playa)
 
-<form asp-action="Guardar" asp-route-plyID="@Model.playa.PlyID" method="post" class="container d-flex flex-column gap-2 align-items-center" style="width:500px;">
-    <h1>@ViewData["Title"]</h1>
-    <h6>Estacionamiento @Model.playa.PlyID</h6>
-    @foreach (var metodo in Model.Metodos)
+<form asp-action="Guardar" asp-route-plyID="@Model.playa.PlyID"
+      method="post"
+      class="container d-flex flex-column gap-3 align-items-center"
+      style="max-width:500px;">
+    <h1 class="display-6 fw-semibold">@ViewData["Title"]</h1>
+    <h6 class="text-muted">Estacionamiento @Model.playa.PlyID</h6>
+
+    @for (int i = 0; i < Model.Metodos.Count; i++)
     {
+        var metodo = Model.Metodos[i];
         bool seleccionado = Model.Aceptados.Contains(metodo.MepID);
+        string cid = $"mep_{metodo.MepID}";
 
-        var claseExtra = seleccionado ? "" : "not-selected";
+        // elegir icono segun el nombre (simple por contains)
+        string icon = "bi-wallet2";
+        if (metodo.MepNom.ToLower().Contains("efectivo")) icon = "bi-cash-stack";
+        else if (metodo.MepNom.ToLower().Contains("crédito")) icon = "bi-credit-card-2-front";
+        else if (metodo.MepNom.ToLower().Contains("débito")) icon = "bi-credit-card";
+        else if (metodo.MepNom.ToLower().Contains("transfer")) icon = "bi-bank";
 
-        <label class="card d-flex gap-2 flex-row px-2 justify-content-center w-100 @claseExtra" style="cursor:pointer;">
-            <input type="checkbox" 
-                   name="metodosSeleccionados" 
-                   value="@metodo.MepID" 
-                   style="width:24px" 
-                   class="ms-3 toggle-class"
+        <label class="card pago-card d-flex gap-3 flex-row align-items-center px-3 py-2 w-100"
+               style="cursor:pointer;"
+               for="@cid">
+            <input type="checkbox"
+                   id="@cid"
+                   name="metodosSeleccionados"
+                   value="@metodo.MepID"
+                   class="form-check-input me-2"
                    @(seleccionado ? "checked" : "") />
-            <div class="card-body text-center">
-                <h5>@metodo.MepNom</h5>
-                <p class="m-0">@metodo.MepDesc</p>
+
+            <div class="d-flex align-items-center gap-3 flex-grow-1">
+                <i class="bi @icon fs-3 text-primary"></i>
+                <div class="text-center flex-grow-1">
+                    <h5 class="card-title mb-1">@metodo.MepNom</h5>
+                    <p class="m-0 text-muted small">@metodo.MepDesc</p>
+                </div>
             </div>
         </label>
     }
 
     <input type="hidden" name="plyID" value="@Model.playa.PlyID" />
 
-    <div class="d-flex w-100 mt-4">
-        <button type="submit" class="btn btn-primary" id="btnGuardar">Guardar</button>
-        <a asp-controller="Playas" asp-action="Index" class="btn btn-secondary ms-2">Cancelar</a>
-
+    <div class="d-flex w-100 mt-4 gap-2">
+        <button type="submit" class="btn btn-primary flex-fill" id="btnGuardar">Guardar</button>
+        <a asp-controller="Playas" asp-action="Index" class="btn btn-outline-secondary flex-fill">Cancelar</a>
     </div>
 </form>
 
-@section AceptaMetodoPagoScript{
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.toggle-class').forEach(chk => {
-                chk.addEventListener('change', function () {
-                    const label = this.closest('label');
-                    if (this.checked) {
-                        label.classList.remove('not-selected');
-                    } else {
-                        label.classList.add('not-selected');
-                    }
-                });
-            });
-        });
-    </script>
+<style>
+/* tarjeta base */
+.pago-card {
+    transition: all .2s ease-in-out;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .75rem;
+}
+
+/* no seleccionado */
+.pago-card:not(:has(input:checked)) {
+    opacity: .6;
+    background-color: var(--bs-light);
+}
+
+/* seleccionado */
+.pago-card:has(input:checked) {
+    opacity: 1;
+    background-color: var(--bs-primary-bg-subtle);
+    box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .2);
+    border-color: rgba(var(--bs-primary-rgb), .5);
+}
+</style>
+
+@section Scripts {
+<script>
+  // fallback para navegadores sin :has()
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.pago-card').forEach(c => {
+      const chk = c.querySelector('input[type="checkbox"]');
+      if (!chk) return;
+      function sync() {
+        if (chk.checked) {
+          c.classList.add('is-on');
+        } else {
+          c.classList.remove('is-on');
+        }
+      }
+      sync();
+      chk.addEventListener('change', sync);
+    });
+  });
+</script>
 }

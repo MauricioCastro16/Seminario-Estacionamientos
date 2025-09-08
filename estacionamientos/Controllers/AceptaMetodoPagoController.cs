@@ -26,12 +26,12 @@ namespace estacionamientos.Controllers
             ViewBag.MepID = new SelectList(metodos, "MepID", "MepNom", mepSel);
         }
 
-        //Retorna la vista principal con los todos los métodos de pago y los métodos de pago aceptados por una playa específica
+        // Vista principal de métodos de pago para una playa
         [HttpGet("Playas/{plyID}/[controller]")]
-        public async Task<IActionResult> Index(int plyId)
+        public async Task<IActionResult> Index(int plyID)
         {
             var metodosAceptados = await _ctx.AceptaMetodosPago
-                .Where(a => a.PlyID == plyId)
+                .Where(a => a.PlyID == plyID)
                 .AsNoTracking()
                 .Select(a => a.MepID)
                 .ToListAsync();
@@ -40,7 +40,7 @@ namespace estacionamientos.Controllers
                 .OrderBy(m => m.MepNom)
                 .ToListAsync();
 
-            var playa = await _ctx.Playas.FirstOrDefaultAsync(p => p.PlyID == plyId);
+            var playa = await _ctx.Playas.FirstOrDefaultAsync(p => p.PlyID == plyID);
 
             if (playa == null)
                 return NotFound();
@@ -48,30 +48,47 @@ namespace estacionamientos.Controllers
             return View((metodos, metodosAceptados, playa));
         }
 
+        // Vista simplificada de Métodos de Pago (solo lectura, para el Playero)
+        [HttpGet("Playas/{plyID}/MetodosPago")]
+        public async Task<IActionResult> Lista(int plyID)
+        {
+            var playa = await _ctx.Playas
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.PlyID == plyID);
+
+            if (playa == null)
+                return NotFound();
+
+            var metodosAceptados = await _ctx.AceptaMetodosPago
+                .Include(a => a.MetodoPago)
+                .AsNoTracking()
+                .Where(a => a.PlyID == plyID)
+                .ToListAsync();
+
+            ViewBag.Playa = playa;
+            return View(metodosAceptados);
+        }
+
+
+
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Guardar(int plyID, List<int> metodosSeleccionados)
         {
-            // Traigo todos los aceptados actuales
             var aceptadosActuales = await _ctx.AceptaMetodosPago
                 .Where(a => a.PlyID == plyID)
                 .Select(a => a.MepID)
                 .ToListAsync();
 
-            // Métodos a agregar (están seleccionados pero no estaban en la BD)
+            // Agregar nuevos
             var nuevos = metodosSeleccionados.Except(aceptadosActuales).ToList();
-
             foreach (var mepID in nuevos)
             {
-                _ctx.AceptaMetodosPago.Add(new AceptaMetodoPago
-                {
-                    PlyID = plyID,
-                    MepID = mepID,
-                });
+                _ctx.AceptaMetodosPago.Add(new AceptaMetodoPago { PlyID = plyID, MepID = mepID });
             }
 
-            // Métodos a eliminar (estaban en la BD pero ya no están seleccionados)
+            // Eliminar desmarcados
             var eliminar = aceptadosActuales.Except(metodosSeleccionados).ToList();
-
             if (eliminar.Any())
             {
                 var registrosAEliminar = await _ctx.AceptaMetodosPago
@@ -83,9 +100,10 @@ namespace estacionamientos.Controllers
 
             await _ctx.SaveChangesAsync();
 
-            return RedirectToAction("", "Playas");
+            TempData["SuccessMessage"] = "Los métodos de pago fueron actualizados correctamente.";
+            return RedirectToAction("Index", "Playas");
         }
-        
+
         public async Task<IActionResult> Details(int plyID, int mepID)
         {
             var item = await _ctx.AceptaMetodosPago
@@ -117,7 +135,9 @@ namespace estacionamientos.Controllers
 
             _ctx.AceptaMetodosPago.Add(model);
             await _ctx.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+
+            TempData["SuccessMessage"] = "Método de pago agregado correctamente.";
+            return RedirectToAction("Index", "Playas");
         }
 
         public async Task<IActionResult> Edit(int plyID, int mepID)
@@ -132,8 +152,8 @@ namespace estacionamientos.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int plyID, int mepID, AceptaMetodoPago model)
         {
-            // PK fija (si querés poder cambiar método o playa, hacé delete+create)
-            if (plyID != model.PlyID || mepID != model.MepID) return BadRequest();
+            if (plyID != model.PlyID || mepID != model.MepID)
+                return BadRequest();
 
             if (!ModelState.IsValid)
             {
@@ -143,7 +163,9 @@ namespace estacionamientos.Controllers
 
             _ctx.Entry(model).State = EntityState.Modified;
             await _ctx.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+
+            TempData["SuccessMessage"] = "Método de pago actualizado.";
+            return RedirectToAction("Index", "Playas");
         }
 
         public async Task<IActionResult> Delete(int plyID, int mepID)
@@ -167,11 +189,12 @@ namespace estacionamientos.Controllers
             {
                 _ctx.AceptaMetodosPago.Remove(item);
                 await _ctx.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+
+                TempData["SuccessMessage"] = "Método de pago eliminado.";
+                return RedirectToAction("Index", "Playas");
             }
             catch (DbUpdateException)
             {
-                // Si hay pagos usando (PlyID, MepID) y la FK está en Restrict, puede fallar
                 ModelState.AddModelError(string.Empty, "No se puede eliminar: hay pagos que usan este método en esta playa.");
                 return View("Delete", item);
             }

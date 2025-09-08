@@ -1,0 +1,24 @@
+@model estacionamientos.Models.Playero
+
+@{
+    ViewData["Title"] = "Detalles del Playero";
+}
+
+<div class="container" style="max-width: 600px;">
+    <h2 class="mb-4">Detalles del Playero</h2>
+
+    <dl class="row">
+        <dt class="col-sm-3">Nombre</dt>
+        <dd class="col-sm-9">@Model.UsuNyA</dd>
+
+        <dt class="col-sm-3">Email</dt>
+        <dd class="col-sm-9">@Model.UsuEmail</dd>
+
+        <dt class="col-sm-3">Teléfono</dt>
+        <dd class="col-sm-9">@Model.UsuNumTel</dd>
+    </dl>
+
+    <div class="mt-4">
+        <a asp-action="Index" class="btn btn-secondary">Volver</a>
+    </div>
+</div>

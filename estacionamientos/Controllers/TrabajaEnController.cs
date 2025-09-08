@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
+using System.Security.Claims;
 
 namespace estacionamientos.Controllers
 {
@@ -13,9 +14,18 @@ namespace estacionamientos.Controllers
 
         private async Task LoadSelects(int? plySel = null, int? plaSel = null)
         {
-            var playas = await _ctx.Playas.AsNoTracking()
-                .OrderBy(p => p.PlyCiu).ThenBy(p => p.PlyDir)
-                .Select(p => new { p.PlyID, Nombre = p.PlyCiu + " - " + p.PlyDir })
+            var dueId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            // solo las playas administradas por el dueño logueado
+            var playas = await _ctx.Set<AdministraPlaya>()
+                .Where(a => a.DueNU == dueId)
+                .Select(a => a.Playa)
+                .OrderBy(p => p.PlyNom)
+                .Select(p => new 
+                { 
+                    p.PlyID, 
+                    Nombre = p.PlyNom + " (" + p.PlyCiu + ")" 
+                })
                 .ToListAsync();
 
             var playeros = await _ctx.Playeros.AsNoTracking()
@@ -27,6 +37,7 @@ namespace estacionamientos.Controllers
             ViewBag.PlaNU = new SelectList(playeros, "UsuNU", "UsuNyA", plaSel);
         }
 
+        // GET: /TrabajaEn
         public async Task<IActionResult> Index()
         {
             var q = _ctx.Trabajos
@@ -34,33 +45,46 @@ namespace estacionamientos.Controllers
                 .Include(t => t.Playero)
                 .Where(t => t.TrabEnActual)
                 .AsNoTracking();
+
             return View(await q.ToListAsync());
         }
 
-        public async Task<IActionResult> Create()
+        // GET: /TrabajaEn/NuevaAsignacion?plaNU=38
+        [HttpGet]
+        public async Task<IActionResult> NuevaAsignacion(int? plaNU = null, string? returnUrl = null)
         {
-            await LoadSelects();
-            return View(new TrabajaEn());
+            await LoadSelects(null, plaNU);
+            ViewBag.ReturnUrl = returnUrl;
+            return View("Create", new TrabajaEn { PlaNU = plaNU ?? 0 });
         }
 
-        [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(TrabajaEn model)
+        // POST: /TrabajaEn/NuevaAsignacion
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> NuevaAsignacionPost(TrabajaEn model, string? returnUrl = null)
         {
+            // evitar duplicados
             if (await _ctx.Trabajos.AnyAsync(x => x.PlyID == model.PlyID && x.PlaNU == model.PlaNU))
                 ModelState.AddModelError(string.Empty, "Ese playero ya está asignado a esa playa.");
 
             if (!ModelState.IsValid)
             {
                 await LoadSelects(model.PlyID, model.PlaNU);
-                return View(model);
+                ViewBag.ReturnUrl = returnUrl;
+                return View("Create", model);
             }
 
             model.TrabEnActual = true;
             _ctx.Trabajos.Add(model);
             await _ctx.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+
+            // siempre vuelve a Playero/Index
+            return RedirectToAction("Index", "Playero");
         }
 
+
+        // GET: /TrabajaEn/Delete?plyID=5&plaNU=38
+        [HttpGet]
         public async Task<IActionResult> Delete(int plyID, int plaNU)
         {
             var item = await _ctx.Trabajos
@@ -72,7 +96,9 @@ namespace estacionamientos.Controllers
             return item is null ? NotFound() : View(item);
         }
 
-        [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
+        // POST: /TrabajaEn/Delete
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int plyID, int plaNU)
         {
             var item = await _ctx.Trabajos.FindAsync(plyID, plaNU);
@@ -80,7 +106,33 @@ namespace estacionamientos.Controllers
 
             item.TrabEnActual = false;
             await _ctx.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
+
+        [HttpPost][ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteDirect(int plyID, int plaNU)
+        {
+            // ¿existen turnos que referencian esta relación?
+            var tieneTurnos = await _ctx.Set<Turno>()
+                .AnyAsync(t => t.PlyID == plyID && t.PlaNU == plaNU);
+
+            if (tieneTurnos)
+            {
+                TempData["Error"] = "No se puede desasignar porque existen turnos vinculados.";
+                return RedirectToAction("Index", "Playero");
+            }
+
+            var item = await _ctx.Trabajos.FindAsync(plyID, plaNU);
+            if (item is null) return NotFound();
+
+            _ctx.Trabajos.Remove(item);
+            await _ctx.SaveChangesAsync();
+
+            TempData["Ok"] = "Asignación eliminada correctamente.";
+            return RedirectToAction("Index", "Playero");
+        }
+
+
     }
 }

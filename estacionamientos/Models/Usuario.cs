@@ -4,25 +4,24 @@ namespace estacionamientos.Models
 {
     public class Usuario
     {
-        // PK
         [Key]
         public int UsuNU { get; set; }
 
-        // Nombre y Apellido
-        [Required, StringLength(120)]
+        [Required(ErrorMessage = "* Este campo es obligatorio")]
+        [Display(Name = "Nombre y Apellido")]
         public string UsuNyA { get; set; } = string.Empty;
 
-        [Required, StringLength(254)]
-        [EmailAddress]
+        [Required(ErrorMessage = "* Este campo es obligatorio")]
+        [Display(Name = "Correo electrónico")]
         public string UsuEmail { get; set; } = string.Empty;
 
-        // Nota: en producción conviene guardar HASH, no texto plano.
-        [Required, StringLength(200, MinimumLength = 8)]
+        [Required(ErrorMessage = "* Este campo es obligatorio")]
         [DataType(DataType.Password)]
+        [Display(Name = "Contraseña")]
         public string UsuPswd { get; set; } = string.Empty;
 
-        [StringLength(30)]
-        [Phone]
+        [Display(Name = "Número de teléfono")]
         public string? UsuNumTel { get; set; }
     }
 }
+

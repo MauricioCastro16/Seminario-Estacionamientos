@@ -1,49 +1,44 @@
 @model estacionamientos.Models.Playero
+
 @{
-    ViewData["Title"] = "Editar playero";
+    ViewData["Title"] = "Editar Playero";
 }
 
-<div class="d-flex align-items-center mb-3">
-    <h1 class="mb-0 me-2">Editar playero</h1>
+<div class="container" style="max-width: 600px;">
+    <h2 class="mb-4">Editar Playero</h2>
+
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="UsuNU" />
+
+        <div class="mb-3">
+            <label asp-for="UsuNyA" class="form-label"></label>
+            <input asp-for="UsuNyA" class="form-control" />
+            <span asp-validation-for="UsuNyA" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="UsuEmail" class="form-label"></label>
+            <input asp-for="UsuEmail" class="form-control" />
+            <span asp-validation-for="UsuEmail" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="UsuNumTel" class="form-label"></label>
+            <input asp-for="UsuNumTel" class="form-control" />
+            <span asp-validation-for="UsuNumTel" class="text-danger"></span>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary"
+                    onclick="return confirm('¿Estás seguro de que quieres realizar los cambios?');">
+                Guardar
+            </button>
+            <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
 </div>
 
-<form asp-action="Edit" method="post">
-    @Html.AntiForgeryToken()
-    <input type="hidden" asp-for="UsuNU" />
-
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-    <div class="mb-3">
-        <label asp-for="UsuNyA" class="form-label"></label>
-        <input asp-for="UsuNyA" class="form-control" />
-        <span asp-validation-for="UsuNyA" class="text-danger"></span>
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="UsuEmail" class="form-label"></label>
-        <input asp-for="UsuEmail" class="form-control" />
-        <span asp-validation-for="UsuEmail" class="text-danger"></span>
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="UsuNumTel" class="form-label"></label>
-        <input asp-for="UsuNumTel" class="form-control" />
-        <span asp-validation-for="UsuNumTel" class="text-danger"></span>
-    </div>
-
-    <!-- Si querés permitir cambiar contraseña desde acá (no recomendado sin confirmar):
-    <div class="mb-3">
-        <label asp-for="UsuPswd" class="form-label"></label>
-        <input asp-for="UsuPswd" type="password" class="form-control" />
-        <small class="form-text text-muted">Mínimo 8 caracteres.</small>
-        <span asp-validation-for="UsuPswd" class="text-danger"></span>
-    </div>
-    -->
-
-    <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-primary">Guardar</button>
-        <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
-    </div>
-</form>
-
-@section Scripts { <partial name="_ValidationScriptsPartial" /> }
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

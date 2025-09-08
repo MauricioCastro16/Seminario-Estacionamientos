@@ -8,10 +8,17 @@
     <h6 class="text-black text-center mb-3">Estacionamiento @ViewBag.PlyNom</h6>
 
     @if (TempData["Error"] is string err) {
-        <div class="alert alert-danger py-2 my-2">@err</div>
+        <div id="alertMensaje" class="alert alert-danger alert-dismissible fade show py-2 my-2" role="alert">
+            @err
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     }
     @if (TempData["Ok"] is string ok) {
-        <div class="alert alert-success py-2 my-2">@ok</div>
+        var cssClass = TempData["MensajeCss"]?.ToString() ?? "success";
+        <div id="alertMensaje" class="alert alert-@cssClass alert-dismissible fade show py-2 my-2" role="alert">
+            @ok
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     }
 
     <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
@@ -66,6 +73,7 @@
                 <th class="text-center">N° plaza</th>
                 <th>Techo</th>
                 <th>Altura (m)</th>
+                <th class="text-center">Habilitada</th>
                 <th class="text-center">Acciones</th>
             </tr>
         </thead>
@@ -101,6 +109,25 @@
                         value="@(plaza.PlzAlt?.ToString("0.##") ?? "")"
                         data-orig-value="@(plaza.PlzAlt?.ToString("0.##") ?? "")"
                         placeholder="Ej: 2.10" />
+                </td>
+
+                <!-- HABILITADA -->
+                <td class="text-center">
+                    <form asp-controller="PlazaEstacionamiento"
+                        asp-action="ToggleHabilitadaDueño"
+                        method="post"
+                        class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="plyID" value="@plaza.PlyID" />
+                        <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
+
+                        <div class="form-check form-switch d-inline-block">
+                            <input class="form-check-input"
+                                type="checkbox"
+                                onchange="this.form.submit();"
+                                @(plaza.PlzHab ? "checked" : "") />
+                        </div>
+                    </form>
                 </td>
 
                 <td class="text-center">
@@ -290,6 +317,17 @@
                 syncRowAltura(row);
             });
         });
+
+        // ============================
+        // Alert auto-cierre (3 segundos)
+        // ============================
+        setTimeout(() => {
+            const alert = document.getElementById('alertMensaje');
+            if (alert) {
+                bootstrap.Alert.getOrCreateInstance(alert).close();
+            }
+        }, 3000);
+
     })();
     </script>
 }

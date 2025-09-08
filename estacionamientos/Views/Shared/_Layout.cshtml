@@ -1,4 +1,36 @@
-﻿<!DOCTYPE html>
+﻿@using estacionamientos.Data
+@using System.Security.Claims
+@inject AppDbContext _ctx
+
+@{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    int? plyID = null;               // acá vamos a guardar el ID
+    string? playaActiva = null;      // acá el nombre
+
+    if (userId != null && User.IsInRole("Playero"))
+    {
+        var turno = _ctx.Turnos
+            .Where(t => t.PlaNU.ToString() == userId && t.TurFyhFin == null)
+            .FirstOrDefault();
+
+        if (turno != null)
+        {
+            // buscamos la playa del turno y traemos ID + Nombre juntos
+            var playaInfo = _ctx.Playas
+                .Where(p => p.PlyID == turno.PlyID)
+                .Select(p => new { p.PlyID, p.PlyNom })
+                .FirstOrDefault();
+
+            if (playaInfo != null)
+            {
+                plyID = playaInfo.PlyID;         // guardamos el ID
+                playaActiva = playaInfo.PlyNom;  // guardamos el nombre
+            }
+        }
+    }
+}
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -17,7 +49,7 @@
     <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center fw-bold fs-4" 
-                asp-area="" asp-controller="Home" asp-action="Index">
+               asp-area="" asp-controller="Home" asp-action="Index">
                 <i class="bi bi-cone-striped text-warning me-2"></i> NetParking
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
@@ -26,9 +58,8 @@
             </button>
 
             <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                <!-- Navegación izquierda -->
                 <ul class="navbar-nav me-auto">
-
-
                     <li class="nav-item">
                         <a class="nav-link text-dark" asp-area="" asp-controller="Usuario" asp-action="Index">Usuarios</a>
                     </li>
@@ -39,7 +70,7 @@
                             <a class="nav-link text-dark" asp-area="" asp-controller="Schema" asp-action="Index">Schema</a>
                         </li>
                     }
-
+                    
                     @if (User.IsInRole("Duenio"))
                     {
                         <li class="nav-item">
@@ -51,22 +82,56 @@
                     }
                 </ul>
 
-                <ul class="navbar-nav ms-auto">
+                <!-- Navegación derecha -->
+                <ul class="navbar-nav ms-auto align-items-center">
                     @if (User.Identity?.IsAuthenticated ?? false)
                     {
+                        @* Badge de playa activa si corresponde *@
+                        @if (!string.IsNullOrEmpty(playaActiva) && plyID != null)
+                        {
+                            <li class="nav-item me-3">
+                                <a asp-controller="PlayaEstacionamiento" asp-action="DetailsPlayero" asp-route-id="@plyID"
+                                class="badge bg-primary text-decoration-none d-flex align-items-center gap-1">
+                                    <i class="bi bi-geo-alt-fill"></i>
+                                    Estás en: @playaActiva
+                                </a>
+                            </li>
+                        }
+
+
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle text-dark" href="#" id="userMenu" role="button"
-                               data-bs-toggle="dropdown" aria-expanded="false">
-                               @User.Identity!.Name
+                               data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
+                                @User.Identity!.Name
                             </a>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
                                 <li><h6 class="dropdown-header">@User.Identity!.Name</h6></li>
                                 <li><hr class="dropdown-divider" /></li>
+
+                                @* 🟢 Agregamos “Mis turnos” acá si es Playero *@
+                                @if (User.IsInRole("Playero"))
+                                {
+                                    <li>
+                                        <a class="dropdown-item text-dark" asp-controller="Turno" asp-action="Index">
+                                            Mis turnos
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                }
+
                                 <li>
-                                    <a class="dropdown-item" asp-controller="Account" asp-action="Logout">Cerrar sesión</a>
+                                    <a class="dropdown-item text-dark" href="#"
+                                       onclick="document.getElementById('logoutForm').submit(); return false;">
+                                        Cerrar sesión
+                                    </a>
                                 </li>
                             </ul>
                         </li>
+
+                        <!-- Form oculto de logout -->
+                        <form id="logoutForm" asp-controller="Account" asp-action="Logout" method="post" class="d-none">
+                            @Html.AntiForgeryToken()
+                        </form>
                     }
                     else
                     {
@@ -79,21 +144,36 @@
         </div>
     </nav>
 </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2025 - NetParking - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-    @await RenderSectionAsync("Scripts", required: false)
-    @RenderSection("AceptaMetodoPagoScript", required: false)
+<div class="container">
+    <main role="main" class="pb-3">
+        @RenderBody()
+    </main>
+</div>
+
+<footer class="border-top footer text-muted">
+    <div class="container">
+        &copy; 2025 - NetParking - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+    </div>
+</footer>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.alert[data-autohide]').forEach(el => {
+            const ms = parseInt(el.getAttribute('data-autohide'), 10) || 3000;
+            setTimeout(() => {
+                const inst = bootstrap.Alert.getOrCreateInstance(el);
+                inst.close();
+            }, ms);
+        });
+    });
+</script>
+
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+@RenderSection("AceptaMetodoPagoScript", required: false)
 </body>
 </html>

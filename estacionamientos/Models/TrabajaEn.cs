@@ -1,4 +1,5 @@
-// TrabajaEn.cs
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+
 namespace estacionamientos.Models
 {
     public class TrabajaEn
@@ -7,7 +8,11 @@ namespace estacionamientos.Models
         public int PlaNU { get; set; }
         public bool TrabEnActual { get; set; } = true;
 
+        // Navegaciones (no se validan en los formularios)
+        [ValidateNever]
         public PlayaEstacionamiento Playa { get; set; } = default!;
+
+        [ValidateNever]
         public Playero Playero { get; set; } = default!;
     }
 }
