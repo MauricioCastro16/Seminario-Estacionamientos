@@ -18,26 +18,29 @@
             <span asp-validation-for="PlyNom" class="text-danger"></span>
         </div>
 
-        <!-- Provincia (solo lectura, se completa desde el mapa) -->
+        <!-- Provincia (solo lectura; la define el mapa) -->
         <div class="mb-3">
             <label asp-for="PlyProv" class="form-label">Provincia</label>
-            <input asp-for="PlyProv" class="form-control" id="provinciaInput" readonly required />
+            <input asp-for="PlyProv" class="form-control" id="provinciaInput" readonly required 
+                               placeholder="Cargando..."/>
             <input type="hidden" asp-for="PlyProvId" id="provIdHidden" />
             <span asp-validation-for="PlyProv" class="text-danger"></span>
         </div>
 
-        <!-- Ciudad/Localidad (solo lectura, se completa desde el mapa) -->
+        <!-- Ciudad/Localidad (solo lectura; la define el mapa) -->
         <div class="mb-3">
             <label asp-for="PlyCiu" class="form-label">Ciudad / Localidad</label>
-            <input asp-for="PlyCiu" class="form-control" id="ciudadInput" readonly required />
+            <input asp-for="PlyCiu" class="form-control" id="ciudadInput" readonly required 
+                               placeholder="Cargando..."/>
             <input type="hidden" asp-for="PlyCiuId" id="ciuIdHidden" />
             <span asp-validation-for="PlyCiu" class="text-danger"></span>
         </div>
 
-        <!-- Dirección (solo lectura, se completa desde el mapa) -->
+        <!-- Dirección (EDITABLE: NO modifica el mapa) -->
         <div class="mb-3">
             <label asp-for="PlyDir" class="form-label">Dirección</label>
-            <input asp-for="PlyDir" class="form-control" id="direccionInput" readonly required />
+            <input asp-for="PlyDir" class="form-control" id="direccionInput" autocomplete="off" required
+                   placeholder="Cargando..." />
             <span asp-validation-for="PlyDir" class="text-danger"></span>
         </div>
 
@@ -101,35 +104,28 @@
         // UTN FRRe (fallback) - Resistencia, Chaco
         const FALLBACK = { lat: -27.451000, lon: -58.986000, zoom: 14 };
 
-        // Formatear decimales con coma para es-AR (para bindear decimal)
+        // Decimales con coma (para bindear decimal es-AR)
         function setLatLon(lat, lon) {
             const fmt = (n) => Number(n).toLocaleString('es-AR', { useGrouping: false, maximumFractionDigits: 6 });
             latHidden.value = fmt(lat);
             lonHidden.value = fmt(lon);
         }
-
         const debounce = (fn, wait = 600) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), wait); }; };
 
         // --- Mapa con tema (CartoDB Positron) ---
         const map = L.map("map", { zoomControl: false });
-        // Posicion inicial provisoria (se ajusta con geoloc o fallback)
         map.setView([FALLBACK.lat, FALLBACK.lon], 5);
-
-        // Tema lindo (CartoDB Positron)
         L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            attribution: '&copy; OpenStreetMap & CARTO'
         }).addTo(map);
-
-        // Controles: zoom arriba a la derecha + escala
         L.control.zoom({ position: 'topright' }).addTo(map);
         L.control.scale({ imperial: false }).addTo(map);
 
-        // Marcador draggable
         let marker = L.marker([FALLBACK.lat, FALLBACK.lon], { draggable: true }).addTo(map);
 
-        // Reverse geocoding: llena Provincia/Ciudad (con IDs) y Dirección
+        // --- Reverse geocoding (mapa -> provincia/ciudad IDs + dirección) ---
         const reverseFromMap = debounce(async (lat, lon) => {
-            // 1) Provincia / Municipio / Departamento con georef (incluye IDs)
+            // 1) Provincia / Municipio / Departamento con georef (con IDs)
             try {
                 const r = await fetch(`https://apis.datos.gob.ar/georef/api/ubicacion?lat=${lat}&lon=${lon}`);
                 const d = await r.json();
@@ -138,18 +134,16 @@
                 const muni = d?.ubicacion?.municipio || {};
                 const dept = d?.ubicacion?.departamento || {};
 
-                // Provincia
                 provinciaInput.value = prov.nombre || "";
                 provIdHidden.value   = prov.id     || "";
 
-                // Ciudad/Localidad: municipio si existe; si no, departamento
                 const cityName = muni.nombre || dept.nombre || "";
                 const cityId   = muni.id     || dept.id     || "";
                 ciudadInput.value = cityName;
                 ciuIdHidden.value = cityId;
             } catch { /* noop */ }
 
-            // 2) Dirección (calle y altura) con Nominatim
+            // 2) Dirección con Nominatim
             try {
                 const rN = await fetch(
                     `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&addressdetails=1`,
@@ -164,12 +158,12 @@
                 const parts = [];
                 if (road && house) parts.push(`${road} ${house}`); else if (road) parts.push(road);
                 if (suburb) parts.push(suburb);
-
                 const built = parts.join(", ");
                 if (built) {
-                    direccionInput.value = built;
+                    // Solo si el usuario NO está editando en ese instante
+                    if (!direccionInput.matches(':focus')) direccionInput.value = built;
                 } else if (j.display_name) {
-                    direccionInput.value = j.display_name.split(",").slice(0, 3).join(", ").trim();
+                    if (!direccionInput.matches(':focus')) direccionInput.value = j.display_name.split(",").slice(0, 3).join(", ").trim();
                 }
             } catch { /* noop */ }
         }, 600);
@@ -193,25 +187,17 @@
             setLatLon(lat, lon);
             reverseFromMap(lat, lon);
         }
-
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lon = pos.coords.longitude;
-                    initPosition(lat, lon, 16);
-                },
-                () => {
-                    // Error o denegado → FRRe
-                    initPosition(FALLBACK.lat, FALLBACK.lon, FALLBACK.zoom);
-                },
+                (pos) => initPosition(pos.coords.latitude, pos.coords.longitude, 16),
+                ()    => initPosition(FALLBACK.lat, FALLBACK.lon, FALLBACK.zoom),
                 { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
             );
         } else {
             initPosition(FALLBACK.lat, FALLBACK.lon, FALLBACK.zoom);
         }
 
-        // Validación: obligar a elegir en el mapa (coords + campos completos)
+        // Validación: obligar a elegir en el mapa / completar datos
         document.getElementById("formCreate").addEventListener("submit", (ev) => {
             const hasCoords = latHidden.value.trim() !== "" && lonHidden.value.trim() !== "";
             const hasProv   = provinciaInput.value.trim() !== "";
@@ -220,7 +206,7 @@
             if (!hasCoords || !hasProv || !hasCity || !hasAddr) {
                 ev.preventDefault();
                 ev.stopPropagation();
-                alert("Elegí la ubicación en el mapa. Se completan provincia, ciudad y dirección automáticamente.");
+                alert("Elegí la ubicación en el mapa y completá la dirección.");
             }
         });
 
@@ -239,8 +225,6 @@
                 pisoHidden.value = pisoSelect.value || "";
             }
         });
-        pisoInput.addEventListener("input", () => {
-            pisoHidden.value = pisoInput.value.trim();
-        });
+        pisoInput.addEventListener("input", () => { pisoHidden.value = pisoInput.value.trim(); });
     </script>
 }
