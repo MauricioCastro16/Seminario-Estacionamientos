@@ -25,8 +25,6 @@
         <thead>
             <tr>
                 <th>Nombre</th>
-                <th>Email</th>
-                <th>Teléfono</th>
                 <th>Playas asignadas</th>
                 <th class="text-center">Acciones</th>
             </tr>
@@ -39,8 +37,6 @@
                 var p = row.Playero;
                 <tr>
                     <td>@p.UsuNyA</td>
-                    <td>@p.UsuEmail</td>
-                    <td>@p.UsuNumTel</td>
                     <td>
                         @if (row.Playas.Count == 0)
                         {
@@ -101,14 +97,6 @@
                             <i class="bi bi-link-45deg"></i>
                         </a>
 
-                        <form asp-action="Delete" asp-route-id="@p.UsuNU" method="post" class="d-inline">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-outline-danger btn-sm"
-                                    onclick="return confirm('¿Seguro que deseas eliminar este playero?');"
-                                    title="Eliminar">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </form>
                     </td>
                 </tr>
             }

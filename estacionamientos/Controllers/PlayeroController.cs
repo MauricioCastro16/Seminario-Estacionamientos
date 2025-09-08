@@ -133,15 +133,35 @@ namespace estacionamientos.Controllers
             return entity is null ? NotFound() : View(entity);
         }
 
-        [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Playero model)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, Playero playero)
         {
-            if (id != model.UsuNU) return BadRequest();
-            if (!ModelState.IsValid) return View(model);
-            _context.Entry(model).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            if (id != playero.UsuNU) return NotFound();
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(playero);
+                    await _context.SaveChangesAsync();
+
+                    TempData["Ok"] = "Los cambios se guardaron correctamente.";
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!_context.Playeros.Any(e => e.UsuNU == id))
+                        return NotFound();
+                    else
+                        throw;
+                }
+                // 🔹 Redirige siempre al Index al guardar
+                return RedirectToAction(nameof(Index));
+            }
+
+            return View(playero);
         }
+
 
         public async Task<IActionResult> Delete(int id)
         {
