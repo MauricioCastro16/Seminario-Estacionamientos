@@ -55,6 +55,7 @@ nunit-*.xml
 
 # Enviromentment variables file
 .env
+**/.env
 
 .fake
 Migrations/
