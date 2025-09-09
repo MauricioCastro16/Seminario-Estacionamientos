@@ -28,14 +28,17 @@
     <!-- ======================
          Alta masiva de plazas
          ====================== -->
-    <form asp-action="ConfigurarPlazas" method="post">
+    <form asp-controller="PlazaEstacionamiento"
+          asp-action="ConfigurarPlazas"
+          asp-route-plyID="@ViewBag.PlyID"
+          method="post">
         @Html.AntiForgeryToken()
         <div class="form-group justify-content-between align-items-end card d-flex flex-row gap-5 p-3">
             <div class="d-flex flex-row gap-3">
                 <div>
                     <label class="mb-2" for="cantidad">Cantidad de plazas</label>
                     <input id="cantidad" name="cantidad" class="form-control" type="number" min="1" step="1"
-                        value="@(ViewBag.DefaultCantidad ?? 1)" required />
+                           value="@(ViewBag.DefaultCantidad ?? 1)" required />
                 </div>
 
                 <div>
@@ -50,20 +53,28 @@
                 <div>
                     <label class="mb-2" for="plzAlt">Altura (m)</label>
                     <input id="plzAlt" name="plzAlt" class="form-control" type="number" step="0.01"
-                        placeholder="Ej: 2.10" />
+                           placeholder="Ej: 2.10" />
                     @Html.ValidationMessage("plzAlt", null, new { @class = "text-danger" })
+                </div>
+
+                <!-- NUEVO: Piso en alta -->
+                <div>
+                    <label class="mb-2" for="piso">Piso</label>
+                    <input id="piso" name="piso" class="form-control" type="number" min="0" step="1"
+                           placeholder="Ej: 0" />
+                    @Html.ValidationMessage("piso", null, new { @class = "text-danger" })
                 </div>
             </div>
 
             <div>
                 <label class="mb-2" for="clasVehID">Clasificación de vehículo</label>
-                <select id="clasVehID" name="clasVehID" asp-items="ViewBag.Clasificaciones" class="form-select"
-                    required>
+                <select id="clasVehID" name="clasVehID" asp-items="ViewBag.Clasificaciones" class="form-select" required>
                     <option value="">-- Selecciona una opción --</option>
                 </select>
                 @Html.ValidationMessage("clasVehID", null, new { @class = "text-danger" })
             </div>
 
+            <!-- Tenés el plyID en la ruta; el hidden es opcional -->
             <input type="hidden" name="plyID" value="@ViewBag.PlyID" />
 
             <button type="submit" class="btn btn-primary" style="min-width: max-content; height: max-content">
@@ -82,115 +93,112 @@
                 <th>Nombre</th>
                 <th>Techo</th>
                 <th>Altura (m)</th>
+                <th>Piso</th>
                 <th>Clasificación</th>
                 <th class="text-center">Habilitada</th>
                 <th class="text-center">Acciones</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var plaza in Model)
-            {
-                var rowKey = $"{plaza.PlyID}-{plaza.PlzNum}";
-                <tr id="row-@rowKey">
+        @foreach (var plaza in Model)
+        {
+            var rowKey = $"{plaza.PlyID}-{plaza.PlzNum}";
+            <tr id="row-@rowKey">
 
-                    <!-- NOMBRE: vista vs edición -->
-                    <td>
-                        <span class="view-nombre">@(!string.IsNullOrWhiteSpace(plaza.PlzNombre) ? plaza.PlzNombre :
-                                                    "-")</span>
+                <!-- NOMBRE -->
+                <td>
+                    <span class="view-nombre">@(!string.IsNullOrWhiteSpace(plaza.PlzNombre) ? plaza.PlzNombre : "-")</span>
+                    <input name="plzNombre" form="edit-form-@rowKey"
+                           class="form-control form-control-sm d-none edit-field edit-plzNombre"
+                           value="@(plaza.PlzNombre ?? "")" maxlength="80" placeholder="(opcional)"
+                           data-orig-value="@(plaza.PlzNombre ?? "")" />
+                </td>
 
-                        <input name="plzNombre" form="edit-form-@rowKey"
-                            class="form-control form-control-sm d-none edit-field edit-plzNombre"
-                            value="@(plaza.PlzNombre ?? "")" maxlength="80" placeholder="(opcional)"
-                            data-orig-value="@(plaza.PlzNombre ?? "")" />
-                    </td>
-
-                    <!-- TECHO: vista vs edición -->
-                    <td>
-                        <span class="view-techo">@((plaza.PlzTecho ? "Sí" : "No"))</span>
-
-                        <select name="plzTecho" form="edit-form-@rowKey"
+                <!-- TECHO -->
+                <td>
+                    <span class="view-techo">@((plaza.PlzTecho ? "Sí" : "No"))</span>
+                    <select name="plzTecho" form="edit-form-@rowKey"
                             class="form-select form-select-sm d-none edit-field edit-plzTecho"
                             data-orig-value="@(plaza.PlzTecho.ToString().ToLower())">
-                            <option value="true">Sí</option>
-                            <option value="false">No</option>
-                        </select>
-                    </td>
+                        <option value="true">Sí</option>
+                        <option value="false">No</option>
+                    </select>
+                </td>
 
-                    <!-- ALTURA: vista vs edición -->
-                    <td>
-                        <span class="view-altura">@((plaza.PlzAlt.HasValue ? plaza.PlzAlt.Value.ToString("0.00") :
-                                                    "-"))</span>
+                <!-- ALTURA -->
+                <td>
+                    <span class="view-altura">@((plaza.PlzAlt.HasValue ? plaza.PlzAlt.Value.ToString("0.00") : "-"))</span>
+                    <input name="plzAlt" form="edit-form-@rowKey"
+                           class="form-control form-control-sm d-none edit-field edit-plzAlt"
+                           type="number" step="0.01"
+                           value="@(plaza.PlzAlt?.ToString("0.##") ?? "")"
+                           data-orig-value="@(plaza.PlzAlt?.ToString("0.##") ?? "")"
+                           placeholder="Ej: 2.10" />
+                </td>
 
-                        <input name="plzAlt" form="edit-form-@rowKey"
-                            class="form-control form-control-sm d-none edit-field edit-plzAlt" type="number" step="0.01"
-                            value="@(plaza.PlzAlt?.ToString("0.##") ?? "")"
-                            data-orig-value="@(plaza.PlzAlt?.ToString("0.##") ?? "")" placeholder="Ej: 2.10" />
-                    </td>
+                <!-- PISO -->
+                <td>
+                    <span class="view-piso">@((plaza.Piso.HasValue ? plaza.Piso.Value.ToString() : "-"))</span>
+                    <input name="piso" form="edit-form-@rowKey"
+                           class="form-control form-control-sm d-none edit-field edit-piso"
+                           type="number" min="0" step="1"
+                           value="@(plaza.Piso?.ToString() ?? "")"
+                           data-orig-value="@(plaza.Piso?.ToString() ?? "")"
+                           placeholder="Ej: 0" />
+                </td>
 
-                    <td>@plaza.Clasificacion?.ClasVehTipo</td>
+                <td>@plaza.Clasificacion?.ClasVehTipo</td>
 
-                    <!-- HABILITADA -->
-                    <td class="text-center">
-                        <form asp-controller="PlazaEstacionamiento" asp-action="ToggleHabilitadaDueño" method="post"
-                            class="d-inline">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="plyID" value="@plaza.PlyID" />
-                            <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
+                <!-- HABILITADA -->
+                <td class="text-center">
+                    <form asp-controller="PlazaEstacionamiento" asp-action="ToggleHabilitadaDueño" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="plyID" value="@plaza.PlyID" />
+                        <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
+                        <div class="form-check form-switch d-inline-block">
+                            <input class="form-check-input" type="checkbox" onchange="this.form.submit();" @(plaza.PlzHab ? "checked" : "") />
+                        </div>
+                    </form>
+                </td>
 
-                            <div class="form-check form-switch d-inline-block">
-                                <input class="form-check-input" type="checkbox" onchange="this.form.submit();"
-                                    @(plaza.PlzHab ? "checked" : "") />
-                            </div>
-                        </form>
-                    </td>
+                <!-- ACCIONES -->
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-outline-secondary btn-edit" data-row="@rowKey" title="Editar">
+                        <i class="bi bi-pencil"></i>
+                        <span class="visually-hidden">Editar</span>
+                    </button>
 
-                    <!-- ACCIONES -->
-                    <td class="text-center">
-                        <!-- Botón Editar -->
-                        <button type="button" class="btn btn-sm btn-outline-secondary btn-edit" data-row="@rowKey"
-                            title="Editar">
-                            <i class="bi bi-pencil"></i>
-                            <span class="visually-hidden">Editar</span>
-                        </button>
+                    <button type="submit" class="btn btn-sm btn-success d-none btn-save" form="edit-form-@rowKey" formnovalidate title="Guardar">
+                        <i class="bi bi-check"></i>
+                        <span class="visually-hidden">Guardar</span>
+                    </button>
 
-                        <!-- Botón Guardar -->
-                        <button type="submit" class="btn btn-sm btn-success d-none btn-save" form="edit-form-@rowKey"
-                            formnovalidate title="Guardar">
-                            <i class="bi bi-check"></i>
-                            <span class="visually-hidden">Guardar</span>
-                        </button>
+                    <button type="button" class="btn btn-sm btn-secondary d-none btn-cancel" data-row="@rowKey" title="Cancelar">
+                        <i class="bi bi-x"></i>
+                        <span class="visually-hidden">Cancelar</span>
+                    </button>
 
-                        <!-- Botón Cancelar -->
-                        <button type="button" class="btn btn-sm btn-secondary d-none btn-cancel" data-row="@rowKey"
-                            title="Cancelar">
-                            <i class="bi bi-x"></i>
-                            <span class="visually-hidden">Cancelar</span>
-                        </button>
-
-                        <!-- Eliminar plaza -->
-                        <form asp-controller="PlazaEstacionamiento" asp-action="DeleteInline" method="post"
-                            class="d-inline ms-1">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="plyID" value="@plaza.PlyID" />
-                            <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
-                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                    <form asp-controller="PlazaEstacionamiento" asp-action="DeleteInline" method="post" class="d-inline ms-1">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="plyID" value="@plaza.PlyID" />
+                        <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
                                 onclick="return confirm('¿Eliminar la plaza @plaza.PlzNum?');" title="Eliminar">
-                                <i class="bi bi-trash"></i>
-                                <span class="visually-hidden">Eliminar</span>
-                            </button>
-                        </form>
+                            <i class="bi bi-trash"></i>
+                            <span class="visually-hidden">Eliminar</span>
+                        </button>
+                    </form>
 
-                        <!-- Form para guardar edición -->
-                        <form id="edit-form-@rowKey" asp-controller="PlazaEstacionamiento" asp-action="EditInline"
-                            method="post" class="d-none">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="plyID" value="@plaza.PlyID" />
-                            <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
-                            <!-- Los inputs editables referencian este form con form="edit-form-..." -->
-                        </form>
-                    </td>
-                </tr>
-            }
+                    <!-- Form para guardar edición -->
+                    <form id="edit-form-@rowKey" asp-controller="PlazaEstacionamiento" asp-action="EditInline" method="post" class="d-none">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="plyID" value="@plaza.PlyID" />
+                        <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
+                        <!-- Los inputs editables (incluyendo 'piso') apuntan a este form -->
+                    </form>
+                </td>
+            </tr>
+        }
         </tbody>
     </table>
 </div>
@@ -233,16 +241,12 @@
                 const selTecho = row.querySelector('.edit-plzTecho');
                 const inpAlt = row.querySelector('.edit-plzAlt');
                 const inpNombre = row.querySelector('.edit-plzNombre');
+                const inpPiso = row.querySelector('.edit-piso');
 
-                if (selTecho && selTecho.dataset.origValue !== undefined) {
-                    selTecho.value = selTecho.dataset.origValue;
-                }
-                if (inpAlt && inpAlt.dataset.origValue !== undefined) {
-                    inpAlt.value = inpAlt.dataset.origValue;
-                }
-                if (inpNombre && inpNombre.dataset.origValue !== undefined) {
-                    inpNombre.value = inpNombre.dataset.origValue;
-                }
+                if (selTecho && selTecho.dataset.origValue !== undefined) selTecho.value = selTecho.dataset.origValue;
+                if (inpAlt && inpAlt.dataset.origValue !== undefined) inpAlt.value = inpAlt.dataset.origValue;
+                if (inpNombre && inpNombre.dataset.origValue !== undefined) inpNombre.value = inpNombre.dataset.origValue;
+                if (inpPiso && inpPiso.dataset.origValue !== undefined) inpPiso.value = inpPiso.dataset.origValue;
             }
 
             function toggleRowEdit(rowKey, editing) {
@@ -252,22 +256,24 @@
                 const viewTecho = row.querySelector('.view-techo');
                 const viewAltura = row.querySelector('.view-altura');
                 const viewNombre = row.querySelector('.view-nombre');
+                const viewPiso = row.querySelector('.view-piso');
+
                 const selTecho = row.querySelector('.edit-plzTecho');
                 const inpAlt = row.querySelector('.edit-plzAlt');
                 const inpNombre = row.querySelector('.edit-plzNombre');
+                const inpPiso = row.querySelector('.edit-piso');
 
                 const btnEdit = row.querySelector('.btn-edit');
                 const btnSave = row.querySelector('.btn-save');
                 const btnCancel = row.querySelector('.btn-cancel');
 
                 if (editing) {
-                    // Asegura que los controles tomen el valor original
                     applyOrigValues(row);
                     syncRowAltura(row);
                 }
 
-                [viewTecho, viewAltura, viewNombre].forEach(el => el && el.classList.toggle('d-none', editing));
-                [selTecho, inpAlt, inpNombre].forEach(el => el && el.classList.toggle('d-none', !editing));
+                [viewTecho, viewAltura, viewNombre, viewPiso].forEach(el => el && el.classList.toggle('d-none', editing));
+                [selTecho, inpAlt, inpNombre, inpPiso].forEach(el => el && el.classList.toggle('d-none', !editing));
 
                 btnEdit && btnEdit.classList.toggle('d-none', editing);
                 btnSave && btnSave.classList.toggle('d-none', !editing);
@@ -289,7 +295,7 @@
                 if (!conTecho) inpAlt.value = '';
             }
 
-            // Click en ✏️ (activar edición, cerrando la anterior si existía)
+            // Click en ✏️
             document.querySelectorAll('.btn-edit').forEach(btn => {
                 btn.addEventListener('click', function () {
                     const newKey = this.getAttribute('data-row');
@@ -307,7 +313,7 @@
                 });
             });
 
-            // Click en ✖️ (cancelar y restaurar)
+            // Click en ✖️
             document.querySelectorAll('.btn-cancel').forEach(btn => {
                 btn.addEventListener('click', function () {
                     const rowKey = this.getAttribute('data-row');
@@ -329,9 +335,7 @@
                 });
             });
 
-            // ============================
-            // Alert auto-cierre (3 segundos)
-            // ============================
+            // Alert auto-cierre
             setTimeout(() => {
                 const alert = document.getElementById('alertMensaje');
                 if (alert) {

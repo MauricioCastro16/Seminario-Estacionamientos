@@ -11,7 +11,6 @@
         <label class="form-label">Playa</label>
         <input type="text" class="form-control w-50" value="@ViewBag.PlayaNombre" disabled />
         <input type="hidden" asp-for="PlyID" value="@Model.PlyID" />
-
     </div>
 
     <div class="form-group mb-3">
@@ -21,13 +20,11 @@
         <span asp-validation-for="VehPtnt" class="text-danger"></span>
     </div>
 
-
     <div class="form-group mb-3">
         <label for="ClasVehID" class="form-label">Clasificación del vehículo</label>
         <select id="ClasVehID" name="ClasVehID" asp-items="ViewBag.Clasificaciones" class="form-select w-50">
             <option value="">-- Seleccione clasificación --</option>
         </select>
-        <!-- ⚠️ NO uses asp-validation-for, porque el modelo Ocupacion no tiene esa propiedad -->
         <span class="text-danger">@ViewBag.ClasVehError</span>
     </div>
 
@@ -43,63 +40,241 @@
         </div>
     </div>
 
+    <!-- Selector de piso + grilla -->
     <div class="form-group mb-3">
-        <label asp-for="PlzNum" class="form-label"></label>
-        <select asp-for="PlzNum" asp-items="ViewBag.PlzNum" class="form-select w-50">
-            <option value="">-- Seleccionar plaza --</option>
+        <label class="form-label">Piso</label>
+        <select id="PisoSelect" class="form-select w-25">
+            <option value="">-- Todos --</option>
         </select>
-        <span asp-validation-for="PlzNum" class="text-danger"></span>
     </div>
 
+    <!-- Mantiene compatibilidad con el POST -->
+    <input type="hidden" asp-for="PlzNum" id="PlzNum" />
+    <span asp-validation-for="PlzNum" class="text-danger"></span>
+
+    <div id="PlazasGrid" class="plazas-grid mb-3"></div>
 
     <input type="hidden" asp-for="OcufFyhIni" value="@DateTime.Now" />
 
-    <button type="submit" class="btn btn-primary">
+    <button type="submit" class="btn btn-primary" id="btnSubmit" disabled>
         <i class="bi bi-check-circle"></i> Confirmar Ingreso
     </button>
 </form>
 
+<style>
+    .plazas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+        gap: 12px;
+        max-width: 720px;
+    }
+
+    .plaza-card {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 14px 8px;
+        text-align: center;
+        cursor: pointer;
+        user-select: none;
+        transition: transform .05s, box-shadow .05s, background-color .2s;
+        background: #fff;
+    }
+
+    .plaza-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    }
+
+    /* estados */
+    .plaza-card.inhabilitada {
+        background: #f1f3f5;
+        color: #6c757d;
+        border-style: dashed;
+        cursor: not-allowed;
+        opacity: .8;
+    }
+
+    .plaza-card.ocupada {
+        background: #fff3cd;
+        border-color: #ffe69c;
+        color: #7a5e00;
+        cursor: not-allowed;
+    }
+
+    .plaza-card.disponible {
+        background: #e9f7ef;
+        border-color: #c6efda;
+    }
+
+    .plaza-card.incompatible {
+        background: #fde2e1;
+        border-color: #f5c2c7;
+        color: #7a1a1a;
+    }
+
+    .plaza-card.selected {
+        outline: 3px solid #0d6efd;
+        background: #e7f1ff;
+    }
+
+    .plaza-title {
+        font-weight: 600;
+        font-size: .95rem;
+    }
+
+    .plaza-sub {
+        font-size: .8rem;
+        color: #6c757d;
+    }
+</style>
 
 @section Scripts {
-<script>
-    document.getElementById("ClasVehID").addEventListener("change", loadPlazas);
-    document.querySelectorAll("input[name='techada']").forEach(r => {
-        r.addEventListener("change", loadPlazas);
-    });
+    <script>
+        (() => {
+            const plyID = document.querySelector("input[name='PlyID']").value;
+            const selClas = document.getElementById("ClasVehID");
+            const selPiso = document.getElementById("PisoSelect");
+            const grid = document.getElementById("PlazasGrid");
+            const hiddenPlz = document.getElementById("PlzNum");
+            const btn = document.getElementById("btnSubmit");
+            const radiosTechada = document.querySelectorAll("input[name='techada']");
 
-    function loadPlazas() {
-        const clasVehID = document.getElementById("ClasVehID").value;
-        const plyID = document.querySelector("input[name='PlyID']").value;
-        const techadaSelected = document.querySelector("input[name='techada']:checked");
-        const techada = techadaSelected ? techadaSelected.value : "all"; // 👈 si no eligió nada → "all"
+            /** Estado en memoria **/
+            let allPlazas = []; // plazas completas del fetch
+            let pisoActual = ""; // "", 0, 1, 2, ...
 
-        if (!clasVehID || !plyID) return;
+            function getTechada() {
+                const checked = document.querySelector("input[name='techada']:checked");
+                return checked ? checked.value : "";
+            }
 
-        fetch(`/Ocupacion/GetPlazasDisponibles?plyID=${plyID}&clasVehID=${clasVehID}&techada=${techada}`)
-            .then(r => r.json())
-            .then(data => {
-                const plzSelect = document.getElementById("PlzNum");
-                plzSelect.innerHTML = '<option value="">-- Seleccione plaza --</option>';
+            function limpiarSeleccion() {
+                hiddenPlz.value = "";
+                btn.disabled = true;
+                grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
+            }
 
-                if (data.length === 0) return;
-
-                // 👉 Si todas son anónimas → autoseleccionar la primera
-                const todasAnonimas = data.every(p => !p.nombre || p.nombre.trim() === "");
-                if (todasAnonimas) {
-                    plzSelect.innerHTML =
-                        `<option value="${data[0].plzNum}" selected>Plaza ${data[0].plzNum}</option>`;
-                } else {
-                    data.forEach(plaza => {
-                        const label = plaza.nombre && plaza.nombre.trim() !== ""
-                            ? plaza.nombre
-                            : `Plaza ${plaza.plzNum}`;
+            function renderPisos(plazas) {
+                // Construir conjunto de pisos presentes
+                const setPisos = new Set();
+                plazas.forEach(p => setPisos.add(p.piso === null ? "" : String(p.piso)));
+                // Llenar combo
+                selPiso.innerHTML = '<option value="">-- Todos --</option>';
+                Array.from(setPisos)
+                    .sort((a, b) => (a === "" ? -1 : Number(a)) - (b === "" ? -1 : Number(b)))
+                    .forEach(v => {
                         const opt = document.createElement("option");
-                        opt.value = plaza.plzNum;
-                        opt.textContent = label;
-                        plzSelect.appendChild(opt);
+                        opt.value = v;
+                        opt.textContent = (v === "") ? "Sin piso" : `Piso ${v}`;
+                        selPiso.appendChild(opt);
                     });
+                // Mantener selección si existe
+                if ([...setPisos].includes(pisoActual)) {
+                    selPiso.value = pisoActual;
+                } else {
+                    selPiso.value = "";
+                    pisoActual = "";
                 }
+            }
+
+            function renderGrid() {
+                const filtroPiso = selPiso.value; // "" o "n"
+                grid.innerHTML = "";
+
+                const plazas = allPlazas.filter(p => {
+                    if (filtroPiso === "") return true;
+                    const pisoStr = (p.piso === null ? "" : String(p.piso));
+                    return pisoStr === filtroPiso;
+                });
+
+                if (plazas.length === 0) {
+                    grid.innerHTML = `<div class="text-muted">No hay plazas para los filtros seleccionados.</div>`;
+                    return;
+                }
+
+                plazas.forEach(p => {
+                    const card = document.createElement("div");
+                    card.className = "plaza-card";
+                    // Estados visuales
+                    if (!p.hab) card.classList.add("inhabilitada");
+                    else if (p.ocupada) card.classList.add("ocupada");
+                    else if (!p.compatible) card.classList.add("incompatible");
+                    else card.classList.add("disponible");
+
+                    card.innerHTML = `
+                    <div class="plaza-title">${p.nombre ?? ("P" + p.plzNum)}</div>
+                    <div class="plaza-sub">${p.piso === null ? "Sin piso" : ("Piso " + p.piso)}</div>
+                    ${p.ocupada ? '<div class="small text-muted mt-1">Ocupada</div>' : ''}
+                    ${!p.hab ? '<div class="small text-muted mt-1">Inhabilitada</div>' : ''}
+                    ${p.hab && !p.ocupada && !p.compatible ? '<div class="small mt-1">No compatible</div>' : ''}
+                `;
+
+                    const esSeleccionable = p.hab && !p.ocupada && p.compatible;
+
+                    if (esSeleccionable) {
+                        card.addEventListener("click", () => {
+                            // toggle selección
+                            grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
+                            card.classList.add("selected");
+                            hiddenPlz.value = p.plzNum;
+                            btn.disabled = false;
+                        });
+                    } else {
+                        card.style.pointerEvents = "none";
+                    }
+
+                    grid.appendChild(card);
+                });
+            }
+
+            async function cargarPlazas() {
+                limpiarSeleccion();
+                grid.innerHTML = `<div class="text-muted">Cargando plazas...</div>`;
+
+                const clasVehID = selClas.value || "";
+                const techada = getTechada(); // "", "true", "false"
+                if (!clasVehID) {
+                    grid.innerHTML = `<div class="text-muted">Seleccione una clasificación para ver plazas.</div>`;
+                    renderPisos([]);
+                    return;
+                }
+
+                try {
+                    const url = `/Ocupacion/GetPlazasDisponibles?plyID=${encodeURIComponent(plyID)}&clasVehID=${encodeURIComponent(clasVehID)}${techada !== "" ? `&techada=${techada}` : ""}`;
+                    const r = await fetch(url);
+                    if (!r.ok) throw new Error("Error HTTP " + r.status);
+                    const data = await r.json();
+
+                    // Normalizar campos esperados
+                    allPlazas = (data || []).map(x => ({
+                        plzNum: x.plzNum,
+                        piso: (x.piso ?? null),
+                        hab: !!x.hab,
+                        ocupada: !!x.ocupada,
+                        compatible: x.compatible !== false, // default true
+                        nombre: x.nombre ?? null,
+                        label: x.label ?? ""
+                    }));
+
+                    renderPisos(allPlazas);
+                    renderGrid();
+                } catch (e) {
+                    console.error(e);
+                    grid.innerHTML = `<div class="text-danger">No se pudieron cargar las plazas.</div>`;
+                    renderPisos([]);
+                }
+            }
+
+            // Eventos
+            selClas.addEventListener("change", cargarPlazas);
+            selPiso.addEventListener("change", () => {
+                pisoActual = selPiso.value;
+                renderGrid();
             });
-    }
-</script>
+            radiosTechada.forEach(r => r.addEventListener("change", cargarPlazas));
+
+            // Si ya viene algo preseleccionado, intentar mostrar
+            if (selClas.value) cargarPlazas();
+        })();
+    </script>
 }
