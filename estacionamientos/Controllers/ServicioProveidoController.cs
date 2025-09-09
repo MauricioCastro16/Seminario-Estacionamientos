@@ -57,6 +57,7 @@ namespace estacionamientos.Controllers
 
             if (!ModelState.IsValid)
             {
+                _ctx.ServiciosProveidos.Add(model);
                 await LoadSelects(model.PlyID, model.SerID);
                 return View(model);
             }
