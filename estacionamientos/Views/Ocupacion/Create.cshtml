@@ -11,66 +11,230 @@
         <label class="form-label">Playa</label>
         <input type="text" class="form-control w-50" value="@ViewBag.PlayaNombre" disabled />
         <input type="hidden" asp-for="PlyID" value="@Model.PlyID" />
-
     </div>
 
     <div class="form-group mb-3">
         <label asp-for="VehPtnt" class="form-label"></label>
         <input asp-for="VehPtnt" class="form-control w-50" maxlength="10" placeholder="Ej: ABC123"
-            oninput="this.value = this.value.toUpperCase().replace(/\s/g,'');" />
+               oninput="this.value = this.value.toUpperCase().replace(/\s/g,'');" />
         <span asp-validation-for="VehPtnt" class="text-danger"></span>
     </div>
-
 
     <div class="form-group mb-3">
         <label for="ClasVehID" class="form-label">Clasificación del vehículo</label>
         <select id="ClasVehID" name="ClasVehID" asp-items="ViewBag.Clasificaciones" class="form-select w-50">
             <option value="">-- Seleccione clasificación --</option>
         </select>
-        <!-- ⚠️ NO uses asp-validation-for, porque el modelo Ocupacion no tiene esa propiedad -->
         <span class="text-danger">@ViewBag.ClasVehError</span>
     </div>
 
-
-
+    <!-- Selector de piso + grilla -->
     <div class="form-group mb-3">
-        <label asp-for="PlzNum" class="form-label"></label>
-        <select asp-for="PlzNum" asp-items="ViewBag.PlzNum" class="form-select w-50">
-            <option value="">-- Seleccionar plaza --</option>
-        </select>
-        <span asp-validation-for="PlzNum" class="text-danger"></span>
+        <label class="form-label">Piso</label>
+        <select id="PisoSelect" class="form-select w-25"></select>
     </div>
 
+    <!-- Mantiene compatibilidad con el POST -->
+    <input type="hidden" asp-for="PlzNum" id="PlzNum" />
+    <span asp-validation-for="PlzNum" class="text-danger"></span>
+
+    <div id="PlazasGrid" class="plazas-grid mb-3"></div>
 
     <input type="hidden" asp-for="OcufFyhIni" value="@DateTime.Now" />
 
-    <button type="submit" class="btn btn-primary">
+    <button type="submit" class="btn btn-primary" id="btnSubmit" disabled>
         <i class="bi bi-check-circle"></i> Confirmar Ingreso
     </button>
 </form>
 
+<style>
+    .plazas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+        gap: 12px;
+        max-width: 720px;
+    }
+    .plaza-card {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 14px 8px;
+        text-align: center;
+        cursor: pointer;
+        user-select: none;
+        transition: transform .05s, box-shadow .05s, background-color .2s;
+        background: #fff;
+    }
+    .plaza-card:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+
+    /* estados */
+    .plaza-card.inhabilitada {
+        background: #f1f3f5;
+        color: #6c757d;
+        border-style: dashed;
+        cursor: not-allowed;
+        opacity: .8;
+    }
+    .plaza-card.ocupada {
+        background: #fff3cd;
+        border-color: #ffe69c;
+        color: #7a5e00;
+        cursor: not-allowed;
+    }
+    .plaza-card.disponible { background: #e9f7ef; border-color: #c6efda; }
+    .plaza-card.incompatible { background: #fde2e1; border-color: #f5c2c7; color: #7a1a1a; }
+
+    .plaza-card.selected { outline: 3px solid #0d6efd; background: #e7f1ff; }
+    .plaza-title { font-weight: 600; font-size: .95rem; }
+    .plaza-sub { font-size: .8rem; color: #6c757d; }
+</style>
 
 @section Scripts {
-<script>
-    document.getElementById("ClasVehID").addEventListener("change", function () {
-        const clasVehID = this.value;
-        const plyID = document.querySelector("input[name='PlyID']").value;
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const plyID = document.querySelector("input[name='PlyID']").value;
+            const selClas = document.getElementById("ClasVehID");
+            const selPiso = document.getElementById("PisoSelect");
+            const grid = document.getElementById("PlazasGrid");
+            const inputPlzNum = document.getElementById("PlzNum");
+            const btnSubmit = document.getElementById("btnSubmit");
 
-        if (!clasVehID || !plyID) return;
+            let allPlazas = [];   // {plzNum, piso, hab, nombre, ocupada}
+            let disponibles = []; // [plzNum] compatibles con la clasificación
+            let pisos = [];       // [int|null] (null -> sin piso)
 
-        fetch(`/Ocupacion/GetPlazasDisponibles?plyID=${plyID}&clasVehID=${clasVehID}`)
-            .then(r => r.json())
-            .then(data => {
-                const plzSelect = document.getElementById("PlzNum");
-                plzSelect.innerHTML = '<option value="">-- Seleccione plaza --</option>';
-
-                data.forEach(plaza => {
-                    const opt = document.createElement("option");
-                    opt.value = plaza.plzNum;
-                    opt.textContent = plaza.label;
-                    plzSelect.appendChild(opt);
+            // Cargar todas las plazas de la playa
+            fetch(`/PlazaEstacionamiento/GetPlazasMapa?plyID=${plyID}`)
+                .then(r => r.json())
+                .then(data => {
+                    allPlazas = data;
+                    pisos = [...new Set(allPlazas.map(p => p.piso ?? -1))].sort((a,b)=> (a??-1)-(b??-1));
+                    renderPisos();
+                    refreshDisponiblesYGrilla();
                 });
-            });
-    });
-</script>
+
+            function renderPisos() {
+                selPiso.innerHTML = "";
+                pisos.forEach(p => {
+                    const opt = document.createElement("option");
+                    opt.value = p ?? -1;
+                    opt.textContent = (p ?? -1) === -1 ? "Sin piso" : `Piso ${p}`;
+                    selPiso.appendChild(opt);
+                });
+                if (selPiso.options.length > 0) selPiso.selectedIndex = 0;
+            }
+
+            function refreshDisponiblesYGrilla() {
+                const clasVehID = selClas.value;
+                if (!clasVehID) {
+                    disponibles = []; // sin clasificación aún
+                    renderGrid();
+                    updateSubmitState();
+                    return;
+                }
+                fetch(`/Ocupacion/GetPlazasDisponibles?plyID=${plyID}&clasVehID=${clasVehID}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        disponibles = data.map(d => d.plzNum);
+                        renderGrid();
+                        updateSubmitState();
+                    });
+            }
+
+            const isSelectable = (p) => p.hab && !p.ocupada; // habilitada y libre
+
+            function isCompatible(plzNum) {
+                if (!selClas.value) return false;        // sin clasificación no hay compatibilidad “confirmable”
+                return disponibles.includes(plzNum);     // compatible con la clase
+            }
+
+            function updateSubmitState() {
+                const plzSel = parseInt(inputPlzNum.value || "0", 10);
+                const haveSelection = !!plzSel;
+                const haveClas = !!selClas.value;
+                const ok = haveSelection && haveClas && isCompatible(plzSel);
+                btnSubmit.disabled = !ok;
+            }
+
+            function renderGrid() {
+                const pisoSel = parseInt(selPiso.value, 10);
+                const pisoKey = isNaN(pisoSel) ? -1 : pisoSel;
+
+                // limpiar selección si la plaza no está en el piso visible
+                if (inputPlzNum.value) {
+                    const plzSel = parseInt(inputPlzNum.value, 10);
+                    const plz = allPlazas.find(p => p.plzNum === plzSel);
+                    if (!plz || ((plz.piso ?? -1) !== pisoKey)) {
+                        inputPlzNum.value = "";
+                    }
+                }
+
+                const visibles = allPlazas.filter(p => ((p.piso ?? -1) === pisoKey));
+                grid.innerHTML = "";
+
+                if (visibles.length === 0) {
+                    grid.innerHTML = `<div class="text-muted">No hay plazas en este piso.</div>`;
+                    updateSubmitState();
+                    return;
+                }
+
+                visibles.forEach(p => {
+                    const card = document.createElement("div");
+                    card.className = "plaza-card";
+
+                    // Estado visual
+                    if (!p.hab) {
+                        card.classList.add("inhabilitada");
+                    } else if (p.ocupada) {
+                        card.classList.add("ocupada");
+                    } else {
+                        // habilitada y libre
+                        if (!selClas.value) {
+                            card.classList.add("disponible");           // aún sin clasificación
+                        } else if (disponibles.includes(p.plzNum)) {
+                            card.classList.add("disponible");           // compatible
+                        } else {
+                            card.classList.add("incompatible");         // no compatible con la clase seleccionada
+                        }
+                    }
+
+                    // Contenido
+                    const titulo = document.createElement("div");
+                    titulo.className = "plaza-title";
+                    titulo.textContent = (p.nombre && p.nombre.trim()) ? p.nombre : `Plaza ${p.plzNum}`;
+                    card.appendChild(titulo);
+
+                    const sub = document.createElement("div");
+                    sub.className = "plaza-sub";
+                    sub.textContent = `#${p.plzNum}`;
+                    card.appendChild(sub);
+
+                    // Click: sólo si se puede seleccionar (habilitada y libre)
+                    if (isSelectable(p)) {
+                        card.addEventListener("click", () => {
+                            document.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
+                            card.classList.add("selected");
+                            inputPlzNum.value = p.plzNum;
+                            updateSubmitState();
+                        });
+                    } else {
+                        card.style.pointerEvents = "none";
+                    }
+
+                    // Mantener selección si coincide
+                    if (parseInt(inputPlzNum.value, 10) === p.plzNum) {
+                        card.classList.add("selected");
+                    }
+
+                    grid.appendChild(card);
+                });
+
+                updateSubmitState();
+            }
+
+            // Eventos
+            selClas.addEventListener("change", refreshDisponiblesYGrilla);
+            selPiso.addEventListener("change", renderGrid);
+        })();
+    </script>
 }
