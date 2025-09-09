@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+
 
 namespace estacionamientos.Models
 {
@@ -16,7 +18,10 @@ namespace estacionamientos.Models
         public decimal TasMonto { get; set; }
 
         // Navs
+        [ValidateNever]
         public ServicioProveido ServicioProveido { get; set; } = default!;
+
+        [ValidateNever]
         public ClasificacionVehiculo ClasificacionVehiculo { get; set; } = default!;
     }
 }

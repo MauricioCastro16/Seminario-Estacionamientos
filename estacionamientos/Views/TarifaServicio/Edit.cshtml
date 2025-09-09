@@ -1,0 +1,43 @@
+@model estacionamientos.Models.TarifaServicio
+@{
+    ViewData["Title"] = "Editar Tarifa";
+}
+
+<div class="container">
+    <h2 class="mb-4">Editar Tarifa</h2>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+            </ul>
+        </div>
+    }
+
+    <form asp-action="Edit" method="post" class="card p-4 shadow-sm">
+        <input type="hidden" asp-for="PlyID" />
+        <input type="hidden" asp-for="SerID" />
+        <input type="hidden" asp-for="ClasVehID" />
+        <input type="hidden" asp-for="TasFecIni" />
+
+        <div class="mb-3">
+            <label asp-for="TasMonto" class="form-label">Monto</label>
+            <input asp-for="TasMonto" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="TasFecFin" class="form-label">Vigencia hasta</label>
+            <input asp-for="TasFecFin" type="date" class="form-control" />
+            <span class="form-text">Dejar vacío si sigue vigente</span>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>

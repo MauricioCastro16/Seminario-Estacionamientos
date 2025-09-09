@@ -1,0 +1,55 @@
+@model IEnumerable<estacionamientos.Models.TarifaServicio>
+@{
+    ViewData["Title"] = "Tarifas de Servicios";
+}
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Tarifas de Servicios</h2>
+        <a asp-action="Create" class="btn btn-primary">Nueva Tarifa</a>
+    </div>
+
+    <table class="table table-hover shadow-sm">
+        <thead class="table-dark">
+            <tr>
+                <th>Playa</th>
+                <th>Servicio</th>
+                <th>Clase Vehículo</th>
+                <th>Vigencia</th>
+                <th>Monto</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model)
+        {
+            var esVigente = item.TasFecFin == null || item.TasFecFin > DateTime.Now;
+            <tr class="@(esVigente ? "" : "table-secondary")">
+                <td>@item.ServicioProveido.Playa.PlyNom</td>
+                <td>@item.ServicioProveido.Servicio.SerNom</td>
+                <td>@item.ClasificacionVehiculo.ClasVehTipo</td>
+                <td>
+                    @item.TasFecIni.ToShortDateString()
+                    @if (item.TasFecFin != null)
+                    {
+                        <span>- @item.TasFecFin?.ToShortDateString()</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success">Vigente</span>
+                    }
+                </td>
+                <td>$@item.TasMonto</td>
+                <td class="d-flex gap-2">
+                    <a asp-action="Edit" asp-route-plyID="@item.PlyID" asp-route-serID="@item.SerID" asp-route-clasVehID="@item.ClasVehID" asp-route-tasFecIni="@item.TasFecIni" class="btn btn-sm btn-warning">Editar</a>
+                    <a asp-action="Details" asp-route-plyID="@item.PlyID" asp-route-serID="@item.SerID" asp-route-clasVehID="@item.ClasVehID" asp-route-tasFecIni="@item.TasFecIni" class="btn btn-sm btn-info">Detalles</a>
+                    @if (esVigente)
+                    {
+                        <a asp-action="Delete" asp-route-plyID="@item.PlyID" asp-route-serID="@item.SerID" asp-route-clasVehID="@item.ClasVehID" asp-route-tasFecIni="@item.TasFecIni" class="btn btn-sm btn-danger">Cerrar</a>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

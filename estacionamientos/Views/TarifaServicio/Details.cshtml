@@ -1,0 +1,37 @@
+@model estacionamientos.Models.TarifaServicio
+
+@{
+    ViewData["Title"] = "Detalles de Tarifa";
+}
+
+<h2>Detalles de Tarifa</h2>
+
+<dl class="row">
+    <dt class="col-sm-3">Playa</dt>
+    <dd class="col-sm-9">@Model.ServicioProveido.Playa.PlyNom</dd>
+
+    <dt class="col-sm-3">Servicio</dt>
+    <dd class="col-sm-9">@Model.ServicioProveido.Servicio.SerNom</dd>
+
+    <dt class="col-sm-3">Clase Vehículo</dt>
+    <dd class="col-sm-9">@Model.ClasificacionVehiculo.ClasVehTipo</dd>
+
+    <dt class="col-sm-3">Vigencia</dt>
+    <dd class="col-sm-9">
+        @Model.TasFecIni.ToShortDateString()
+        @if (Model.TasFecFin != null)
+        {
+            <span>- @Model.TasFecFin?.ToShortDateString()</span>
+        }
+        else
+        {
+            <span class="badge bg-success">Vigente</span>
+        }
+    </dd>
+
+    <dt class="col-sm-3">Monto</dt>
+    <dd class="col-sm-9">$@Model.TasMonto</dd>
+</dl>
+
+<a asp-action="Edit" asp-route-plyID="@Model.PlyID" asp-route-serID="@Model.SerID" asp-route-clasVehID="@Model.ClasVehID" asp-route-tasFecIni="@Model.TasFecIni" class="btn btn-warning">Editar</a>
+<a asp-action="Index" class="btn btn-secondary">Volver</a>

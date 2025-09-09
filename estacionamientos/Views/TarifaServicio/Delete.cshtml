@@ -1,0 +1,35 @@
+@model estacionamientos.Models.TarifaServicio
+
+@{
+    ViewData["Title"] = "Cerrar Tarifa";
+}
+
+<h2>Cerrar Tarifa</h2>
+
+<div class="alert alert-warning">
+    <strong>Atención:</strong> Esta acción cerrará la tarifa, no se eliminará el histórico.
+</div>
+
+<dl class="row">
+    <dt class="col-sm-3">Playa</dt>
+    <dd class="col-sm-9">@Model.ServicioProveido.Playa.PlyNom</dd>
+
+    <dt class="col-sm-3">Servicio</dt>
+    <dd class="col-sm-9">@Model.ServicioProveido.Servicio.SerNom</dd>
+
+    <dt class="col-sm-3">Clase Vehículo</dt>
+    <dd class="col-sm-9">@Model.ClasificacionVehiculo.ClasVehTipo</dd>
+
+    <dt class="col-sm-3">Monto</dt>
+    <dd class="col-sm-9">$@Model.TasMonto</dd>
+</dl>
+
+<form asp-action="Delete">
+    <input type="hidden" asp-for="PlyID" />
+    <input type="hidden" asp-for="SerID" />
+    <input type="hidden" asp-for="ClasVehID" />
+    <input type="hidden" asp-for="TasFecIni" />
+
+    <button type="submit" class="btn btn-danger">Cerrar Tarifa</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+</form>
