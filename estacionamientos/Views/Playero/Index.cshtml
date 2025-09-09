@@ -6,12 +6,17 @@
 }
 
 <div class="container">
-    <!-- Encabezado: título + botón Agregar a la derecha -->
+    <!-- Encabezado: título a la izquierda, botones a la derecha -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mb-0">Playeros</h1>
-        <a class="btn btn-primary" asp-controller="Playero" asp-action="Create" title="Agregar playero">
-            <i class="bi bi-plus-lg me-1"></i> Agregar Playero
-        </a>
+        <div>
+            <a class="btn btn-primary" asp-controller="Playero" asp-action="Create" title="Agregar playero">
+                <i class="bi bi-plus-lg me-1"></i> Agregar Playero
+            </a>
+            <a class="btn btn-outline-secondary" asp-controller="Playero" asp-action="HistorialAgrupado">
+                <i class="bi bi-clock-history me-1"></i> Historial agrupado
+            </a>
+        </div>
     </div>
 
     <h5 class="text-center mt-3">Mis Playeros</h5>
@@ -51,13 +56,15 @@
                                         <input type="hidden" name="plyID" value="@playa.PlyID" />
                                         <input type="hidden" name="plaNU" value="@p.UsuNU" />
 
-                                        <span class="badge text-bg-secondary me-1 mb-1">
+                                        <div class="playa-chip">
                                             @etiqueta
-                                            <button type="submit" class="btn btn-sm btn-link text-danger p-0 ms-1" title="Desasignar"
-                                                onclick="return confirm('¿Quitar esta asignación?');">
+                                            <button type="submit"
+                                                    class="remove-btn"
+                                                    title="Desasignar"
+                                                    onclick="return confirm('¿Quitar esta asignación?');">
                                                 <i class="bi bi-x-circle"></i>
                                             </button>
-                                        </span>
+                                        </div>
                                     </form>
                                 }
                             }
@@ -73,10 +80,20 @@
                                 <i class="bi bi-link-45deg"></i>
                             </a>
 
-                            <a class="btn btn-outline-danger btn-sm" asp-controller="Playero" asp-action="Delete"
-                                asp-route-id="@p.UsuNU" title="Eliminar">
-                                <i class="bi bi-trash"></i>
-                            </a>
+                            <form asp-controller="Playero"
+                                asp-action="Delete"
+                                asp-route-id="@p.UsuNU"
+                                method="post"
+                                class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit"
+                                        class="btn btn-outline-danger btn-sm"
+                                        title="Eliminar"
+                                        onclick="return confirm('¿Estás seguro de eliminar este playero?');">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+
                         </td>
                     </tr>
                 }
@@ -92,3 +109,33 @@
         </tbody>
     </table>
 </div>
+
+<style>
+    .playa-chip {
+        display: inline-flex;
+        align-items: center;
+        background: #f1f8ff;
+        /* azul muy claro */
+        color: #1b3a68;
+        /* azul Bootstrap */
+        border: 1px solid #0f2647;
+        border-radius: 999px;
+        padding: 0.25rem 0.6rem;
+        font-size: .85rem;
+        margin: 0.15rem;
+    }
+
+    .playa-chip .remove-btn {
+        background: none;
+        border: none;
+        color: #dc3545;
+        /* rojo Bootstrap */
+        margin-left: .4rem;
+        padding: 0;
+        cursor: pointer;
+    }
+
+    .playa-chip .remove-btn:hover {
+        color: #a71d2a;
+    }
+</style>

@@ -318,60 +318,51 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .HasForeignKey(a => a.PlyID)
                 .OnDelete(DeleteBehavior.Cascade);
             });
+        // TrabajaEn (opción A)
         modelBuilder.Entity<TrabajaEn>(e =>
             {
                 e.ToTable("TrabajaEn");
-                e.HasKey(x => new { x.PlyID, x.PlaNU });
+                e.HasKey(x => new { x.PlyID, x.PlaNU, x.FechaInicio }); // <-- PK incluye el inicio del período
 
+                e.Property(x => x.FechaInicio).HasColumnType("timestamptz").IsRequired();
+                e.Property(x => x.FechaFin).HasColumnType("timestamptz");
                 e.Property(x => x.TrabEnActual).HasDefaultValue(true);
 
-                // Fechas
-                e.Property(x => x.FechaInicio)
-                    .IsRequired();
+                e.HasOne(x => x.Playa).WithMany().HasForeignKey(x => x.PlyID).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(x => x.Playero).WithMany().HasForeignKey(x => x.PlaNU).OnDelete(DeleteBehavior.Cascade);
 
-                e.Property(x => x.FechaFin);
-
-                e.HasOne(x => x.Playa)
-                    .WithMany()
-                    .HasForeignKey(x => x.PlyID)
-                    .OnDelete(DeleteBehavior.Cascade);
-
-                e.HasOne(x => x.Playero)
-                    .WithMany()
-                    .HasForeignKey(x => x.PlaNU)
-                    .OnDelete(DeleteBehavior.Cascade);
-
-                // Índice útil para buscar vigentes por playa
-                e.HasIndex(x => new { x.PlyID, x.FechaFin });
+                // (Opcional) solo 1 período abierto por par
+                e.HasIndex(x => new { x.PlyID, x.PlaNU }).IsUnique().HasFilter("\"FechaFin\" IS NULL");
             });
 
+
+        // Turno
         modelBuilder.Entity<Turno>(e =>
             {
                 e.ToTable("Turno");
 
-                // PK compuesta: (PlyID, PlaNU, TurFyhIni)
+                // Podés conservar esta PK (PlyID, PlaNU, TurFyhIni)
                 e.HasKey(t => new { t.PlyID, t.PlaNU, t.TurFyhIni });
 
-                // FK compuesta a TrabajaEn para forzar que el playero-trabaja-en-la-playa
+                e.Property(t => t.TurFyhIni).HasColumnType("timestamptz").IsRequired();
+                e.Property(t => t.TurFyhFin).HasColumnType("timestamptz");
+                e.Property(t => t.TrabFyhIni).HasColumnType("timestamptz").IsRequired(); // FK al período
+
+                // FK AL PERÍODO exacto de TrabajaEn (Opción A)
                 e.HasOne(t => t.TrabajaEn)
                 .WithMany()
-                .HasForeignKey(t => new { t.PlyID, t.PlaNU })
+                .HasForeignKey(t => new { t.PlyID, t.PlaNU, t.TrabFyhIni })
                 .OnDelete(DeleteBehavior.Restrict);
 
-                // Navegaciones directas (comodidad para Include)
-                e.HasOne(t => t.Playa)
-                .WithMany()
-                .HasForeignKey(t => t.PlyID)
-                .OnDelete(DeleteBehavior.Restrict);
+                // Navegaciones directas (comodidad)
+                e.HasOne(t => t.Playa).WithMany().HasForeignKey(t => t.PlyID).OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(t => t.Playero).WithMany().HasForeignKey(t => t.PlaNU).OnDelete(DeleteBehavior.Restrict);
 
-                e.HasOne(t => t.Playero)
-                .WithMany()
-                .HasForeignKey(t => t.PlaNU)
-                .OnDelete(DeleteBehavior.Restrict);
-
-                // Índice útil para búsquedas por playa y fechas
+                // Índices útiles
                 e.HasIndex(t => new { t.PlyID, t.TurFyhIni });
             });
+
+
         modelBuilder.Entity<Horario>(e =>
             {
                 e.ToTable("Horario");

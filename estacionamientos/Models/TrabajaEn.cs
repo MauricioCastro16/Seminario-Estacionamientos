@@ -8,11 +8,7 @@ namespace estacionamientos.Models
         public int PlyID { get; set; }
         public int PlaNU { get; set; }
         public bool TrabEnActual { get; set; } = true;
-
-        [DataType(DataType.Date)]
         public DateTime FechaInicio { get; set; }  
-
-        [DataType(DataType.Date)]
         public DateTime? FechaFin { get; set; }  
 
         // Navegaciones

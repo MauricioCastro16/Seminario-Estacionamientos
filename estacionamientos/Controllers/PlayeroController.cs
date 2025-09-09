@@ -137,7 +137,7 @@ namespace estacionamientos.Controllers
                 PlaNU = vm.Playero.UsuNU,
                 PlyID = vm.PlayaId,
                 TrabEnActual = true,          // compatibilidad
-                FechaInicio = DateTime.Now,
+                FechaInicio = DateTime.UtcNow,
                 FechaFin = null
             };
             _context.Trabajos.Add(trabajo);
@@ -212,19 +212,19 @@ namespace estacionamientos.Controllers
         {
             var dueId = GetCurrentOwnerId();
 
-            // Guard: la playa debe ser del dueño
+            // 1) Guard: la playa debe ser del dueño
             var esMia = await _context.AdministraPlayas
                 .AnyAsync(a => a.DueNU == dueId && a.PlyID == vm.PlayaId);
             if (!esMia)
                 ModelState.AddModelError(nameof(vm.PlayaId), "No podés asignar a una playa que no administrás.");
 
-            // Buscamos si ya existe relación (para reactivar si quedó con fecha de fin)
-            var existente = await _context.Trabajos
-                .FirstOrDefaultAsync(t => t.PlaNU == vm.PlaNU && t.PlyID == vm.PlayaId);
-
-            // Si ya está vigente (FechaFin == null), no permitimos duplicar
-            if (existente is not null && existente.FechaFin == null)
-                ModelState.AddModelError(nameof(vm.PlayaId), "El playero ya está vinculado a esa playa.");
+            // 2) ¿ya está vigente en ESTA playa?
+            var vigenteMisma = await _context.Trabajos
+                .FirstOrDefaultAsync(t => t.PlaNU == vm.PlaNU
+                                       && t.PlyID == vm.PlayaId
+                                       && t.FechaFin == null);
+            if (vigenteMisma is not null)
+                ModelState.AddModelError(nameof(vm.PlayaId), "El playero ya está activo en esa playa.");
 
             if (!ModelState.IsValid)
             {
@@ -234,29 +234,20 @@ namespace estacionamientos.Controllers
                 return View(vm);
             }
 
-            if (existente is null)
+            // 3) Crear un NUEVO período para (PlyID, PlaNU) con nuevo FechaInicio
+            var nuevo = new TrabajaEn
             {
-                // Alta de período nuevo
-                _context.Trabajos.Add(new TrabajaEn
-                {
-                    PlaNU = vm.PlaNU,
-                    PlyID = vm.PlayaId,
-                    TrabEnActual = true,           // compatibilidad
-                    FechaInicio = DateTime.Now,
-                    FechaFin = null                // vigente
-                });
-            }
-            else
-            {
-                // Reactivar: nuevo período
-                existente.TrabEnActual = true;     // compatibilidad
-                existente.FechaInicio = DateTime.Now;
-                existente.FechaFin = null;
-                _context.Update(existente);
-            }
+                PlyID = vm.PlayaId,
+                PlaNU = vm.PlaNU,
+                TrabEnActual = true,                      // legado (seguí mostrándolo si querés)
+                FechaInicio = DateTime.UtcNow,
+                FechaFin = null
+            };
+            _context.Trabajos.Add(nuevo);
 
             await _context.SaveChangesAsync();
-            TempData["Msg"] = "Playero vinculado correctamente.";
+
+            TempData["Msg"] = "Playero vinculado correctamente (nuevo período).";
             return RedirectToAction(nameof(Index));
         }
 
@@ -281,7 +272,7 @@ namespace estacionamientos.Controllers
             // Cerrar el período vigente
             rel.TrabEnActual = false;              // compatibilidad
             if (rel.FechaFin == null)
-                rel.FechaFin = DateTime.Now;
+                rel.FechaFin = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 
@@ -303,7 +294,7 @@ namespace estacionamientos.Controllers
             foreach (var r in relsVigentes)
             {
                 r.TrabEnActual = false;     // compatibilidad con código viejo
-                r.FechaFin = DateTime.Now;  // cerrar período
+                r.FechaFin = DateTime.UtcNow;  // cerrar período
             }
 
             await _context.SaveChangesAsync();
@@ -363,5 +354,58 @@ namespace estacionamientos.Controllers
 
             return RedirectToAction(nameof(Plazas));
         }
+
+        // ------------------------------------------------------------
+        // HISTORIAL: todos los períodos (vigentes e históricos) de mis playeros
+        // ------------------------------------------------------------
+        [HttpGet]
+        public async Task<IActionResult> HistorialAgrupado()
+            {
+                var dueId = GetCurrentOwnerId();                          // helper tuyo
+                var misPlyIds = await PlyIdsDelDuenioAsync(dueId);        // helper tuyo
+
+                var q = _context.Trabajos
+                    .Include(t => t.Playero)
+                    .Include(t => t.Playa)
+                    .Where(t => misPlyIds.Contains(t.PlyID))
+                    .AsNoTracking();
+
+                // Si ya añadiste FechaInicio/FechaFin al modelo, podés usar t.FechaInicio / t.FechaFin directamente.
+                var flat = await q
+                    .Select(t => new
+                    {
+                        t.PlaNU,
+                        PlayeroNombre = t.Playero.UsuNyA,
+                        PlayaNombre = string.IsNullOrWhiteSpace(t.Playa.PlyNom)
+                                        ? (t.Playa.PlyCiu + " - " + t.Playa.PlyDir)
+                                        : t.Playa.PlyNom,
+                        FechaInicio = (DateTime?)EF.Property<DateTime?>(t, "FechaInicio"),
+                        FechaFin = (DateTime?)EF.Property<DateTime?>(t, "FechaFin"),
+                        Vigente = t.TrabEnActual || EF.Property<DateTime?>(t, "FechaFin") == null
+                    })
+                    .ToListAsync();
+
+                var data = flat
+                    .GroupBy(x => new { x.PlaNU, x.PlayeroNombre })
+                    .Select(g => new PlayeroHistGroupVM
+                    {
+                        PlaNU = g.Key.PlaNU,
+                        PlayeroNombre = g.Key.PlayeroNombre,
+                        Periodos = g.OrderByDescending(p => p.Vigente)
+                                    .ThenByDescending(p => p.FechaInicio)
+                                    .Select(p => new PeriodoVM
+                                    {
+                                        PlayaNombre = p.PlayaNombre,
+                                        FechaInicio = p.FechaInicio,
+                                        FechaFin = p.FechaFin,
+                                        Vigente = p.Vigente && p.FechaFin is null
+                                    })
+                                    .ToList()
+                    })
+                    .OrderBy(vm => vm.PlayeroNombre)
+                    .ToList();
+
+                return View(data);
+            }
     }
 }

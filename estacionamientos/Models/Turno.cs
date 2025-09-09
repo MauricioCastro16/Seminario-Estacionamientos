@@ -17,6 +17,9 @@ namespace estacionamientos.Models
 
         public DateTime? TurFyhFin { get; set; }
 
+        // --- FK al PERÍODO de TrabajaEn
+        public DateTime TrabFyhIni { get; set; }   // = TrabajaEn.FechaInicio (UTC)
+
         //  Apertura/cierre de caja 
         [Column(TypeName = "numeric(12,2)")]
         public decimal? TurApertCaja { get; set; }    // Importe de apertura de caja

@@ -81,7 +81,7 @@ namespace estacionamientos.Controllers
             if (existente is null)
             {
                 model.TrabEnActual = true;       // compatibilidad
-                model.FechaInicio = DateTime.Now;
+                model.FechaInicio = DateTime.UtcNow;
                 model.FechaFin = null;
                 _ctx.Trabajos.Add(model);
             }
@@ -89,7 +89,7 @@ namespace estacionamientos.Controllers
             {
                 // reactivar: nuevo período
                 existente.TrabEnActual = true;   // compatibilidad
-                existente.FechaInicio = DateTime.Now;
+                existente.FechaInicio = DateTime.UtcNow;
                 existente.FechaFin = null;
                 _ctx.Update(existente);
             }
@@ -122,7 +122,7 @@ namespace estacionamientos.Controllers
             if (item is null) return NotFound();
 
             item.TrabEnActual = false;      // compatibilidad
-            item.FechaFin = DateTime.Now;   // marcar histórico
+            item.FechaFin = DateTime.UtcNow;   // marcar histórico
             await _ctx.SaveChangesAsync();
 
             return RedirectToAction(nameof(Index));
