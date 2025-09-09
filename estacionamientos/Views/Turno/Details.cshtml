@@ -46,7 +46,7 @@
 
         @{
             decimal? total = (Model.TurApertCaja.HasValue || Model.TurCierrCaja.HasValue)
-                ? (Model.TurApertCaja ?? 0) + (Model.TurCierrCaja ?? 0)
+                ? (Model.TurCierrCaja ?? 0) - (Model.TurApertCaja ?? 0)
                 : (decimal?)null;
         }
         <dt class="col-sm-3">Total del turno</dt>
