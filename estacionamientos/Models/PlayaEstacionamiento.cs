@@ -40,13 +40,8 @@ namespace estacionamientos.Models
         public bool PlyLlavReq { get; set; } // ¿requiere dejar llaves?
 
         // ===== NUEVO: coordenadas seleccionadas en el mapa =====
-        // Usamos decimal(9,6) (~10 cm) para almacenar en SQL con buena precisión
-        [Column(TypeName = "decimal(9,6)")]
-        [Range(-90, 90, ErrorMessage = "Latitud inválida")]
         public decimal? PlyLat { get; set; }
 
-        [Column(TypeName = "decimal(9,6)")]
-        [Range(-180, 180, ErrorMessage = "Longitud inválida")]
         public decimal? PlyLon { get; set; }
 
         // Navegaciones
