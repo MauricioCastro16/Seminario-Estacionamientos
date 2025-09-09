@@ -64,12 +64,14 @@ namespace estacionamientos.Controllers
             var dueId = GetCurrentOwnerId();
             var misPlyIds = await PlyIdsDelDuenioAsync(dueId);
 
+            // INDEX: solo vínculos vigentes en playas del dueño
             var trabajosActivos = await _context.Trabajos
                 .Include(t => t.Playero)
                 .Include(t => t.Playa)
-                .Where(t => misPlyIds.Contains(t.PlyID) && t.TrabEnActual)
+                .Where(t => misPlyIds.Contains(t.PlyID) && t.FechaFin == null) // <-- por fecha
                 .AsNoTracking()
                 .ToListAsync();
+
 
             var porPlayero = trabajosActivos
                 .GroupBy(t => t.Playero.UsuNU)
@@ -129,12 +131,17 @@ namespace estacionamientos.Controllers
             _context.Playeros.Add(vm.Playero);
             await _context.SaveChangesAsync();
 
-            _context.Trabajos.Add(new TrabajaEn
+            // CREATE (POST): vínculo inicial
+            var trabajo = new TrabajaEn
             {
                 PlaNU = vm.Playero.UsuNU,
                 PlyID = vm.PlayaId,
-                TrabEnActual = true
-            });
+                TrabEnActual = true,          // compatibilidad
+                FechaInicio = DateTime.Now,
+                FechaFin = null
+            };
+            _context.Trabajos.Add(trabajo);
+
             await _context.SaveChangesAsync();
 
             TempData["Msg"] = "Playero creado y asignado.";
@@ -176,7 +183,7 @@ namespace estacionamientos.Controllers
         }
 
         // ------------------------------------------------------------
-        // ASSIGN: sólo dueños
+        // ASSIGN: sólo dueños (GET)
         // ------------------------------------------------------------
         [HttpGet]
         [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
@@ -196,21 +203,27 @@ namespace estacionamientos.Controllers
             });
         }
 
+        // ------------------------------------------------------------
+        // ASSIGN: crea o REACTIVA vínculo con historial (POST)
+        // ------------------------------------------------------------
         [HttpPost, ValidateAntiForgeryToken]
         [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Assign(PlayeroAssignVM vm)
         {
             var dueId = GetCurrentOwnerId();
 
+            // Guard: la playa debe ser del dueño
             var esMia = await _context.AdministraPlayas
                 .AnyAsync(a => a.DueNU == dueId && a.PlyID == vm.PlayaId);
             if (!esMia)
                 ModelState.AddModelError(nameof(vm.PlayaId), "No podés asignar a una playa que no administrás.");
 
+            // Buscamos si ya existe relación (para reactivar si quedó con fecha de fin)
             var existente = await _context.Trabajos
                 .FirstOrDefaultAsync(t => t.PlaNU == vm.PlaNU && t.PlyID == vm.PlayaId);
 
-            if (existente is not null && existente.TrabEnActual)
+            // Si ya está vigente (FechaFin == null), no permitimos duplicar
+            if (existente is not null && existente.FechaFin == null)
                 ModelState.AddModelError(nameof(vm.PlayaId), "El playero ya está vinculado a esa playa.");
 
             if (!ModelState.IsValid)
@@ -223,16 +236,22 @@ namespace estacionamientos.Controllers
 
             if (existente is null)
             {
+                // Alta de período nuevo
                 _context.Trabajos.Add(new TrabajaEn
                 {
                     PlaNU = vm.PlaNU,
                     PlyID = vm.PlayaId,
-                    TrabEnActual = true
+                    TrabEnActual = true,           // compatibilidad
+                    FechaInicio = DateTime.Now,
+                    FechaFin = null                // vigente
                 });
             }
             else
             {
-                existente.TrabEnActual = true;
+                // Reactivar: nuevo período
+                existente.TrabEnActual = true;     // compatibilidad
+                existente.FechaInicio = DateTime.Now;
+                existente.FechaFin = null;
                 _context.Update(existente);
             }
 
@@ -242,13 +261,15 @@ namespace estacionamientos.Controllers
         }
 
         // ------------------------------------------------------------
-        // UNASSIGN: sólo dueños
+        // UNASSIGN: marcar fecha de fin (no borrar)
         // ------------------------------------------------------------
         [HttpPost, ValidateAntiForgeryToken]
         [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Unassign(int plaNU, int plyID)
         {
             var dueId = GetCurrentOwnerId();
+
+            // Guard: la playa debe ser del dueño
             var esMia = await _context.AdministraPlayas
                 .AnyAsync(a => a.DueNU == dueId && a.PlyID == plyID);
             if (!esMia) return Forbid();
@@ -257,43 +278,40 @@ namespace estacionamientos.Controllers
                 .FirstOrDefaultAsync(t => t.PlaNU == plaNU && t.PlyID == plyID);
             if (rel is null) return NotFound();
 
-            rel.TrabEnActual = false;
+            // Cerrar el período vigente
+            rel.TrabEnActual = false;              // compatibilidad
+            if (rel.FechaFin == null)
+                rel.FechaFin = DateTime.Now;
+
             await _context.SaveChangesAsync();
 
             TempData["Msg"] = "Vinculación marcada como histórica.";
             return RedirectToAction(nameof(Index));
         }
 
-        // ------------------------------------------------------------
-        // DELETE: sólo dueños
-        // ------------------------------------------------------------
-        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var entity = await _context.Playeros.AsNoTracking()
-                .FirstOrDefaultAsync(e => e.UsuNU == id);
-            return entity is null ? NotFound() : View(entity);
-        }
-
         [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
-        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var dueId = GetCurrentOwnerId();
             var misPlyIds = await PlyIdsDelDuenioAsync(dueId);
 
-            var rels = await _context.Trabajos
-                .Where(t => t.PlaNU == id && misPlyIds.Contains(t.PlyID) && t.TrabEnActual)
+            // Traer SOLO relaciones vigentes (FechaFin == null) del playero en MIS playas
+            var relsVigentes = await _context.Trabajos
+                .Where(t => t.PlaNU == id && misPlyIds.Contains(t.PlyID) && t.FechaFin == null)
                 .ToListAsync();
 
-            foreach (var r in rels)
-                r.TrabEnActual = false;
+            foreach (var r in relsVigentes)
+            {
+                r.TrabEnActual = false;     // compatibilidad con código viejo
+                r.FechaFin = DateTime.Now;  // cerrar período
+            }
 
             await _context.SaveChangesAsync();
 
-            TempData["Msg"] = "El playero ya no aparece en tus listados. Se conservó el historial.";
+            TempData["Msg"] = "El playero ya no aparece en tus listados. Se conservó el historial (fechas de fin registradas).";
             return RedirectToAction(nameof(Index));
         }
+
 
         // ------------------------------------------------------------
         // PLAZAS: sólo playeros

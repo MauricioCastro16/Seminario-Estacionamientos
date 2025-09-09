@@ -43,11 +43,12 @@ namespace estacionamientos.Controllers
             var q = _ctx.Trabajos
                 .Include(t => t.Playa)
                 .Include(t => t.Playero)
-                .Where(t => t.TrabEnActual)
+                .Where(t => t.FechaFin == null) // <-- ahora por fecha
                 .AsNoTracking();
 
             return View(await q.ToListAsync());
         }
+
 
         // GET: /TrabajaEn/NuevaAsignacion?plaNU=38
         [HttpGet]
@@ -63,8 +64,11 @@ namespace estacionamientos.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> NuevaAsignacionPost(TrabajaEn model, string? returnUrl = null)
         {
-            // evitar duplicados
-            if (await _ctx.Trabajos.AnyAsync(x => x.PlyID == model.PlyID && x.PlaNU == model.PlaNU))
+            // evitar duplicados exactos (misma clave compuesta)
+            var existente = await _ctx.Trabajos
+                .FirstOrDefaultAsync(x => x.PlyID == model.PlyID && x.PlaNU == model.PlaNU);
+
+            if (existente is not null && existente.FechaFin == null)
                 ModelState.AddModelError(string.Empty, "Ese playero ya está asignado a esa playa.");
 
             if (!ModelState.IsValid)
@@ -74,13 +78,26 @@ namespace estacionamientos.Controllers
                 return View("Create", model);
             }
 
-            model.TrabEnActual = true;
-            _ctx.Trabajos.Add(model);
-            await _ctx.SaveChangesAsync();
+            if (existente is null)
+            {
+                model.TrabEnActual = true;       // compatibilidad
+                model.FechaInicio = DateTime.Now;
+                model.FechaFin = null;
+                _ctx.Trabajos.Add(model);
+            }
+            else
+            {
+                // reactivar: nuevo período
+                existente.TrabEnActual = true;   // compatibilidad
+                existente.FechaInicio = DateTime.Now;
+                existente.FechaFin = null;
+                _ctx.Update(existente);
+            }
 
-            // siempre vuelve a Playero/Index
+            await _ctx.SaveChangesAsync();
             return RedirectToAction("Index", "Playero");
         }
+
 
 
         // GET: /TrabajaEn/Delete?plyID=5&plaNU=38
@@ -104,11 +121,13 @@ namespace estacionamientos.Controllers
             var item = await _ctx.Trabajos.FindAsync(plyID, plaNU);
             if (item is null) return NotFound();
 
-            item.TrabEnActual = false;
+            item.TrabEnActual = false;      // compatibilidad
+            item.FechaFin = DateTime.Now;   // marcar histórico
             await _ctx.SaveChangesAsync();
 
             return RedirectToAction(nameof(Index));
         }
+
 
         [HttpPost]
         [ValidateAntiForgeryToken]

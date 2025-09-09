@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using System.ComponentModel.DataAnnotations;
 
 namespace estacionamientos.Models
 {
@@ -8,11 +9,14 @@ namespace estacionamientos.Models
         public int PlaNU { get; set; }
         public bool TrabEnActual { get; set; } = true;
 
-        // Navegaciones (no se validan en los formularios)
-        [ValidateNever]
-        public PlayaEstacionamiento Playa { get; set; } = default!;
+        [DataType(DataType.Date)]
+        public DateTime FechaInicio { get; set; }  
 
-        [ValidateNever]
-        public Playero Playero { get; set; } = default!;
+        [DataType(DataType.Date)]
+        public DateTime? FechaFin { get; set; }  
+
+        // Navegaciones
+        [ValidateNever] public PlayaEstacionamiento Playa { get; set; } = default!;
+        [ValidateNever] public Playero Playero { get; set; } = default!;
     }
 }

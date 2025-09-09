@@ -319,22 +319,32 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .OnDelete(DeleteBehavior.Cascade);
             });
         modelBuilder.Entity<TrabajaEn>(e =>
-           {
-               e.ToTable("TrabajaEn");
-               e.HasKey(x => new { x.PlyID, x.PlaNU });   // PK compuesta
+            {
+                e.ToTable("TrabajaEn");
+                e.HasKey(x => new { x.PlyID, x.PlaNU });
 
-               e.Property(x => x.TrabEnActual).HasDefaultValue(true);
+                e.Property(x => x.TrabEnActual).HasDefaultValue(true);
 
-               e.HasOne(x => x.Playa)
-                .WithMany()                                // podés crear p.Trabajos si querés
-                .HasForeignKey(x => x.PlyID)
-                .OnDelete(DeleteBehavior.Cascade);
+                // Fechas
+                e.Property(x => x.FechaInicio)
+                    .IsRequired();
 
-               e.HasOne(x => x.Playero)
-                .WithMany()                                // podés crear pl.Trabajos si querés
-                .HasForeignKey(x => x.PlaNU)
-                .OnDelete(DeleteBehavior.Cascade);
-           });
+                e.Property(x => x.FechaFin);
+
+                e.HasOne(x => x.Playa)
+                    .WithMany()
+                    .HasForeignKey(x => x.PlyID)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(x => x.Playero)
+                    .WithMany()
+                    .HasForeignKey(x => x.PlaNU)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Índice útil para buscar vigentes por playa
+                e.HasIndex(x => new { x.PlyID, x.FechaFin });
+            });
+
         modelBuilder.Entity<Turno>(e =>
             {
                 e.ToTable("Turno");
