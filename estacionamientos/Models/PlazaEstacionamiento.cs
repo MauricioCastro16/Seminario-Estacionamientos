@@ -12,6 +12,7 @@ namespace estacionamientos.Models
         public bool PlzTecho { get; set; }
         public decimal? PlzAlt { get; set; }    // altura máx en metros (ajustá tipo si querés)
         public bool PlzHab { get; set; } = true; // habilitada
+        public string? PlzNombre { get; set; } // nombre o código identificatorio (opcional)
 
         public int ClasVehID { get; set; }
         public ClasificacionVehiculo Clasificacion { get; set; } = default!;

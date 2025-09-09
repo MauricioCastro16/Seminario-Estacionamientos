@@ -149,7 +149,8 @@ namespace estacionamientos.Controllers
                     PlzTecho = plzTecho.Value,
                     PlzAlt = plzTecho.Value ? plzAlt : null,
                     PlzHab = true,
-                    ClasVehID = clasVehID   // 🔹 nuevo campo: clasificación de vehículo
+                    ClasVehID = clasVehID,  // 🔹 nuevo campo: clasificación de vehículo
+                    PlzNombre = null
                 };
                 _ctx.Plazas.Add(plaza);
             }
@@ -161,7 +162,7 @@ namespace estacionamientos.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditInline(int plyID, int plzNum, bool plzTecho, decimal? plzAlt)
+        public async Task<IActionResult> EditInline(int plyID, int plzNum, bool plzTecho, decimal? plzAlt, string? plzNombre)
         {
             var plaza = await _ctx.Plazas.FindAsync(plyID, plzNum);
             if (plaza is null)
@@ -182,6 +183,9 @@ namespace estacionamientos.Controllers
 
             plaza.PlzTecho = plzTecho;
             plaza.PlzAlt = plzAlt;
+            
+            plzNombre = string.IsNullOrWhiteSpace(plzNombre) ? null : plzNombre.Trim();
+            plaza.PlzNombre = plzNombre;
 
             await _ctx.SaveChangesAsync();
             TempData["Ok"] = $"Plaza {plzNum} actualizada.";
