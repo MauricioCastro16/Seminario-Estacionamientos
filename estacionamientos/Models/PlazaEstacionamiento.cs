@@ -13,6 +13,9 @@ namespace estacionamientos.Models
         public decimal? PlzAlt { get; set; }    // altura máx en metros (ajustá tipo si querés)
         public bool PlzHab { get; set; } = true; // habilitada
 
+        public int ClasVehID { get; set; }
+        public ClasificacionVehiculo Clasificacion { get; set; } = default!;
+
         // Navs
         public PlayaEstacionamiento Playa { get; set; } = default!;
         public ICollection<Ocupacion> Ocupaciones { get; set; } = new List<Ocupacion>();

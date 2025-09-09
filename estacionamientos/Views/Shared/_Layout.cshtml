@@ -59,7 +59,17 @@
 
             <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                 <!-- Navegación izquierda -->
-                <ul class="navbar-nav me-auto">
+
+                    <ul class="navbar-nav me-auto">
+                    @if (User.IsInRole("Playero"))
+                    {
+                    <li class="nav-item">
+                        <a class="nav-link text-dark" asp-controller="Ocupacion" asp-action="Index">
+                            <i class="bi bi-car-front"></i> Ingreso/Egreso
+                        </a>
+                    </li>
+                    }
+
                     <li class="nav-item">
                         <a class="nav-link text-dark" asp-area="" asp-controller="Usuario" asp-action="Index">Usuarios</a>
                     </li>
@@ -105,7 +115,6 @@
                                 @User.Identity!.Name
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
-                                <li><h6 class="dropdown-header">@User.Identity!.Name</h6></li>
                                 <li><hr class="dropdown-divider" /></li>
 
                                 @* 🟢 Agregamos “Mis turnos” acá si es Playero *@
