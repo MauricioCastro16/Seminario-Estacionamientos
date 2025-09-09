@@ -29,8 +29,8 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> Edit(int id)
         {
-            var item = await _ctx.Servicios.FindAsync(id);
-            return item is null ? NotFound() : View(item);
+            var servicio = await _ctx.Servicios.FindAsync(id);
+            return servicio is null ? NotFound() : View(servicio);
         }
 
         [HttpPost, ValidateAntiForgeryToken]

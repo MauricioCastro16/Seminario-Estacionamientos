@@ -1,0 +1,22 @@
+@model estacionamientos.Models.ServicioProveido
+
+<h2>Asignar Servicio a Playa</h2>
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label for="PlyID">Playa</label>
+        <select class="form-control" id="PlyID" name="PlyID" required>
+            <!-- Lista de playas -->
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="SerID">Servicio</label>
+        <select class="form-control" id="SerID" name="SerID" required>
+            <!-- Lista de servicios -->
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="SerProvHab">¿Habilitar Servicio?</label>
+        <input type="checkbox" id="SerProvHab" name="SerProvHab" checked />
+    </div>
+    <button type="submit" class="btn btn-primary">Asignar Servicio</button>
+</form>

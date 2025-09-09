@@ -37,7 +37,7 @@ namespace estacionamientos.Controllers
             var allowed = new[] { "all", "nombre", "provincia", "ciudad", "direccion" };
             vm.FilterBy = (vm.FilterBy ?? "all").ToLower();
             if (!allowed.Contains(vm.FilterBy)) vm.FilterBy = "all";
-            
+
             static void Normalize(List<string> list)
             {
                 if (list == null) return;
@@ -83,7 +83,7 @@ namespace estacionamientos.Controllers
             }
 
             var query = baseQuery.AsQueryable();
-                    
+
             if (!string.IsNullOrWhiteSpace(vm.Q))
             {
                 var q = $"%{vm.Q.Trim()}%";
@@ -99,7 +99,7 @@ namespace estacionamientos.Controllers
                         query = query.Where(p => EF.Functions.ILike(p.PlyDir!, q));
                         break;
                     case "all":
-                    case "provincia": 
+                    case "provincia":
                     default:
                         query = query.Where(p =>
                             EF.Functions.ILike(p.PlyNom!, q) ||
@@ -133,8 +133,8 @@ namespace estacionamientos.Controllers
                 if (!string.IsNullOrWhiteSpace(vm.SelectedOption))
                     provs.Add(vm.SelectedOption.Trim());
 
-            var provsLower = provs.Select(pr => pr.ToLower()).ToList();
-            query = query.Where(p => provsLower.Contains(p.PlyProv!.ToLower()));
+                var provsLower = provs.Select(pr => pr.ToLower()).ToList();
+                query = query.Where(p => provsLower.Contains(p.PlyProv!.ToLower()));
 
             }
 
@@ -170,10 +170,10 @@ namespace estacionamientos.Controllers
                 query = query.Where(p => patrones.Any(pat =>
                     EF.Functions.ILike(p.PlyNom!, pat) ||
                     EF.Functions.ILike(p.PlyProv!, pat) ||
-                    EF.Functions.ILike(p.PlyCiu!,  pat) ||
-                    EF.Functions.ILike(p.PlyDir!,  pat)));
+                    EF.Functions.ILike(p.PlyCiu!, pat) ||
+                    EF.Functions.ILike(p.PlyDir!, pat)));
             }
-            
+
             vm.Playas = await query.OrderBy(p => p.PlyNom).ToListAsync();
 
             if (!vm.HayFiltros && Request.QueryString.HasValue)
@@ -181,7 +181,7 @@ namespace estacionamientos.Controllers
 
             return View(vm);
         }
-        
+
         public async Task<IActionResult> Details(int id)
         {
             var playa = await _context.Playas
@@ -225,7 +225,10 @@ namespace estacionamientos.Controllers
             _context.Playas.Add(model);
             await _context.SaveChangesAsync();
             // Asociar la playa creada con el dueño actual
-            var usuNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var nameIdentifier = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(nameIdentifier))
+                return Unauthorized();
+            var usuNU = int.Parse(nameIdentifier);
             _context.AdministraPlayas.Add(new AdministraPlaya
             {
                 PlyID = model.PlyID,

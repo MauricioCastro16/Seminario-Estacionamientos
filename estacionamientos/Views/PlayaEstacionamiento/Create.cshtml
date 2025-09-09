@@ -7,93 +7,66 @@
 <div class="container py-4" style="max-width: 760px">
     <h2 class="text-center mb-4">Registrar playa de estacionamiento</h2>
 
-    <form asp-action="Create" method="post" class="needs-validation" novalidate>
+    <form asp-action="Create" method="post" class="needs-validation" novalidate id="formCreate">
+        @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
         <!-- Nombre -->
         <div class="mb-3">
             <label asp-for="PlyNom" class="form-label">Nombre</label>
             <input asp-for="PlyNom" class="form-control" id="nombreInput" autocomplete="off" required />
-            <span asp-validation-for="PlyNom" ></span>
+            <span asp-validation-for="PlyNom" class="text-danger"></span>
         </div>
 
-        <!-- Provincia -->
+        <!-- Provincia (solo lectura; la define el mapa) -->
         <div class="mb-3">
             <label asp-for="PlyProv" class="form-label">Provincia</label>
-            <select asp-for="PlyProv" class="form-select" id="provinciaSelect" required>
-                <option value="" selected disabled>-- Selecciona una provincia --</option>
-                <option>Buenos Aires</option>
-                <option>Catamarca</option>
-                <option>Chaco</option>
-                <option>Chubut</option>
-                <option>Córdoba</option>
-                <option>Corrientes</option>
-                <option>Entre Ríos</option>
-                <option>Formosa</option>
-                <option>Jujuy</option>
-                <option>La Pampa</option>
-                <option>La Rioja</option>
-                <option>Mendoza</option>
-                <option>Misiones</option>
-                <option>Neuquén</option>
-                <option>Río Negro</option>
-                <option>Salta</option>
-                <option>San Juan</option>
-                <option>San Luis</option>
-                <option>Santa Cruz</option>
-                <option>Santa Fe</option>
-                <option>Santiago del Estero</option>
-                <option>Tierra del Fuego</option>
-                <option>Tucumán</option>
-            </select>
-            <div class="invalid-feedback">Seleccioná una provincia.</div>
-            <span asp-validation-for="PlyProv" ></span>
+            <input asp-for="PlyProv" class="form-control" id="provinciaInput" readonly required 
+                               placeholder="Cargando..."/>
+            <input type="hidden" asp-for="PlyProvId" id="provIdHidden" />
+            <span asp-validation-for="PlyProv" class="text-danger"></span>
         </div>
 
-        <!-- Ciudad (select dependiente + "Otra") -->
+        <!-- Ciudad/Localidad (solo lectura; la define el mapa) -->
         <div class="mb-3">
-            <label class="form-label">Ciudad</label>
-
-            <!-- input real que se postea -->
-            <input type="hidden" asp-for="PlyCiu" id="ciudadHidden" />
-
-            <select class="form-select mb-2" id="ciudadSelect" required>
-                <option value="" selected disabled>-- Selecciona una ciudad --</option>
-            </select>
-
-            <input type="text" class="form-control d-none" id="ciudadInput"
-                   placeholder="Escribí la ciudad" autocomplete="off" />
-            <span asp-validation-for="PlyCiu" ></span>
+            <label asp-for="PlyCiu" class="form-label">Ciudad / Localidad</label>
+            <input asp-for="PlyCiu" class="form-control" id="ciudadInput" readonly required 
+                               placeholder="Cargando..."/>
+            <input type="hidden" asp-for="PlyCiuId" id="ciuIdHidden" />
+            <span asp-validation-for="PlyCiu" class="text-danger"></span>
         </div>
 
-        <!-- Dirección -->
+        <!-- Dirección (EDITABLE: NO modifica el mapa) -->
         <div class="mb-3">
             <label asp-for="PlyDir" class="form-label">Dirección</label>
-            <input asp-for="PlyDir" class="form-control" id="direccionInput" autocomplete="off" required />
-            <span asp-validation-for="PlyDir" ></span>
+            <input asp-for="PlyDir" class="form-control" id="direccionInput" autocomplete="off" required
+                   placeholder="Cargando..." />
+            <span asp-validation-for="PlyDir" class="text-danger"></span>
         </div>
 
-        <!-- Tipo de piso (opcional, con 'Otros (escribir)') -->
+        <!-- Mapa -->
         <div class="mb-3">
-        <label class="form-label">Tipo de piso <span class="text-muted">(opcional)</span></label>
-
-        <!-- Campo real que se postea -->
-        <input type="hidden" asp-for="PlyTipoPiso" id="pisoHidden" />
-
-        <select class="form-select mb-2" id="pisoSelect" data-val="false">
-            <option value="" selected>-- Selecciona una opción --</option>
-            <option>Asfalto</option>
-            <option>Ripio</option>
-            <option>Tierra</option>
-            <option value="__OTRO__">Otros (escribir)</option>
-        </select>
-
-        <input type="text" class="form-control d-none" id="pisoInput"
-                placeholder="Escribí el tipo de piso" autocomplete="off" />
-
-        <span asp-validation-for="PlyTipoPiso" ></span>
+            <div id="map" style="height: 360px; border-radius: 12px; border: 1px solid #ddd; overflow:hidden;"></div>
+            <input type="hidden" asp-for="PlyLat" id="latHidden" />
+            <input type="hidden" asp-for="PlyLon" id="lonHidden" />
+            <div class="form-text">Hacé clic en el mapa o arrastrá el marcador para elegir la ubicación.</div>
         </div>
 
+        <!-- Tipo de piso -->
+        <div class="mb-3">
+            <label class="form-label">Tipo de piso <span class="text-muted">(opcional)</span></label>
+            <input type="hidden" asp-for="PlyTipoPiso" id="pisoHidden" />
+            <select class="form-select mb-2" id="pisoSelect" data-val="false">
+                <option value="" selected>-- Selecciona una opción --</option>
+                <option>Asfalto</option>
+                <option>Ripio</option>
+                <option>Tierra</option>
+                <option value="__OTRO__">Otros (escribir)</option>
+            </select>
+            <input type="text" class="form-control d-none" id="pisoInput"
+                   placeholder="Escribí el tipo de piso" autocomplete="off" />
+            <span asp-validation-for="PlyTipoPiso" class="text-danger"></span>
+        </div>
 
         <!-- Llave requerida -->
         <div class="mb-3">
@@ -101,11 +74,10 @@
             <div class="btn-group" role="group">
                 <input type="radio" class="btn-check" name="PlyLlavReq" id="llaveSi" value="true">
                 <label class="btn btn-outline-success" for="llaveSi">Sí</label>
-
                 <input type="radio" class="btn-check" name="PlyLlavReq" id="llaveNo" value="false" checked>
                 <label class="btn btn-outline-danger" for="llaveNo">No</label>
             </div>
-            <span asp-validation-for="PlyLlavReq" ></span>
+            <span asp-validation-for="PlyLlavReq" class="text-danger"></span>
         </div>
 
         <button type="submit" class="btn btn-primary w-100">Guardar</button>
@@ -115,197 +87,144 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 
-    <script>
-    // jQuery Validate normalmente ignora inputs ocultos
-    if (window.jQuery && $.validator) {
-        $.validator.setDefaults({ ignore: [] });
-        $.extend($.validator.messages, { required: "Este campo es obligatorio" });
-    }
-    </script>
-
-
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // --- Datos: ciudades por provincia (extendible) ---
-        const ciudadesPorProvincia = {
-            "Buenos Aires": ["Avellaneda", "Bahía Blanca", "La Plata", "Lomas de Zamora", "Mar del Plata", "Morón", "Quilmes", "San Isidro", "Tandil", "Tres de Febrero"],
-            "Catamarca": ["San Fernando del Valle de Catamarca", "Belén", "Tinogasta"],
-            "Chaco": ["Barranqueras", "Charata", "Gancedo", "Machagai", "Presidencia Roque Sáenz Peña", "Quitilipi", "Resistencia", "Villa Ángela"],
-            "Chubut": ["Comodoro Rivadavia", "Esquel", "Madryn", "Rawson", "Trelew"],
-            "Córdoba": ["Alta Gracia", "Bell Ville", "Córdoba", "Río Cuarto", "San Francisco", "Villa María"],
-            "Corrientes": ["Corrientes", "Goya", "Paso de los Libres"],
-            "Entre Ríos": ["Concordia", "Gualeguaychú", "Paraná"],
-            "Formosa": ["Clorinda", "Formosa"],
-            "Jujuy": ["Palpalá", "Perico", "San Salvador de Jujuy"],
-            "La Pampa": ["General Pico", "Santa Rosa"],
-            "La Rioja": ["Chilecito", "La Rioja"],
-            "Mendoza": ["Godoy Cruz", "Guaymallén", "Luján de Cuyo", "Mendoza", "San Rafael"],
-            "Misiones": ["Eldorado", "Oberá", "Posadas"],
-            "Neuquén": ["Cutral Có", "Neuquén", "Plottier"],
-            "Río Negro": ["Bariloche", "Cipolletti", "General Roca", "Viedma"],
-            "Salta": ["Orán", "Salta", "Tartagal"],
-            "San Juan": ["Rawson", "Rivadavia", "San Juan", "Santa Lucía"],
-            "San Luis": ["San Luis", "Villa Mercedes"],
-            "Santa Cruz": ["Caleta Olivia", "Río Gallegos"],
-            "Santa Fe": ["Rafaela", "Reconquista", "Rosario", "Santa Fe", "Venado Tuerto"],
-            "Santiago del Estero": ["La Banda", "Santiago del Estero"],
-            "Tierra del Fuego": ["Río Grande", "Ushuaia"],
-            "Tucumán": ["Concepción", "San Miguel de Tucumán", "Tafí Viejo"]
-        };
-        const collator = new Intl.Collator('es-AR');
+        const $ = (id) => document.getElementById(id);
+        const provinciaInput = $("provinciaInput");
+        const ciudadInput    = $("ciudadInput");
+        const direccionInput = $("direccionInput");
+        const provIdHidden   = $("provIdHidden");
+        const ciuIdHidden    = $("ciuIdHidden");
+        const latHidden      = $("latHidden");
+        const lonHidden      = $("lonHidden");
 
-        // --- Elementos ---
-        const provinciaSelect = document.getElementById('provinciaSelect');
-        const ciudadSelect   = document.getElementById('ciudadSelect');
-        const ciudadInput    = document.getElementById('ciudadInput');
-        const ciudadHidden   = document.getElementById('ciudadHidden');
-        const nombreInput    = document.getElementById('nombreInput');
-        const direccionInput = document.getElementById('direccionInput');
+        // UTN FRRe (fallback) - Resistencia, Chaco
+        const FALLBACK = { lat: -27.451000, lon: -58.986000, zoom: 14 };
 
-        // --- Cargar ciudades por provincia ---
-        function cargarCiudades(prov) {
-            ciudadSelect.innerHTML = '<option value="" selected disabled>-- Selecciona una ciudad --</option>';
-
-            const lista = (ciudadesPorProvincia[prov] || []).slice().sort((a,b)=>collator.compare(a,b));
-            for (const c of lista) {
-                const op = document.createElement('option');
-                op.value = op.textContent = c;
-                ciudadSelect.appendChild(op);
-            }
-
-            // Opción "Otra (escribir)"
-            const otra = document.createElement('option');
-            otra.value = '__OTRA__';
-            otra.textContent = 'Otra (escribir)';
-            ciudadSelect.appendChild(otra);
-
-            // Reset estado
-            ciudadSelect.value = "";
-            ciudadInput.classList.add('d-none');
-            ciudadInput.disabled = true;
-            ciudadInput.required = false;
-            ciudadInput.value = '';
-            ciudadHidden.value = '';
-
-            toggleCiudadOtra(); // asegura estado correcto
+        // Decimales con coma (para bindear decimal es-AR)
+        function setLatLon(lat, lon) {
+            const fmt = (n) => Number(n).toLocaleString('es-AR', { useGrouping: false, maximumFractionDigits: 6 });
+            latHidden.value = fmt(lat);
+            lonHidden.value = fmt(lon);
         }
-        provinciaSelect.addEventListener('change', e => cargarCiudades(e.target.value));
+        const debounce = (fn, wait = 600) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), wait); }; };
 
-        // --- Type-ahead dentro del select de ciudades ---
-        let typeBuffer = '';
-        let lastTypeTs = 0;
-        ciudadSelect.addEventListener('keydown', (ev) => {
-            if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Home','End','PageUp','PageDown','Tab','Enter','Escape'].includes(ev.key)) return;
-            const now = Date.now();
-            if (now - lastTypeTs > 800) typeBuffer = '';
-            lastTypeTs = now;
+        // --- Mapa con tema (CartoDB Positron) ---
+        const map = L.map("map", { zoomControl: false });
+        map.setView([FALLBACK.lat, FALLBACK.lon], 5);
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+            attribution: '&copy; OpenStreetMap & CARTO'
+        }).addTo(map);
+        L.control.zoom({ position: 'topright' }).addTo(map);
+        L.control.scale({ imperial: false }).addTo(map);
 
-            const key = ev.key.length === 1 ? ev.key : '';
-            if (!key || !key.match(/[A-Za-zÁÉÍÓÚáéíóúÑñ\s\-.]/)) return;
+        let marker = L.marker([FALLBACK.lat, FALLBACK.lon], { draggable: true }).addTo(map);
 
-            typeBuffer += key.toLowerCase();
-            for (const opt of ciudadSelect.options) {
-                if (opt.value === '' || opt.value === '__OTRA__') continue;
-                if (opt.textContent.toLowerCase().startsWith(typeBuffer)) {
-                    ciudadSelect.value = opt.value;
-                    ciudadSelect.dispatchEvent(new Event('change'));
-                    break;
+        // --- Reverse geocoding (mapa -> provincia/ciudad IDs + dirección) ---
+        const reverseFromMap = debounce(async (lat, lon) => {
+            // 1) Provincia / Municipio / Departamento con georef (con IDs)
+            try {
+                const r = await fetch(`https://apis.datos.gob.ar/georef/api/ubicacion?lat=${lat}&lon=${lon}`);
+                const d = await r.json();
+
+                const prov = d?.ubicacion?.provincia || {};
+                const muni = d?.ubicacion?.municipio || {};
+                const dept = d?.ubicacion?.departamento || {};
+
+                provinciaInput.value = prov.nombre || "";
+                provIdHidden.value   = prov.id     || "";
+
+                const cityName = muni.nombre || dept.nombre || "";
+                const cityId   = muni.id     || dept.id     || "";
+                ciudadInput.value = cityName;
+                ciuIdHidden.value = cityId;
+            } catch { /* noop */ }
+
+            // 2) Dirección con Nominatim
+            try {
+                const rN = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&addressdetails=1`,
+                    { headers: { "Accept-Language": "es" } }
+                );
+                const j = await rN.json();
+                const a = j.address || {};
+                const road   = a.road || a.pedestrian || a.footway || a.path || a.cycleway;
+                const house  = a.house_number;
+                const suburb = a.suburb || a.neighbourhood || a.village || a.hamlet;
+
+                const parts = [];
+                if (road && house) parts.push(`${road} ${house}`); else if (road) parts.push(road);
+                if (suburb) parts.push(suburb);
+                const built = parts.join(", ");
+                if (built) {
+                    // Solo si el usuario NO está editando en ese instante
+                    if (!direccionInput.matches(':focus')) direccionInput.value = built;
+                } else if (j.display_name) {
+                    if (!direccionInput.matches(':focus')) direccionInput.value = j.display_name.split(",").slice(0, 3).join(", ").trim();
                 }
-            }
-            ev.preventDefault();
+            } catch { /* noop */ }
+        }, 600);
+
+        // Eventos mapa/marker
+        marker.on("dragend", () => {
+            const { lat, lng } = marker.getLatLng();
+            setLatLon(lat, lng);
+            reverseFromMap(lat, lng);
+        });
+        map.on("click", (e) => {
+            marker.setLatLng(e.latlng);
+            setLatLon(e.latlng.lat, e.latlng.lng);
+            reverseFromMap(e.latlng.lat, e.latlng.lng);
         });
 
-        // --- Mostrar/ocultar input "Otra (escribir)" ---
-        function toggleCiudadOtra() {
-            const val = ciudadSelect.value;
-            const esOtra = (val === '__OTRA__');
+        // Geolocalización del usuario → si falla, fallback UTN FRRe
+        function initPosition(lat, lon, zoom = 16) {
+            map.setView([lat, lon], zoom);
+            marker.setLatLng([lat, lon]);
+            setLatLon(lat, lon);
+            reverseFromMap(lat, lon);
+        }
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => initPosition(pos.coords.latitude, pos.coords.longitude, 16),
+                ()    => initPosition(FALLBACK.lat, FALLBACK.lon, FALLBACK.zoom),
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        } else {
+            initPosition(FALLBACK.lat, FALLBACK.lon, FALLBACK.zoom);
+        }
 
-            ciudadInput.classList.toggle('d-none', !esOtra);
-            ciudadInput.disabled = !esOtra;
-            ciudadInput.required = esOtra;
+        // Validación: obligar a elegir en el mapa / completar datos
+        document.getElementById("formCreate").addEventListener("submit", (ev) => {
+            const hasCoords = latHidden.value.trim() !== "" && lonHidden.value.trim() !== "";
+            const hasProv   = provinciaInput.value.trim() !== "";
+            const hasCity   = ciudadInput.value.trim() !== "";
+            const hasAddr   = direccionInput.value.trim() !== "";
+            if (!hasCoords || !hasProv || !hasCity || !hasAddr) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                alert("Elegí la ubicación en el mapa y completá la dirección.");
+            }
+        });
 
-            if (esOtra) {
-                ciudadHidden.value = ciudadInput.value.trim();
-                ciudadInput.focus();
+        // Piso "Otro"
+        const pisoSelect = $("pisoSelect");
+        const pisoInput  = $("pisoInput");
+        const pisoHidden = $("pisoHidden");
+        pisoSelect.addEventListener("change", () => {
+            if (pisoSelect.value === "__OTRO__") {
+                pisoInput.classList.remove("d-none");
+                pisoInput.disabled = false;
+                pisoInput.focus();
             } else {
-                ciudadHidden.value = val || '';
-                ciudadInput.value = '';
+                pisoInput.classList.add("d-none");
+                pisoInput.disabled = true;
+                pisoHidden.value = pisoSelect.value || "";
             }
-        }
-        ciudadSelect.addEventListener('change', toggleCiudadOtra);
-        ciudadSelect.addEventListener('input',  toggleCiudadOtra);
-
-        // --- Ciudad escrita: sanitiza caracteres al tipear ---
-        const ciudadRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s\-\.]+$/;
-        ciudadInput.addEventListener('input', () => {
-            ciudadInput.value = ciudadInput.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s\-.]/g, '');
-            ciudadHidden.value = ciudadInput.value.trim();
         });
-
-        // --- Nombre: mayúscula inicial automática ---
-        nombreInput.addEventListener('input', () => {
-            const v = nombreInput.value;
-            if (v.length > 0) nombreInput.value = v.charAt(0).toUpperCase() + v.slice(1);
-        });
-
-        // --- Dirección: SOLO mayúscula inicial (sin tocar espacios/números) ---
-        direccionInput.addEventListener('input', () => {
-            const v = direccionInput.value;
-            if (v.length > 0) direccionInput.value = v.charAt(0).toUpperCase() + v.slice(1);
-        });
-
-                // -Otra Ciudad input solo mayuscula---
-        ciudadInput.addEventListener('input', () => {
-            const v = ciudadInput.value;
-            if (v.length > 0) ciudadInput.value = v.charAt(0).toUpperCase() + v.slice(1);
-        });
-
-                // ---- Tipo de piso: lógica igual a Ciudad (opcional) ----
-        const pisoSelect = document.getElementById('pisoSelect');
-        const pisoInput  = document.getElementById('pisoInput');
-        const pisoHidden = document.getElementById('pisoHidden');
-
-        function togglePisoOtro() {
-        const esOtro = (pisoSelect.value === '__OTRO__');
-        pisoInput.classList.toggle('d-none', !esOtro);
-        pisoInput.disabled = !esOtro;
-
-        if (esOtro) {
-            pisoHidden.value = (pisoInput.value || '').trim();
-            pisoInput.focus();
-        } else {
-            pisoHidden.value = pisoSelect.value || ''; // vacío es válido porque es opcional
-            pisoInput.value = '';
-        }
-        }
-        pisoSelect.addEventListener('change', togglePisoOtro);
-        pisoSelect.addEventListener('input',  togglePisoOtro);
-
-        // Sanitiza y mayúscula inicial para piso escrito
-        pisoInput.addEventListener('input', () => {
-        pisoInput.value = pisoInput.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s\-.]/g, '');
-        const v = pisoInput.value;
-        if (v.length > 0) pisoInput.value = v.charAt(0).toUpperCase() + v.slice(1);
-        pisoHidden.value = pisoInput.value.trim();
-        });
-
-        // En el submit, sincronizamos también el piso (por si quedó '__OTRO__')
-        document.querySelector('form').addEventListener('submit', () => {
-        if (pisoSelect.value === '__OTRO__') {
-            pisoHidden.value = (pisoInput.value || '').trim();
-        } else {
-            pisoHidden.value = pisoSelect.value || '';
-        }
-        });
-
-
-        // --- Validación al enviar ---
-        // --- Sin alert y sin preventDefault ---
-        document.querySelector('form').addEventListener('submit', (e) => {
-        ciudadHidden.value = (ciudadSelect.value === '__OTRA__')
-            ? ciudadInput.value.trim()
-            : (ciudadSelect.value || '');
-        });
-
+        pisoInput.addEventListener("input", () => { pisoHidden.value = pisoInput.value.trim(); });
     </script>
 }

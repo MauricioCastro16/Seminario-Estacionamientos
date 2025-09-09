@@ -21,10 +21,10 @@ namespace estacionamientos.Controllers
                 .Where(a => a.DueNU == dueId)
                 .Select(a => a.Playa)
                 .OrderBy(p => p.PlyNom)
-                .Select(p => new 
-                { 
-                    p.PlyID, 
-                    Nombre = p.PlyNom + " (" + p.PlyCiu + ")" 
+                .Select(p => new
+                {
+                    p.PlyID,
+                    Nombre = p.PlyNom + " (" + p.PlyCiu + ")"
                 })
                 .ToListAsync();
 
@@ -43,6 +43,7 @@ namespace estacionamientos.Controllers
             var q = _ctx.Trabajos
                 .Include(t => t.Playa)
                 .Include(t => t.Playero)
+                .Where(t => t.TrabEnActual)
                 .AsNoTracking();
 
             return View(await q.ToListAsync());
@@ -73,6 +74,7 @@ namespace estacionamientos.Controllers
                 return View("Create", model);
             }
 
+            model.TrabEnActual = true;
             _ctx.Trabajos.Add(model);
             await _ctx.SaveChangesAsync();
 
@@ -102,13 +104,14 @@ namespace estacionamientos.Controllers
             var item = await _ctx.Trabajos.FindAsync(plyID, plaNU);
             if (item is null) return NotFound();
 
-            _ctx.Trabajos.Remove(item);
+            item.TrabEnActual = false;
             await _ctx.SaveChangesAsync();
 
             return RedirectToAction(nameof(Index));
         }
 
-        [HttpPost][ValidateAntiForgeryToken]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteDirect(int plyID, int plaNU)
         {
             // ¿existen turnos que referencian esta relación?

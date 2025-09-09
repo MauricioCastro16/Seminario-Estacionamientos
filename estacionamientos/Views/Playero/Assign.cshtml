@@ -1,0 +1,33 @@
+@model estacionamientos.Controllers.PlayeroController.PlayeroAssignVM
+@{
+    ViewData["Title"] = "Vincular a playa";
+}
+
+<div class="d-flex align-items-center mb-3">
+    <h1 class="mb-0 me-2">Vincular playero a una playa</h1>
+</div>
+
+<form asp-action="Assign" method="post">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <input type="hidden" asp-for="PlaNU" />
+
+    <div class="mb-3">
+        <label class="form-label">Playero</label>
+        <input class="form-control" value="@Model.PlayeroNombre" disabled />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Playa del dueño</label>
+        <select asp-for="PlayaId" asp-items="ViewBag.Playas" class="form-select"></select>
+        <span asp-validation-for="PlayaId" class="text-danger"></span>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Vincular</button>
+        <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

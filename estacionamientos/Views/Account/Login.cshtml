@@ -21,7 +21,12 @@
 
     <div class="mb-3">
         <label asp-for="Password" class="form-label"></label>
-        <input asp-for="Password" class="form-control" />
+        <div class="input-group">
+            <input asp-for="Password" class="form-control" type="password" id="passwordInput" />
+            <button type="button" class="btn btn-outline-secondary" id="togglePassword">
+                <i class="bi bi-eye"></i>
+            </button>
+        </div>
         <span asp-validation-for="Password" class="text-danger"></span>
     </div>
 
@@ -35,4 +40,21 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        const togglePassword = document.querySelector("#togglePassword");
+        const passwordInput = document.querySelector("#passwordInput");
+        const icon = togglePassword.querySelector("i");
+
+        togglePassword.addEventListener("click", function () {
+            const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+            passwordInput.setAttribute("type", type);
+
+            // Cambiar icono
+            icon.classList.toggle("bi-eye");
+            icon.classList.toggle("bi-eye-slash");
+        });
+    </script>
 }
+
+<!-- Asegurate de tener Bootstrap Icons en tu layout principal (_Layout.cshtml) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">

@@ -1,0 +1,22 @@
+@model estacionamientos.Models.Servicio
+
+<h2>Crear Nuevo Servicio</h2>
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label for="SerNom">Nombre del Servicio</label>
+        <input type="text" class="form-control" id="SerNom" name="SerNom" required />
+    </div>
+    <div class="form-group">
+        <label for="SerDesc">Descripción</label>
+        <textarea class="form-control" id="SerDesc" name="SerDesc"></textarea>
+    </div>
+    <div class="form-group">
+        <label for="SerPrecio">Precio</label>
+        <input type="number" class="form-control" id="SerPrecio" name="SerPrecio" step="0.01" required />
+    </div>
+    <div class="form-group">
+        <label for="SerDisponible">Disponible</label>
+        <input type="checkbox" id="SerDisponible" name="SerDisponible" checked />
+    </div>
+    <button type="submit" class="btn btn-primary">Crear Servicio</button>
+</form>

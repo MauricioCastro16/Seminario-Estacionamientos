@@ -71,6 +71,11 @@ dotnet ef migrations add InitialCreate
 (d) Aplicarla
 dotnet ef database update
 
+(*) Para pegar en la terminal todo junto
+dotnet ef database drop -f
+Remove-Item -Recurse -Force .\Migrations
+dotnet ef migrations add InitialCreate
+dotnet ef database update
 ```
 
 # Capas y su explicación

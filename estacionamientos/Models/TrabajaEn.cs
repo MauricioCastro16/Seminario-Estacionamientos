@@ -2,11 +2,11 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace estacionamientos.Models
 {
-    // Relación N..M entre Playero y Playa via entidad propia
     public class TrabajaEn
     {
-        public int PlyID { get; set; }   // FK -> PlayaEstacionamiento
-        public int PlaNU { get; set; }   // FK -> Playero (UsuNU)
+        public int PlyID { get; set; }
+        public int PlaNU { get; set; }
+        public bool TrabEnActual { get; set; } = true;
 
         // Navegaciones (no se validan en los formularios)
         [ValidateNever]
