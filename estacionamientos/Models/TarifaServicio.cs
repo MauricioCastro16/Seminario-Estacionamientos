@@ -17,6 +17,7 @@ namespace estacionamientos.Models
         [Required]
         public decimal TasMonto { get; set; }
 
+
         // Navs
         [ValidateNever]
         public ServicioProveido ServicioProveido { get; set; } = default!;

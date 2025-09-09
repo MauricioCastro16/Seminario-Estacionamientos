@@ -6,42 +6,35 @@
 <div class="container">
     <h2 class="mb-4">Nueva Tarifa</h2>
 
-    @if (!ViewData.ModelState.IsValid)
-    {
-        <div class="alert alert-danger">
-            <ul class="mb-0">
-            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
-            {
-                <li>@error.ErrorMessage</li>
-            }
-            </ul>
-        </div>
-    }
-
     <form asp-action="Create" method="post" class="card p-4 shadow-sm">
         <div class="mb-3">
             <label asp-for="PlyID" class="form-label">Playa</label>
             <select asp-for="PlyID" class="form-select" asp-items="ViewBag.PlyID"></select>
+            <span asp-validation-for="PlyID" class="text-danger"></span>
         </div>
 
         <div class="mb-3">
             <label asp-for="SerID" class="form-label">Servicio</label>
             <select asp-for="SerID" class="form-select" asp-items="ViewBag.SerID"></select>
+            <span asp-validation-for="SerID" class="text-danger"></span>
         </div>
 
         <div class="mb-3">
             <label asp-for="ClasVehID" class="form-label">Clase de Vehículo</label>
             <select asp-for="ClasVehID" class="form-select" asp-items="ViewBag.ClasVehID"></select>
+            <span asp-validation-for="ClasVehID" class="text-danger"></span>
         </div>
 
         <div class="mb-3">
             <label asp-for="TasFecIni" class="form-label">Vigencia desde</label>
             <input asp-for="TasFecIni" type="date" class="form-control" />
+            <span asp-validation-for="TasFecIni" class="text-danger"></span>
         </div>
 
         <div class="mb-3">
             <label asp-for="TasMonto" class="form-label">Monto</label>
             <input asp-for="TasMonto" class="form-control" />
+            <span asp-validation-for="TasMonto" class="text-danger"></span>
         </div>
 
         <div class="d-flex gap-2">

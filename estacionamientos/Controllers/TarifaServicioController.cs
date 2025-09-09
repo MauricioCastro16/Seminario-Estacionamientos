@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
+using System.Linq;
+
+
 
 namespace estacionamientos.Controllers
 {
@@ -15,7 +18,7 @@ namespace estacionamientos.Controllers
         {
             var playas = await _ctx.Playas.AsNoTracking()
                 .OrderBy(p => p.PlyCiu).ThenBy(p => p.PlyDir)
-                .Select(p => new { p.PlyID, Nombre = p.PlyCiu + " - " + p.PlyDir })
+                .Select(p => new { p.PlyID, Nombre = p.PlyNom })
                 .ToListAsync();
 
             var servicios = await _ctx.Servicios.AsNoTracking()
@@ -29,6 +32,9 @@ namespace estacionamientos.Controllers
             ViewBag.ClasVehID = new SelectList(clases, "ClasVehID", "ClasVehTipo", clasSel);
         }
 
+        // Helper: normaliza DateTime a UTC
+        private DateTime ToUtc(DateTime dt) => DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+
         // INDEX
         public async Task<IActionResult> Index()
         {
@@ -36,7 +42,10 @@ namespace estacionamientos.Controllers
                 .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Servicio)
                 .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Playa)
                 .Include(t => t.ClasificacionVehiculo)
-                .AsNoTracking();
+                .AsNoTracking()
+                .OrderByDescending(t => t.TasFecFin == null || t.TasFecFin > DateTime.UtcNow) // vigentes arriba
+                .ThenBy(t => t.ServicioProveido.Playa.PlyNom)
+                .ThenBy(t => t.ServicioProveido.Servicio.SerNom);
 
             return View(await q.ToListAsync());
         }
@@ -44,6 +53,8 @@ namespace estacionamientos.Controllers
         // DETAILS
         public async Task<IActionResult> Details(int plyID, int serID, int clasVehID, DateTime tasFecIni)
         {
+            tasFecIni = ToUtc(tasFecIni);
+
             var item = await _ctx.TarifasServicio
                 .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Servicio)
                 .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Playa)
@@ -71,12 +82,14 @@ namespace estacionamientos.Controllers
         {
             try
             {
-                // Normalizar fechas a UTC
-                model.TasFecIni = DateTime.SpecifyKind(model.TasFecIni, DateTimeKind.Utc);
+                model.TasFecIni = ToUtc(model.TasFecIni);
                 if (model.TasFecFin.HasValue)
-                    model.TasFecFin = DateTime.SpecifyKind(model.TasFecFin.Value, DateTimeKind.Utc);
+                    model.TasFecFin = ToUtc(model.TasFecFin.Value);
 
-                // Validar que la playa ofrezca el servicio
+                // 🔴 Validación: monto debe ser > 0
+                if (model.TasMonto <= 0)
+                    ModelState.AddModelError("TasMonto", "El monto debe ser mayor a 0.");
+
                 var existeSP = await _ctx.ServiciosProveidos
                     .AnyAsync(sp => sp.PlyID == model.PlyID && sp.SerID == model.SerID);
 
@@ -89,7 +102,6 @@ namespace estacionamientos.Controllers
                     return View(model);
                 }
 
-                // Cerrar la tarifa vigente (si existe)
                 var vigente = await _ctx.TarifasServicio
                     .FirstOrDefaultAsync(t =>
                         t.PlyID == model.PlyID &&
@@ -103,7 +115,7 @@ namespace estacionamientos.Controllers
                     _ctx.Update(vigente);
                 }
 
-                model.TasFecFin = null; // nueva tarifa queda vigente
+                model.TasFecFin = null;
                 _ctx.TarifasServicio.Add(model);
 
                 await _ctx.SaveChangesAsync();
@@ -117,10 +129,11 @@ namespace estacionamientos.Controllers
             }
         }
 
+
         // EDIT GET
         public async Task<IActionResult> Edit(int plyID, int serID, int clasVehID, DateTime tasFecIni)
         {
-            tasFecIni = DateTime.SpecifyKind(tasFecIni, DateTimeKind.Utc);
+            tasFecIni = ToUtc(tasFecIni);
 
             var item = await _ctx.TarifasServicio.FindAsync(plyID, serID, clasVehID, tasFecIni);
             if (item is null) return NotFound();
@@ -133,13 +146,18 @@ namespace estacionamientos.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int plyID, int serID, int clasVehID, DateTime tasFecIni, TarifaServicio model)
         {
-            if (plyID != model.PlyID || serID != model.SerID || clasVehID != model.ClasVehID || tasFecIni != model.TasFecIni)
+            tasFecIni = ToUtc(tasFecIni);
+
+            if (plyID != model.PlyID || serID != model.SerID || clasVehID != model.ClasVehID || tasFecIni != ToUtc(model.TasFecIni))
                 return BadRequest();
 
-            // Normalizar fechas a UTC
-            model.TasFecIni = DateTime.SpecifyKind(model.TasFecIni, DateTimeKind.Utc);
+            model.TasFecIni = ToUtc(model.TasFecIni);
             if (model.TasFecFin.HasValue)
-                model.TasFecFin = DateTime.SpecifyKind(model.TasFecFin.Value, DateTimeKind.Utc);
+                model.TasFecFin = ToUtc(model.TasFecFin.Value);
+
+            // 🔴 Validación: monto debe ser > 0
+            if (model.TasMonto <= 0)
+                ModelState.AddModelError("TasMonto", "El monto debe ser mayor a 0.");
 
             if (!ModelState.IsValid)
             {
@@ -147,7 +165,6 @@ namespace estacionamientos.Controllers
                 return View(model);
             }
 
-            // Verificar solapamientos si cambió TasFecFin
             if (model.TasFecFin != null)
             {
                 bool solapa = await _ctx.TarifasServicio.AnyAsync(t =>
@@ -170,9 +187,12 @@ namespace estacionamientos.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // DELETE GET (Cerrar)
+
+        // DELETE GET
         public async Task<IActionResult> Delete(int plyID, int serID, int clasVehID, DateTime tasFecIni)
         {
+            tasFecIni = ToUtc(tasFecIni);
+
             var item = await _ctx.TarifasServicio
                 .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Servicio)
                 .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Playa)
@@ -187,21 +207,23 @@ namespace estacionamientos.Controllers
             return item is null ? NotFound() : View(item);
         }
 
-        // DELETE POST (Cerrar = asignar fecha fin)
+        // DELETE POST
         [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int plyID, int serID, int clasVehID, DateTime tasFecIni)
         {
+            tasFecIni = ToUtc(tasFecIni);
+
             var item = await _ctx.TarifasServicio.FindAsync(plyID, serID, clasVehID, tasFecIni);
             if (item is null) return NotFound();
 
-            if (item.TasFecFin == null)
-            {
-                item.TasFecFin = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Utc);
-                _ctx.Update(item);
-                await _ctx.SaveChangesAsync();
-            }
+            // 🔴 Forzar cierre siempre, aunque ya tenga TasFecFin
+            item.TasFecFin = ToUtc(DateTime.Now);
+
+            _ctx.Update(item);
+            await _ctx.SaveChangesAsync();
 
             return RedirectToAction(nameof(Index));
         }
+
     }
 }

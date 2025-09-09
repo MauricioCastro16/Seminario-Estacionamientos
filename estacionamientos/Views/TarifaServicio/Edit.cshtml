@@ -6,18 +6,6 @@
 <div class="container">
     <h2 class="mb-4">Editar Tarifa</h2>
 
-    @if (!ViewData.ModelState.IsValid)
-    {
-        <div class="alert alert-danger">
-            <ul class="mb-0">
-            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
-            {
-                <li>@error.ErrorMessage</li>
-            }
-            </ul>
-        </div>
-    }
-
     <form asp-action="Edit" method="post" class="card p-4 shadow-sm">
         <input type="hidden" asp-for="PlyID" />
         <input type="hidden" asp-for="SerID" />
@@ -27,12 +15,14 @@
         <div class="mb-3">
             <label asp-for="TasMonto" class="form-label">Monto</label>
             <input asp-for="TasMonto" class="form-control" />
+            <span asp-validation-for="TasMonto" class="text-danger"></span>
         </div>
 
         <div class="mb-3">
             <label asp-for="TasFecFin" class="form-label">Vigencia hasta</label>
             <input asp-for="TasFecFin" type="date" class="form-control" />
             <span class="form-text">Dejar vacío si sigue vigente</span>
+            <span asp-validation-for="TasFecFin" class="text-danger"></span>
         </div>
 
         <div class="d-flex gap-2">
