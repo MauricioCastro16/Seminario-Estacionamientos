@@ -442,6 +442,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
                 e.Property(p => p.PlzAlt).HasPrecision(5, 2); // por ej. 3.50 m
 
+                e.Property(p => p.PlzNombre).HasMaxLength(80);
+
                 e.HasOne(p => p.Playa)
                     .WithMany(pl => pl.Plazas)
                     .HasForeignKey(p => p.PlyID)

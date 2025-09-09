@@ -7,13 +7,15 @@
 <div class="container" style="max-width: max-content">
     <h6 class="text-black text-center mb-3">Estacionamiento @ViewBag.PlyNom</h6>
 
-    @if (TempData["Error"] is string err) {
+    @if (TempData["Error"] is string err)
+    {
         <div id="alertMensaje" class="alert alert-danger alert-dismissible fade show py-2 my-2" role="alert">
             @err
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     }
-    @if (TempData["Ok"] is string ok) {
+    @if (TempData["Ok"] is string ok)
+    {
         var cssClass = TempData["MensajeCss"]?.ToString() ?? "success";
         <div id="alertMensaje" class="alert alert-@cssClass alert-dismissible fade show py-2 my-2" role="alert">
             @ok
@@ -23,18 +25,17 @@
 
     <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
 
-    <!--Form de alta-->
+    <!-- ======================
+         Alta masiva de plazas
+         ====================== -->
     <form asp-action="ConfigurarPlazas" method="post">
         @Html.AntiForgeryToken()
         <div class="form-group justify-content-between align-items-end card d-flex flex-row gap-5 p-3">
             <div class="d-flex flex-row gap-3">
                 <div>
                     <label class="mb-2" for="cantidad">Cantidad de plazas</label>
-                    <input id="cantidad" name="cantidad"
-                           class="form-control"
-                           type="number" min="1" step="1"
-                           value="@(ViewBag.DefaultCantidad ?? 1)"
-                           required/>
+                    <input id="cantidad" name="cantidad" class="form-control" type="number" min="1" step="1"
+                        value="@(ViewBag.DefaultCantidad ?? 1)" required />
                 </div>
 
                 <div>
@@ -48,24 +49,20 @@
 
                 <div>
                     <label class="mb-2" for="plzAlt">Altura (m)</label>
-                    <input id="plzAlt" name="plzAlt"
-                        class="form-control"
-                        type="number" step="0.01"
+                    <input id="plzAlt" name="plzAlt" class="form-control" type="number" step="0.01"
                         placeholder="Ej: 2.10" />
                     @Html.ValidationMessage("plzAlt", null, new { @class = "text-danger" })
-
                 </div>
-
             </div>
 
             <div>
                 <label class="mb-2" for="clasVehID">Clasificación de vehículo</label>
-                <select id="clasVehID" name="clasVehID" asp-items="ViewBag.Clasificaciones" class="form-select" required>
+                <select id="clasVehID" name="clasVehID" asp-items="ViewBag.Clasificaciones" class="form-select"
+                    required>
                     <option value="">-- Selecciona una opción --</option>
                 </select>
                 @Html.ValidationMessage("clasVehID", null, new { @class = "text-danger" })
             </div>
-
 
             <input type="hidden" name="plyID" value="@ViewBag.PlyID" />
 
@@ -75,271 +72,272 @@
         </div>
     </form>
 
+    <!-- ======================
+         Grilla de plazas
+         ====================== -->
     <h4 class="text-black mt-5">Plazas actuales</h4>
     <table class="table table-sm align-middle">
         <thead>
             <tr>
-                <th class="text-center">N° plaza</th>
+                <th>Nombre</th>
                 <th>Techo</th>
                 <th>Altura (m)</th>
-                <th>Clasificación</th> 
+                <th>Clasificación</th>
                 <th class="text-center">Habilitada</th>
                 <th class="text-center">Acciones</th>
             </tr>
         </thead>
         <tbody>
-        @foreach (var plaza in Model)
-        {
-            var rowKey = $"{plaza.PlyID}-{plaza.PlzNum}";
-            <tr id="row-@rowKey">
-                <td class="text-center">@plaza.PlzNum</td>
+            @foreach (var plaza in Model)
+            {
+                var rowKey = $"{plaza.PlyID}-{plaza.PlzNum}";
+                <tr id="row-@rowKey">
 
-                <!-- TECHO: vista vs edición -->
-                <td>
-                    <span class="view-techo">@((plaza.PlzTecho ? "Sí" : "No"))</span>
+                    <!-- NOMBRE: vista vs edición -->
+                    <td>
+                        <span class="view-nombre">@(!string.IsNullOrWhiteSpace(plaza.PlzNombre) ? plaza.PlzNombre :
+                                                    "-")</span>
 
-                    <select name="plzTecho"
-                            form="edit-form-@rowKey"
+                        <input name="plzNombre" form="edit-form-@rowKey"
+                            class="form-control form-control-sm d-none edit-field edit-plzNombre"
+                            value="@(plaza.PlzNombre ?? "")" maxlength="80" placeholder="(opcional)"
+                            data-orig-value="@(plaza.PlzNombre ?? "")" />
+                    </td>
+
+                    <!-- TECHO: vista vs edición -->
+                    <td>
+                        <span class="view-techo">@((plaza.PlzTecho ? "Sí" : "No"))</span>
+
+                        <select name="plzTecho" form="edit-form-@rowKey"
                             class="form-select form-select-sm d-none edit-field edit-plzTecho"
                             data-orig-value="@(plaza.PlzTecho.ToString().ToLower())">
-                        <option value="true"  selected="@(plaza.PlzTecho ? "selected" : null)">Sí</option>
-                        <option value="false" selected="@(!plaza.PlzTecho ? "selected" : null)">No</option>
-                    </select>
+                            <option value="true">Sí</option>
+                            <option value="false">No</option>
+                        </select>
+                    </td>
 
-                </td>
+                    <!-- ALTURA: vista vs edición -->
+                    <td>
+                        <span class="view-altura">@((plaza.PlzAlt.HasValue ? plaza.PlzAlt.Value.ToString("0.00") :
+                                                    "-"))</span>
 
-                <!-- ALTURA: vista vs edición -->
-                <td>
-                    <span class="view-altura">@((plaza.PlzAlt.HasValue ? plaza.PlzAlt.Value.ToString("0.00") : "-"))</span>
+                        <input name="plzAlt" form="edit-form-@rowKey"
+                            class="form-control form-control-sm d-none edit-field edit-plzAlt" type="number" step="0.01"
+                            value="@(plaza.PlzAlt?.ToString("0.##") ?? "")"
+                            data-orig-value="@(plaza.PlzAlt?.ToString("0.##") ?? "")" placeholder="Ej: 2.10" />
+                    </td>
 
-                    <input name="plzAlt"
-                        form="edit-form-@rowKey"
-                        class="form-control form-control-sm d-none edit-field edit-plzAlt"
-                        type="number" step="0.01"
-                        value="@(plaza.PlzAlt?.ToString("0.##") ?? "")"
-                        data-orig-value="@(plaza.PlzAlt?.ToString("0.##") ?? "")"
-                        placeholder="Ej: 2.10" />
-                </td>
+                    <td>@plaza.Clasificacion?.ClasVehTipo</td>
 
-                <td>@plaza.Clasificacion?.ClasVehTipo</td>
+                    <!-- HABILITADA -->
+                    <td class="text-center">
+                        <form asp-controller="PlazaEstacionamiento" asp-action="ToggleHabilitadaDueño" method="post"
+                            class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="plyID" value="@plaza.PlyID" />
+                            <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
 
-                <!-- HABILITADA -->
-                <td class="text-center">
-                    <form asp-controller="PlazaEstacionamiento"
-                        asp-action="ToggleHabilitadaDueño"
-                        method="post"
-                        class="d-inline">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="plyID" value="@plaza.PlyID" />
-                        <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
+                            <div class="form-check form-switch d-inline-block">
+                                <input class="form-check-input" type="checkbox" onchange="this.form.submit();"
+                                    @(plaza.PlzHab ? "checked" : "") />
+                            </div>
+                        </form>
+                    </td>
 
-                        <div class="form-check form-switch d-inline-block">
-                            <input class="form-check-input"
-                                type="checkbox"
-                                onchange="this.form.submit();"
-                                @(plaza.PlzHab ? "checked" : "") />
-                        </div>
-                    </form>
-                </td>
-
-                <td class="text-center">
-                    <!-- Botón Editar -->
-                    <button type="button"
-                            class="btn btn-sm btn-outline-secondary btn-edit"
-                            data-row="@rowKey"
+                    <!-- ACCIONES -->
+                    <td class="text-center">
+                        <!-- Botón Editar -->
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-edit" data-row="@rowKey"
                             title="Editar">
-                        <i class="bi bi-pencil"></i>
-                        <span class="visually-hidden">Editar</span>
-                    </button>
-
-                    <!-- Botón Guardar -->
-                    <button type="submit"
-                            class="btn btn-sm btn-success d-none btn-save"
-                            form="edit-form-@rowKey"
-                            formnovalidate
-                            title="Guardar">
-                        <i class="bi bi-check"></i>
-                        <span class="visually-hidden">Guardar</span>
-                    </button>
-
-                    <!-- Botón Cancelar -->
-                    <button type="button"
-                            class="btn btn-sm btn-secondary d-none btn-cancel"
-                            data-row="@rowKey"
-                            title="Cancelar">
-                        <i class="bi bi-x"></i>
-                        <span class="visually-hidden">Cancelar</span>
-                    </button>
-
-                    <!-- Eliminar plaza cargada-->
-                    <form asp-controller="PlazaEstacionamiento"
-                        asp-action="DeleteInline"
-                        method="post"
-                        class="d-inline ms-1">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="plyID" value="@plaza.PlyID" />
-                        <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
-                        <button type="submit"
-                                class="btn btn-sm btn-outline-danger"
-                                onclick="return confirm('¿Eliminar la plaza @plaza.PlzNum?');"
-                                title="Eliminar">
-                            <i class="bi bi-trash"></i>
-                            <span class="visually-hidden">Eliminar</span>
+                            <i class="bi bi-pencil"></i>
+                            <span class="visually-hidden">Editar</span>
                         </button>
-                    </form>
 
-                    <!-- Form para guardar edición -->
-                    <form id="edit-form-@rowKey"
-                        asp-controller="PlazaEstacionamiento"
-                        asp-action="EditInline"
-                        method="post"
-                        class="d-none">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="plyID" value="@plaza.PlyID" />
-                        <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
-                    </form>
-                </td>
-            </tr>
-        }
+                        <!-- Botón Guardar -->
+                        <button type="submit" class="btn btn-sm btn-success d-none btn-save" form="edit-form-@rowKey"
+                            formnovalidate title="Guardar">
+                            <i class="bi bi-check"></i>
+                            <span class="visually-hidden">Guardar</span>
+                        </button>
+
+                        <!-- Botón Cancelar -->
+                        <button type="button" class="btn btn-sm btn-secondary d-none btn-cancel" data-row="@rowKey"
+                            title="Cancelar">
+                            <i class="bi bi-x"></i>
+                            <span class="visually-hidden">Cancelar</span>
+                        </button>
+
+                        <!-- Eliminar plaza -->
+                        <form asp-controller="PlazaEstacionamiento" asp-action="DeleteInline" method="post"
+                            class="d-inline ms-1">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="plyID" value="@plaza.PlyID" />
+                            <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                onclick="return confirm('¿Eliminar la plaza @plaza.PlzNum?');" title="Eliminar">
+                                <i class="bi bi-trash"></i>
+                                <span class="visually-hidden">Eliminar</span>
+                            </button>
+                        </form>
+
+                        <!-- Form para guardar edición -->
+                        <form id="edit-form-@rowKey" asp-controller="PlazaEstacionamiento" asp-action="EditInline"
+                            method="post" class="d-none">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="plyID" value="@plaza.PlyID" />
+                            <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
+                            <!-- Los inputs editables referencian este form con form="edit-form-..." -->
+                        </form>
+                    </td>
+                </tr>
+            }
         </tbody>
-
     </table>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-    (function () {
-        // ======================
-        // Alta masiva (arriba)
-        // ======================
-        const techo  = document.getElementById('plzTecho');
-        const altura = document.getElementById('plzAlt');
+        (function () {
+            // ======================
+            // Alta masiva (arriba)
+            // ======================
+            const techo = document.getElementById('plzTecho');
+            const altura = document.getElementById('plzAlt');
 
-        function syncAlturaState() {
-            const conTecho = (techo.value === 'true');
+            function syncAlturaState() {
+                const conTecho = (techo.value === 'true');
+                altura.disabled = !conTecho;
+                altura.required = conTecho;
 
-            altura.disabled = !conTecho;
-            altura.required = conTecho;
-
-            if (!conTecho) {
-                altura.value = '';
-                altura.setCustomValidity('');
-            } else {
-                // Validación de mínima la hace el servidor
-                altura.setCustomValidity('');
-            }
-        }
-
-        if (techo && altura) {
-            techo.addEventListener('change', syncAlturaState);
-            altura.addEventListener('input', syncAlturaState);
-            syncAlturaState();
-        }
-
-        // ============================
-        // Edición inline (una a la vez)
-        // ============================
-        let currentEditingRowKey = null;
-
-        function toggleRowEdit(rowKey, editing) {
-            const row = document.getElementById('row-' + rowKey);
-            if (!row) return;
-
-            const viewTecho  = row.querySelector('.view-techo');
-            const viewAltura = row.querySelector('.view-altura');
-            const selTecho   = row.querySelector('.edit-plzTecho');
-            const inpAlt     = row.querySelector('.edit-plzAlt');
-
-            const btnEdit   = row.querySelector('.btn-edit');
-            const btnSave   = row.querySelector('.btn-save');
-            const btnCancel = row.querySelector('.btn-cancel');
-
-            [viewTecho, viewAltura].forEach(el => el && el.classList.toggle('d-none', editing));
-            [selTecho, inpAlt].forEach(el => el && el.classList.toggle('d-none', !editing));
-
-            btnEdit && btnEdit.classList.toggle('d-none', editing);
-            btnSave && btnSave.classList.toggle('d-none', !editing);
-            btnCancel && btnCancel.classList.toggle('d-none', !editing);
-
-            if (editing) syncRowAltura(row);
-        }
-
-        function restoreRowValues(row) {
-            const selTecho = row.querySelector('.edit-plzTecho');
-            const inpAlt   = row.querySelector('.edit-plzAlt');
-
-            if (selTecho && selTecho.dataset.origValue !== undefined) {
-                selTecho.value = selTecho.dataset.origValue;
-            }
-            if (inpAlt && inpAlt.dataset.origValue !== undefined) {
-                inpAlt.value = inpAlt.dataset.origValue;
-            }
-            syncRowAltura(row);
-        }
-
-        function syncRowAltura(row) {
-            const selTecho = row.querySelector('.edit-plzTecho');
-            const inpAlt   = row.querySelector('.edit-plzAlt');
-            if (!selTecho || !inpAlt) return;
-
-            const conTecho = (selTecho.value === 'true');
-            inpAlt.disabled = !conTecho;
-            if (!conTecho) inpAlt.value = '';
-        }
-
-        // Click en ✏️ (activar edición, cerrando la anterior si existía)
-        document.querySelectorAll('.btn-edit').forEach(btn => {
-            btn.addEventListener('click', function () {
-                const newKey = this.getAttribute('data-row');
-
-                // Si hay otra fila editándose, la cerramos y restauramos
-                if (currentEditingRowKey && currentEditingRowKey !== newKey) {
-                    const prevRow = document.getElementById('row-' + currentEditingRowKey);
-                    if (prevRow) {
-                        restoreRowValues(prevRow);
-                        toggleRowEdit(currentEditingRowKey, false);
-                    }
+                if (!conTecho) {
+                    altura.value = '';
+                    altura.setCustomValidity('');
+                } else {
+                    altura.setCustomValidity('');
                 }
+            }
 
-                toggleRowEdit(newKey, true);
-                currentEditingRowKey = newKey;
-            });
-        });
+            if (techo && altura) {
+                techo.addEventListener('change', syncAlturaState);
+                altura.addEventListener('input', syncAlturaState);
+                syncAlturaState();
+            }
 
-        // Click en ✖️ (cancelar y restaurar)
-        document.querySelectorAll('.btn-cancel').forEach(btn => {
-            btn.addEventListener('click', function () {
-                const rowKey = this.getAttribute('data-row');
+            // ============================
+            // Edición inline (una a la vez)
+            // ============================
+            let currentEditingRowKey = null;
+
+            function applyOrigValues(row) {
+                const selTecho = row.querySelector('.edit-plzTecho');
+                const inpAlt = row.querySelector('.edit-plzAlt');
+                const inpNombre = row.querySelector('.edit-plzNombre');
+
+                if (selTecho && selTecho.dataset.origValue !== undefined) {
+                    selTecho.value = selTecho.dataset.origValue;
+                }
+                if (inpAlt && inpAlt.dataset.origValue !== undefined) {
+                    inpAlt.value = inpAlt.dataset.origValue;
+                }
+                if (inpNombre && inpNombre.dataset.origValue !== undefined) {
+                    inpNombre.value = inpNombre.dataset.origValue;
+                }
+            }
+
+            function toggleRowEdit(rowKey, editing) {
                 const row = document.getElementById('row-' + rowKey);
                 if (!row) return;
 
-                restoreRowValues(row);
-                toggleRowEdit(rowKey, false);
+                const viewTecho = row.querySelector('.view-techo');
+                const viewAltura = row.querySelector('.view-altura');
+                const viewNombre = row.querySelector('.view-nombre');
+                const selTecho = row.querySelector('.edit-plzTecho');
+                const inpAlt = row.querySelector('.edit-plzAlt');
+                const inpNombre = row.querySelector('.edit-plzNombre');
 
-                // Liberamos el estado si era la fila activa
-                if (currentEditingRowKey === rowKey) currentEditingRowKey = null;
-            });
-        });
+                const btnEdit = row.querySelector('.btn-edit');
+                const btnSave = row.querySelector('.btn-save');
+                const btnCancel = row.querySelector('.btn-cancel');
 
-        // Cambio de "Techo" dentro de una fila en edición
-        document.querySelectorAll('.edit-plzTecho').forEach(sel => {
-            sel.addEventListener('change', function () {
-                const row = this.closest('tr');
-                syncRowAltura(row);
-            });
-        });
+                if (editing) {
+                    // Asegura que los controles tomen el valor original
+                    applyOrigValues(row);
+                    syncRowAltura(row);
+                }
 
-        // ============================
-        // Alert auto-cierre (3 segundos)
-        // ============================
-        setTimeout(() => {
-            const alert = document.getElementById('alertMensaje');
-            if (alert) {
-                bootstrap.Alert.getOrCreateInstance(alert).close();
+                [viewTecho, viewAltura, viewNombre].forEach(el => el && el.classList.toggle('d-none', editing));
+                [selTecho, inpAlt, inpNombre].forEach(el => el && el.classList.toggle('d-none', !editing));
+
+                btnEdit && btnEdit.classList.toggle('d-none', editing);
+                btnSave && btnSave.classList.toggle('d-none', !editing);
+                btnCancel && btnCancel.classList.toggle('d-none', !editing);
             }
-        }, 3000);
 
-    })();
+            function restoreRowValues(row) {
+                applyOrigValues(row);
+                syncRowAltura(row);
+            }
+
+            function syncRowAltura(row) {
+                const selTecho = row.querySelector('.edit-plzTecho');
+                const inpAlt = row.querySelector('.edit-plzAlt');
+                if (!selTecho || !inpAlt) return;
+
+                const conTecho = (selTecho.value === 'true');
+                inpAlt.disabled = !conTecho;
+                if (!conTecho) inpAlt.value = '';
+            }
+
+            // Click en ✏️ (activar edición, cerrando la anterior si existía)
+            document.querySelectorAll('.btn-edit').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const newKey = this.getAttribute('data-row');
+
+                    if (currentEditingRowKey && currentEditingRowKey !== newKey) {
+                        const prevRow = document.getElementById('row-' + currentEditingRowKey);
+                        if (prevRow) {
+                            restoreRowValues(prevRow);
+                            toggleRowEdit(currentEditingRowKey, false);
+                        }
+                    }
+
+                    toggleRowEdit(newKey, true);
+                    currentEditingRowKey = newKey;
+                });
+            });
+
+            // Click en ✖️ (cancelar y restaurar)
+            document.querySelectorAll('.btn-cancel').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const rowKey = this.getAttribute('data-row');
+                    const row = document.getElementById('row-' + rowKey);
+                    if (!row) return;
+
+                    restoreRowValues(row);
+                    toggleRowEdit(rowKey, false);
+
+                    if (currentEditingRowKey === rowKey) currentEditingRowKey = null;
+                });
+            });
+
+            // Cambio de "Techo" dentro de una fila en edición
+            document.querySelectorAll('.edit-plzTecho').forEach(sel => {
+                sel.addEventListener('change', function () {
+                    const row = this.closest('tr');
+                    syncRowAltura(row);
+                });
+            });
+
+            // ============================
+            // Alert auto-cierre (3 segundos)
+            // ============================
+            setTimeout(() => {
+                const alert = document.getElementById('alertMensaje');
+                if (alert) {
+                    bootstrap.Alert.getOrCreateInstance(alert).close();
+                }
+            }, 3000);
+        })();
     </script>
 }
