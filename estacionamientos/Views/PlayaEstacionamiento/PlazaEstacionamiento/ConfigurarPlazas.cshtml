@@ -64,14 +64,14 @@
                            placeholder="Ej: 0" />
                     @Html.ValidationMessage("piso", null, new { @class = "text-danger" })
                 </div>
-            </div>
 
-            <div>
-                <label class="mb-2" for="clasVehID">Clasificación de vehículo</label>
-                <select id="clasVehID" name="clasVehID" asp-items="ViewBag.Clasificaciones" class="form-select" required>
-                    <option value="">-- Selecciona una opción --</option>
-                </select>
-                @Html.ValidationMessage("clasVehID", null, new { @class = "text-danger" })
+                <div>
+                    <label class="mb-2" for="clasVehID">Clasificación de vehículo</label>
+                    <select id="clasVehID" name="clasVehID" asp-items="ViewBag.Clasificaciones" class="form-select" required>
+                        <option value="">- Opciones -</option>
+                    </select>
+                    @Html.ValidationMessage("clasVehID", null, new { @class = "text-danger" })
+                </div>
             </div>
 
             <!-- Tenés el plyID en la ruta; el hidden es opcional -->
@@ -183,7 +183,7 @@
                         <input type="hidden" name="plyID" value="@plaza.PlyID" />
                         <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
                         <button type="submit" class="btn btn-sm btn-outline-danger"
-                                onclick="return confirm('¿Eliminar la plaza @plaza.PlzNum?');" title="Eliminar">
+                                onclick="return confirm('¿Quiere eliminar la plaza?');" title="Eliminar">
                             <i class="bi bi-trash"></i>
                             <span class="visually-hidden">Eliminar</span>
                         </button>

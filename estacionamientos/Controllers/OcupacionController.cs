@@ -149,36 +149,52 @@ namespace estacionamientos.Controllers
             return item is null ? NotFound() : View(item);
         }
 
-        
+
         [HttpGet]
-        public async Task<JsonResult> GetPlazasDisponibles(int plyID, int clasVehID, string techada)
+        public async Task<JsonResult> GetPlazasDisponibles(int plyID, int? clasVehID, string? techada = "all")
         {
-            var query = _ctx.Plazas
-                .Where(p => p.PlyID == plyID
-                        && p.ClasVehID == clasVehID
-                        && p.PlzHab
-                        && !_ctx.Ocupaciones.Any(o => o.PlyID == p.PlyID
-                                                    && o.PlzNum == p.PlzNum
-                                                    && o.OcufFyhFin == null));
-
-            if (techada == "true")
-                query = query.Where(p => p.PlzTecho);
-            else if (techada == "false")
-                query = query.Where(p => !p.PlzTecho);
-            // si techada == "all" → no filtramos nada
-
-            var plazas = await query
-                .OrderBy(p => p.PlzNum)
-                .Select(p => new {
+            // Traemos TODAS las plazas de la playa y calculamos flags
+            var baseQuery = _ctx.Plazas
+                .Where(p => p.PlyID == plyID)
+                .Select(p => new
+                {
+                    p.PlyID,
                     plzNum = p.PlzNum,
-                    nombre = p.PlzNombre
-                })
+                    nombre = p.PlzNombre,
+                    piso = p.Piso,         // <- para el combo de pisos
+                    hab = p.PlzHab,
+                    techada = p.PlzTecho,
+                    compatible = (clasVehID == null || p.ClasVehID == clasVehID),
+                    ocupada = _ctx.Ocupaciones.Any(o => o.PlyID == p.PlyID
+                                                       && o.PlzNum == p.PlzNum
+                                                       && o.OcufFyhFin == null)
+                });
+
+            // Filtrado por "techada"
+            if (techada == "true") baseQuery = baseQuery.Where(x => x.techada);
+            if (techada == "false") baseQuery = baseQuery.Where(x => !x.techada);
+            // "all" o null -> sin filtro
+
+            // (Opcional) si querés que la grilla muestre SOLO compatibles, filtrá aquí:
+            // if (clasVehID != null) baseQuery = baseQuery.Where(x => x.compatible);
+
+            var data = await baseQuery
+                .OrderBy(x => x.piso).ThenBy(x => x.plzNum)
                 .ToListAsync();
 
-            return Json(plazas);
+            // Normalizamos "nombre" y ocultamos "techada" (la vista no lo usa)
+            var payload = data.Select(x => new
+            {
+                x.plzNum,
+                nombre = string.IsNullOrWhiteSpace(x.nombre) ? $"P{x.plzNum}" : x.nombre,
+                x.piso,
+                x.hab,
+                x.compatible,
+                x.ocupada
+            });
+
+            return Json(payload);
         }
-
-
 
         public async Task<IActionResult> Create()
         {

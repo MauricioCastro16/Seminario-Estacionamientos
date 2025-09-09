@@ -168,6 +168,7 @@ namespace estacionamientos.Controllers
                 if (!await TrabajaEnAsync(model.PlyID, plaNU))
                     ModelState.AddModelError(string.Empty, "No trabajás en esa playa.");
 
+                // SIEMPRE guardar turnos en UTC
                 model.TurFyhIni = DateTime.UtcNow;
             }
             else
@@ -178,8 +179,25 @@ namespace estacionamientos.Controllers
                 model.TurFyhIni = model.TurFyhIni == default ? DateTime.UtcNow : ToUtc(model.TurFyhIni);
             }
 
-            if (model.TurApertCaja is null || model.TurApertCaja < 0)
-                ModelState.AddModelError(nameof(model.TurApertCaja), "Ingresá un importe de apertura válido (≥ 0).");
+            // >>>>>> NUEVO: resolver período (TrabajaEn) y setear la FK (TrabFyhIni) <<<<<<
+            if (ModelState.IsValid)
+            {
+                // Buscar el período vigente del playero en esa playa
+                var periodo = await _ctx.Trabajos
+                    .Where(t => t.PlyID == model.PlyID && t.PlaNU == model.PlaNU && t.FechaFin == null)
+                    .OrderByDescending(t => t.FechaInicio)
+                    .FirstOrDefaultAsync();
+
+                if (periodo == null)
+                {
+                    ModelState.AddModelError(string.Empty, "No hay un período vigente (TrabajaEn) para ese playero en esa playa.");
+                }
+                else
+                {
+                    // Copiar el inicio del período a la FK del Turno
+                    model.TrabFyhIni = periodo.FechaInicio;
+                }
+            }
 
             if (!ModelState.IsValid)
             {
@@ -195,7 +213,6 @@ namespace estacionamientos.Controllers
 
             TempData["Ok"] = "Turno iniciado.";
 
-            // --- CAMBIO mínimo: respetar returnUrl (query o form) ---
             var returnUrl = Request.Form["returnUrl"].FirstOrDefault() ?? Request.Query["returnUrl"].FirstOrDefault();
             if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
                 return Redirect(returnUrl);
