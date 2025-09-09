@@ -31,7 +31,17 @@
         <span class="text-danger">@ViewBag.ClasVehError</span>
     </div>
 
-
+    <div class="form-group mb-3">
+        <label class="form-label">¿Plaza techada?</label><br />
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="techada" value="true" id="techadaSi">
+            <label class="form-check-label" for="techadaSi">Sí</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="techada" value="false" id="techadaNo">
+            <label class="form-check-label" for="techadaNo">No</label>
+        </div>
+    </div>
 
     <div class="form-group mb-3">
         <label asp-for="PlzNum" class="form-label"></label>
@@ -52,25 +62,44 @@
 
 @section Scripts {
 <script>
-    document.getElementById("ClasVehID").addEventListener("change", function () {
-        const clasVehID = this.value;
+    document.getElementById("ClasVehID").addEventListener("change", loadPlazas);
+    document.querySelectorAll("input[name='techada']").forEach(r => {
+        r.addEventListener("change", loadPlazas);
+    });
+
+    function loadPlazas() {
+        const clasVehID = document.getElementById("ClasVehID").value;
         const plyID = document.querySelector("input[name='PlyID']").value;
+        const techadaSelected = document.querySelector("input[name='techada']:checked");
+        const techada = techadaSelected ? techadaSelected.value : "all"; // 👈 si no eligió nada → "all"
 
         if (!clasVehID || !plyID) return;
 
-        fetch(`/Ocupacion/GetPlazasDisponibles?plyID=${plyID}&clasVehID=${clasVehID}`)
+        fetch(`/Ocupacion/GetPlazasDisponibles?plyID=${plyID}&clasVehID=${clasVehID}&techada=${techada}`)
             .then(r => r.json())
             .then(data => {
                 const plzSelect = document.getElementById("PlzNum");
                 plzSelect.innerHTML = '<option value="">-- Seleccione plaza --</option>';
 
-                data.forEach(plaza => {
-                    const opt = document.createElement("option");
-                    opt.value = plaza.plzNum;
-                    opt.textContent = plaza.label;
-                    plzSelect.appendChild(opt);
-                });
+                if (data.length === 0) return;
+
+                // 👉 Si todas son anónimas → autoseleccionar la primera
+                const todasAnonimas = data.every(p => !p.nombre || p.nombre.trim() === "");
+                if (todasAnonimas) {
+                    plzSelect.innerHTML =
+                        `<option value="${data[0].plzNum}" selected>Plaza ${data[0].plzNum}</option>`;
+                } else {
+                    data.forEach(plaza => {
+                        const label = plaza.nombre && plaza.nombre.trim() !== ""
+                            ? plaza.nombre
+                            : `Plaza ${plaza.plzNum}`;
+                        const opt = document.createElement("option");
+                        opt.value = plaza.plzNum;
+                        opt.textContent = label;
+                        plzSelect.appendChild(opt);
+                    });
+                }
             });
-    });
+    }
 </script>
 }

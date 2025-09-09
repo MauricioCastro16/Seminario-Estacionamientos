@@ -26,46 +26,51 @@
     {
         <table class="table table-hover align-middle">
             <thead class="table-light">
-                <tr>
-                    <th>Número</th>
-                    <th>Techo</th>
-                    <th>Altura</th>
-                    <th>Estado</th>
-                    <th>Habilitada</th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var plaza in Model)
-            {
-                <tr>
-                    <td>@plaza.PlzNum</td>
-                    <td>@(plaza.PlzTecho ? "Sí" : "No")</td>
-                    <td>@plaza.PlzAlt</td>
-                    <td>
-                        @if (plaza.PlzOcupada)
-                        {
-                            <span class="badge bg-danger">Ocupada</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-success">Libre</span>
-                        }
-                    </td>
-                    <td>
-                        <form asp-action="ToggleHabilitada" asp-controller="Playero" method="post" class="d-inline">
-                            <input type="hidden" name="PlyID" value="@plaza.PlyID" />
-                            <input type="hidden" name="PlzNum" value="@plaza.PlzNum" />
+            <tr>
+                <th>Número</th>
+                <th>Nombre</th>
+                <th>Clasificación</th>
+                <th>Techo</th>
+                <th>Altura</th>
+                <th class="text-center">Estado</th>
+                <th class="text-center">Habilitada</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var plaza in Model)
+        {
+            <tr>
+                <td>@plaza.PlzNum</td>
+                <td>@(string.IsNullOrWhiteSpace(plaza.PlzNombre) ? "-" : plaza.PlzNombre)</td>
+                <td>@plaza.Clasificacion?.ClasVehTipo</td>
+                <td>@(plaza.PlzTecho ? "Sí" : "No")</td>
+                <td>@plaza.PlzAlt</td>
+                <td class="text-center">
+                    @if (plaza.PlzOcupada)
+                    {
+                        <span class="badge bg-danger">Ocupada</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success">Libre</span>
+                    }
+                </td>
+                <td class="text-center">
+                    <form asp-action="ToggleHabilitada" asp-controller="Playero" method="post" class="d-inline">
+                        <input type="hidden" name="PlyID" value="@plaza.PlyID" />
+                        <input type="hidden" name="PlzNum" value="@plaza.PlzNum" />
 
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox"
-                                    onchange="this.form.submit();"
-                                    @(plaza.PlzHab ? "checked" : "") />
-                            </div>
-                        </form>
-                    </td>
-                </tr>
-            }
-            </tbody>
+                        <div class="form-check form-switch d-flex justify-content-center">
+                            <input class="form-check-input" type="checkbox"
+                                onchange="this.form.submit();"
+                                @(plaza.PlzHab ? "checked" : "") />
+                        </div>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+
         </table>
     }
 
