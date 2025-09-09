@@ -48,7 +48,7 @@
         </select>
     </div>
 
-    <!-- Mantiene compatibilidad con el POST -->
+    <!-- Para el POST -->
     <input type="hidden" asp-for="PlzNum" id="PlzNum" />
     <span asp-validation-for="PlzNum" class="text-danger"></span>
 
@@ -141,7 +141,7 @@
 
             /** Estado en memoria **/
             let allPlazas = []; // plazas completas del fetch
-            let pisoActual = ""; // "", 0, 1, 2, ...
+            let pisoActual = ""; // "", "0", "1", ...
 
             function getTechada() {
                 const checked = document.querySelector("input[name='techada']:checked");
@@ -158,6 +158,7 @@
                 // Construir conjunto de pisos presentes
                 const setPisos = new Set();
                 plazas.forEach(p => setPisos.add(p.piso === null ? "" : String(p.piso)));
+
                 // Llenar combo
                 selPiso.innerHTML = '<option value="">-- Todos --</option>';
                 Array.from(setPisos)
@@ -168,7 +169,8 @@
                         opt.textContent = (v === "") ? "Sin piso" : `Piso ${v}`;
                         selPiso.appendChild(opt);
                     });
-                // Mantener selección si existe
+
+                // Mantener selección si existe; si no, reset
                 if ([...setPisos].includes(pisoActual)) {
                     selPiso.value = pisoActual;
                 } else {
@@ -196,24 +198,22 @@
                     const card = document.createElement("div");
                     card.className = "plaza-card";
                     // Estados visuales
-                    if (!p.hab) card.classList.add("inhabilitada");
+                    if (p.hab === false) card.classList.add("inhabilitada");
                     else if (p.ocupada) card.classList.add("ocupada");
-                    else if (!p.compatible) card.classList.add("incompatible");
+                    else if (p.compatible === false) card.classList.add("incompatible");
                     else card.classList.add("disponible");
 
                     card.innerHTML = `
                     <div class="plaza-title">${p.nombre ?? ("P" + p.plzNum)}</div>
                     <div class="plaza-sub">${p.piso === null ? "Sin piso" : ("Piso " + p.piso)}</div>
                     ${p.ocupada ? '<div class="small text-muted mt-1">Ocupada</div>' : ''}
-                    ${!p.hab ? '<div class="small text-muted mt-1">Inhabilitada</div>' : ''}
-                    ${p.hab && !p.ocupada && !p.compatible ? '<div class="small mt-1">No compatible</div>' : ''}
+                    ${p.hab === false ? '<div class="small text-muted mt-1">Inhabilitada</div>' : ''}
+                    ${(p.hab !== false && !p.ocupada && p.compatible === false) ? '<div class="small mt-1">No compatible</div>' : ''}
                 `;
 
-                    const esSeleccionable = p.hab && !p.ocupada && p.compatible;
-
+                    const esSeleccionable = (p.hab !== false) && !p.ocupada && (p.compatible !== false);
                     if (esSeleccionable) {
                         card.addEventListener("click", () => {
-                            // toggle selección
                             grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
                             card.classList.add("selected");
                             hiddenPlz.value = p.plzNum;
@@ -233,6 +233,7 @@
 
                 const clasVehID = selClas.value || "";
                 const techada = getTechada(); // "", "true", "false"
+
                 if (!clasVehID) {
                     grid.innerHTML = `<div class="text-muted">Seleccione una clasificación para ver plazas.</div>`;
                     renderPisos([]);
@@ -249,11 +250,10 @@
                     allPlazas = (data || []).map(x => ({
                         plzNum: x.plzNum,
                         piso: (x.piso ?? null),
-                        hab: !!x.hab,
+                        hab: (x.hab ?? true),
                         ocupada: !!x.ocupada,
-                        compatible: x.compatible !== false, // default true
-                        nombre: x.nombre ?? null,
-                        label: x.label ?? ""
+                        compatible: (x.compatible ?? true),
+                        nombre: x.nombre ?? null
                     }));
 
                     renderPisos(allPlazas);

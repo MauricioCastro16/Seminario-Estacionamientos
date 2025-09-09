@@ -5,7 +5,6 @@ using estacionamientos.Data;
 using estacionamientos.Models;
 using System.Security.Claims;
 
-
 namespace estacionamientos.Controllers
 {
     public class OcupacionController : Controller
@@ -13,6 +12,9 @@ namespace estacionamientos.Controllers
         private readonly AppDbContext _ctx;
         public OcupacionController(AppDbContext ctx) => _ctx = ctx;
 
+        // ===========================
+        // Helpers (combos / selects)
+        // ===========================
         private async Task LoadSelects(int? plySel = null, int? plzSel = null, string? vehSel = null)
         {
             var playas = await _ctx.Playas.AsNoTracking()
@@ -34,69 +36,63 @@ namespace estacionamientos.Controllers
                     .ToListAsync();
             }
 
-
             var vehiculos = await _ctx.Vehiculos.AsNoTracking()
-                .OrderBy(v => v.VehPtnt).Select(v => v.VehPtnt).ToListAsync();
+                .OrderBy(v => v.VehPtnt)
+                .Select(v => v.VehPtnt)
+                .ToListAsync();
 
             ViewBag.PlyID = new SelectList(playas, "PlyID", "Nombre", plySel);
             ViewBag.PlzNum = new SelectList(plazas, "PlzNum", "PlzNum", plzSel);
             ViewBag.VehPtnt = new SelectList(vehiculos, vehSel);
         }
 
-        private async Task<bool> PlazaExiste(int plyID, int plzNum)
-            => await _ctx.Plazas.AnyAsync(p => p.PlyID == plyID && p.PlzNum == plzNum);
+        private Task<bool> PlazaExiste(int plyID, int plzNum)
+            => _ctx.Plazas.AnyAsync(p => p.PlyID == plyID && p.PlzNum == plzNum);
 
-        private async Task<bool> VehiculoExiste(string pat)
-            => await _ctx.Vehiculos.AnyAsync(v => v.VehPtnt == pat);
+        private Task<bool> VehiculoExiste(string pat)
+            => _ctx.Vehiculos.AnyAsync(v => v.VehPtnt == pat);
 
+        // ===========================
+        // Listado
+        // ===========================
         public async Task<IActionResult> Index()
         {
             if (User.IsInRole("Playero"))
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
                 var turno = await _ctx.Turnos
                     .Where(t => t.PlaNU.ToString() == userId && t.TurFyhFin == null)
                     .Include(t => t.Playa)
                     .FirstOrDefaultAsync();
 
                 if (turno == null)
-                {
-                    // No hay turno activo → mostrar vista especial
-                    return View("NoTurno"); // 👈 nueva vista
-                }
+                    return View("NoTurno");
 
-                // Si hay turno → cargar solo las ocupaciones de esa playa
                 var q = _ctx.Ocupaciones
-                    .Include(o => o.Plaza)
-                        .ThenInclude(p => p.Clasificacion) // 👈 importante
-                    .Include(o => o.Plaza)
-                        .ThenInclude(p => p.Playa)
-                    .Include(o => o.Vehiculo)
-                        .ThenInclude(v => v.Clasificacion) // 👈 también desde el vehículo
+                    .Include(o => o.Plaza).ThenInclude(p => p.Clasificacion)
+                    .Include(o => o.Plaza).ThenInclude(p => p.Playa)
+                    .Include(o => o.Vehiculo).ThenInclude(v => v.Clasificacion)
                     .Include(o => o.Pago)
                     .Where(o => o.PlyID == turno.PlyID)
                     .AsNoTracking();
 
-
                 return View(await q.ToListAsync());
             }
 
-            // Para otros roles (dueño/admin) mostrar todas
-        var qAll = _ctx.Ocupaciones
-            .Include(o => o.Plaza)
-                .ThenInclude(p => p.Clasificacion)
-            .Include(o => o.Plaza)
-                .ThenInclude(p => p.Playa)
-            .Include(o => o.Vehiculo)
-                .ThenInclude(v => v.Clasificacion)
-            .Include(o => o.Pago)
-            .AsNoTracking();
-
+            var qAll = _ctx.Ocupaciones
+                .Include(o => o.Plaza).ThenInclude(p => p.Clasificacion)
+                .Include(o => o.Plaza).ThenInclude(p => p.Playa)
+                .Include(o => o.Vehiculo).ThenInclude(v => v.Clasificacion)
+                .Include(o => o.Pago)
+                .AsNoTracking();
 
             return View(await qAll.ToListAsync());
         }
 
-
+        // ===========================
+        // Acciones rápidas (ingreso/egreso)
+        // ===========================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RegistrarIngreso(int plyID, int plzNum, string vehPtnt)
@@ -112,6 +108,7 @@ namespace estacionamientos.Controllers
 
             _ctx.Ocupaciones.Add(ocup);
             await _ctx.SaveChangesAsync();
+
             TempData["Success"] = $"Vehículo {vehPtnt} ingresó a la plaza {plzNum}.";
             return RedirectToAction(nameof(Index));
         }
@@ -129,14 +126,35 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            await using var tx = await _ctx.Database.BeginTransactionAsync();
+
             ocup.OcufFyhFin = DateTime.UtcNow;
             await _ctx.SaveChangesAsync();
+
+            // si no quedan ocupaciones activas en esa plaza, marcarla como libre
+            var sigueOcupada = await _ctx.Ocupaciones.AnyAsync(o =>
+                o.PlyID == plyID && o.PlzNum == plzNum && o.OcufFyhFin == null);
+
+            if (!sigueOcupada)
+            {
+                var plaza = await _ctx.Plazas.FindAsync(plyID, plzNum);
+                if (plaza != null && plaza.PlzOcupada)
+                {
+                    plaza.PlzOcupada = false;
+                    _ctx.Plazas.Update(plaza);
+                    await _ctx.SaveChangesAsync();
+                }
+            }
+
+            await tx.CommitAsync();
+
             TempData["Success"] = $"Vehículo {vehPtnt} egresó de la plaza {plzNum}.";
             return RedirectToAction(nameof(Index));
         }
 
-
-
+        // ===========================
+        // Detalle
+        // ===========================
         public async Task<IActionResult> Details(int plyID, int plzNum, string vehPtnt, DateTime ocufFyhIni)
         {
             var item = await _ctx.Ocupaciones
@@ -149,40 +167,39 @@ namespace estacionamientos.Controllers
             return item is null ? NotFound() : View(item);
         }
 
-
+        // ===========================
+        // API para la grilla de plazas
+        // ===========================
         [HttpGet]
         public async Task<JsonResult> GetPlazasDisponibles(int plyID, int? clasVehID, string? techada = "all")
         {
-            // Traemos TODAS las plazas de la playa y calculamos flags
-            var baseQuery = _ctx.Plazas
+            // Traemos TODAS las plazas y calculamos flags para que el front pueda pintar/filtrar
+            var baseQuery = _ctx.Plazas.AsNoTracking()
                 .Where(p => p.PlyID == plyID)
                 .Select(p => new
                 {
                     p.PlyID,
                     plzNum = p.PlzNum,
                     nombre = p.PlzNombre,
-                    piso = p.Piso,         // <- para el combo de pisos
+                    piso = p.Piso,           // para el combo de pisos
                     hab = p.PlzHab,
                     techada = p.PlzTecho,
                     compatible = (clasVehID == null || p.ClasVehID == clasVehID),
                     ocupada = _ctx.Ocupaciones.Any(o => o.PlyID == p.PlyID
-                                                       && o.PlzNum == p.PlzNum
-                                                       && o.OcufFyhFin == null)
+                                                        && o.PlzNum == p.PlzNum
+                                                        && o.OcufFyhFin == null)
                 });
 
-            // Filtrado por "techada"
+            // Filtro de techada si vino
             if (techada == "true") baseQuery = baseQuery.Where(x => x.techada);
             if (techada == "false") baseQuery = baseQuery.Where(x => !x.techada);
-            // "all" o null -> sin filtro
-
-            // (Opcional) si querés que la grilla muestre SOLO compatibles, filtrá aquí:
-            // if (clasVehID != null) baseQuery = baseQuery.Where(x => x.compatible);
+            // "all" o null → sin filtro
 
             var data = await baseQuery
                 .OrderBy(x => x.piso).ThenBy(x => x.plzNum)
                 .ToListAsync();
 
-            // Normalizamos "nombre" y ocultamos "techada" (la vista no lo usa)
+            // Normalizamos nombre y ocultamos "techada" (la vista no lo usa)
             var payload = data.Select(x => new
             {
                 x.plzNum,
@@ -196,11 +213,13 @@ namespace estacionamientos.Controllers
             return Json(payload);
         }
 
+        // ===========================
+        // Alta por formulario (vista Create)
+        // ===========================
         public async Task<IActionResult> Create()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // Si es Playero, verificar turno activo
             if (User.IsInRole("Playero"))
             {
                 var turno = await _ctx.Turnos
@@ -213,7 +232,6 @@ namespace estacionamientos.Controllers
                     return RedirectToAction(nameof(Index));
                 }
 
-                // Obtener nombre de la playa del turno activo
                 var playaNombre = await _ctx.Playas
                     .Where(p => p.PlyID == turno.PlyID)
                     .Select(p => p.PlyNom)
@@ -221,7 +239,6 @@ namespace estacionamientos.Controllers
 
                 ViewBag.PlayaNombre = playaNombre;
 
-                // Cargar plazas de esa playa
                 await LoadSelects(turno.PlyID);
 
                 ViewBag.Clasificaciones = new SelectList(
@@ -236,40 +253,31 @@ namespace estacionamientos.Controllers
                     OcufFyhIni = DateTime.UtcNow,
                     PlyID = turno.PlyID
                 });
-
-
             }
 
-            // Para otros roles (dueño/administrador), carga normal
             await LoadSelects();
             ViewBag.Clasificaciones = new SelectList(
-                    await _ctx.ClasificacionesVehiculo
-                        .OrderBy(c => c.ClasVehTipo)
-                        .ToListAsync(),
-                    "ClasVehID", "ClasVehTipo"
-                );
+                await _ctx.ClasificacionesVehiculo
+                    .OrderBy(c => c.ClasVehTipo)
+                    .ToListAsync(),
+                "ClasVehID", "ClasVehTipo"
+            );
             return View(new Ocupacion { OcufFyhIni = DateTime.UtcNow });
         }
 
-
-
-            [HttpPost, ValidateAntiForgeryToken]
-            public async Task<IActionResult> Create(Ocupacion model, int ClasVehID)
-            {
-
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Ocupacion model, int ClasVehID)
+        {
+            // Revalidación de modelo y combos
             if (!ModelState.IsValid)
             {
-                // Volver a armar los combos antes de devolver la vista
                 await LoadSelects(model.PlyID, model.PlzNum, model.VehPtnt);
-
                 ViewBag.Clasificaciones = new SelectList(
                     await _ctx.ClasificacionesVehiculo
                         .OrderBy(c => c.ClasVehTipo)
                         .ToListAsync(),
                     "ClasVehID", "ClasVehTipo", ClasVehID
                 );
-
-                // 🔹 Volver a cargar el nombre de la playa
                 ViewBag.PlayaNombre = await _ctx.Playas
                     .Where(p => p.PlyID == model.PlyID)
                     .Select(p => p.PlyNom)
@@ -277,7 +285,6 @@ namespace estacionamientos.Controllers
 
                 return View(model);
             }
-
 
             if (string.IsNullOrWhiteSpace(model.VehPtnt))
             {
@@ -293,10 +300,9 @@ namespace estacionamientos.Controllers
 
             var plazaValida = await _ctx.Plazas.AnyAsync(p =>
                 p.PlyID == model.PlyID &&
-                p.PlzNum == model.PlzNum.Value &&   // 👈 agregar .Value
+                p.PlzNum == model.PlzNum!.Value &&
                 p.ClasVehID == ClasVehID &&
                 p.PlzHab == true);
-
 
             if (!plazaValida)
             {
@@ -306,9 +312,8 @@ namespace estacionamientos.Controllers
 
             var yaOcupada = await _ctx.Ocupaciones.AnyAsync(o =>
                 o.PlyID == model.PlyID &&
-                o.PlzNum == model.PlzNum.Value &&   // 👈 agregar .Value
+                o.PlzNum == model.PlzNum!.Value &&
                 o.OcufFyhFin == null);
-
 
             if (yaOcupada)
             {
@@ -322,8 +327,7 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-
-            // Alta automática de vehículo si no existe
+            // Alta automática de vehículo si no existe / actualizar clasif si corresponde
             var vehiculo = await _ctx.Vehiculos.FirstOrDefaultAsync(v => v.VehPtnt == model.VehPtnt);
             if (vehiculo == null)
             {
@@ -343,16 +347,31 @@ namespace estacionamientos.Controllers
                 await _ctx.SaveChangesAsync();
             }
 
-            // Guardar la ocupación
+            // Guardar ocupación + marcar plaza ocupada (transacción)
+            await using var tx = await _ctx.Database.BeginTransactionAsync();
+
             model.OcufFyhIni = DateTime.UtcNow;
             model.OcufFyhFin = null;
             _ctx.Ocupaciones.Add(model);
             await _ctx.SaveChangesAsync();
 
+            var plaza = await _ctx.Plazas.FindAsync(model.PlyID, model.PlzNum);
+            if (plaza != null && !plaza.PlzOcupada)
+            {
+                plaza.PlzOcupada = true;
+                _ctx.Plazas.Update(plaza);
+                await _ctx.SaveChangesAsync();
+            }
+
+            await tx.CommitAsync();
+
             TempData["Success"] = $"Vehículo {model.VehPtnt} ingresó a la plaza {model.PlzNum}.";
             return RedirectToAction(nameof(Index));
         }
 
+        // ===========================
+        // Editar / Eliminar
+        // ===========================
         public async Task<IActionResult> Edit(int plyID, int plzNum, string vehPtnt, DateTime ocufFyhIni)
         {
             var item = await _ctx.Ocupaciones.FindAsync(plyID, plzNum, vehPtnt, ocufFyhIni);
@@ -365,7 +384,6 @@ namespace estacionamientos.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int plyID, int plzNum, string vehPtnt, DateTime ocufFyhIni, Ocupacion model)
         {
-            // PK fija (si querés moverla, hacé delete+create)
             if (plyID != model.PlyID || plzNum != model.PlzNum || vehPtnt != model.VehPtnt || ocufFyhIni != model.OcufFyhIni)
                 return BadRequest();
 
