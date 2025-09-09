@@ -34,7 +34,7 @@
         <select id="PisoSelect" class="form-select w-25"></select>
     </div>
 
-    <!-- Mantiene compatibilidad con el POST -->
+    <!-- Para el POST -->
     <input type="hidden" asp-for="PlzNum" id="PlzNum" />
     <span asp-validation-for="PlzNum" class="text-danger"></span>
 
@@ -144,8 +144,8 @@
             const isSelectable = (p) => p.hab && !p.ocupada; // habilitada y libre
 
             function isCompatible(plzNum) {
-                if (!selClas.value) return false;        // sin clasificación no hay compatibilidad “confirmable”
-                return disponibles.includes(plzNum);     // compatible con la clase
+                if (!selClas.value) return false;        // sin clasificación no confirmamos compatibilidad
+                return disponibles.includes(plzNum);
             }
 
             function updateSubmitState() {
