@@ -388,7 +388,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 // (Opcional) índice para consultas por fecha
                 e.HasIndex(p => new { p.PlyID, p.PagFyh });
             });
-        modelBuilder.Entity<PlazaEstacionamiento>(e =>
+            modelBuilder.Entity<PlazaEstacionamiento>(e =>
             {
                 e.ToTable("PlazaEstacionamiento");
                 e.HasKey(p => new { p.PlyID, p.PlzNum });
@@ -396,10 +396,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 e.Property(p => p.PlzAlt).HasPrecision(5, 2); // por ej. 3.50 m
 
                 e.HasOne(p => p.Playa)
-                .WithMany(pl => pl.Plazas)        // colección en PlayaEstacionamiento
-                .HasForeignKey(p => p.PlyID)
-                .OnDelete(DeleteBehavior.Cascade);
+                    .WithMany(pl => pl.Plazas)
+                    .HasForeignKey(p => p.PlyID)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // 🔹 Relación con ClasificacionVehiculo
+                e.HasOne(p => p.Clasificacion)
+                    .WithMany()
+                    .HasForeignKey(p => p.ClasVehID)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
+
         modelBuilder.Entity<Ocupacion>(e =>
             {
                 e.ToTable("Ocupacion");

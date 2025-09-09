@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
+using System.Security.Claims;
+
 
 namespace estacionamientos.Controllers
 {
@@ -49,14 +51,91 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var q = _ctx.Ocupaciones
-                .Include(o => o.Plaza).ThenInclude(p => p.Playa)
-                .Include(o => o.Vehiculo)
-                .Include(o => o.Pago)
-                .AsNoTracking();
+            if (User.IsInRole("Playero"))
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var turno = await _ctx.Turnos
+                    .Where(t => t.PlaNU.ToString() == userId && t.TurFyhFin == null)
+                    .Include(t => t.Playa)
+                    .FirstOrDefaultAsync();
 
-            return View(await q.ToListAsync());
+                if (turno == null)
+                {
+                    // No hay turno activo → mostrar vista especial
+                    return View("NoTurno"); // 👈 nueva vista
+                }
+
+                // Si hay turno → cargar solo las ocupaciones de esa playa
+                var q = _ctx.Ocupaciones
+                    .Include(o => o.Plaza)
+                        .ThenInclude(p => p.Clasificacion) // 👈 importante
+                    .Include(o => o.Plaza)
+                        .ThenInclude(p => p.Playa)
+                    .Include(o => o.Vehiculo)
+                        .ThenInclude(v => v.Clasificacion) // 👈 también desde el vehículo
+                    .Include(o => o.Pago)
+                    .Where(o => o.PlyID == turno.PlyID)
+                    .AsNoTracking();
+
+
+                return View(await q.ToListAsync());
+            }
+
+            // Para otros roles (dueño/admin) mostrar todas
+        var qAll = _ctx.Ocupaciones
+            .Include(o => o.Plaza)
+                .ThenInclude(p => p.Clasificacion)
+            .Include(o => o.Plaza)
+                .ThenInclude(p => p.Playa)
+            .Include(o => o.Vehiculo)
+                .ThenInclude(v => v.Clasificacion)
+            .Include(o => o.Pago)
+            .AsNoTracking();
+
+
+            return View(await qAll.ToListAsync());
         }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RegistrarIngreso(int plyID, int plzNum, string vehPtnt)
+        {
+            var ocup = new Ocupacion
+            {
+                PlyID = plyID,
+                PlzNum = plzNum,
+                VehPtnt = vehPtnt,
+                OcufFyhIni = DateTime.UtcNow,
+                OcufFyhFin = null
+            };
+
+            _ctx.Ocupaciones.Add(ocup);
+            await _ctx.SaveChangesAsync();
+            TempData["Success"] = $"Vehículo {vehPtnt} ingresó a la plaza {plzNum}.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RegistrarEgreso(int plyID, int plzNum, string vehPtnt)
+        {
+            var ocup = await _ctx.Ocupaciones
+                .FirstOrDefaultAsync(o => o.PlyID == plyID && o.PlzNum == plzNum && o.VehPtnt == vehPtnt && o.OcufFyhFin == null);
+
+            if (ocup == null)
+            {
+                TempData["Error"] = "No se encontró una ocupación activa para este vehículo.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            ocup.OcufFyhFin = DateTime.UtcNow;
+            await _ctx.SaveChangesAsync();
+            TempData["Success"] = $"Vehículo {vehPtnt} egresó de la plaza {plzNum}.";
+            return RedirectToAction(nameof(Index));
+        }
+
+
 
         public async Task<IActionResult> Details(int plyID, int plzNum, string vehPtnt, DateTime ocufFyhIni)
         {
@@ -70,29 +149,151 @@ namespace estacionamientos.Controllers
             return item is null ? NotFound() : View(item);
         }
 
-        public async Task<IActionResult> Create()
+        
+        [HttpGet]
+        public async Task<JsonResult> GetPlazasDisponibles(int plyID, int clasVehID)
         {
-            await LoadSelects();
-            return View(new Ocupacion { OcufFyhIni = DateTime.Now });
+            var plazas = await _ctx.Plazas
+                .Where(p => p.PlyID == plyID
+                        && p.ClasVehID == clasVehID
+                        && p.PlzHab == true
+                        && !_ctx.Ocupaciones.Any(o => o.PlyID == p.PlyID 
+                                                    && o.PlzNum == p.PlzNum 
+                                                    && o.OcufFyhFin == null))
+                .OrderBy(p => p.PlzNum)
+                .Select(p => new {
+                    plzNum = p.PlzNum,
+                    label = $"Plaza {p.PlzNum}"
+                })
+                .ToListAsync();
+
+            return Json(plazas);
         }
 
-        [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Ocupacion model)
+
+        public async Task<IActionResult> Create()
         {
-            if (!await PlazaExiste(model.PlyID, model.PlzNum))
-                ModelState.AddModelError(nameof(model.PlzNum), "La plaza no existe en la playa seleccionada.");
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (!await VehiculoExiste(model.VehPtnt))
-                ModelState.AddModelError(nameof(model.VehPtnt), "El vehículo no existe.");
-
-            if (!ModelState.IsValid)
+            // Si es Playero, verificar turno activo
+            if (User.IsInRole("Playero"))
             {
-                await LoadSelects(model.PlyID, model.PlzNum, model.VehPtnt);
-                return View(model);
+                var turno = await _ctx.Turnos
+                    .Where(t => t.PlaNU.ToString() == userId && t.TurFyhFin == null)
+                    .FirstOrDefaultAsync();
+
+                if (turno == null)
+                {
+                    TempData["Error"] = "Debe tener un turno activo para registrar ingresos.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                // Obtener nombre de la playa del turno activo
+                var playaNombre = await _ctx.Playas
+                    .Where(p => p.PlyID == turno.PlyID)
+                    .Select(p => p.PlyNom)
+                    .FirstOrDefaultAsync();
+
+                ViewBag.PlayaNombre = playaNombre;
+
+                // Cargar plazas de esa playa
+                await LoadSelects(turno.PlyID);
+
+                ViewBag.Clasificaciones = new SelectList(
+                    await _ctx.ClasificacionesVehiculo
+                        .OrderBy(c => c.ClasVehTipo)
+                        .ToListAsync(),
+                    "ClasVehID", "ClasVehTipo"
+                );
+
+                return View(new Ocupacion
+                {
+                    OcufFyhIni = DateTime.UtcNow,
+                    PlyID = turno.PlyID
+                });
+
+
             }
 
+            // Para otros roles (dueño/administrador), carga normal
+            await LoadSelects();
+            ViewBag.Clasificaciones = new SelectList(
+                    await _ctx.ClasificacionesVehiculo
+                        .OrderBy(c => c.ClasVehTipo)
+                        .ToListAsync(),
+                    "ClasVehID", "ClasVehTipo"
+                );
+            return View(new Ocupacion { OcufFyhIni = DateTime.UtcNow });
+        }
+
+
+
+            [HttpPost, ValidateAntiForgeryToken]
+            public async Task<IActionResult> Create(Ocupacion model, int ClasVehID)
+            {
+
+            if (ClasVehID == 0)
+            {
+                TempData["Error"] = "Debe seleccionar una clasificación válida.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var plazaValida = await _ctx.Plazas.AnyAsync(p =>
+                p.PlyID == model.PlyID &&
+                p.PlzNum == model.PlzNum &&
+                p.ClasVehID == ClasVehID &&
+                p.PlzHab == true);
+
+            if (!plazaValida)
+            {
+                TempData["Error"] = "La plaza seleccionada no es válida para esta clasificación.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var yaOcupada = await _ctx.Ocupaciones.AnyAsync(o =>
+                o.PlyID == model.PlyID &&
+                o.PlzNum == model.PlzNum &&
+                o.OcufFyhFin == null);
+
+            if (yaOcupada)
+            {
+                TempData["Error"] = "La plaza ya está ocupada.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (!await PlazaExiste(model.PlyID, model.PlzNum))
+            {
+                TempData["Error"] = "La plaza no existe en la playa seleccionada.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Alta automática de vehículo si no existe
+            var vehiculo = await _ctx.Vehiculos.FirstOrDefaultAsync(v => v.VehPtnt == model.VehPtnt);
+            if (vehiculo == null)
+            {
+                vehiculo = new Vehiculo
+                {
+                    VehPtnt = model.VehPtnt,
+                    ClasVehID = ClasVehID,
+                    VehMarc = "Desconocida"
+                };
+                _ctx.Vehiculos.Add(vehiculo);
+                await _ctx.SaveChangesAsync();
+            }
+            else if (vehiculo.ClasVehID == 0 && ClasVehID != 0)
+            {
+                vehiculo.ClasVehID = ClasVehID;
+                _ctx.Update(vehiculo);
+                await _ctx.SaveChangesAsync();
+            }
+
+            // Guardar la ocupación
+            model.OcufFyhIni = DateTime.UtcNow;
+            model.OcufFyhFin = null;
             _ctx.Ocupaciones.Add(model);
             await _ctx.SaveChangesAsync();
+
+            TempData["Success"] = $"Vehículo {model.VehPtnt} ingresó a la plaza {model.PlzNum}.";
             return RedirectToAction(nameof(Index));
         }
 

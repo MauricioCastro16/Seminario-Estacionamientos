@@ -1,26 +1,41 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace estacionamientos.Models
 {
     public class Ocupacion
     {
         // PK compuesta
-        public int PlyID { get; set; }           // playa
-        public int PlzNum { get; set; }          // plaza
-        public string VehPtnt { get; set; } = ""; // vehículo
+        [Display(Name = "Playa")]
+        public int PlyID { get; set; }
+
+        [Display(Name = "Plaza")]
+        public int PlzNum { get; set; }
+
+        [Required(ErrorMessage = "Debe ingresar la patente del vehículo")]
+        [Display(Name = "Patente")]
+        public string VehPtnt { get; set; } = "";
+
         [Required]
-        public DateTime OcufFyhIni { get; set; } // inicio de ocupación
+        [Display(Name = "Hora de ingreso")]
+        public DateTime OcufFyhIni { get; set; }
 
-        // Otros campos
-        public DateTime? OcufFyhFin { get; set; } // fin (si ya liberó)
-        public bool OcuLlavDej { get; set; }     // dejó llaves
+        [Display(Name = "Hora de egreso")]
+        public DateTime? OcufFyhFin { get; set; }
 
-        // Pago (opcional) → FK compuesta a Pago (PlyID, PagNum)
+        [Display(Name = "Dejó llaves")]
+        public bool OcuLlavDej { get; set; }
+
         public int? PagNum { get; set; }
 
-        // Navs
-        public PlazaEstacionamiento Plaza { get; set; } = default!;
-        public Vehiculo Vehiculo { get; set; } = default!;
-        public Pago? Pago { get; set; }          // puede ser null
+        // 🔹 Navegación → que NO se valide en el form
+        [BindNever]
+        public PlazaEstacionamiento? Plaza { get; set; }
+
+        [BindNever]
+        public Vehiculo? Vehiculo { get; set; }
+
+        [BindNever]
+        public Pago? Pago { get; set; }
     }
 }

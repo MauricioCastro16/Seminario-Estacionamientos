@@ -11,6 +11,18 @@ namespace estacionamientos.Controllers
         private readonly AppDbContext _ctx;
         public PlazaEstacionamientoController(AppDbContext ctx) => _ctx = ctx;
 
+
+        private async Task LoadClasificaciones(int? selected = null)
+        {
+            var clasifs = await _ctx.ClasificacionesVehiculo
+                .OrderBy(c => c.ClasVehTipo)
+                .ToListAsync();
+
+            ViewBag.Clasificaciones = new SelectList(clasifs, "ClasVehID", "ClasVehTipo", selected);
+        }
+
+
+
         private async Task LoadPlayas(int? selected = null)
         {
             var playas = await _ctx.Playas.AsNoTracking()
@@ -37,9 +49,10 @@ namespace estacionamientos.Controllers
         public async Task<IActionResult> ConfigurarPlazas(int plyID)
         {
             var playa = await _ctx.Playas
-             .Include(p => p.Plazas)
-             .AsNoTracking()
-             .FirstOrDefaultAsync(p => p.PlyID == plyID);
+                .Include(p => p.Plazas)
+                    .ThenInclude(pl => pl.Clasificacion)   // 🔹 carga la navegación
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.PlyID == plyID);
 
             if (playa == null) return NotFound();
 
@@ -47,8 +60,11 @@ namespace estacionamientos.Controllers
             ViewBag.PlyNom = playa.PlyNom;
             ViewBag.DefaultCantidad = 1;
 
+            await LoadClasificaciones();
+
             return View(playa.Plazas.OrderBy(z => z.PlzNum));
         }
+
 
         [HttpPost("Playas/{plyID}/[controller]")]
         [ValidateAntiForgeryToken]
@@ -56,7 +72,8 @@ namespace estacionamientos.Controllers
             int plyID,
             int cantidad = 1,
             bool? plzTecho = null,
-            decimal? plzAlt = null)
+            decimal? plzAlt = null,
+            int clasVehID = 0)
         {
             var playa = await _ctx.Playas
                 .Include(p => p.Plazas)
@@ -79,6 +96,13 @@ namespace estacionamientos.Controllers
                 ViewBag.PlyNom = playa.PlyNom;
                 ViewBag.DefaultCantidad = 1;
 
+                await _ctx.Entry(playa)
+                    .Collection(p => p.Plazas)
+                    .Query()
+                    .Include(pl => pl.Clasificacion)
+                    .LoadAsync();   // 👈 versión async
+
+
                 var plazas = playa.Plazas.OrderBy(z => z.PlzNum).ToList();
 
                 if (plzTecho == true && (!plzAlt.HasValue || plzAlt.Value < 2m))
@@ -95,6 +119,24 @@ namespace estacionamientos.Controllers
                 return View(plazas);
             }
 
+            if (clasVehID == 0)
+            {
+                ViewBag.PlyID = playa.PlyID;
+                ViewBag.PlyNom = playa.PlyNom;
+                ViewBag.DefaultCantidad = 1;
+
+                await LoadClasificaciones(clasVehID);
+                ModelState.AddModelError("clasVehID", "Debe seleccionar una clasificación.");
+
+                await _ctx.Entry(playa)
+                .Collection(p => p.Plazas)
+                .Query()
+                .Include(pl => pl.Clasificacion)
+                .LoadAsync();   // 👈 versión async
+
+
+                return View(playa.Plazas.OrderBy(z => z.PlzNum));
+            }
             // calcular desde qué número crear
             int nextNum = playa.Plazas.Any() ? playa.Plazas.Max(pl => pl.PlzNum) + 1 : 1;
 
@@ -106,10 +148,12 @@ namespace estacionamientos.Controllers
                     PlzNum = nextNum + i,
                     PlzTecho = plzTecho.Value,
                     PlzAlt = plzTecho.Value ? plzAlt : null,
-                    PlzHab = true
+                    PlzHab = true,
+                    ClasVehID = clasVehID   // 🔹 nuevo campo: clasificación de vehículo
                 };
                 _ctx.Plazas.Add(plaza);
             }
+
 
             await _ctx.SaveChangesAsync();
             return RedirectToAction(nameof(ConfigurarPlazas), new { plyID = plyID });

@@ -58,6 +58,15 @@
 
             </div>
 
+            <div>
+                <label class="mb-2" for="clasVehID">Clasificación de vehículo</label>
+                <select id="clasVehID" name="clasVehID" asp-items="ViewBag.Clasificaciones" class="form-select" required>
+                    <option value="">-- Selecciona una opción --</option>
+                </select>
+                @Html.ValidationMessage("clasVehID", null, new { @class = "text-danger" })
+            </div>
+
+
             <input type="hidden" name="plyID" value="@ViewBag.PlyID" />
 
             <button type="submit" class="btn btn-primary" style="min-width: max-content; height: max-content">
@@ -73,6 +82,7 @@
                 <th class="text-center">N° plaza</th>
                 <th>Techo</th>
                 <th>Altura (m)</th>
+                <th>Clasificación</th> 
                 <th class="text-center">Habilitada</th>
                 <th class="text-center">Acciones</th>
             </tr>
@@ -110,6 +120,8 @@
                         data-orig-value="@(plaza.PlzAlt?.ToString("0.##") ?? "")"
                         placeholder="Ej: 2.10" />
                 </td>
+
+                <td>@plaza.Clasificacion?.ClasVehTipo</td>
 
                 <!-- HABILITADA -->
                 <td class="text-center">
