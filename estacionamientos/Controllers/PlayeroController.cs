@@ -8,7 +8,8 @@ using estacionamientos.ViewModels;
 
 namespace estacionamientos.Controllers
 {
-    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
+    // Permitir que entren tanto Duenio como Playero
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio,Playero")]
     public class PlayeroController : Controller
     {
         private readonly AppDbContext _context;
@@ -55,8 +56,9 @@ namespace estacionamientos.Controllers
         }
 
         // ------------------------------------------------------------
-        // INDEX: sólo vínculos ACTIVOS en playas del dueño logueado
+        // INDEX: sólo dueños
         // ------------------------------------------------------------
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Index()
         {
             var dueId = GetCurrentOwnerId();
@@ -83,8 +85,9 @@ namespace estacionamientos.Controllers
         }
 
         // ------------------------------------------------------------
-        // DETAILS (simple)
+        // DETAILS: sólo dueños
         // ------------------------------------------------------------
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Details(int id)
         {
             var entity = await _context.Playeros.AsNoTracking()
@@ -93,8 +96,9 @@ namespace estacionamientos.Controllers
         }
 
         // ------------------------------------------------------------
-        // CREATE (GET): sólo playas del dueño
+        // CREATE: sólo dueños
         // ------------------------------------------------------------
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Create()
         {
             var dueId = GetCurrentOwnerId();
@@ -105,15 +109,12 @@ namespace estacionamientos.Controllers
             });
         }
 
-        // ------------------------------------------------------------
-        // CREATE (POST): crea Playero + vínculo ACTIVO
-        // ------------------------------------------------------------
         [HttpPost, ValidateAntiForgeryToken]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Create(PlayeroCreateVM vm)
         {
             var dueId = GetCurrentOwnerId();
 
-            // Guard 1: playa debe ser del dueño
             var esMia = await _context.AdministraPlayas
                 .AnyAsync(a => a.DueNU == dueId && a.PlyID == vm.PlayaId);
             if (!esMia)
@@ -125,18 +126,15 @@ namespace estacionamientos.Controllers
                 return View(vm);
             }
 
-            // Alta Playero
             _context.Playeros.Add(vm.Playero);
             await _context.SaveChangesAsync();
 
-            // Vínculo activo
-            var trabajo = new TrabajaEn
+            _context.Trabajos.Add(new TrabajaEn
             {
                 PlaNU = vm.Playero.UsuNU,
                 PlyID = vm.PlayaId,
                 TrabEnActual = true
-            };
-            _context.Trabajos.Add(trabajo);
+            });
             await _context.SaveChangesAsync();
 
             TempData["Msg"] = "Playero creado y asignado.";
@@ -144,8 +142,9 @@ namespace estacionamientos.Controllers
         }
 
         // ------------------------------------------------------------
-        // EDIT (datos básicos del playero)
+        // EDIT: sólo dueños
         // ------------------------------------------------------------
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Edit(int id)
         {
             var entity = await _context.Playeros.FindAsync(id);
@@ -153,6 +152,7 @@ namespace estacionamientos.Controllers
         }
 
         [HttpPost, ValidateAntiForgeryToken]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Edit(int id, Playero playero)
         {
             if (id != playero.UsuNU) return BadRequest();
@@ -176,10 +176,11 @@ namespace estacionamientos.Controllers
         }
 
         // ------------------------------------------------------------
-        // ASSIGN (GET): combo con playas del dueño
+        // ASSIGN: sólo dueños
         // ------------------------------------------------------------
         [HttpGet]
-        public async Task<IActionResult> Assign(int id) // id = UsuNU del playero
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
+        public async Task<IActionResult> Assign(int id)
         {
             var playero = await _context.Playeros.AsNoTracking()
                 .FirstOrDefaultAsync(p => p.UsuNU == id);
@@ -195,21 +196,17 @@ namespace estacionamientos.Controllers
             });
         }
 
-        // ------------------------------------------------------------
-        // ASSIGN (POST): crea o REACTIVA vínculo
-        // ------------------------------------------------------------
         [HttpPost, ValidateAntiForgeryToken]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Assign(PlayeroAssignVM vm)
         {
             var dueId = GetCurrentOwnerId();
 
-            // Guard 1: playa debe ser del dueño
             var esMia = await _context.AdministraPlayas
                 .AnyAsync(a => a.DueNU == dueId && a.PlyID == vm.PlayaId);
             if (!esMia)
                 ModelState.AddModelError(nameof(vm.PlayaId), "No podés asignar a una playa que no administrás.");
 
-            // Vínculo existente (para reactivar si es histórico)
             var existente = await _context.Trabajos
                 .FirstOrDefaultAsync(t => t.PlaNU == vm.PlaNU && t.PlyID == vm.PlayaId);
 
@@ -235,7 +232,7 @@ namespace estacionamientos.Controllers
             }
             else
             {
-                existente.TrabEnActual = true; // reactivar
+                existente.TrabEnActual = true;
                 _context.Update(existente);
             }
 
@@ -245,14 +242,13 @@ namespace estacionamientos.Controllers
         }
 
         // ------------------------------------------------------------
-        // UNASSIGN: marcar histórico (no borrar)
+        // UNASSIGN: sólo dueños
         // ------------------------------------------------------------
         [HttpPost, ValidateAntiForgeryToken]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Unassign(int plaNU, int plyID)
         {
             var dueId = GetCurrentOwnerId();
-
-            // asegurar propiedad
             var esMia = await _context.AdministraPlayas
                 .AnyAsync(a => a.DueNU == dueId && a.PlyID == plyID);
             if (!esMia) return Forbid();
@@ -261,7 +257,7 @@ namespace estacionamientos.Controllers
                 .FirstOrDefaultAsync(t => t.PlaNU == plaNU && t.PlyID == plyID);
             if (rel is null) return NotFound();
 
-            rel.TrabEnActual = false; // histórico
+            rel.TrabEnActual = false;
             await _context.SaveChangesAsync();
 
             TempData["Msg"] = "Vinculación marcada como histórica.";
@@ -269,8 +265,9 @@ namespace estacionamientos.Controllers
         }
 
         // ------------------------------------------------------------
-        // DELETE: ocultar al playero para este dueño (marcar TODO histórico)
+        // DELETE: sólo dueños
         // ------------------------------------------------------------
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Delete(int id)
         {
             var entity = await _context.Playeros.AsNoTracking()
@@ -279,12 +276,12 @@ namespace estacionamientos.Controllers
         }
 
         [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var dueId = GetCurrentOwnerId();
             var misPlyIds = await PlyIdsDelDuenioAsync(dueId);
 
-            // Marcar como histórico todas las relaciones activas del playero en MIS playas
             var rels = await _context.Trabajos
                 .Where(t => t.PlaNU == id && misPlyIds.Contains(t.PlyID) && t.TrabEnActual)
                 .ToListAsync();
@@ -294,19 +291,28 @@ namespace estacionamientos.Controllers
 
             await _context.SaveChangesAsync();
 
-            // Nota: NO eliminamos al Playero (conservamos identidad, auditoría, etc.)
             TempData["Msg"] = "El playero ya no aparece en tus listados. Se conservó el historial.";
             return RedirectToAction(nameof(Index));
         }
 
-        // ===== NUEVO: ver plazas de la playa del turno activo =====
+        // ------------------------------------------------------------
+        // PLAZAS: sólo playeros
+        // ------------------------------------------------------------
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Playero")]
         public async Task<IActionResult> Plazas()
         {
             var usuId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             var turno = await _context.Turnos
                 .Include(t => t.Playa)
-                .FirstAsync(t => t.PlaNU == usuId && t.TurFyhFin == null);
+                .FirstOrDefaultAsync(t => t.PlaNU == usuId && t.TurFyhFin == null);
+
+            if (turno == null)
+            {
+                TempData["Mensaje"] = "No tenés un turno activo.";
+                TempData["MensajeCss"] = "warning";
+                return RedirectToAction("Index", "Home");
+            }
 
             var plazas = await _context.Plazas
                 .Where(p => p.PlyID == turno.PlyID)
@@ -315,13 +321,14 @@ namespace estacionamientos.Controllers
                 .ToListAsync();
 
             ViewBag.PlyID = turno.PlyID;
-
             return View(plazas);
         }
 
-        // Cambiar habilitación de una plaza =====
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+        // ------------------------------------------------------------
+        // Toggle habilitación: sólo playeros
+        // ------------------------------------------------------------
+        [HttpPost, ValidateAntiForgeryToken]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Playero")]
         public async Task<IActionResult> ToggleHabilitada(int PlyID, int PlzNum)
         {
             var plaza = await _context.Plazas
