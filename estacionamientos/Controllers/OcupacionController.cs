@@ -151,24 +151,33 @@ namespace estacionamientos.Controllers
 
         
         [HttpGet]
-        public async Task<JsonResult> GetPlazasDisponibles(int plyID, int clasVehID)
+        public async Task<JsonResult> GetPlazasDisponibles(int plyID, int clasVehID, string techada)
         {
-            var plazas = await _ctx.Plazas
+            var query = _ctx.Plazas
                 .Where(p => p.PlyID == plyID
                         && p.ClasVehID == clasVehID
-                        && p.PlzHab == true
-                        && !_ctx.Ocupaciones.Any(o => o.PlyID == p.PlyID 
-                                                    && o.PlzNum == p.PlzNum 
-                                                    && o.OcufFyhFin == null))
+                        && p.PlzHab
+                        && !_ctx.Ocupaciones.Any(o => o.PlyID == p.PlyID
+                                                    && o.PlzNum == p.PlzNum
+                                                    && o.OcufFyhFin == null));
+
+            if (techada == "true")
+                query = query.Where(p => p.PlzTecho);
+            else if (techada == "false")
+                query = query.Where(p => !p.PlzTecho);
+            // si techada == "all" → no filtramos nada
+
+            var plazas = await query
                 .OrderBy(p => p.PlzNum)
                 .Select(p => new {
                     plzNum = p.PlzNum,
-                    label = $"Plaza {p.PlzNum}"
+                    nombre = p.PlzNombre
                 })
                 .ToListAsync();
 
             return Json(plazas);
         }
+
 
 
         public async Task<IActionResult> Create()
@@ -232,6 +241,34 @@ namespace estacionamientos.Controllers
             public async Task<IActionResult> Create(Ocupacion model, int ClasVehID)
             {
 
+            if (!ModelState.IsValid)
+            {
+                // Volver a armar los combos antes de devolver la vista
+                await LoadSelects(model.PlyID, model.PlzNum, model.VehPtnt);
+
+                ViewBag.Clasificaciones = new SelectList(
+                    await _ctx.ClasificacionesVehiculo
+                        .OrderBy(c => c.ClasVehTipo)
+                        .ToListAsync(),
+                    "ClasVehID", "ClasVehTipo", ClasVehID
+                );
+
+                // 🔹 Volver a cargar el nombre de la playa
+                ViewBag.PlayaNombre = await _ctx.Playas
+                    .Where(p => p.PlyID == model.PlyID)
+                    .Select(p => p.PlyNom)
+                    .FirstOrDefaultAsync();
+
+                return View(model);
+            }
+
+
+            if (string.IsNullOrWhiteSpace(model.VehPtnt))
+            {
+                TempData["Error"] = "Debe ingresar la patente del vehículo.";
+                return RedirectToAction(nameof(Create));
+            }
+
             if (ClasVehID == 0)
             {
                 TempData["Error"] = "Debe seleccionar una clasificación válida.";
@@ -240,9 +277,10 @@ namespace estacionamientos.Controllers
 
             var plazaValida = await _ctx.Plazas.AnyAsync(p =>
                 p.PlyID == model.PlyID &&
-                p.PlzNum == model.PlzNum &&
+                p.PlzNum == model.PlzNum.Value &&   // 👈 agregar .Value
                 p.ClasVehID == ClasVehID &&
                 p.PlzHab == true);
+
 
             if (!plazaValida)
             {
@@ -252,8 +290,9 @@ namespace estacionamientos.Controllers
 
             var yaOcupada = await _ctx.Ocupaciones.AnyAsync(o =>
                 o.PlyID == model.PlyID &&
-                o.PlzNum == model.PlzNum &&
+                o.PlzNum == model.PlzNum.Value &&   // 👈 agregar .Value
                 o.OcufFyhFin == null);
+
 
             if (yaOcupada)
             {
@@ -261,11 +300,12 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            if (!await PlazaExiste(model.PlyID, model.PlzNum))
+            if (model.PlzNum.HasValue && !await PlazaExiste(model.PlyID, model.PlzNum.Value))
             {
                 TempData["Error"] = "La plaza no existe en la playa seleccionada.";
                 return RedirectToAction(nameof(Index));
             }
+
 
             // Alta automática de vehículo si no existe
             var vehiculo = await _ctx.Vehiculos.FirstOrDefaultAsync(v => v.VehPtnt == model.VehPtnt);

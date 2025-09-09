@@ -324,8 +324,23 @@ namespace estacionamientos.Controllers
             }
 
             var plazas = await _context.Plazas
+                .Include(p => p.Clasificacion)    // 🔹 incluí la relación Clasificación
                 .Where(p => p.PlyID == turno.PlyID)
                 .OrderBy(p => p.PlzNum)
+                .Select(p => new PlazaEstacionamiento
+                {
+                    PlyID = p.PlyID,
+                    PlzNum = p.PlzNum,
+                    PlzNombre = p.PlzNombre,
+                    PlzTecho = p.PlzTecho,
+                    PlzAlt = p.PlzAlt,
+                    PlzHab = p.PlzHab,
+                    ClasVehID = p.ClasVehID,
+                    Clasificacion = p.Clasificacion,
+                    // 🔹 Estado dinámico: ocupado si hay Ocupación activa
+                    PlzOcupada = _context.Ocupaciones
+                        .Any(o => o.PlyID == p.PlyID && o.PlzNum == p.PlzNum && o.OcufFyhFin == null)
+                })
                 .AsNoTracking()
                 .ToListAsync();
 

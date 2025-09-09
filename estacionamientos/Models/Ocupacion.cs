@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using estacionamientos.Helpers;
 
 namespace estacionamientos.Models
 {
@@ -9,14 +10,15 @@ namespace estacionamientos.Models
         [Display(Name = "Playa")]
         public int PlyID { get; set; }
 
+        [Required(ErrorMessage = ErrorMessages.CampoObligatorio)]
         [Display(Name = "Plaza")]
-        public int PlzNum { get; set; }
+        public int? PlzNum { get; set; }   // 🔹 ahora nullable
 
-        [Required(ErrorMessage = "Debe ingresar la patente del vehículo")]
+        [Required(ErrorMessage = ErrorMessages.CampoObligatorio)]
+        [StringLength(10, ErrorMessage = "La patente no puede superar los 10 caracteres")]
         [Display(Name = "Patente")]
-        public string VehPtnt { get; set; } = "";
+        public string VehPtnt { get; set; } = string.Empty;
 
-        [Required]
         [Display(Name = "Hora de ingreso")]
         public DateTime OcufFyhIni { get; set; }
 
