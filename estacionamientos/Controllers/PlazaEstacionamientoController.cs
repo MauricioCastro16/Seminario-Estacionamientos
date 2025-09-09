@@ -162,7 +162,7 @@ namespace estacionamientos.Controllers
             TempData["Ok"] = $"Plaza {plzNum} eliminada.";
             return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
         }
-        
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ToggleHabilitadaDueño(int plyID, int plzNum)

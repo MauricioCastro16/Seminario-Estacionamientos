@@ -125,114 +125,130 @@
      (Model.Todos?.Any() ?? false))
 {
     <div class="mt-2 d-flex flex-wrap gap-2">
+
         @* TODOS *@
-        @foreach (var v in Model.Todos)
+        @if (Model.Todos != null)
         {
-            <span class="badge rounded-pill text-bg-light border">
-                @v
-                <a class="ms-2 text-decoration-none"
-                   asp-action="Index"
-                   asp-route-Q="@Model.Q"
-                   asp-route-FilterBy="@Model.FilterBy"
-                   asp-route-SelectedOption="@Model.SelectedOption"
-                   asp-route-Remove="todos:@v"
-                   asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
-                   asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
-                   asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
-                   asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
-                   asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
-                   title="Quitar">
-                    <i class="bi bi-x-circle"></i>
-                </a>
-            </span>
+          @foreach (var v in Model.Todos)
+          {
+              <span class="badge rounded-pill text-bg-light border">
+                  @v
+                  <a class="ms-2 text-decoration-none"
+                    asp-action="Index"
+                    asp-route-Q="@Model.Q"
+                    asp-route-FilterBy="@Model.FilterBy"
+                    asp-route-SelectedOption="@Model.SelectedOption"
+                    asp-route-Remove="todos:@v"
+                    asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                    asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
+                    asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
+                    asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
+                    asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                    title="Quitar">
+                      <i class="bi bi-x-circle"></i>
+                  </a>
+              </span>
+          }
         }
 
         @* NOMBRES *@
-        @foreach (var v in Model.Nombres)
+        @if (Model.Nombres != null)
         {
-            <span class="badge rounded-pill text-bg-light border">
-                @v
-                <a class="ms-2 text-decoration-none"
-                   asp-action="Index"
-                   asp-route-Q="@Model.Q"
-                   asp-route-FilterBy="@Model.FilterBy"
-                   asp-route-SelectedOption="@Model.SelectedOption"
-                   asp-route-Remove="nombre:@v"
-                   asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
-                   asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
-                   asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
-                   asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
-                   asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
-                   title="Quitar">
-                    <i class="bi bi-x-circle"></i>
-                </a>
-            </span>
+          @foreach (var v in Model.Nombres)
+          {
+              <span class="badge rounded-pill text-bg-light border">
+                  @v
+                  <a class="ms-2 text-decoration-none"
+                    asp-action="Index"
+                    asp-route-Q="@Model.Q"
+                    asp-route-FilterBy="@Model.FilterBy"
+                    asp-route-SelectedOption="@Model.SelectedOption"
+                    asp-route-Remove="nombre:@v"
+                    asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                    asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
+                    asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
+                    asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
+                    asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                    title="Quitar">
+                      <i class="bi bi-x-circle"></i>
+                  </a>
+              </span>
+          }
         }
 
         @* PROVINCIAS *@
-        @foreach (var v in Model.Provincias)
+        @if (Model.Provincias != null)
         {
-            <span class="badge rounded-pill text-bg-light border">
-                @v
-                <a class="ms-2 text-decoration-none"
-                   asp-action="Index"
-                   asp-route-Q="@Model.Q"
-                   asp-route-FilterBy="@Model.FilterBy"
-                   asp-route-SelectedOption="@Model.SelectedOption"
-                   asp-route-Remove="provincia:@v"
-                   asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
-                   asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
-                   asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
-                   asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
-                   asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
-                   title="Quitar">
-                    <i class="bi bi-x-circle"></i>
-                </a>
-            </span>
+          @foreach (var v in Model.Provincias)
+          {
+              <span class="badge rounded-pill text-bg-light border">
+                  @v
+                  <a class="ms-2 text-decoration-none"
+                    asp-action="Index"
+                    asp-route-Q="@Model.Q"
+                    asp-route-FilterBy="@Model.FilterBy"
+                    asp-route-SelectedOption="@Model.SelectedOption"
+                    asp-route-Remove="provincia:@v"
+                    asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                    asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
+                    asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
+                    asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
+                    asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                    title="Quitar">
+                      <i class="bi bi-x-circle"></i>
+                  </a>
+              </span>
+          }
         }
 
         @* CIUDADES *@
-        @foreach (var v in Model.Ciudades)
+        @if (Model.Ciudades != null)
         {
-            <span class="badge rounded-pill text-bg-light border">
-                @v
-                <a class="ms-2 text-decoration-none"
-                   asp-action="Index"
-                   asp-route-Q="@Model.Q"
-                   asp-route-FilterBy="@Model.FilterBy"
-                   asp-route-SelectedOption="@Model.SelectedOption"
-                   asp-route-Remove="ciudad:@v"
-                   asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
-                   asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
-                   asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
-                   asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
-                   asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
-                   title="Quitar">
-                    <i class="bi bi-x-circle"></i>
-                </a>
-            </span>
+          @foreach (var v in Model.Ciudades)
+          {
+              <span class="badge rounded-pill text-bg-light border">
+                  @v
+                  <a class="ms-2 text-decoration-none"
+                    asp-action="Index"
+                    asp-route-Q="@Model.Q"
+                    asp-route-FilterBy="@Model.FilterBy"
+                    asp-route-SelectedOption="@Model.SelectedOption"
+                    asp-route-Remove="ciudad:@v"
+                    asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                    asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
+                    asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
+                    asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
+                    asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                    title="Quitar">
+                      <i class="bi bi-x-circle"></i>
+                  </a>
+              </span>
+          }
         }
 
         @* DIRECCIONES *@
-        @foreach (var v in Model.Direcciones)
+        @if (Model.Direcciones != null)
         {
-            <span class="badge rounded-pill text-bg-light border">
-                @v
-                <a class="ms-2 text-decoration-none"
-                   asp-action="Index"
-                   asp-route-Q="@Model.Q"
-                   asp-route-FilterBy="@Model.FilterBy"
-                   asp-route-SelectedOption="@Model.SelectedOption"
-                   asp-route-Remove="direccion:@v"
-                   asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
-                   asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
-                   asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
-                   asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
-                   asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
-                   title="Quitar">
-                    <i class="bi bi-x-circle"></i>
-                </a>
-            </span>
+          @foreach (var v in Model.Direcciones)
+          {
+              <span class="badge rounded-pill text-bg-light border">
+                  @v
+                  <a class="ms-2 text-decoration-none"
+                    asp-action="Index"
+                    asp-route-Q="@Model.Q"
+                    asp-route-FilterBy="@Model.FilterBy"
+                    asp-route-SelectedOption="@Model.SelectedOption"
+                    asp-route-Remove="direccion:@v"
+                    asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                    asp-route-Provincias="@(string.Join(",", Model.Provincias ?? new List<string>()))"
+                    asp-route-Ciudades="@(string.Join(",", Model.Ciudades ?? new List<string>()))"
+                    asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
+                    asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                    title="Quitar">
+                      <i class="bi bi-x-circle"></i>
+                  </a>
+              </span>
+          }
         }
     </div>
 }

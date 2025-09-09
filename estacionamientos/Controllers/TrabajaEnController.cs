@@ -21,10 +21,10 @@ namespace estacionamientos.Controllers
                 .Where(a => a.DueNU == dueId)
                 .Select(a => a.Playa)
                 .OrderBy(p => p.PlyNom)
-                .Select(p => new 
-                { 
-                    p.PlyID, 
-                    Nombre = p.PlyNom + " (" + p.PlyCiu + ")" 
+                .Select(p => new
+                {
+                    p.PlyID,
+                    Nombre = p.PlyNom + " (" + p.PlyCiu + ")"
                 })
                 .ToListAsync();
 
@@ -110,7 +110,8 @@ namespace estacionamientos.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        [HttpPost][ValidateAntiForgeryToken]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteDirect(int plyID, int plaNU)
         {
             // ¿existen turnos que referencian esta relación?

@@ -26,7 +26,7 @@ namespace estacionamientos.Controllers
                     .OrderBy(p => p.PlzNum)
                     .Select(p => new OpcionPlaza { PlzNum = p.PlzNum })
                     .ToListAsync();
-                        ViewBag.PlzNum = new SelectList(plazas, "PlzNum", "PlzNum", plzSel);
+            ViewBag.PlzNum = new SelectList(plazas, "PlzNum", "PlzNum", plzSel);
 
             var abonados = await _ctx.Abonados.AsNoTracking()
                 .OrderBy(a => a.AboNom).Select(a => new { a.AboDNI, a.AboNom }).ToListAsync();

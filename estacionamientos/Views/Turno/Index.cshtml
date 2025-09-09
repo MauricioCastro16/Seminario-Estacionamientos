@@ -16,15 +16,16 @@
         var tz = TimeZoneInfo.FindSystemTimeZoneById("America/Argentina/Cordoba");
         return TimeZoneInfo.ConvertTimeFromUtc(dt, tz);
     }
-
+    /*
     string Fmt(DateTime? dt)
         => dt.HasValue ? ToCba(dt.Value).ToString("dd/MM/yyyy HH:mm") : "-";
+    */
     decimal? TotalTurno(estacionamientos.Models.Turno t)
         {
             if (!t.TurApertCaja.HasValue && !t.TurCierrCaja.HasValue)
                 return null;
 
-            return (t.TurApertCaja ?? 0) + (t.TurCierrCaja ?? 0);
+            return (t.TurCierrCaja ?? 0) - (t.TurApertCaja ?? 0);
         }
 }
 
