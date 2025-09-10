@@ -5,6 +5,7 @@
 @{
     ViewData["Title"] = "Inicio";
     var rol = User.FindFirst(ClaimTypes.Role)?.Value ?? "Usuario";
+    var nombre = User.FindFirst(ClaimTypes.Name)?.Value ?? "Usuario";
     Turno? abierto = ViewBag.TurnoAbierto as Turno; // lo carga el controller
 
     // === Helper local: igual que en "Gestionar turno" ===
@@ -25,14 +26,7 @@
 
         @if (User.Identity?.IsAuthenticated ?? false)
         {
-            if (rol == "Duenio")
-            {
-                <h1 class="display-4">Bienvenido Dueño</h1>
-            }
-            else
-            {
-                <h1 class="display-4">Bienvenido @rol</h1>
-            }
+            <h1 class="display-4">Bienvenido/a @nombre</h1>
         }
         else
         {
@@ -68,7 +62,7 @@
                             <div class="row gy-2">
                                 <div class="col-md-4">
                                     <div class="text-muted small">Playa</div>
-                                    <div class="fw-semibold">@abierto.Playa?.PlyNom (@abierto.PlyID)</div>
+                                    <div class="fw-semibold">@abierto.Playa?.PlyNom</div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="text-muted small">Inicio</div>
