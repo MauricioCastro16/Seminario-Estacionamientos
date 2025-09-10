@@ -1,0 +1,59 @@
+@model estacionamientos.Models.TarifaServicio
+@{
+    ViewData["Title"] = "Nueva Tarifa";
+}
+
+<div class="container">
+    <h2 class="mb-4">Nueva Tarifa</h2>
+
+    <form asp-action="Create" method="post" class="card p-4 shadow-sm">
+        <div class="mb-3">
+            <label asp-for="PlyID" class="form-label">Playa</label>
+            <select asp-for="PlyID" class="form-select" asp-items="ViewBag.PlyID"></select>
+            <span asp-validation-for="PlyID" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="SerID" class="form-label">Servicio</label>
+            <select asp-for="SerID" class="form-select" asp-items="ViewBag.SerID"></select>
+            <span asp-validation-for="SerID" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="ClasVehID" class="form-label">Clase de Vehículo</label>
+            <select asp-for="ClasVehID" class="form-select" asp-items="ViewBag.ClasVehID"></select>
+            <span asp-validation-for="ClasVehID" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="TasFecIni" class="form-label">Vigencia desde</label>
+            <input asp-for="TasFecIni" type="date" class="form-control" />
+            <span asp-validation-for="TasFecIni" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="TasMonto" class="form-label">Monto</label>
+            <input asp-for="TasMonto" class="form-control" />
+            <span asp-validation-for="TasMonto" class="text-danger"></span>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var saved = '@TempData["Saved"]';
+            if (saved === 'True') {
+                if (!confirm("¿Querés seguir cargando tarifas para esta playa?")) {
+                    window.location.href = '@Url.Action("Index", "TarifaServicio")';
+                }
+            }
+        });
+    </script>
+}
+

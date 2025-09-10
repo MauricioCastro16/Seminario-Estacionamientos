@@ -1,0 +1,87 @@
+@model IEnumerable<estacionamientos.Models.TarifaServicio>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Tarifas de Servicios</h2>
+        <a asp-action="Create" class="btn btn-primary">+ Nueva Tarifa</a>
+    </div>
+
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Playa</th>
+                <th>Servicio</th>
+                <th>Clase Vehículo</th>
+                <th>Vigencia</th>
+                <th>Monto</th>
+                <th class="text-end">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model)
+        {
+            var esVigente = item.TasFecFin == null || item.TasFecFin > DateTime.Now;
+            <tr class="@(esVigente ? "" : "table-secondary")">
+                <td>@item.ServicioProveido.Playa.PlyNom</td>
+                <td>@item.ServicioProveido.Servicio.SerNom</td>
+                <td>@item.ClasificacionVehiculo.ClasVehTipo</td>
+                <td>
+                    @if (esVigente)
+                    {
+                        <span class="badge bg-success">Vigente</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">No vigente</span>
+                    }
+                </td>
+                <td>$@item.TasMonto</td>
+                <td class="text-center align-middle">
+                    <!-- Detalles -->
+                    <a asp-action="Details"
+                    asp-route-plyID="@item.PlyID"
+                    asp-route-serID="@item.SerID"
+                    asp-route-clasVehID="@item.ClasVehID"
+                    asp-route-tasFecIni="@item.TasFecIni"
+                    class="btn btn-outline-primary btn-sm me-2"
+                    title="Detalles">
+                        <i class="bi bi-eye"></i>
+                    </a>
+
+                    <!-- Editar -->
+                    <a asp-action="Edit"
+                    asp-route-plyID="@item.PlyID"
+                    asp-route-serID="@item.SerID"
+                    asp-route-clasVehID="@item.ClasVehID"
+                    asp-route-tasFecIni="@item.TasFecIni"
+                    class="btn btn-sm btn-outline-secondary me-1". 
+                    title="Editar">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+
+                    <!-- Cerrar -->
+                    @if (esVigente)
+                    {
+                        <a asp-action="Delete"
+                        asp-route-plyID="@item.PlyID"
+                        asp-route-serID="@item.SerID"
+                        asp-route-clasVehID="@item.ClasVehID"
+                        asp-route-tasFecIni="@item.TasFecIni"
+                        class="btn btn-outline-primary btn-sm me-2"
+                        title="Cerrar">
+                            <i class="bi bi-x-circle"></i>
+                        </a>
+                    }
+                    else
+                    {
+                        <button class="btn btn-sm btn-outline-secondary" disabled title="No vigente">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    }
+                </td>
+            </tr>
+        }
+
+        </tbody>
+    </table>
+</div>
