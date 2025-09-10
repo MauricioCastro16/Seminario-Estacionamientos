@@ -178,7 +178,7 @@ namespace estacionamientos.Controllers
 
             await _ctx.SaveChangesAsync();
 
-            return RedirectToAction(nameof(Servicios), new { plyID = model.PlayaID });
+            return RedirectToAction("Index", "PlayaEstacionamiento"); // O la página que prefieras
         }
 
 
