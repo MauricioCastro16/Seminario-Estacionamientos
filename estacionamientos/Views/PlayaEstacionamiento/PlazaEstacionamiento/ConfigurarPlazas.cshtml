@@ -57,11 +57,11 @@
                     @Html.ValidationMessage("plzAlt", null, new { @class = "text-danger" })
                 </div>
 
-                <!-- NUEVO: Piso en alta -->
+                <!-- PISO (0 = planta baja) -->
                 <div>
-                    <label class="mb-2" for="piso">Piso</label>
+                    <label class="mb-2" for="piso">Planta (0 = PB)</label>
                     <input id="piso" name="piso" class="form-control" type="number" min="0" step="1"
-                           placeholder="Ej: 0" />
+                           value="@(ViewBag.DefaultPiso ?? 0)" required />
                     @Html.ValidationMessage("piso", null, new { @class = "text-danger" })
                 </div>
 
@@ -74,7 +74,6 @@
                 </div>
             </div>
 
-            <!-- Tenés el plyID en la ruta; el hidden es opcional -->
             <input type="hidden" name="plyID" value="@ViewBag.PlyID" />
 
             <button type="submit" class="btn btn-primary" style="min-width: max-content; height: max-content">
@@ -93,7 +92,7 @@
                 <th>Nombre</th>
                 <th>Techo</th>
                 <th>Altura (m)</th>
-                <th>Piso</th>
+                <th>Planta</th>
                 <th>Clasificación</th>
                 <th class="text-center">Habilitada</th>
                 <th class="text-center">Acciones</th>
@@ -138,12 +137,12 @@
 
                 <!-- PISO -->
                 <td>
-                    <span class="view-piso">@((plaza.Piso.HasValue ? plaza.Piso.Value.ToString() : "-"))</span>
+                    <span class="view-piso">@((plaza.Piso.HasValue ? plaza.Piso.Value.ToString() : "0"))</span>
                     <input name="piso" form="edit-form-@rowKey"
                            class="form-control form-control-sm d-none edit-field edit-piso"
-                           type="number" min="0" step="1"
-                           value="@(plaza.Piso?.ToString() ?? "")"
-                           data-orig-value="@(plaza.Piso?.ToString() ?? "")"
+                           type="number" min="0" step="1" required
+                           value="@(plaza.Piso?.ToString() ?? "0")"
+                           data-orig-value="@(plaza.Piso?.ToString() ?? "0")"
                            placeholder="Ej: 0" />
                 </td>
 
@@ -157,10 +156,9 @@
                         <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
                         <div class="form-check form-switch d-inline-block">
                             <input class="form-check-input" type="checkbox"
-                            onchange="this.form.submit();"
-                            @(plaza.PlzHab ? "checked" : "")
-                            @(plaza.PlzOcupada ? "disabled" : "") />
-
+                                   onchange="this.form.submit();"
+                                   @(plaza.PlzHab ? "checked" : "")
+                                   @(plaza.PlzOcupada ? "disabled" : "") />
                         </div>
                     </form>
                 </td>
@@ -198,7 +196,6 @@
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="plyID" value="@plaza.PlyID" />
                         <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
-                        <!-- Los inputs editables (incluyendo 'piso') apuntan a este form -->
                     </form>
                 </td>
             </tr>
@@ -219,20 +216,17 @@
 
             function syncAlturaState() {
                 const conTecho = (techo.value === 'true');
+                // Si tiene techo: habilito y requiero altura.
+                // Si no: deshabilito y no requiero, y limpio el valor.
                 altura.disabled = !conTecho;
                 altura.required = conTecho;
-
-                if (!conTecho) {
-                    altura.value = '';
-                    altura.setCustomValidity('');
-                } else {
-                    altura.setCustomValidity('');
-                }
+                if (!conTecho) altura.value = '';
             }
 
             if (techo && altura) {
                 techo.addEventListener('change', syncAlturaState);
                 altura.addEventListener('input', syncAlturaState);
+                // Estado inicial
                 syncAlturaState();
             }
 
@@ -243,14 +237,19 @@
 
             function applyOrigValues(row) {
                 const selTecho = row.querySelector('.edit-plzTecho');
-                const inpAlt = row.querySelector('.edit-plzAlt');
-                const inpNombre = row.querySelector('.edit-plzNombre');
-                const inpPiso = row.querySelector('.edit-piso');
+                const inpAlt   = row.querySelector('.edit-plzAlt');
+                const inpNombre= row.querySelector('.edit-plzNombre');
+                const inpPiso  = row.querySelector('.edit-piso');
 
                 if (selTecho && selTecho.dataset.origValue !== undefined) selTecho.value = selTecho.dataset.origValue;
-                if (inpAlt && inpAlt.dataset.origValue !== undefined) inpAlt.value = inpAlt.dataset.origValue;
-                if (inpNombre && inpNombre.dataset.origValue !== undefined) inpNombre.value = inpNombre.dataset.origValue;
-                if (inpPiso && inpPiso.dataset.origValue !== undefined) inpPiso.value = inpPiso.dataset.origValue;
+                if (inpAlt && inpAlt.dataset.origValue !== undefined)     inpAlt.value   = inpAlt.dataset.origValue;
+                if (inpNombre && inpNombre.dataset.origValue !== undefined)inpNombre.value= inpNombre.dataset.origValue;
+
+                // Piso: si está vacío, forzar 0
+                if (inpPiso) {
+                    const orig = (inpPiso.dataset.origValue ?? "").toString().trim();
+                    inpPiso.value = orig === "" ? "0" : orig;
+                }
             }
 
             function toggleRowEdit(rowKey, editing) {
@@ -260,7 +259,7 @@
                 const viewTecho = row.querySelector('.view-techo');
                 const viewAltura = row.querySelector('.view-altura');
                 const viewNombre = row.querySelector('.view-nombre');
-                const viewPiso = row.querySelector('.view-piso');
+                const viewPiso   = row.querySelector('.view-piso');
 
                 const selTecho = row.querySelector('.edit-plzTecho');
                 const inpAlt = row.querySelector('.edit-plzAlt');
@@ -289,6 +288,7 @@
                 syncRowAltura(row);
             }
 
+            // Habilita/deshabilita altura en una fila según Techo
             function syncRowAltura(row) {
                 const selTecho = row.querySelector('.edit-plzTecho');
                 const inpAlt = row.querySelector('.edit-plzAlt');
@@ -296,6 +296,9 @@
 
                 const conTecho = (selTecho.value === 'true');
                 inpAlt.disabled = !conTecho;
+                // En edición inline no vuelvo "required" para no romper envíos masivos,
+                // pero podés habilitarlo si lo necesitás:
+                // inpAlt.required = conTecho;
                 if (!conTecho) inpAlt.value = '';
             }
 
