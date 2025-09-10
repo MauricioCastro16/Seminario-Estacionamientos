@@ -156,7 +156,11 @@
                         <input type="hidden" name="plyID" value="@plaza.PlyID" />
                         <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
                         <div class="form-check form-switch d-inline-block">
-                            <input class="form-check-input" type="checkbox" onchange="this.form.submit();" @(plaza.PlzHab ? "checked" : "") />
+                            <input class="form-check-input" type="checkbox"
+                            onchange="this.form.submit();"
+                            @(plaza.PlzHab ? "checked" : "")
+                            @(plaza.PlzOcupada ? "disabled" : "") />
+
                         </div>
                     </form>
                 </td>

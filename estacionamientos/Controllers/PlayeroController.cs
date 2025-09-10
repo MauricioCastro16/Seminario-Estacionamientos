@@ -360,15 +360,24 @@ namespace estacionamientos.Controllers
 
             if (plaza == null) return NotFound();
 
+            // 🚨 Validación: no permitir inhabilitar una plaza ocupada
+            if (plaza.PlzOcupada && plaza.PlzHab)
+            {
+                TempData["Mensaje"] = $"No se puede inhabilitar la plaza {plaza.PlzNum} porque está ocupada.";
+                TempData["MensajeCss"] = "danger";
+                return RedirectToAction(nameof(Plazas));
+            }
+
             plaza.PlzHab = !plaza.PlzHab;
             _context.Update(plaza);
             await _context.SaveChangesAsync();
 
             TempData["Mensaje"] = $"Plaza {plaza.PlzNum} {(plaza.PlzHab ? "habilitada" : "deshabilitada")}.";
-            TempData["MensajeCss"] = plaza.PlzHab ? "success" : "danger";
+            TempData["MensajeCss"] = plaza.PlzHab ? "success" : "warning";
 
             return RedirectToAction(nameof(Plazas));
         }
+
 
         // ------------------------------------------------------------
         // HISTORIAL: todos los períodos (vigentes e históricos) de mis playeros

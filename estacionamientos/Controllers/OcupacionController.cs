@@ -327,6 +327,33 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            var patenteOcupada = await _ctx.Ocupaciones.AnyAsync(o =>
+                o.PlyID == model.PlyID &&           // si querés limitarlo a la misma playa
+                o.VehPtnt == model.VehPtnt &&
+                o.OcufFyhFin == null);
+
+                if (patenteOcupada)
+                {
+                    ModelState.AddModelError("VehPtnt", $"El vehículo con patente {model.VehPtnt} ya tiene un ingreso en curso.");
+
+                    // 🔄 Recargar combos igual que arriba
+                    await LoadSelects(model.PlyID, model.PlzNum, model.VehPtnt);
+                    ViewBag.Clasificaciones = new SelectList(
+                        await _ctx.ClasificacionesVehiculo
+                            .OrderBy(c => c.ClasVehTipo)
+                            .ToListAsync(),
+                        "ClasVehID", "ClasVehTipo", ClasVehID
+                    );
+                    ViewBag.PlayaNombre = await _ctx.Playas
+                        .Where(p => p.PlyID == model.PlyID)
+                        .Select(p => p.PlyNom)
+                        .FirstOrDefaultAsync();
+
+                    return View(model);  // ⬅️ vuelve al formulario mostrando el error debajo del campo
+                }
+
+
+
             // Alta automática de vehículo si no existe / actualizar clasif si corresponde
             var vehiculo = await _ctx.Vehiculos.FirstOrDefaultAsync(v => v.VehPtnt == model.VehPtnt);
             if (vehiculo == null)
