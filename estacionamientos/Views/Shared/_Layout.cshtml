@@ -61,14 +61,6 @@
                 <!-- Navegación izquierda -->
 
                     <ul class="navbar-nav me-auto">
-                    @if (User.IsInRole("Playero"))
-                    {
-                    <li class="nav-item">
-                        <a class="nav-link text-dark" asp-controller="Ocupacion" asp-action="Index">
-                            <i class="bi bi-car-front"></i> Ingreso/Egreso
-                        </a>
-                    </li>
-                    }
 
                     <li class="nav-item">
                         <a class="nav-link text-dark" asp-area="" asp-controller="Usuario" asp-action="Index">Usuarios</a>
@@ -88,6 +80,13 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Playero" asp-action="Index">Playeros</a>
+                        </li>
+                    }
+
+                    @if (User.IsInRole("Playero"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="Ocupacion" asp-action="Index">Ingreso/Egreso</a>
                         </li>
                     }
                 </ul>
