@@ -43,3 +43,17 @@
         </div>
     </form>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var saved = '@TempData["Saved"]';
+            if (saved === 'True') {
+                if (!confirm("¿Querés seguir cargando tarifas para esta playa?")) {
+                    window.location.href = '@Url.Action("Index", "TarifaServicio")';
+                }
+            }
+        });
+    </script>
+}
+
