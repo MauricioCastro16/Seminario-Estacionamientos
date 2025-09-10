@@ -18,11 +18,19 @@
             bool seleccionado = Model.ServiciosAsignados.Contains(servicio.SerID);
             string cid = $"ser_{servicio.SerID}";
 
-            // Elegir icono según el tipo de servicio
-            string icon = "bi-gear";
-            if (servicio.SerTipo.ToLower().Contains("estacionamiento")) icon = "bi-car";
-            else if (servicio.SerTipo.ToLower().Contains("lavado")) icon = "bi-bucket";
-            else if (servicio.SerTipo.ToLower().Contains("mantenimiento")) icon = "bi-tools";
+            // Asignación de icono dependiendo del SerID
+            string icon = "bi-cart-check-fill"; // Icono predeterminado
+
+            // Elegir icono según el SerID
+            if (servicio.SerID == 1) icon = "bi-bucket-fill";
+            else if (servicio.SerID == 2) icon = "bi-wrench";
+            else if (servicio.SerID == 3) icon = "bi-fuel-pump";
+            else if (servicio.SerID == 4) icon = "bi-bookmark-check-fill";
+            else if (servicio.SerID == 5) icon = "bi-car-front-fill";
+            else if (servicio.SerID == 6) icon = "bi-car-front-fill";
+            else if (servicio.SerID == 7) icon = "bi-car-front-fill";
+            else if (servicio.SerID == 8) icon = "bi-car-front-fill";
+            else if (servicio.SerID == 9) icon = "bi-car-front-fill";
 
             <div class="col">
                 <label class="card servicio-card d-flex gap-3 flex-row align-items-center px-3 py-2 w-100"
