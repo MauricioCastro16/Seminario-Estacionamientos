@@ -21,7 +21,11 @@ namespace estacionamientos.Controllers
         }
 
         private Task<bool> TrabajaEnAsync(int plyID, int plaNU)
-            => _ctx.Trabajos.AnyAsync(t => t.PlyID == plyID && t.PlaNU == plaNU);
+        => _ctx.Trabajos.AnyAsync(t =>
+            t.PlyID == plyID &&
+            t.PlaNU == plaNU &&
+            t.TrabEnActual &&
+            t.FechaFin == null);
 
         private static DateTime ToUtc(DateTime dt)
         {
@@ -59,7 +63,10 @@ namespace estacionamientos.Controllers
             {
                 var plyIDs = await _ctx.Trabajos
                     .AsNoTracking()
-                    .Where(t => t.PlaNU == filterPla)
+                    .Where(t =>
+                        t.PlaNU == filterPla &&
+                        t.TrabEnActual &&
+                        t.FechaFin == null)
                     .Select(t => t.PlyID)
                     .Distinct()
                     .ToListAsync();
@@ -184,19 +191,24 @@ namespace estacionamientos.Controllers
             {
                 // Buscar el período vigente del playero en esa playa
                 var periodo = await _ctx.Trabajos
-                    .Where(t => t.PlyID == model.PlyID && t.PlaNU == model.PlaNU && t.FechaFin == null)
+                    .Where(t =>
+                        t.PlyID == model.PlyID &&
+                        t.PlaNU == model.PlaNU &&
+                        t.TrabEnActual &&
+                        t.FechaFin == null)
                     .OrderByDescending(t => t.FechaInicio)
                     .FirstOrDefaultAsync();
 
                 if (periodo == null)
-                {
-                    ModelState.AddModelError(string.Empty, "No hay un período vigente (TrabajaEn) para ese playero en esa playa.");
-                }
+                    {
+                        ModelState.AddModelError(string.Empty,
+                            "No hay un período vigente (TrabajaEn) para ese playero en esa playa.");
+                    }
                 else
-                {
-                    // Copiar el inicio del período a la FK del Turno
-                    model.TrabFyhIni = periodo.FechaInicio;
-                }
+                    {
+                        model.TrabFyhIni = periodo.FechaInicio; // FK a período
+                    }
+
             }
 
             if (!ModelState.IsValid)
