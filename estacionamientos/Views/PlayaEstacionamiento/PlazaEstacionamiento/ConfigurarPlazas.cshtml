@@ -208,6 +208,31 @@
     <partial name="_ValidationScriptsPartial" />
     <script>
         (function () {
+            // ======================
+            // Alta masiva (arriba)
+            // ======================
+            const techo = document.getElementById('plzTecho');
+            const altura = document.getElementById('plzAlt');
+
+            function syncAlturaState() {
+                const conTecho = (techo.value === 'true');
+                // Si tiene techo: habilito y requiero altura.
+                // Si no: deshabilito y no requiero, y limpio el valor.
+                altura.disabled = !conTecho;
+                altura.required = conTecho;
+                if (!conTecho) altura.value = '';
+            }
+
+            if (techo && altura) {
+                techo.addEventListener('change', syncAlturaState);
+                altura.addEventListener('input', syncAlturaState);
+                // Estado inicial
+                syncAlturaState();
+            }
+
+            // ============================
+            // Edición inline (una a la vez)
+            // ============================
             let currentEditingRowKey = null;
 
             function applyOrigValues(row) {
@@ -220,6 +245,7 @@
                 if (inpAlt && inpAlt.dataset.origValue !== undefined)     inpAlt.value   = inpAlt.dataset.origValue;
                 if (inpNombre && inpNombre.dataset.origValue !== undefined)inpNombre.value= inpNombre.dataset.origValue;
 
+                // Piso: si está vacío, forzar 0
                 if (inpPiso) {
                     const orig = (inpPiso.dataset.origValue ?? "").toString().trim();
                     inpPiso.value = orig === "" ? "0" : orig;
@@ -262,6 +288,7 @@
                 syncRowAltura(row);
             }
 
+            // Habilita/deshabilita altura en una fila según Techo
             function syncRowAltura(row) {
                 const selTecho = row.querySelector('.edit-plzTecho');
                 const inpAlt = row.querySelector('.edit-plzAlt');
@@ -269,9 +296,13 @@
 
                 const conTecho = (selTecho.value === 'true');
                 inpAlt.disabled = !conTecho;
+                // En edición inline no vuelvo "required" para no romper envíos masivos,
+                // pero podés habilitarlo si lo necesitás:
+                // inpAlt.required = conTecho;
                 if (!conTecho) inpAlt.value = '';
             }
 
+            // Click en ✏️
             document.querySelectorAll('.btn-edit').forEach(btn => {
                 btn.addEventListener('click', function () {
                     const newKey = this.getAttribute('data-row');
@@ -289,6 +320,7 @@
                 });
             });
 
+            // Click en ✖️
             document.querySelectorAll('.btn-cancel').forEach(btn => {
                 btn.addEventListener('click', function () {
                     const rowKey = this.getAttribute('data-row');
@@ -302,6 +334,7 @@
                 });
             });
 
+            // Cambio de "Techo" dentro de una fila en edición
             document.querySelectorAll('.edit-plzTecho').forEach(sel => {
                 sel.addEventListener('change', function () {
                     const row = this.closest('tr');
@@ -309,6 +342,7 @@
                 });
             });
 
+            // Alert auto-cierre
             setTimeout(() => {
                 const alert = document.getElementById('alertMensaje');
                 if (alert) {
