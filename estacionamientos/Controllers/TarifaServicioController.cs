@@ -21,8 +21,26 @@ namespace estacionamientos.Controllers
                 .Select(p => new { p.PlyID, Nombre = p.PlyNom })
                 .ToListAsync();
 
-            var servicios = await _ctx.Servicios.AsNoTracking()
-                .OrderBy(s => s.SerNom).ToListAsync();
+            // Si hay una playa seleccionada, solo mostrar los servicios de esa playa
+            IQueryable<Servicio> serviciosQuery;
+
+            if (plySel.HasValue)
+            {
+                serviciosQuery =
+                    from s in _ctx.Servicios.AsNoTracking()
+                    join sp in _ctx.ServiciosProveidos.AsNoTracking()
+                        on s.SerID equals sp.SerID
+                    where sp.PlyID == plySel.Value && sp.SerProvHab == true
+                    select s;
+            }
+            else
+            {
+                serviciosQuery = _ctx.Servicios.AsNoTracking();
+            }
+
+            var servicios = await serviciosQuery
+                .OrderBy(s => s.SerNom)
+                .ToListAsync();
 
             var clases = await _ctx.ClasificacionesVehiculo.AsNoTracking()
                 .OrderBy(c => c.ClasVehTipo).ToListAsync();
@@ -70,11 +88,12 @@ namespace estacionamientos.Controllers
         }
 
         // CREATE GET
-        public async Task<IActionResult> Create()
+        public async Task<IActionResult> Create(int? plySel = null)
         {
-            await LoadSelects();
+            await LoadSelects(plySel);
             return View(new TarifaServicio { TasFecIni = DateTime.Today });
         }
+
 
         // CREATE POST
         [HttpPost, ValidateAntiForgeryToken]
