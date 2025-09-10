@@ -104,8 +104,8 @@ namespace estacionamientos.Controllers
                         t.ClasVehID == model.ClasVehID &&
                         t.TasFecFin == null);
 
-             if (vigente != null)
-                 ModelState.AddModelError("", "Ya existe una tarifa vigente para esta playa, servicio y clase de vehículo.");
+                if (vigente != null)
+                    ModelState.AddModelError("", "Ya existe una tarifa vigente para esta playa, servicio y clase de vehículo.");
 
                 if (!ModelState.IsValid)
                 {
@@ -121,7 +121,7 @@ namespace estacionamientos.Controllers
 
                 return RedirectToAction(nameof(Create), new { plySel = model.PlyID });
 
-    }
+            }
             catch (Exception ex)
             {
                 ModelState.AddModelError("", $"Error: {ex.Message}");
@@ -224,6 +224,29 @@ namespace estacionamientos.Controllers
             await _ctx.SaveChangesAsync();
 
             return RedirectToAction(nameof(Index));
+        }
+        
+                [HttpGet]
+        public async Task<IActionResult> VigentesPlayero(int plyId)
+        {
+            var ahora = DateTime.UtcNow;
+
+            var playa = await _ctx.Playas
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.PlyID == plyId);
+
+            if (playa == null) return NotFound();
+
+            var tarifas = await _ctx.TarifasServicio
+                .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                .Include(t => t.ClasificacionVehiculo)
+                .Where(t => t.PlyID == plyId &&
+                            (t.TasFecFin == null || t.TasFecFin > ahora))
+                .AsNoTracking()
+                .ToListAsync();
+
+            ViewBag.Playa = playa;
+            return View(tarifas);
         }
 
     }
