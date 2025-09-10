@@ -33,7 +33,7 @@
 
         <div class="mb-3">
             <label asp-for="TasMonto" class="form-label">Monto</label>
-            <input asp-for="TasMonto" class="form-control" />
+            <input asp-for="TasMonto" class="form-control" id="monto" value="0.00" onfocus="clearValue(this)" />
             <span asp-validation-for="TasMonto" class="text-danger"></span>
         </div>
 
@@ -54,3 +54,11 @@
         </div>
     </form>
 </div>
+<script>
+    // Función para limpiar el valor cuando el campo recibe el foco
+    function clearValue(input) {
+        if (input.value === "0.00") {
+            input.value = ""; // Borra el valor si es 0.00
+        }
+    }
+</script>

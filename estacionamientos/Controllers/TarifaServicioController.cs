@@ -138,8 +138,15 @@ namespace estacionamientos.Controllers
 
                 TempData["Saved"] = true; // 👈 bandera para JS
 
-                return RedirectToAction(nameof(Create), new { plySel = model.PlyID });
-
+                
+               if (TempData["Saved"] != null)
+                {
+                    return RedirectToAction("Index", "TarifaServicio"); // Redirigir a la acción Index de TarifaServicio
+                }
+                else
+                {
+                    return RedirectToAction(nameof(Create), new { plySel = model.PlyID }); // Redirigir a Create con plySel
+                }
     }
             catch (Exception ex)
             {
