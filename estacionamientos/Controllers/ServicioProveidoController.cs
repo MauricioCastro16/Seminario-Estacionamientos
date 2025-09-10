@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
+using estacionamientos.ViewModels;
 
 namespace estacionamientos.Controllers
 {
@@ -108,5 +109,79 @@ namespace estacionamientos.Controllers
             await _ctx.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
+
+        public async Task<IActionResult> Servicios(int plyID)
+        {
+            var playa = await _ctx.Playas
+                .FirstOrDefaultAsync(p => p.PlyID == plyID);
+
+            if (playa == null)
+            {
+                return NotFound(); // Si la playa no existe, devolver error
+            }
+
+            // Obtener todos los servicios disponibles
+            var serviciosDisponibles = await _ctx.Servicios.AsNoTracking().ToListAsync();
+
+            // Obtener los servicios ya asociados a la playa
+            var serviciosAsignados = await _ctx.ServiciosProveidos
+                .Where(sp => sp.PlyID == plyID)
+                .Select(sp => sp.SerID)
+                .ToListAsync();
+
+            // Pasar los servicios a la vista
+            var viewModel = new ServiciosViewModel
+            {
+                PlayaID = plyID,
+                PlayaNom = playa.PlyNom,
+                ServiciosDisponibles = serviciosDisponibles,
+                ServiciosAsignados = serviciosAsignados
+            };
+
+            return View(viewModel);  // Pasar los datos al modelo de vista
+        }
+
+        public async Task<IActionResult> CambiarEstado(int plyID, int serID, bool habilitado)
+        {
+            var servicioProveido = await _ctx.ServiciosProveidos
+                .FirstOrDefaultAsync(sp => sp.PlyID == plyID && sp.SerID == serID);
+            
+            if (servicioProveido != null)
+            {
+                servicioProveido.SerProvHab = habilitado;
+                await _ctx.SaveChangesAsync();
+            }
+
+            return RedirectToAction(nameof(Servicios), new { plyID });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AsignarServicios(ServiciosViewModel model)
+        {
+            // Eliminar los servicios existentes asociados a la playa
+            var serviciosExistentes = await _ctx.ServiciosProveidos
+                .Where(sp => sp.PlyID == model.PlayaID)
+                .ToListAsync();
+
+            _ctx.ServiciosProveidos.RemoveRange(serviciosExistentes);
+
+            foreach (var servicioID in model.ServiciosAsignados)
+            {
+                _ctx.ServiciosProveidos.Add(new ServicioProveido
+                {
+                    PlyID = model.PlayaID,
+                    SerID = servicioID, // Ahora estamos agregando el ID del servicio
+                    SerProvHab = true // Estado activo
+                });
+            }
+
+
+            await _ctx.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Servicios), new { plyID = model.PlayaID });
+        }
+
+
     }
+
 }

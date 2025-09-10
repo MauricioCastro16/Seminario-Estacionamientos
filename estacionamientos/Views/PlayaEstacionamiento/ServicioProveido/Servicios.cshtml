@@ -1,0 +1,30 @@
+@model estacionamientos.ViewModels.ServiciosViewModel
+
+<div class="text-center mt-3 mb-2">
+    <h2 class="fw-bold">Servicios de la playa @Model.PlayaNom</h2>  
+</div>
+
+<form asp-action="AsignarServicios" method="post">
+    <input type="hidden" asp-for="PlayaID" />
+
+    <h4>Servicios Disponibles</h4>
+    <div class="form-check">
+        @foreach (var servicio in Model.ServiciosDisponibles)
+        {
+            <div class="form-check">
+                <!-- Usar el operador ternario para determinar si el checkbox debe estar marcado -->
+                <input class="form-check-input" type="checkbox" 
+                    name="ServiciosAsignados"  
+                    value="@servicio.SerID"
+                    @(Model.ServiciosAsignados.Contains(servicio.SerID) ? "checked" : "") />
+
+                <label class="form-check-label">
+                    @servicio.SerNom
+                </label>
+            </div>
+        }
+    </div>
+    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+</form>
+
+<a href="@Url.Action("Index", "PlayaEstacionamiento")" class="btn btn-outline-secondary">Regresar</a>
