@@ -4,70 +4,115 @@
     ViewData["Title"] = "Ingresar Vehículo";
 }
 
-<h2 class="mb-4">Ingresar Vehículo</h2>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body p-4 p-md-5">
 
-<form asp-action="Create" method="post">
-    <div class="form-group mb-3">
-        <label class="form-label">Playa</label>
-        <input type="text" class="form-control w-50" value="@ViewBag.PlayaNombre" disabled />
-        <input type="hidden" asp-for="PlyID" value="@Model.PlyID" />
-    </div>
+                    <div class="text-center mb-4">
+                        <h2 class="mb-1">@ViewData["Title"]</h2>
+                        <p class="text-secondary mb-0">Completá los filtros y elegí una plaza disponible</p>
+                    </div>
 
-    <div class="form-group mb-3">
-        <label asp-for="VehPtnt" class="form-label"></label>
-        <input asp-for="VehPtnt" class="form-control w-50" maxlength="10" placeholder="Ej: ABC123"
-            oninput="this.value = this.value.toUpperCase().replace(/\s/g,'');" />
-        <span asp-validation-for="VehPtnt" class="text-danger"></span>
-    </div>
+                    <form asp-action="Create" method="post" class="d-grid gap-3">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-medium">Playa</label>
+                                <input type="text" class="form-control" value="@ViewBag.PlayaNombre" disabled />
+                                <input type="hidden" asp-for="PlyID" value="@Model.PlyID" />
+                            </div>
 
-    <div class="form-group mb-3">
-        <label for="ClasVehID" class="form-label">Clasificación del vehículo</label>
-        <select id="ClasVehID" name="ClasVehID" asp-items="ViewBag.Clasificaciones" class="form-select w-50">
-            <option value="">-- Seleccione clasificación --</option>
-        </select>
-        <span class="text-danger">@ViewBag.ClasVehError</span>
-    </div>
+                            <div class="col-12 col-md-6">
+                                <label asp-for="VehPtnt" class="form-label fw-medium"></label>
+                                <input asp-for="VehPtnt" class="form-control" maxlength="10" placeholder="Ej: ABC123"
+                                       oninput="this.value = this.value.toUpperCase().replace(/\s/g,'');" />
+                                <span asp-validation-for="VehPtnt" class="text-danger small"></span>
+                            </div>
 
-    <div class="form-group mb-3">
-        <label class="form-label">¿Plaza techada?</label><br />
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="techada" value="true" id="techadaSi">
-            <label class="form-check-label" for="techadaSi">Sí</label>
+                            <div class="col-12 col-md-6">
+                                <label for="ClasVehID" class="form-label fw-medium">Clasificación del vehículo</label>
+                                <select id="ClasVehID" name="ClasVehID" asp-items="ViewBag.Clasificaciones" class="form-select">
+                                    <option value="">-- Seleccione clasificación --</option>
+                                </select>
+                                <span class="text-danger small">@ViewBag.ClasVehError</span>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-medium d-block mb-1">¿Plaza techada?</label>
+                                <div class="d-flex gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="techada" value="true" id="techadaSi">
+                                        <label class="form-check-label" for="techadaSi">Sí</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="techada" value="false" id="techadaNo">
+                                        <label class="form-check-label" for="techadaNo">No</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-sm-6">
+                                <label class="form-label fw-medium">Piso</label>
+                                <select id="PisoSelect" class="form-select" disabled>
+                                    <option value="">-- Seleccione piso --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Para el POST -->
+                        <input type="hidden" asp-for="PlzNum" id="PlzNum" />
+                        <span asp-validation-for="PlzNum" class="text-danger small"></span>
+
+                        <!-- Grilla -->
+                        <div class="mt-3">
+                            <div id="PlazasGrid" class="plazas-grid mb-3"></div>
+                        </div>
+
+                        <input type="hidden" asp-for="OcufFyhIni" value="@DateTime.Now" />
+
+                        <div class="text-center mt-2">
+                            <button type="submit" class="btn btn-primary px-4" id="btnSubmit" disabled>
+                                <i class="bi bi-check-circle me-1"></i> Confirmar Ingreso
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
         </div>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="techada" value="false" id="techadaNo">
-            <label class="form-check-label" for="techadaNo">No</label>
-        </div>
     </div>
-
-    <!-- Selector de piso + grilla -->
-    <div class="form-group mb-3">
-        <label class="form-label">Piso</label>
-        <select id="PisoSelect" class="form-select w-25">
-            <option value="">-- Todos --</option>
-        </select>
-    </div>
-
-    <!-- Para el POST -->
-    <input type="hidden" asp-for="PlzNum" id="PlzNum" />
-    <span asp-validation-for="PlzNum" class="text-danger"></span>
-
-    <div id="PlazasGrid" class="plazas-grid mb-3"></div>
-
-    <input type="hidden" asp-for="OcufFyhIni" value="@DateTime.Now" />
-
-    <button type="submit" class="btn btn-primary" id="btnSubmit" disabled>
-        <i class="bi bi-check-circle"></i> Confirmar Ingreso
-    </button>
-</form>
+</div>
 
 <style>
+    /* Contenedor centrado para la grilla */
+    .plazas-grid-wrapper {
+        max-width: 860px;
+        margin: 0 auto;            /* centra horizontalmente */
+    }
+
     .plazas-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
         gap: 12px;
         max-width: 720px;
+        margin: 0 auto; /* centra horizontalmente */
     }
+
+    .plazas-grid > .mensaje-inicial {
+        grid-column: 1 / -1;     /* ocupa todo el ancho de la grilla */
+        justify-self: center;    /* centra el ítem dentro de la grilla */
+        text-align: center;
+        color: #6c757d;
+        font-size: 0.9rem;
+        padding: 10px 14px;
+        border: 1px dashed #ced4da;
+        border-radius: 8px;
+        background: #f8f9fa;
+        max-width: 520px;
+        width: 100%;
+    }
+
 
     .plaza-card {
         border: 1px solid #dee2e6;
@@ -80,34 +125,36 @@
         background: #fff;
     }
 
+
     .plaza-card:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, .06);
+        border-color: #dee2e6;
     }
 
-    /* estados */
+    /* Estados */
     .plaza-card.inhabilitada {
-        background: #f1f3f5;
+        background: #f8f9fa;
         color: #6c757d;
         border-style: dashed;
         cursor: not-allowed;
-        opacity: .8;
+        opacity: .85;
     }
 
     .plaza-card.ocupada {
-        background: #fff3cd;
-        border-color: #ffe69c;
+        background: #fff7e6;
+        border-color: #ffe8b3;
         color: #7a5e00;
         cursor: not-allowed;
     }
 
     .plaza-card.disponible {
-        background: #e9f7ef;
-        border-color: #c6efda;
+        background: #eef9f2;
+        border-color: #cdeedc;
     }
 
     .plaza-card.incompatible {
-        background: #fde2e1;
+        background: #fdecec;
         border-color: #f5c2c7;
         color: #7a1a1a;
     }
@@ -115,166 +162,234 @@
     .plaza-card.selected {
         outline: 3px solid #0d6efd;
         background: #e7f1ff;
+        box-shadow: 0 0 0 4px rgba(13, 110, 253, .15);
     }
 
     .plaza-title {
-        font-weight: 600;
-        font-size: .95rem;
+        font-weight: 700;
+        font-size: .98rem;
+        letter-spacing: .2px;
     }
 
     .plaza-sub {
-        font-size: .8rem;
+        font-size: .82rem;
         color: #6c757d;
+        margin-top: 2px;
+    }
+
+    .mensaje-inicial {
+        text-align: center;
+        color: #6c757d;               /* gris Bootstrap */
+        font-size: 0.9rem;
+        padding: 10px 14px;
+        border: 1px dashed #ced4da;   /* un marco suave */
+        border-radius: 8px;
+        background: #f8f9fa;          /* gris clarito */
+        max-width: 500px;
+        margin: 0 auto;               /* centra el mensaje */
+    }
+
+    <style>
+    @@media (max-width: 576px) {
+        .plazas-grid {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        }
     }
 </style>
 
 @section Scripts {
-    <script>
-        (() => {
-            const plyID = document.querySelector("input[name='PlyID']").value;
-            const selClas = document.getElementById("ClasVehID");
-            const selPiso = document.getElementById("PisoSelect");
-            const grid = document.getElementById("PlazasGrid");
-            const hiddenPlz = document.getElementById("PlzNum");
-            const btn = document.getElementById("btnSubmit");
-            const radiosTechada = document.querySelectorAll("input[name='techada']");
+<script>
+(() => {
+    const plyID = document.querySelector("input[name='PlyID']").value;
+    const selClas = document.getElementById("ClasVehID");
+    const selPiso = document.getElementById("PisoSelect");
+    const grid = document.getElementById("PlazasGrid");
+    const hiddenPlz = document.getElementById("PlzNum");
+    const btn = document.getElementById("btnSubmit");
+    const radiosTechada = document.querySelectorAll("input[name='techada']");
 
-            /** Estado en memoria **/
-            let allPlazas = []; // plazas completas del fetch
-            let pisoActual = ""; // "", "0", "1", ...
+    /** Estado en memoria **/
+    let allPlazas = []; // plazas completas del fetch (no se muestran hasta elegir piso)
+    let pisoActual = ""; // "", "0", "1", ...
 
-            function getTechada() {
-                const checked = document.querySelector("input[name='techada']:checked");
-                return checked ? checked.value : "";
-            }
+    function getTechada() {
+        const checked = document.querySelector("input[name='techada']:checked");
+        return checked ? checked.value : "";
+    }
 
-            function limpiarSeleccion() {
-                hiddenPlz.value = "";
-                btn.disabled = true;
-                grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
-            }
+    function limpiarSeleccion() {
+        hiddenPlz.value = "";
+        btn.disabled = true;
+        grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
+    }
 
-            function renderPisos(plazas) {
-                // Construir conjunto de pisos presentes
-                const setPisos = new Set();
-                plazas.forEach(p => setPisos.add(p.piso === null ? "" : String(p.piso)));
+    function showPrompt(msg) {
+        grid.innerHTML = `
+        <div class="mensaje-inicial">
+            <i class="bi bi-info-circle me-1"></i>
+            ${msg}
+        </div>`;
+    }
 
-                // Llenar combo
-                selPiso.innerHTML = '<option value="">-- Todos --</option>';
-                Array.from(setPisos)
-                    .sort((a, b) => (a === "" ? -1 : Number(a)) - (b === "" ? -1 : Number(b)))
-                    .forEach(v => {
-                        const opt = document.createElement("option");
-                        opt.value = v;
-                        opt.textContent = (v === "") ? "Sin piso" : `Piso ${v}`;
-                        selPiso.appendChild(opt);
-                    });
 
-                // Mantener selección si existe; si no, reset
-                if ([...setPisos].includes(pisoActual)) {
-                    selPiso.value = pisoActual;
-                } else {
-                    selPiso.value = "";
-                    pisoActual = "";
-                }
-            }
+    function requisitosBasicosElegidos() {
+        return !!selClas.value && getTechada() !== "";
+    }
 
-            function renderGrid() {
-                const filtroPiso = selPiso.value; // "" o "n"
-                grid.innerHTML = "";
+    function requisitosCompletos() {
+        return requisitosBasicosElegidos() && selPiso.value !== "";
+    }
 
-                const plazas = allPlazas.filter(p => {
-                    if (filtroPiso === "") return true;
-                    const pisoStr = (p.piso === null ? "" : String(p.piso));
-                    return pisoStr === filtroPiso;
+    function renderPisos(plazas) {
+        // Construir conjunto de pisos
+        const setPisos = new Set();
+        plazas.forEach(p => setPisos.add(p.piso === null ? "" : String(p.piso)));
+
+        // Llenar combo
+        selPiso.innerHTML = '<option value="">-- Seleccione piso --</option>';
+
+        // Orden: "Sin piso" primero si existiera, luego numéricos
+        const arr = Array.from(setPisos);
+        arr.sort((a,b) => (a === "" ? -1 : Number(a)) - (b === "" ? -1 : Number(b)));
+
+        arr.forEach(v => {
+            const opt = document.createElement("option");
+            opt.value = v;
+            opt.textContent = (v === "") ? "Sin piso" : `Piso ${v}`;
+            selPiso.appendChild(opt);
+        });
+
+        // Habilitar selector de piso si hay opciones además de la cabecera
+        selPiso.disabled = arr.length === 0;
+        if (selPiso.disabled) {
+            selPiso.value = "";
+            pisoActual = "";
+        } else if (arr.includes(pisoActual)) {
+            selPiso.value = pisoActual;
+        } else {
+            selPiso.value = "";
+            pisoActual = "";
+        }
+    }
+
+    function renderGrid() {
+        const filtroPiso = selPiso.value; // "" o "n"
+        grid.innerHTML = "";
+
+        const plazas = allPlazas.filter(p => {
+            const pisoStr = (p.piso === null ? "" : String(p.piso));
+            return pisoStr === filtroPiso;
+        });
+
+        if (plazas.length === 0) {
+            grid.innerHTML = `<div class="text-muted">No hay plazas para ese piso con los filtros seleccionados.</div>`;
+            return;
+        }
+
+        plazas.forEach(p => {
+            const card = document.createElement("div");
+            card.className = "plaza-card";
+
+            if (p.hab === false) card.classList.add("inhabilitada");
+            else if (p.ocupada) card.classList.add("ocupada");
+            else if (p.compatible === false) card.classList.add("incompatible");
+            else card.classList.add("disponible");
+
+            card.innerHTML = `
+                <div class="plaza-title">${p.nombre ?? ("P" + p.plzNum)}</div>
+                <div class="plaza-sub">${p.piso === null ? "Sin piso" : ("Piso " + p.piso)}</div>
+                ${p.ocupada ? '<div class="small text-muted mt-1">Ocupada</div>' : ''}
+                ${p.hab === false ? '<div class="small text-muted mt-1">Inhabilitada</div>' : ''}
+                ${(p.hab !== false && !p.ocupada && p.compatible === false) ? '<div class="small mt-1">No compatible</div>' : ''}
+            `;
+
+            const esSeleccionable = (p.hab !== false) && !p.ocupada && (p.compatible !== false);
+            if (esSeleccionable) {
+                card.addEventListener("click", () => {
+                    grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
+                    card.classList.add("selected");
+                    hiddenPlz.value = p.plzNum;
+                    btn.disabled = false;
                 });
-
-                if (plazas.length === 0) {
-                    grid.innerHTML = `<div class="text-muted">No hay plazas para los filtros seleccionados.</div>`;
-                    return;
-                }
-
-                plazas.forEach(p => {
-                    const card = document.createElement("div");
-                    card.className = "plaza-card";
-                    // Estados visuales
-                    if (p.hab === false) card.classList.add("inhabilitada");
-                    else if (p.ocupada) card.classList.add("ocupada");
-                    else if (p.compatible === false) card.classList.add("incompatible");
-                    else card.classList.add("disponible");
-
-                    card.innerHTML = `
-                    <div class="plaza-title">${p.nombre ?? ("P" + p.plzNum)}</div>
-                    <div class="plaza-sub">${p.piso === null ? "Sin piso" : ("Piso " + p.piso)}</div>
-                    ${p.ocupada ? '<div class="small text-muted mt-1">Ocupada</div>' : ''}
-                    ${p.hab === false ? '<div class="small text-muted mt-1">Inhabilitada</div>' : ''}
-                    ${(p.hab !== false && !p.ocupada && p.compatible === false) ? '<div class="small mt-1">No compatible</div>' : ''}
-                `;
-
-                    const esSeleccionable = (p.hab !== false) && !p.ocupada && (p.compatible !== false);
-                    if (esSeleccionable) {
-                        card.addEventListener("click", () => {
-                            grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
-                            card.classList.add("selected");
-                            hiddenPlz.value = p.plzNum;
-                            btn.disabled = false;
-                        });
-                    } else {
-                        card.style.pointerEvents = "none";
-                    }
-
-                    grid.appendChild(card);
-                });
+            } else {
+                card.style.pointerEvents = "none";
             }
 
-            async function cargarPlazas() {
-                limpiarSeleccion();
-                grid.innerHTML = `<div class="text-muted">Cargando plazas...</div>`;
+            grid.appendChild(card);
+        });
+    }
 
-                const clasVehID = selClas.value || "";
-                const techada = getTechada(); // "", "true", "false"
+    async function fetchPlazasYPrepararPisos() {
+        limpiarSeleccion();
 
-                if (!clasVehID) {
-                    grid.innerHTML = `<div class="text-muted">Seleccione una clasificación para ver plazas.</div>`;
-                    renderPisos([]);
-                    return;
-                }
+        // Si faltan clas/techada, no hago fetch y dejo Piso deshabilitado
+        if (!requisitosBasicosElegidos()) {
+            selPiso.disabled = true;
+            selPiso.value = "";
+            pisoActual = "";
+            allPlazas = [];
+            showPrompt("Elegí clasificación y si la plaza es techada o no para habilitar el piso.");
+            return;
+        }
 
-                try {
-                    const url = `/Ocupacion/GetPlazasDisponibles?plyID=${encodeURIComponent(plyID)}&clasVehID=${encodeURIComponent(clasVehID)}${techada !== "" ? `&techada=${techada}` : ""}`;
-                    const r = await fetch(url);
-                    if (!r.ok) throw new Error("Error HTTP " + r.status);
-                    const data = await r.json();
+        try {
+            showPrompt("Cargando opciones de piso...");
+            const clasVehID = selClas.value;
+            const techada = getTechada();
+            const url = `/Ocupacion/GetPlazasDisponibles?plyID=${encodeURIComponent(plyID)}&clasVehID=${encodeURIComponent(clasVehID)}&techada=${techada}`;
+            const r = await fetch(url);
+            if (!r.ok) throw new Error("Error HTTP " + r.status);
+            const data = await r.json();
 
-                    // Normalizar campos esperados
-                    allPlazas = (data || []).map(x => ({
-                        plzNum: x.plzNum,
-                        piso: (x.piso ?? null),
-                        hab: (x.hab ?? true),
-                        ocupada: !!x.ocupada,
-                        compatible: (x.compatible ?? true),
-                        nombre: x.nombre ?? null
-                    }));
+            allPlazas = (data || []).map(x => ({
+                plzNum: x.plzNum,
+                piso: (x.piso ?? null),
+                hab: (x.hab ?? true),
+                ocupada: !!x.ocupada,
+                compatible: (x.compatible ?? true),
+                nombre: x.nombre ?? null
+            }));
 
-                    renderPisos(allPlazas);
-                    renderGrid();
-                } catch (e) {
-                    console.error(e);
-                    grid.innerHTML = `<div class="text-danger">No se pudieron cargar las plazas.</div>`;
-                    renderPisos([]);
-                }
-            }
+            renderPisos(allPlazas);
 
-            // Eventos
-            selClas.addEventListener("change", cargarPlazas);
-            selPiso.addEventListener("change", () => {
-                pisoActual = selPiso.value;
+            if (selPiso.disabled) {
+                showPrompt("No hay pisos disponibles para esos filtros.");
+            } else if (!selPiso.value) {
+                showPrompt("Elegí un piso para ver las plazas.");
+            } else {
                 renderGrid();
-            });
-            radiosTechada.forEach(r => r.addEventListener("change", cargarPlazas));
+            }
+        } catch (e) {
+            console.error(e);
+            selPiso.disabled = true;
+            selPiso.value = "";
+            pisoActual = "";
+            allPlazas = [];
+            showPrompt("No se pudieron cargar las plazas.");
+        }
+    }
 
-            // Si ya viene algo preseleccionado, intentar mostrar
-            if (selClas.value) cargarPlazas();
-        })();
-    </script>
+    // Eventos
+    selClas.addEventListener("change", fetchPlazasYPrepararPisos);
+    radiosTechada.forEach(r => r.addEventListener("change", fetchPlazasYPrepararPisos));
+
+    selPiso.addEventListener("change", () => {
+        pisoActual = selPiso.value;
+        limpiarSeleccion();
+        if (!selPiso.value) {
+            showPrompt("Elegí un piso para ver las plazas.");
+            return;
+        }
+        if (!requisitosBasicosElegidos()) {
+            showPrompt("Elegí clasificación y techada/no para continuar.");
+            return;
+        }
+        renderGrid();
+    });
+
+    // Estado inicial: nada seleccionado → mensaje guía y Piso deshabilitado
+    selPiso.disabled = true;
+    showPrompt("Elegí clasificación, si es techada o no y luego el piso para ver las plazas.");
+})();
+</script>
 }
