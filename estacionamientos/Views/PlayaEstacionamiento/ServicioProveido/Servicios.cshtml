@@ -34,8 +34,7 @@
 
             <div class="col">
                 <label class="card servicio-card d-flex gap-3 flex-row align-items-center px-3 py-2 w-100"
-                       style="cursor:pointer;"
-                       for="@cid">
+                       style="cursor:pointer; min-height: 150px; max-height: 200px; width: 100%; height: auto;">
                     <input type="checkbox"
                            id="@cid"
                            name="ServiciosAsignados"
@@ -69,6 +68,12 @@
     transition: all .2s ease-in-out;
     border: 1px solid var(--bs-border-color);
     border-radius: .75rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 150px;  /* Altura mínima */
+    max-height: 200px;  /* Altura máxima para asegurarse de que no crezca demasiado */
+    width: 100%;  /* Asegura que ocupe todo el ancho disponible */
 }
 
 /* No seleccionado */
@@ -83,6 +88,14 @@
     background-color: var(--bs-primary-bg-subtle);
     box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .2);
     border-color: rgba(var(--bs-primary-rgb), .5);
+}
+
+/* Asegurar que las tarjetas tengan un contenido alineado y consistente */
+.card-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 </style>
 

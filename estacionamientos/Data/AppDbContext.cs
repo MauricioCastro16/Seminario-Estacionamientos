@@ -138,9 +138,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             new Servicio
             {
                 SerID = 6,
-                SerNom = "Estacionamiento por 6 Hora",
+                SerNom = "Estacionamiento por 6 Horas",
                 SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de estacionamiento por 6 hora en playa"
+                SerDesc = "Servicio de estacionamiento por 6 horas en playa"
             },
             new Servicio
             {
