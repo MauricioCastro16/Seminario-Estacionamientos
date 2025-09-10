@@ -96,31 +96,32 @@ namespace estacionamientos.Controllers
                 if (!existeSP)
                     ModelState.AddModelError("", "La playa no ofrece ese servicio.");
 
-                if (!ModelState.IsValid)
-                {
-                    await LoadSelects(model.PlyID, model.SerID, model.ClasVehID);
-                    return View(model);
-                }
-
                 var vigente = await _ctx.TarifasServicio
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(t =>
                         t.PlyID == model.PlyID &&
                         t.SerID == model.SerID &&
                         t.ClasVehID == model.ClasVehID &&
                         t.TasFecFin == null);
 
-                if (vigente != null)
+             if (vigente != null)
+                 ModelState.AddModelError("", "Ya existe una tarifa vigente para esta playa, servicio y clase de vehículo.");
+
+                if (!ModelState.IsValid)
                 {
-                    vigente.TasFecFin = model.TasFecIni.AddSeconds(-1);
-                    _ctx.Update(vigente);
+                    await LoadSelects(model.PlyID, model.SerID, model.ClasVehID);
+                    return View(model);
                 }
 
                 model.TasFecFin = null;
                 _ctx.TarifasServicio.Add(model);
-
                 await _ctx.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
+
+                TempData["Saved"] = true; // 👈 bandera para JS
+
+                return RedirectToAction(nameof(Create), new { plySel = model.PlyID });
+
+    }
             catch (Exception ex)
             {
                 ModelState.AddModelError("", $"Error: {ex.Message}");
