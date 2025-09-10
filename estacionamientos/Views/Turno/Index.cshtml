@@ -69,7 +69,7 @@
                     <div class="row gy-2">
                         <div class="col-md-4">
                             <div class="text-muted small">Playa</div>
-                            <div class="fw-semibold">@abierto.Playa?.PlyNom (@abierto.PlyID)</div>
+                            <div class="fw-semibold">@abierto.Playa?.PlyNom</div>
                         </div>
                         <div class="col-md-4">
                             <div class="text-muted small">Inicio</div>
@@ -116,7 +116,7 @@
                 @foreach (var t in Model.Where(x => x.TurFyhFin != null))
                 {
                     <tr>
-                        <td>@t.Playa?.PlyNom (@t.PlyID)</td>
+                        <td>@t.Playa?.PlyNom</td>
                         <td>@ToCba(t.TurFyhIni).ToString("dd/MM/yyyy")</td>
                         <td>@ToCba(t.TurFyhIni).ToString("HH:mm")</td>
                         <td>@(t.TurFyhFin.HasValue ? ToCba(t.TurFyhFin.Value).ToString("dd/MM/yyyy") : "-")</td>
@@ -145,7 +145,7 @@
         <!-- Otros roles: listado completo -->
         <div class="d-flex justify-content-end mb-2">
             <a class="btn btn-primary" asp-action="Create">
-                <i class="bi bi-plus-circle me-1"></i> Iniciar turno
+                <i class="bi bi-plus-circle me-1"></i> Iniciar turnooo
             </a>
         </div>
 
@@ -166,7 +166,7 @@
                 @foreach (var t in Model)
                 {
                     <tr>
-                        <td>@t.Playa?.PlyNom (@t.PlyID)</td>
+                        <td>@t.Playa?.PlyNom</td>
                         <td>@t.Playero?.UsuNyA (@t.PlaNU)</td>
                         <td>@ToCba(t.TurFyhIni).ToString("dd/MM/yyyy")</td>
                         <td>@ToCba(t.TurFyhIni).ToString("HH:mm")</td>

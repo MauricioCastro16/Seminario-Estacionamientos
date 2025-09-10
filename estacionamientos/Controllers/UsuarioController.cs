@@ -3,11 +3,13 @@ using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
 using estacionamientos.Models.ViewModels;
+// using Microsoft.AspNetCore.Authorization;
 
 namespace estacionamientos.Controllers
 {
     public class UsuarioController : Controller
     {
+        // [Authorize(Roles = "Administrador")]
         private readonly AppDbContext _context;
         public UsuarioController(AppDbContext context) => _context = context;
 

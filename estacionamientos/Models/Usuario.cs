@@ -17,6 +17,7 @@ namespace estacionamientos.Models
 
         [Required(ErrorMessage = "* Este campo es obligatorio")]
         [DataType(DataType.Password)]
+        [MinLength(8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres")]
         [Display(Name = "Contraseña")]
         public string UsuPswd { get; set; } = string.Empty;
 
@@ -24,4 +25,3 @@ namespace estacionamientos.Models
         public string? UsuNumTel { get; set; }
     }
 }
-
