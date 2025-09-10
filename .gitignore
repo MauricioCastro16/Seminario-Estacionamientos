@@ -59,3 +59,4 @@ nunit-*.xml
 
 .fake
 Migrations/
+**/.DS_Store
