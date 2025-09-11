@@ -14,7 +14,7 @@ namespace estacionamientos.Models
         public bool PlzHab { get; set; } = true; // habilitada
         public string? PlzNombre { get; set; } // nombre o código identificatorio (opcional)
 
-        public int? Piso { get; set; }  
+        public int? Piso { get; set; }
         public int ClasVehID { get; set; }
         public ClasificacionVehiculo Clasificacion { get; set; } = default!;
 

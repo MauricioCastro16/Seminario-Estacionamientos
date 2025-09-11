@@ -436,26 +436,26 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 // (Opcional) índice para consultas por fecha
                 e.HasIndex(p => new { p.PlyID, p.PagFyh });
             });
-            modelBuilder.Entity<PlazaEstacionamiento>(e =>
-            {
-                e.ToTable("PlazaEstacionamiento");
-                e.HasKey(p => new { p.PlyID, p.PlzNum });
+        modelBuilder.Entity<PlazaEstacionamiento>(e =>
+        {
+            e.ToTable("PlazaEstacionamiento");
+            e.HasKey(p => new { p.PlyID, p.PlzNum });
 
-                e.Property(p => p.PlzAlt).HasPrecision(5, 2); // por ej. 3.50 m
+            e.Property(p => p.PlzAlt).HasPrecision(5, 2); // por ej. 3.50 m
 
-                e.Property(p => p.PlzNombre).HasMaxLength(80);
+            e.Property(p => p.PlzNombre).HasMaxLength(80);
 
-                e.HasOne(p => p.Playa)
-                    .WithMany(pl => pl.Plazas)
-                    .HasForeignKey(p => p.PlyID)
-                    .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(p => p.Playa)
+                .WithMany(pl => pl.Plazas)
+                .HasForeignKey(p => p.PlyID)
+                .OnDelete(DeleteBehavior.Cascade);
 
-                // 🔹 Relación con ClasificacionVehiculo
-                e.HasOne(p => p.Clasificacion)
-                    .WithMany()
-                    .HasForeignKey(p => p.ClasVehID)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
+            // 🔹 Relación con ClasificacionVehiculo
+            e.HasOne(p => p.Clasificacion)
+                .WithMany()
+                .HasForeignKey(p => p.ClasVehID)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
 
         modelBuilder.Entity<Ocupacion>(e =>
             {

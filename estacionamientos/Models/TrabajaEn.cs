@@ -8,8 +8,8 @@ namespace estacionamientos.Models
         public int PlyID { get; set; }
         public int PlaNU { get; set; }
         public bool TrabEnActual { get; set; } = true;
-        public DateTime FechaInicio { get; set; }  
-        public DateTime? FechaFin { get; set; }  
+        public DateTime FechaInicio { get; set; }
+        public DateTime? FechaFin { get; set; }
 
         // Navegaciones
         [ValidateNever] public PlayaEstacionamiento Playa { get; set; } = default!;

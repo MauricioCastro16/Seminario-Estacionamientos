@@ -200,14 +200,14 @@ namespace estacionamientos.Controllers
                     .FirstOrDefaultAsync();
 
                 if (periodo == null)
-                    {
-                        ModelState.AddModelError(string.Empty,
-                            "No hay un período vigente (TrabajaEn) para ese playero en esa playa.");
-                    }
+                {
+                    ModelState.AddModelError(string.Empty,
+                        "No hay un período vigente (TrabajaEn) para ese playero en esa playa.");
+                }
                 else
-                    {
-                        model.TrabFyhIni = periodo.FechaInicio; // FK a período
-                    }
+                {
+                    model.TrabFyhIni = periodo.FechaInicio; // FK a período
+                }
 
             }
 

@@ -138,8 +138,8 @@ namespace estacionamientos.Controllers
 
                 TempData["Saved"] = true; // 👈 bandera para JS
 
-                
-               if (TempData["Saved"] != null)
+
+                if (TempData["Saved"] != null)
                 {
                     return RedirectToAction("Index", "TarifaServicio"); // Redirigir a la acción Index de TarifaServicio
                 }
@@ -147,7 +147,7 @@ namespace estacionamientos.Controllers
                 {
                     return RedirectToAction(nameof(Create), new { plySel = model.PlyID }); // Redirigir a Create con plySel
                 }
-    }
+            }
             catch (Exception ex)
             {
                 ModelState.AddModelError("", $"Error: {ex.Message}");
@@ -251,8 +251,8 @@ namespace estacionamientos.Controllers
 
             return RedirectToAction(nameof(Index));
         }
-        
-                [HttpGet]
+
+        [HttpGet]
         public async Task<IActionResult> VigentesPlayero(int plyId)
         {
             var ahora = DateTime.UtcNow;

@@ -280,6 +280,6 @@ namespace estacionamientos.Controllers
 
             return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
         }
-        
+
     }
 }

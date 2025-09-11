@@ -384,52 +384,52 @@ namespace estacionamientos.Controllers
         // ------------------------------------------------------------
         [HttpGet]
         public async Task<IActionResult> HistorialAgrupado()
-            {
-                var dueId = GetCurrentOwnerId();                          // helper tuyo
-                var misPlyIds = await PlyIdsDelDuenioAsync(dueId);        // helper tuyo
+        {
+            var dueId = GetCurrentOwnerId();                          // helper tuyo
+            var misPlyIds = await PlyIdsDelDuenioAsync(dueId);        // helper tuyo
 
-                var q = _context.Trabajos
-                    .Include(t => t.Playero)
-                    .Include(t => t.Playa)
-                    .Where(t => misPlyIds.Contains(t.PlyID))
-                    .AsNoTracking();
+            var q = _context.Trabajos
+                .Include(t => t.Playero)
+                .Include(t => t.Playa)
+                .Where(t => misPlyIds.Contains(t.PlyID))
+                .AsNoTracking();
 
-                // Si ya añadiste FechaInicio/FechaFin al modelo, podés usar t.FechaInicio / t.FechaFin directamente.
-                var flat = await q
-                    .Select(t => new
-                    {
-                        t.PlaNU,
-                        PlayeroNombre = t.Playero.UsuNyA,
-                        PlayaNombre = string.IsNullOrWhiteSpace(t.Playa.PlyNom)
-                                        ? (t.Playa.PlyCiu + " - " + t.Playa.PlyDir)
-                                        : t.Playa.PlyNom,
-                        FechaInicio = (DateTime?)EF.Property<DateTime?>(t, "FechaInicio"),
-                        FechaFin = (DateTime?)EF.Property<DateTime?>(t, "FechaFin"),
-                        Vigente = t.TrabEnActual || EF.Property<DateTime?>(t, "FechaFin") == null
-                    })
-                    .ToListAsync();
+            // Si ya añadiste FechaInicio/FechaFin al modelo, podés usar t.FechaInicio / t.FechaFin directamente.
+            var flat = await q
+                .Select(t => new
+                {
+                    t.PlaNU,
+                    PlayeroNombre = t.Playero.UsuNyA,
+                    PlayaNombre = string.IsNullOrWhiteSpace(t.Playa.PlyNom)
+                                    ? (t.Playa.PlyCiu + " - " + t.Playa.PlyDir)
+                                    : t.Playa.PlyNom,
+                    FechaInicio = (DateTime?)EF.Property<DateTime?>(t, "FechaInicio"),
+                    FechaFin = (DateTime?)EF.Property<DateTime?>(t, "FechaFin"),
+                    Vigente = t.TrabEnActual || EF.Property<DateTime?>(t, "FechaFin") == null
+                })
+                .ToListAsync();
 
-                var data = flat
-                    .GroupBy(x => new { x.PlaNU, x.PlayeroNombre })
-                    .Select(g => new PlayeroHistGroupVM
-                    {
-                        PlaNU = g.Key.PlaNU,
-                        PlayeroNombre = g.Key.PlayeroNombre,
-                        Periodos = g.OrderByDescending(p => p.Vigente)
-                                    .ThenByDescending(p => p.FechaInicio)
-                                    .Select(p => new PeriodoVM
-                                    {
-                                        PlayaNombre = p.PlayaNombre,
-                                        FechaInicio = p.FechaInicio,
-                                        FechaFin = p.FechaFin,
-                                        Vigente = p.Vigente && p.FechaFin is null
-                                    })
-                                    .ToList()
-                    })
-                    .OrderBy(vm => vm.PlayeroNombre)
-                    .ToList();
+            var data = flat
+                .GroupBy(x => new { x.PlaNU, x.PlayeroNombre })
+                .Select(g => new PlayeroHistGroupVM
+                {
+                    PlaNU = g.Key.PlaNU,
+                    PlayeroNombre = g.Key.PlayeroNombre,
+                    Periodos = g.OrderByDescending(p => p.Vigente)
+                                .ThenByDescending(p => p.FechaInicio)
+                                .Select(p => new PeriodoVM
+                                {
+                                    PlayaNombre = p.PlayaNombre,
+                                    FechaInicio = p.FechaInicio,
+                                    FechaFin = p.FechaFin,
+                                    Vigente = p.Vigente && p.FechaFin is null
+                                })
+                                .ToList()
+                })
+                .OrderBy(vm => vm.PlayeroNombre)
+                .ToList();
 
-                return View(data);
-            }
+            return View(data);
+        }
     }
 }

@@ -145,7 +145,7 @@ namespace estacionamientos.Controllers
         {
             var servicioProveido = await _ctx.ServiciosProveidos
                 .FirstOrDefaultAsync(sp => sp.PlyID == plyID && sp.SerID == serID);
-            
+
             if (servicioProveido != null)
             {
                 servicioProveido.SerProvHab = habilitado;

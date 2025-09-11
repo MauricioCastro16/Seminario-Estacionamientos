@@ -332,25 +332,25 @@ namespace estacionamientos.Controllers
                 o.VehPtnt == model.VehPtnt &&
                 o.OcufFyhFin == null);
 
-                if (patenteOcupada)
-                {
-                    ModelState.AddModelError("VehPtnt", $"El vehículo con patente {model.VehPtnt} ya tiene un ingreso en curso.");
+            if (patenteOcupada)
+            {
+                ModelState.AddModelError("VehPtnt", $"El vehículo con patente {model.VehPtnt} ya tiene un ingreso en curso.");
 
-                    // 🔄 Recargar combos igual que arriba
-                    await LoadSelects(model.PlyID, model.PlzNum, model.VehPtnt);
-                    ViewBag.Clasificaciones = new SelectList(
-                        await _ctx.ClasificacionesVehiculo
-                            .OrderBy(c => c.ClasVehTipo)
-                            .ToListAsync(),
-                        "ClasVehID", "ClasVehTipo", ClasVehID
-                    );
-                    ViewBag.PlayaNombre = await _ctx.Playas
-                        .Where(p => p.PlyID == model.PlyID)
-                        .Select(p => p.PlyNom)
-                        .FirstOrDefaultAsync();
+                // 🔄 Recargar combos igual que arriba
+                await LoadSelects(model.PlyID, model.PlzNum, model.VehPtnt);
+                ViewBag.Clasificaciones = new SelectList(
+                    await _ctx.ClasificacionesVehiculo
+                        .OrderBy(c => c.ClasVehTipo)
+                        .ToListAsync(),
+                    "ClasVehID", "ClasVehTipo", ClasVehID
+                );
+                ViewBag.PlayaNombre = await _ctx.Playas
+                    .Where(p => p.PlyID == model.PlyID)
+                    .Select(p => p.PlyNom)
+                    .FirstOrDefaultAsync();
 
-                    return View(model);  // ⬅️ vuelve al formulario mostrando el error debajo del campo
-                }
+                return View(model);  // ⬅️ vuelve al formulario mostrando el error debajo del campo
+            }
 
 
 
