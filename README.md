@@ -1,3 +1,5 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/MauricioCastro16/Seminario-Estacionamientos)
+
 # 🚗 Seminario - Estacionamientos (MVC + PostgreSQL + .NET 9)
 
 Proyecto ASP.NET Core MVC con conexión a PostgreSQL, usando Entity Framework Core
