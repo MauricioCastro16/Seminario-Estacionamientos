@@ -4,6 +4,7 @@ using DotNetEnv;
 using System.IO;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc.Razor;
+using estacionamientos.Seed;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -97,8 +98,8 @@ app.MapControllerRoute(
 //Populado de la base de datos con datos de prueba
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await DbInitializer.SeedAsync(db);
+    var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    DbInitializer.Initialize(ctx);
 }
 
 app.Run();
