@@ -441,6 +441,60 @@ public static class DbInitializer
         context.Plazas.AddRange(plazas);
         context.SaveChanges();
 
+        // =========================
+        // 10) Conductores (10 en total)
+        // =========================
+        var conductores = new List<Conductor>();
+        for (int i = 0; i < 10; i++) // Puedes ajustar la cantidad de conductores
+        {
+            var correo = faker.Internet.Email();
+            if (!correo.Contains("@")) correo += "@mail.com";
+
+            conductores.Add(new Conductor
+            {
+                UsuNU = nextUsuNu++, // ID incremental
+                UsuNyA = faker.Name.FullName(),
+                UsuEmail = correo,
+                UsuPswd = "12345678",
+                UsuNumTel = faker.Phone.PhoneNumber("##########"),
+                // Las colecciones las dejamos vacías por ahora, pero puedes agregarlas si lo necesitas
+                Conducciones = new List<Conduce>(),
+                UbicacionesFavoritas = new List<UbicacionFavorita>(),
+                Valoraciones = new List<Valoracion>()
+            });
+        }
+
+        context.Conductores.AddRange(conductores);
+        context.SaveChanges();
+
+        
+        // =========================
+        // 11) Ubicaciones favoritas (2-4 por conductor) 
+        // =========================
+        var ubicacionesFavoritas = new List<UbicacionFavorita>();
+        foreach (var conductor in conductores)
+        {
+            int cantidadUbicaciones = faker.Random.Int(2, 4); // 2 a 4 ubicaciones por conductor
+            for (int j = 0; j < cantidadUbicaciones; j++)
+            {
+                var ubicacion = new UbicacionFavorita
+                {
+                    ConNU = conductor.UsuNU, // Asociamos al conductor
+                    UbfApodo = faker.Commerce.ProductName(), // Nombre o apodo
+                    UbfProv = faker.Address.State(), // Provincia
+                    UbfCiu = faker.Address.City(), // Ciudad
+                    UbfDir = faker.Address.StreetAddress(), // Dirección
+                    UbfTipo = faker.Random.Bool() ? "Casa" : "Trabajo" // Tipo aleatorio
+                };
+
+                ubicacionesFavoritas.Add(ubicacion);
+            }
+        }
+
+        context.UbicacionesFavoritas.AddRange(ubicacionesFavoritas);
+        context.SaveChanges();
+
+
     }
 
     private static decimal Redondear(decimal monto)
