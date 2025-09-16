@@ -605,6 +605,44 @@ public static class DbInitializer
         context.Conduces.AddRange(conduceList);
         context.SaveChanges();
 
+        // =========================
+        // 16) Pagos (5-10 por playa)
+        // =========================
+        var pagosList = new List<Pago>();
+        foreach (var playa in playas)
+        {
+            // Obtener los métodos de pago disponibles para esta playa
+            var metodosPago = context.AceptaMetodosPago
+                .Where(ap => ap.PlyID == playa.PlyID)  // Métodos aceptados por la playa
+                .ToList();
+
+            // Seleccionar un número aleatorio de pagos entre 5 y 10 por playa
+            int cantidadPagos = faker.Random.Int(5, 10);
+
+            for (int i = 0; i < cantidadPagos; i++)
+            {
+                // Seleccionar un método de pago aleatorio de los aceptados por la playa
+                var metodoPago = faker.PickRandom(metodosPago);
+
+                // Crear un nuevo pago
+                var pago = new Pago
+                {
+                    PlyID = playa.PlyID, // ID de la playa asociada
+                    PagNum = i + 1, // Número de pago (podrías usar un contador si prefieres secuencias)
+                    MepID = metodoPago.MepID, // ID del método de pago
+                    PagMonto = faker.Random.Decimal(100, 5000), // Monto del pago (ajustable según necesidades)
+                    PagFyh = faker.Date.Between(DateTime.UtcNow.AddDays(-30), DateTime.UtcNow), // Fecha y hora de pago
+                    Playa = playa, // Relación de navegación con Playa
+                    MetodoPago = metodoPago.MetodoPago, // Relación de navegación con MetodoPago
+                    AceptaMetodoPago = metodoPago // Relación con AceptaMetodoPago
+                };
+
+                pagosList.Add(pago);
+            }
+        }
+
+        context.Pagos.AddRange(pagosList);
+        context.SaveChanges();
 
 
     }
