@@ -552,7 +552,7 @@ public static class DbInitializer
 
         context.Abonados.AddRange(abonados);
         context.SaveChanges();
-        
+
         // =========================
         // 14) Vehiculos
         // =========================
@@ -575,6 +575,36 @@ public static class DbInitializer
 
         context.Vehiculos.AddRange(vehiculos);
         context.SaveChanges();
+
+        // =========================
+        // 15) Conduce (Asociar vehículos con conductores)
+        // =========================
+        var conduceList = new List<Conduce>();
+        foreach (var conductor in conductores)
+        {
+            // Seleccionamos aleatoriamente entre 1 y 2 vehículos para cada conductor
+            var cantidadVehiculos = faker.Random.Int(1, 2); // Cada conductor puede tener entre 1 o 2 vehículos
+            var vehiculosDisponibles = vehiculos.ToList(); // Lista de vehículos disponibles
+
+            // Asociar vehículos al conductor
+            var vehiculosAsignados = faker.PickRandom(vehiculosDisponibles, cantidadVehiculos).ToList();
+
+            foreach (var vehiculo in vehiculosAsignados)
+            {
+                // Crear la relación en la tabla intermedia
+                conduceList.Add(new Conduce
+                {
+                    ConNU = conductor.UsuNU, // ID del conductor
+                    VehPtnt = vehiculo.VehPtnt, // Patente del vehículo
+                    Conductor = conductor, // Relación de navegación con Conductor
+                    Vehiculo = vehiculo // Relación de navegación con Vehículo
+                });
+            }
+        }
+
+        context.Conduces.AddRange(conduceList);
+        context.SaveChanges();
+
 
 
     }
