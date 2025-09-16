@@ -467,7 +467,7 @@ public static class DbInitializer
         context.Conductores.AddRange(conductores);
         context.SaveChanges();
 
-        
+
         // =========================
         // 11) Ubicaciones favoritas (2-4 por conductor) 
         // =========================
@@ -492,6 +492,65 @@ public static class DbInitializer
         }
 
         context.UbicacionesFavoritas.AddRange(ubicacionesFavoritas);
+        context.SaveChanges();
+
+        // =========================
+        // 12) Valoraciones (2-3 por conductor)
+        // =========================
+        var valoraciones = new List<Valoracion>();
+        foreach (var conductor in conductores)
+        {
+            int cantidadValoraciones = faker.Random.Int(2, 3); // 2 a 3 valoraciones por conductor
+            var playasValoradas = new HashSet<int>(); // Conjunto para asegurarnos que un conductor no valore más de una vez la misma playa
+
+            for (int j = 0; j < cantidadValoraciones; j++)
+            {
+                // Seleccionamos una playa aleatoria que el conductor aún no haya valorado
+                PlayaEstacionamiento playa;
+                do
+                {
+                    playa = faker.PickRandom(context.Playas.ToList()); // Elegir una playa aleatoria
+                }
+                while (playasValoradas.Contains(playa.PlyID)); // Aseguramos que la playa no ha sido valorada aún por este conductor
+
+                // Añadimos la playa a las playas valoradas para este conductor
+                playasValoradas.Add(playa.PlyID);
+
+                // Crear la valoracion
+                valoraciones.Add(new Valoracion
+                {
+                    PlyID = playa.PlyID, // ID de la playa asociada
+                    ConNU = conductor.UsuNU, // ID del conductor asociado
+                    ValNumEst = faker.Random.Int(1, 5), // Estrellas entre 1 y 5
+                    ValFav = faker.Random.Bool(), // Aleatorio si es favorito o no
+                });
+            }
+        }
+
+        context.Valoraciones.AddRange(valoraciones);
+        context.SaveChanges();
+        
+        // =========================
+        // 13) Abonados (5% de los conductores)
+        // =========================
+        var abonados = new List<Abonado>();
+        var conductoresAbonados = conductores
+            .Where(c => faker.Random.Float() <= 0.05f) // 5% de los conductores
+            .ToList();
+
+        foreach (var conductor in conductoresAbonados)
+        {
+            var abonado = new Abonado
+            {
+                AboDNI = faker.Random.ReplaceNumbers("########"), // DNI aleatorio
+                AboNom = conductor.UsuNyA, // Nombre del conductor
+                ConNU = conductor.UsuNU, // Conductor asociado
+            };
+
+            abonados.Add(abonado);
+        }
+
+        context.Abonados.AddRange(abonados);
         context.SaveChanges();
 
 
