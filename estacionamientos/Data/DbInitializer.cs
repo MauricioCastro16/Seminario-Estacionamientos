@@ -529,7 +529,7 @@ public static class DbInitializer
 
         context.Valoraciones.AddRange(valoraciones);
         context.SaveChanges();
-        
+
         // =========================
         // 13) Abonados (5% de los conductores)
         // =========================
@@ -551,6 +551,29 @@ public static class DbInitializer
         }
 
         context.Abonados.AddRange(abonados);
+        context.SaveChanges();
+        
+        // =========================
+        // 14) Vehiculos
+        // =========================
+        var vehiculos = new List<Vehiculo>();
+        foreach (var conductor in conductores)
+        {
+            int cantidadVehiculos = faker.Random.Int(1, 2); // Cada conductor puede tener 1 o 2 vehículos
+            for (int j = 0; j < cantidadVehiculos; j++)
+            {
+                var vehiculo = new Vehiculo
+                {
+                    VehPtnt = faker.Vehicle.Vin().Substring(0, 10), // Generar un número de patente aleatorio, limitada a 10 caracteres
+                    VehMarc = faker.Vehicle.Manufacturer(), // Generar marca del vehículo
+                    ClasVehID = faker.PickRandom(context.ClasificacionesVehiculo.Select(c => c.ClasVehID).ToList()) // Asignar clasificación aleatoria
+                };
+
+                vehiculos.Add(vehiculo);
+            }
+        }
+
+        context.Vehiculos.AddRange(vehiculos);
         context.SaveChanges();
 
 
