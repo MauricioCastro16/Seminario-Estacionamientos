@@ -10,12 +10,12 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace estacionamientos.Controllers
 {
-    [Authorize(Roles = "Duenio")]
-
+    [Authorize(Roles = "Duenio,Playero")]
     public class TarifaServicioController : Controller
     {
         private readonly AppDbContext _ctx;
         public TarifaServicioController(AppDbContext ctx) => _ctx = ctx;
+
 
         private async Task LoadSelects(int? plySel = null, int? serSel = null, int? clasSel = null)
         {
@@ -56,6 +56,7 @@ namespace estacionamientos.Controllers
         private DateTime ToUtc(DateTime dt) => DateTime.SpecifyKind(dt, DateTimeKind.Utc);
        
         // INDEX
+        [Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Index(
             string q,
             string filterBy = "all",
@@ -159,6 +160,7 @@ namespace estacionamientos.Controllers
         }
 
         // DETAILS
+        [Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Details(int plyID, int serID, int clasVehID, DateTime tasFecIni)
         {
             tasFecIni = ToUtc(tasFecIni);
@@ -178,6 +180,7 @@ namespace estacionamientos.Controllers
         }
 
         // CREATE GET
+        [Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Create(int? plySel = null)
         {
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -204,6 +207,7 @@ namespace estacionamientos.Controllers
 
 
         // CREATE POST
+        [Authorize(Roles = "Duenio")]
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(TarifaServicio model)
         {
@@ -266,6 +270,7 @@ namespace estacionamientos.Controllers
 
 
         // EDIT GET
+        [Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Edit(int plyID, int serID, int clasVehID, DateTime tasFecIni)
         {
             tasFecIni = ToUtc(tasFecIni);
@@ -278,6 +283,7 @@ namespace estacionamientos.Controllers
         }
 
         // EDIT POST
+        [Authorize(Roles = "Duenio")]
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int plyID, int serID, int clasVehID, DateTime tasFecIni, TarifaServicio model)
         {
@@ -324,6 +330,7 @@ namespace estacionamientos.Controllers
 
 
         // DELETE GET
+        [Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Delete(int plyID, int serID, int clasVehID, DateTime tasFecIni)
         {
             tasFecIni = ToUtc(tasFecIni);
@@ -343,6 +350,7 @@ namespace estacionamientos.Controllers
         }
 
         // DELETE POST
+        [Authorize(Roles = "Duenio")]
         [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int plyID, int serID, int clasVehID, DateTime tasFecIni)
         {
@@ -360,7 +368,7 @@ namespace estacionamientos.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        [HttpGet]
+        [Authorize(Roles = "Playero")]
         public async Task<IActionResult> VigentesPlayero(int plyId)
         {
             var ahora = DateTime.UtcNow;
