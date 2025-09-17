@@ -82,8 +82,9 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Playero" asp-action="Index">Playeros</a>
                         </li>
-                        <li class="nav-item"></li>
+                        <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="TarifaServicio" asp-action="Index">Tarifas</a>
+                        </li>
                     }
 
                     @if (User.IsInRole("Playero"))
@@ -91,7 +92,7 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="Ocupacion" asp-action="Index">Ingreso/Egreso</a>
                         </li>
-                        <li class="nav-item"></li>
+                        <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="Turno" asp-action="Index">Mis turnos</a>
                         </li>
                     }
@@ -130,9 +131,9 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
                                 <li><hr class="dropdown-divider" /></li>
-
+                                <li>
                                     <a class="dropdown-item text-dark" href="#"
-                                       onclick="document.getElementById('logoutForm').submit(); return false;">
+                                    onclick="document.getElementById('logoutForm').submit(); return false;">
                                         Cerrar sesión
                                     </a>
                                 </li>
