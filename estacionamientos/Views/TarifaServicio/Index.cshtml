@@ -1,12 +1,85 @@
-@model IEnumerable<estacionamientos.Models.TarifaServicio>
+@model estacionamientos.Models.ViewModels.TarifasIndexVM
+@{
+    ViewData["Title"] = "Tarifas de Servicios";
+
+    string LabelFiltro(string v) => v switch {
+        "playa" => "Playa",
+        "servicio" => "Servicio",
+        "clase" => "Clase Vehículo",
+        "vigencia" => "Vigencia",
+        _ => "Todos"
+    };
+
+    bool hayFiltros = Model.FilterBy != "all"
+                   || !string.IsNullOrWhiteSpace(Model.Q);
+}
 
 <div class="container">
+    <!-- Encabezado -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Tarifas de Servicios</h2>
+        <h2 class="mb-0">Tarifas de Servicios</h2>
         <a asp-action="Create" class="btn btn-primary">+ Nueva Tarifa</a>
     </div>
 
-    <table class="table table-hover">
+    <!-- Formulario de búsqueda/filtros -->
+    <form method="get" id="searchForm" class="row g-2 align-items-center">
+        <!-- Campo de texto (para playa, servicio, clase, todos) -->
+        <div class="col-md-5 @(Model.FilterBy == "vigencia" ? "d-none" : "")" id="qWrapper">
+            <input name="Q" id="qInput" value="@Model.Q" class="form-control" placeholder="Buscar..." />
+        </div>
+
+        <!-- Select de Vigencia -->
+        <div class="col-md-5 @(Model.FilterBy == "vigencia" ? "" : "d-none")" id="vigWrapper">
+            <select name="selectedOption" id="vigSelect" class="form-select">
+                <option value="">Seleccionar vigencia…</option>
+                <option value="Vigente"
+                    selected="@(Model.SelectedOption != null && Model.SelectedOption.Equals("Vigente", StringComparison.OrdinalIgnoreCase) ? "selected" : null)">
+                    Vigente
+                </option>
+
+                <option value="No vigente"
+                    selected="@(Model.SelectedOption != null && Model.SelectedOption.Equals("No vigente", StringComparison.OrdinalIgnoreCase) ? "selected" : null)">
+                    No vigente
+                </option>
+            </select>
+        </div>
+
+        <!-- Botón Filtrar -->
+        <div class="col-auto">
+            <div class="btn-group">
+                <input type="hidden" name="FilterBy" id="filterBy" value="@Model.FilterBy" />
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle"
+                        data-bs-toggle="dropdown" aria-expanded="false" id="filterBtn">
+                    <i class="bi bi-funnel"></i> Filtrar: @Model.FilterBy
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" data-value="all">Todos</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="playa">Playa</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="servicio">Servicio</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="clase">Clase</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="vigencia">Vigencia</a></li> <!-- 👈 agregado -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- Buscar + Limpiar -->
+        <div class="col-auto">
+            <button type="submit" class="btn btn-secondary" title="Buscar">
+                <i class="bi bi-search"></i>
+            </button>
+            <a id="btnLimpiar"
+            class="btn btn-outline-secondary"
+            asp-action="Index"
+            title="Limpiar filtros">
+                <i class="bi bi-x-circle"></i>
+            </a>
+        </div>
+    </form>
+
+
+
+    <!-- Tabla -->
+    <table class="table table-hover align-middle">
         <thead>
             <tr>
                 <th>Playa</th>
@@ -18,70 +91,112 @@
             </tr>
         </thead>
         <tbody>
-        @foreach (var item in Model)
+        @if (Model.Tarifas == null || !Model.Tarifas.Any())
         {
-            var esVigente = item.TasFecFin == null || item.TasFecFin > DateTime.Now;
-            <tr class="@(esVigente ? "" : "table-secondary")">
-                <td>@item.ServicioProveido.Playa.PlyNom</td>
-                <td>@item.ServicioProveido.Servicio.SerNom</td>
-                <td>@item.ClasificacionVehiculo.ClasVehTipo</td>
-                <td>
-                    @if (esVigente)
-                    {
-                        <span class="badge bg-success">Vigente</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-danger">No vigente</span>
-                    }
-                </td>
-                <td>$@item.TasMonto</td>
-                <td class="text-center align-middle">
-                    <!-- Detalles -->
-                    <a asp-action="Details"
-                    asp-route-plyID="@item.PlyID"
-                    asp-route-serID="@item.SerID"
-                    asp-route-clasVehID="@item.ClasVehID"
-                    asp-route-tasFecIni="@item.TasFecIni"
-                    class="btn btn-outline-primary btn-sm me-2"
-                    title="Detalles">
-                        <i class="bi bi-eye"></i>
-                    </a>
-
-                    <!-- Editar -->
-                    <a asp-action="Edit"
-                    asp-route-plyID="@item.PlyID"
-                    asp-route-serID="@item.SerID"
-                    asp-route-clasVehID="@item.ClasVehID"
-                    asp-route-tasFecIni="@item.TasFecIni"
-                    class="btn btn-sm btn-outline-secondary me-1". 
-                    title="Editar">
-                        <i class="bi bi-pencil"></i>
-                    </a>
-
-                    <!-- Cerrar -->
-                    @if (esVigente)
-                    {
-                        <a asp-action="Delete"
-                        asp-route-plyID="@item.PlyID"
-                        asp-route-serID="@item.SerID"
-                        asp-route-clasVehID="@item.ClasVehID"
-                        asp-route-tasFecIni="@item.TasFecIni"
-                        class="btn btn-outline-danger btn-sm"
-                        title="Suspender tarifa">
-                            <i class="bi bi-trash"></i>
-                        </a>
-                    }
-                    else
-                    {
-                        <button class="btn btn-sm btn-outline-secondary" disabled title="No vigente">
-                            <i class="bi bi-x-circle"></i>
-                        </button>
-                    }
-                </td>
+            <tr>
+                <td colspan="6" class="text-center text-muted py-4">No se encontraron resultados.</td>
             </tr>
         }
-
+        else
+        {
+            @foreach (var item in Model.Tarifas)
+            {
+                var esVigente = item.TasFecFin == null || item.TasFecFin > DateTime.Now;
+                <tr class="@(esVigente ? "" : "table-secondary")">
+                    <td>@item.ServicioProveido.Playa.PlyNom</td>
+                    <td>@item.ServicioProveido.Servicio.SerNom</td>
+                    <td>@item.ClasificacionVehiculo.ClasVehTipo</td>
+                    <td>
+                        @if (esVigente)
+                        {
+                            <span class="badge bg-success">Vigente</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">No vigente</span>
+                        }
+                    </td>
+                    <td>$@item.TasMonto</td>
+                    <td class="text-center align-middle">
+                        <a asp-action="Details"
+                           asp-route-plyID="@item.PlyID"
+                           asp-route-serID="@item.SerID"
+                           asp-route-clasVehID="@item.ClasVehID"
+                           asp-route-tasFecIni="@item.TasFecIni"
+                           class="btn btn-outline-primary btn-sm me-2"
+                           title="Detalles">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a asp-action="Edit"
+                           asp-route-plyID="@item.PlyID"
+                           asp-route-serID="@item.SerID"
+                           asp-route-clasVehID="@item.ClasVehID"
+                           asp-route-tasFecIni="@item.TasFecIni"
+                           class="btn btn-sm btn-outline-secondary me-1"
+                           title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        @if (esVigente)
+                        {
+                            <a asp-action="Delete"
+                               asp-route-plyID="@item.PlyID"
+                               asp-route-serID="@item.SerID"
+                               asp-route-clasVehID="@item.ClasVehID"
+                               asp-route-tasFecIni="@item.TasFecIni"
+                               class="btn btn-outline-danger btn-sm"
+                               title="Suspender tarifa">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-outline-secondary" disabled title="No vigente">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        }
         </tbody>
     </table>
 </div>
+
+<script>
+  const mapLbl = {
+    all: 'Todos',
+    playa: 'Playa',
+    servicio: 'Servicio',
+    clase: 'Clase Vehículo',
+    vigencia: 'Vigencia'
+  };
+
+  const formEl = document.getElementById('searchForm');
+
+  // Cambiar filtro desde el dropdown
+  document.querySelectorAll('.dropdown-menu .dropdown-item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const value = el.getAttribute('data-value');
+      document.getElementById('filterBy').value = value;
+      document.getElementById('filterBtn').innerHTML =
+        '<i class="bi bi-funnel"></i> Filtrar: ' + (mapLbl[value] || 'Todos');
+
+      formEl.submit(); // 👈 actualizar automáticamente
+    });
+  });
+
+  // Cambiar la opción de Vigencia
+  document.getElementById('vigSelect')?.addEventListener('change', () => {
+    formEl.submit(); // 👈 actualizar automáticamente
+  });
+
+  // Buscar con Enter en el input de texto
+  document.getElementById('qInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      formEl.submit();
+    }
+  });
+</script>
+

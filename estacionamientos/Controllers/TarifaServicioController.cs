@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
+using estacionamientos.Models.ViewModels;
 using System.Linq;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -53,20 +54,108 @@ namespace estacionamientos.Controllers
 
         // Helper: normaliza DateTime a UTC
         private DateTime ToUtc(DateTime dt) => DateTime.SpecifyKind(dt, DateTimeKind.Utc);
-
+       
         // INDEX
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(
+            string q,
+            string filterBy = "all",
+            List<string>? Playas = null,
+            List<string>? Servicios = null,
+            List<string>? Clases = null,
+            List<string>? Vigencias = null,
+            List<string>? Todos = null,
+            string? selectedOption = null,   // 👈 ahora queda antes
+            string? remove = null)           // 👈 último
         {
-            var q = _ctx.TarifasServicio
-                .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Servicio)
+            var tarifas = _ctx.TarifasServicio
                 .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Playa)
+                .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Servicio)
                 .Include(t => t.ClasificacionVehiculo)
-                .AsNoTracking()
-                .OrderByDescending(t => t.TasFecFin == null || t.TasFecFin > DateTime.UtcNow) // vigentes arriba
-                .ThenBy(t => t.ServicioProveido.Playa.PlyNom)
-                .ThenBy(t => t.ServicioProveido.Servicio.SerNom);
+                .AsQueryable();
 
-            return View(await q.ToListAsync());
+            // quitar un filtro (igual que en Playas)
+            if (!string.IsNullOrEmpty(remove))
+            {
+                var parts = remove.Split(':');
+                if (parts.Length == 2)
+                {
+                    var key = parts[0].ToLower();
+                    var val = parts[1];
+
+                    if (key == "playa") Playas?.Remove(val);
+                    if (key == "servicio") Servicios?.Remove(val);
+                    if (key == "clase") Clases?.Remove(val);
+                    if (key == "vigencia") Vigencias?.Remove(val);
+                    if (key == "todos") Todos?.Remove(val);
+                }
+            }
+
+            // 👇 trasladar la opción elegida en el combo de vigencia (normalizamos a lower)
+            if (!string.IsNullOrWhiteSpace(selectedOption) && filterBy == "vigencia")
+            {
+                Vigencias = new List<string> { selectedOption.ToLower() };
+            }
+
+            // aplicar búsqueda principal (q)
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var qLower = q.ToLower();
+                tarifas = filterBy switch
+                {
+                    "playa" => tarifas.Where(t => t.ServicioProveido.Playa.PlyNom.ToLower().Contains(qLower)),
+                    "servicio" => tarifas.Where(t => t.ServicioProveido.Servicio.SerNom.ToLower().Contains(qLower)),
+                    "clase" => tarifas.Where(t => t.ClasificacionVehiculo.ClasVehTipo.ToLower().Contains(qLower)),
+                    // 👇 búsqueda textual por vigencia
+                    "vigencia" => qLower switch
+                    {
+                        "vigente" => tarifas.Where(t => t.TasFecFin == null || t.TasFecFin > DateTime.UtcNow),
+                        "no vigente" => tarifas.Where(t => t.TasFecFin != null && t.TasFecFin <= DateTime.UtcNow),
+                        _ => tarifas
+                    },
+                    _ => tarifas.Where(t =>
+                        t.ServicioProveido.Playa.PlyNom.ToLower().Contains(qLower) ||
+                        t.ServicioProveido.Servicio.SerNom.ToLower().Contains(qLower) ||
+                        t.ClasificacionVehiculo.ClasVehTipo.ToLower().Contains(qLower))
+                };
+            }
+
+            // filtros acumulados
+            if (Playas?.Any() ?? false)
+                tarifas = tarifas.Where(t => Playas
+                    .Any(p => p.Equals(t.ServicioProveido.Playa.PlyNom, StringComparison.OrdinalIgnoreCase)));
+
+            if (Servicios?.Any() ?? false)
+                tarifas = tarifas.Where(t => Servicios
+                    .Any(s => s.Equals(t.ServicioProveido.Servicio.SerNom, StringComparison.OrdinalIgnoreCase)));
+
+            if (Clases?.Any() ?? false)
+                tarifas = tarifas.Where(t => Clases
+                    .Any(c => c.Equals(t.ClasificacionVehiculo.ClasVehTipo, StringComparison.OrdinalIgnoreCase)));
+
+            if (Vigencias?.Any() ?? false)
+            {
+                var ahora = DateTime.UtcNow;
+                if (Vigencias.Any(v => v.Equals("vigente", StringComparison.OrdinalIgnoreCase)))
+                    tarifas = tarifas.Where(t => t.TasFecFin == null || t.TasFecFin > ahora);
+
+                if (Vigencias.Any(v => v.Equals("no vigente", StringComparison.OrdinalIgnoreCase)))
+                    tarifas = tarifas.Where(t => t.TasFecFin != null && t.TasFecFin <= ahora);
+            }
+
+            var vm = new TarifasIndexVM
+            {
+                Tarifas = await tarifas.AsNoTracking().ToListAsync(),
+                Q = q ?? "",
+                FilterBy = filterBy,
+                Playas = Playas ?? new(),
+                Servicios = Servicios ?? new(),
+                Clases = Clases ?? new(),
+                Vigencias = Vigencias ?? new(),
+                Todos = Todos ?? new(),
+                SelectedOption = selectedOption
+            };
+
+            return View(vm);
         }
 
         // DETAILS
