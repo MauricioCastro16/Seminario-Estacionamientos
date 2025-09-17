@@ -644,6 +644,82 @@ public static class DbInitializer
         context.Pagos.AddRange(pagosList);
         context.SaveChanges();
 
+        // =========================
+        // 17) Ocupaciones (2-5 por playa)
+        // =========================
+        var ocupacionesList = new List<Ocupacion>();
+        foreach (var playa in playas)
+        {
+            // Obtener las plazas disponibles para la playa (filtrar por plazas no ocupadas)
+            var plazasDisponibles = context.Plazas
+                .Where(p => p.PlyID == playa.PlyID && !p.PlzOcupada) // Solo las plazas no ocupadas
+                .ToList();
+
+            // Seleccionar un número aleatorio de ocupaciones entre 2 y 5 por playa
+            int cantidadOcupaciones = faker.Random.Int(2, 5);
+
+            for (int i = 0; i < cantidadOcupaciones; i++)
+            {
+                // Seleccionar una plaza aleatoria para la ocupación
+                var plaza = faker.PickRandom(plazasDisponibles);
+                
+                // Obtener un vehículo aleatorio para la ocupación (debe estar disponible)
+                var vehiculosDisponibles = context.Vehiculos
+                    .Where(v => v.ClasVehID == plaza.ClasVehID) // El vehículo debe ser compatible con la plaza
+                    .ToList();
+
+                var vehiculo = faker.PickRandom(vehiculosDisponibles); // Elegir un vehículo aleatorio
+
+                // Obtener un método de pago aleatorio (aceptado por la playa)
+                var metodoPago = faker.PickRandom(context.AceptaMetodosPago
+                    .Where(ap => ap.PlyID == playa.PlyID)
+                    .ToList());
+
+                // Verificar si la plaza ya tiene un pago registrado
+                var pagoExistente = context.Pagos
+                    .FirstOrDefault(p => p.PlyID == playa.PlyID && p.PagNum == i + 1); // Número de pago único por cada ocupación
+
+                if (pagoExistente != null) // Si ya existe un pago
+                {
+                    // Si el pago ya existe, liberamos la plaza
+                    plaza.PlzOcupada = false;
+                }
+                else
+                {
+                    // Si no hay pago, ocupamos la plaza
+                    plaza.PlzOcupada = true;
+                }
+
+                // Crear la ocupación
+                var ocupacion = new Ocupacion
+                {
+                    PlyID = playa.PlyID,
+                    PlzNum = plaza.PlzNum,
+                    VehPtnt = vehiculo.VehPtnt,
+                    OcufFyhIni = faker.Date.Between(DateTime.UtcNow.AddDays(-7), DateTime.UtcNow), // Fecha de ingreso aleatoria
+                    OcufFyhFin = faker.Random.Bool() ? (DateTime?)faker.Date.Between(DateTime.UtcNow, DateTime.UtcNow.AddDays(7)) : null, // Fecha de egreso opcional
+                    OcuLlavDej = faker.Random.Bool(), // Aleatorio si se dejaron llaves
+                    PagNum = faker.Random.Int(1, 100), // Asignar un número de pago aleatorio
+                    Plaza = plaza, // Relación con la plaza
+                    Vehiculo = vehiculo, // Relación con el vehículo
+                    Pago = pagoExistente ?? new Pago // Si hay pago, asignamos el pago, si no, lo dejamos vacío
+                    {
+                        PlyID = playa.PlyID,
+                        PagNum = i + 1, // Número de pago único por cada ocupación
+                        MepID = metodoPago.MepID, // Método de pago
+                        PagMonto = faker.Random.Decimal(100, 5000), // Monto aleatorio
+                        PagFyh = DateTime.Now // Fecha de pago actual
+                    }
+                };
+
+                // Añadir la ocupación a la lista
+                ocupacionesList.Add(ocupacion);
+            }
+        }
+
+        context.Ocupaciones.AddRange(ocupacionesList);
+        context.SaveChanges();
+
 
     }
 
