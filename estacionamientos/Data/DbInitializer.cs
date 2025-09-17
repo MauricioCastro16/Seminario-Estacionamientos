@@ -662,7 +662,7 @@ public static class DbInitializer
             {
                 // Seleccionar una plaza aleatoria para la ocupación
                 var plaza = faker.PickRandom(plazasDisponibles);
-                
+
                 // Obtener un vehículo aleatorio para la ocupación (debe estar disponible)
                 var vehiculosDisponibles = context.Vehiculos
                     .Where(v => v.ClasVehID == plaza.ClasVehID) // El vehículo debe ser compatible con la plaza
@@ -719,6 +719,60 @@ public static class DbInitializer
 
         context.Ocupaciones.AddRange(ocupacionesList);
         context.SaveChanges();
+
+
+        // =========================
+        // 18) Clasificación de días (Entre semana, Fin de semana, Festivos, etc.)
+        // =========================
+        var clasificacionesDiasList = new List<ClasificacionDias>();
+
+
+        // Crear datos con Faker para agregar más diversidad y asegurarse de que no haya duplicados
+        var tiposDias = new List<string>
+        {
+            "Lunes a Viernes (Laborables)",
+            "Sábado y Domingo (Fin de semana)",
+            "Festivos Nacionales",
+            "Vacaciones de Invierno",
+            "Vacaciones de Verano",
+            "Días de descanso programado",
+            "Jornadas especiales (eventos)"
+        };
+
+        var descripcionesDias = new List<string>
+        {
+            "De lunes a viernes, con horario laboral habitual, dedicado al trabajo o estudio.",
+            "Sábado y domingo, días de descanso y actividades recreativas.",
+            "Días festivos nacionales y locales, sin actividad laboral.",
+            "Periodo de descanso durante el invierno, usualmente para desconectar del trabajo.",
+            "Periodo de descanso durante el verano, ideal para vacaciones y actividades al aire libre.",
+            "Días específicos programados para descanso o desconexión laboral, por ejemplo, días de puente.",
+            "Jornadas especiales relacionadas a eventos importantes o celebraciones."
+        };
+
+        // Agregar las entradas a la lista con Faker, asegurando que cada "ClaDiasID" sea único
+        for (int i = 0; i < tiposDias.Count; i++)
+        {
+            var clasificacionDia = new ClasificacionDias
+            {
+                // Dejar que el ClaDiasID sea autoincrementable si está configurado así
+                ClaDiasTipo = tiposDias[i], // Tipo de día
+                ClaDiasDesc = descripcionesDias[i] // Descripción
+            };
+
+            clasificacionesDiasList.Add(clasificacionDia);
+        }
+
+        // Eliminar los registros existentes antes de agregar los nuevos
+        context.ClasificacionesDias.RemoveRange(context.ClasificacionesDias);
+        context.SaveChanges();
+
+        // Añadir los datos a la base de datos
+        context.ClasificacionesDias.AddRange(clasificacionesDiasList);
+        context.SaveChanges();
+
+
+
 
 
     }
