@@ -4,11 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
 using System.Linq;
-
-
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace estacionamientos.Controllers
 {
+    [Authorize(Roles = "Duenio")]
+
     public class TarifaServicioController : Controller
     {
         private readonly AppDbContext _ctx;
@@ -16,39 +18,38 @@ namespace estacionamientos.Controllers
 
         private async Task LoadSelects(int? plySel = null, int? serSel = null, int? clasSel = null)
         {
-            var playas = await _ctx.Playas.AsNoTracking()
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            int userId = int.Parse(userIdStr!);
+
+            var playas = await _ctx.Playas
+                .AsNoTracking()
+                .Where(p => p.Administradores.Any(a => a.Duenio.UsuNU == userId))
                 .OrderBy(p => p.PlyCiu).ThenBy(p => p.PlyDir)
                 .Select(p => new { p.PlyID, Nombre = p.PlyNom })
                 .ToListAsync();
 
-            // Si hay una playa seleccionada, solo mostrar los servicios de esa playa
-            IQueryable<Servicio> serviciosQuery;
-
-            if (plySel.HasValue)
+            List<Servicio> servicios = new();
+            if (plySel.HasValue && plySel.Value > 0)
             {
-                serviciosQuery =
-                    from s in _ctx.Servicios.AsNoTracking()
-                    join sp in _ctx.ServiciosProveidos.AsNoTracking()
-                        on s.SerID equals sp.SerID
-                    where sp.PlyID == plySel.Value && sp.SerProvHab == true
-                    select s;
-            }
-            else
-            {
-                serviciosQuery = _ctx.Servicios.AsNoTracking();
+                servicios = await _ctx.ServiciosProveidos
+                    .AsNoTracking()
+                    .Where(sp => sp.PlyID == plySel.Value && sp.SerProvHab)
+                    .Select(sp => sp.Servicio)
+                    .OrderBy(s => s.SerNom)
+                    .ToListAsync();
             }
 
-            var servicios = await serviciosQuery
-                .OrderBy(s => s.SerNom)
+            var clases = await _ctx.ClasificacionesVehiculo
+                .AsNoTracking()
+                .OrderBy(c => c.ClasVehTipo)
                 .ToListAsync();
-
-            var clases = await _ctx.ClasificacionesVehiculo.AsNoTracking()
-                .OrderBy(c => c.ClasVehTipo).ToListAsync();
 
             ViewBag.PlyID = new SelectList(playas, "PlyID", "Nombre", plySel);
             ViewBag.SerID = new SelectList(servicios, "SerID", "SerNom", serSel);
             ViewBag.ClasVehID = new SelectList(clases, "ClasVehID", "ClasVehTipo", clasSel);
         }
+
+
 
         // Helper: normaliza DateTime a UTC
         private DateTime ToUtc(DateTime dt) => DateTime.SpecifyKind(dt, DateTimeKind.Utc);
@@ -90,8 +91,26 @@ namespace estacionamientos.Controllers
         // CREATE GET
         public async Task<IActionResult> Create(int? plySel = null)
         {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            int userId = int.Parse(userIdStr!);
+
+            // 👇 obtener la primera playa del dueño si todavía no se eligió ninguna
+            if (!plySel.HasValue)
+            {
+                plySel = await _ctx.Playas
+                    .Where(p => p.Administradores.Any(a => a.Duenio.UsuNU == userId))
+                    .OrderBy(p => p.PlyCiu).ThenBy(p => p.PlyDir)
+                    .Select(p => (int?)p.PlyID)
+                    .FirstOrDefaultAsync();
+            }
+
             await LoadSelects(plySel);
-            return View(new TarifaServicio { TasFecIni = DateTime.Today });
+
+            return View(new TarifaServicio
+            {
+                TasFecIni = DateTime.Today,
+                PlyID = plySel ?? 0
+            });
         }
 
 

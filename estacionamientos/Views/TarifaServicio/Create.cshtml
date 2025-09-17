@@ -9,15 +9,20 @@
     <form asp-action="Create" method="post" class="card p-4 shadow-sm">
         <div class="mb-3">
             <label asp-for="PlyID" class="form-label">Playa</label>
-            <select asp-for="PlyID" class="form-select" asp-items="ViewBag.PlyID"></select>
+            <select asp-for="PlyID" class="form-select" asp-items="ViewBag.PlyID"
+                    onchange="location.href='@Url.Action("Create", "TarifaServicio")?plySel=' + this.value">
+            </select>
             <span asp-validation-for="PlyID" class="text-danger"></span>
         </div>
 
         <div class="mb-3">
             <label asp-for="SerID" class="form-label">Servicio</label>
-            <select asp-for="SerID" class="form-select" asp-items="ViewBag.SerID"></select>
+            <select asp-for="SerID" class="form-select" asp-items="ViewBag.SerID">
+                <option value="">-- Seleccione un servicio --</option>
+            </select>
             <span asp-validation-for="SerID" class="text-danger"></span>
         </div>
+
 
         <div class="mb-3">
             <label asp-for="ClasVehID" class="form-label">Clase de Vehículo</label>
@@ -37,7 +42,7 @@
             <span asp-validation-for="TasMonto" class="text-danger"></span>
         </div>
 
-        @* 🔴 Bloque para mostrar errores globales (ej: "La playa no ofrece ese servicio.") *@
+        @* 🔴 Errores globales *@
         @if (!ViewData.ModelState.IsValid && ViewData.ModelState[""]?.Errors.Count > 0)
         {
             <div class="alert alert-danger">
@@ -54,6 +59,7 @@
         </div>
     </form>
 </div>
+
 <script>
     // Función para limpiar el valor cuando el campo recibe el foco
     function clearValue(input) {
