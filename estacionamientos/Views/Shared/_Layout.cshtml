@@ -89,7 +89,10 @@
                     @if (User.IsInRole("Playero"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Ocupacion" asp-action="Index">Ingreso/Egreso</a>
+                            <a class="nav-link text-dark" asp-controller="Ocupacion" asp-action="Index">Ingresos/Egresos</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="Turno" asp-action="Index">Mis Turnos</a>
                         </li>
                     }
                 </ul>
@@ -127,17 +130,6 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
                                 <li><hr class="dropdown-divider" /></li>
-
-                                @* 🟢 Agregamos “Mis turnos” acá si es Playero *@
-                                @if (User.IsInRole("Playero"))
-                                {
-                                    <li>
-                                        <a class="dropdown-item text-dark" asp-controller="Turno" asp-action="Index">
-                                            Mis turnos
-                                        </a>
-                                    </li>
-                                    <li><hr class="dropdown-divider" /></li>
-                                }
 
                                 <li>
                                     <a class="dropdown-item text-dark" href="#"
