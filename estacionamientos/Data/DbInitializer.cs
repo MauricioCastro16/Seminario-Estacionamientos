@@ -809,6 +809,56 @@ public static class DbInitializer
         context.Horarios.AddRange(horariosList);
         context.SaveChanges();
 
+// =========================
+// 20) Servicio Extra Realizado (Asociar el 30% de los pagos de cada playa)
+// =========================
+var servicioExtraList = new List<ServicioExtraRealizado>();
+foreach (var playa in playas)
+{
+    // Obtener todos los pagos asociados a la playa
+    var pagosDePlaya = context.Pagos
+        .Where(p => p.PlyID == playa.PlyID)
+        .ToList();
+
+    // Determinar el 30% de los pagos para asociar con un servicio extra realizado
+    int cantidadPagos = (int)(pagosDePlaya.Count * 0.30); // 30% de los pagos de la playa
+    var pagosSeleccionados = pagosDePlaya.Take(cantidadPagos).ToList(); // Seleccionamos el 30%
+
+    // Para cada pago seleccionado, generar un servicio extra realizado
+    foreach (var pago in pagosSeleccionados)
+    {
+        // Obtener un vehículo aleatorio (asegurándonos de que tenga una patente)
+        var vehiculo = faker.PickRandom(context.Vehiculos.Where(v => v.VehPtnt != null).ToList());
+
+        // Seleccionar un servicio extra aleatorio para este pago (servicios disponibles en esta playa)
+        var servicioExtra = faker.PickRandom(context.ServiciosProveidos
+            .Where(sp => sp.PlyID == playa.PlyID) // Solo servicios de esta playa
+            .ToList());
+
+        // Crear un servicio extra realizado
+        var servicioExtraRealizado = new ServicioExtraRealizado
+        {
+            PlyID = playa.PlyID, // Playa asociada
+            SerID = servicioExtra.SerID, // Servicio extra asociado
+            VehPtnt = vehiculo.VehPtnt, // Patente del vehículo
+            ServExFyHIni = faker.Date.Between(DateTime.UtcNow.AddDays(-30), DateTime.UtcNow), // Fecha de inicio aleatoria
+            ServExFyHFin = faker.Random.Bool() ? (DateTime?)faker.Date.Between(DateTime.UtcNow, DateTime.UtcNow.AddDays(7)) : null, // Fecha de fin aleatoria
+            ServExComp = faker.Random.Bool() ? faker.Lorem.Sentence() : null, // Comentario aleatorio
+            PagNum = pago.PagNum, // Número de pago asociado
+            ServicioProveido = servicioExtra, // Relación con el servicio extra
+            Vehiculo = vehiculo, // Relación con el vehículo
+            Pago = pago // Relación con el pago
+        };
+
+        // Añadir el servicio extra realizado a la lista
+        servicioExtraList.Add(servicioExtraRealizado);
+    }
+}
+
+// Guardar los servicios extra realizados en la base de datos
+context.ServiciosExtrasRealizados.AddRange(servicioExtraList);
+context.SaveChanges();
+
 
 
     }
