@@ -772,6 +772,42 @@ public static class DbInitializer
         context.SaveChanges();
 
 
+        // =========================
+        // 19) Horarios de atención de una Playa en una Clasificación de días
+        // =========================
+        var horariosList = new List<Horario>();
+        foreach (var playa in playas)
+        {
+            // Para cada playa, asignamos horarios a cada tipo de día (ClasificacionDias)
+            foreach (var clasificacionDia in context.ClasificacionesDias.ToList())
+            {
+                // Generar entre 1 y 3 franjas horarias por clasificación de días
+                int cantidadHorarios = faker.Random.Int(1, 3); // Entre 1 y 3 franjas horarias por día
+
+                for (int i = 0; i < cantidadHorarios; i++)
+                {
+                    // Hora de inicio aleatoria entre 6:00 AM y 9:00 AM
+                    var horaInicio = faker.Date.Between(DateTime.UtcNow.AddDays(-30), DateTime.UtcNow).AddHours(faker.Random.Int(6, 9)).AddMinutes(faker.Random.Int(0, 59));
+
+                    // Hora de fin aleatoria entre 3 y 5 horas después de la hora de inicio
+                    var horaFin = horaInicio.AddHours(faker.Random.Int(3, 5));
+
+                    // Crear el horario para la combinación de playa y clasificación de días
+                    var horario = new Horario
+                    {
+                        PlyID = playa.PlyID, // ID de la playa
+                        ClaDiasID = clasificacionDia.ClaDiasID, // ID de la clasificación de días
+                        HorFyhIni = horaInicio, // Hora de inicio
+                        HorFyhFin = horaFin // Hora de fin
+                    };
+
+                    horariosList.Add(horario);
+                }
+            }
+        }
+
+        context.Horarios.AddRange(horariosList);
+        context.SaveChanges();
 
 
 
