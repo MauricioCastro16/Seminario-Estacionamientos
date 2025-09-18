@@ -17,13 +17,13 @@
 <div class="container">
     <!-- Encabezado -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">
+        <h1 class="mb-0">
             Tarifas de Servicios
             @if (ViewBag.PlayaNombre != null)
             {
                 <span>: @ViewBag.PlayaNombre</span>
             }
-        </h2>
+        </h1>
 
         <a asp-action="Create"
            asp-route-plySel="@ViewBag.PlyID"

@@ -164,19 +164,24 @@ namespace estacionamientos.Controllers
             }
 
 
-            var vm = new TarifasIndexVM
-                {
-                    Tarifas = await tarifas.AsNoTracking().ToListAsync(),
-                    Q = q ?? "",
-                    FilterBy = filterBy,
-                    Playas = Playas ?? new(),
-                    Servicios = Servicios ?? new(),
-                    Clases = Clases ?? new(),
-                    Vigencias = Vigencias ?? new(),
-                    Todos = Todos ?? new(),
-                    SelectedOption = selectedOption
-                };
+            var lista = await tarifas
+                .AsNoTracking()
+                .OrderByDescending(t => t.TasFecFin == null || t.TasFecFin > DateTime.UtcNow) // 👈 primero vigentes
+                .ThenBy(t => t.ServicioProveido.Servicio.SerNom) // 👈 opcional: orden alfabético por servicio
+                .ToListAsync();
 
+            var vm = new TarifasIndexVM
+            {
+                Tarifas = lista,
+                Q = q ?? "",
+                FilterBy = filterBy,
+                Playas = Playas ?? new(),
+                Servicios = Servicios ?? new(),
+                Clases = Clases ?? new(),
+                Vigencias = Vigencias ?? new(),
+                Todos = Todos ?? new(),
+                SelectedOption = selectedOption
+            };
                 // Pasamos el plyID a la vista para usarlo en el botón "Nueva Tarifa"
                 ViewBag.PlyID = plyID;
 
