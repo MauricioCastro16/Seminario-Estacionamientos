@@ -227,7 +227,6 @@ namespace estacionamientos.Controllers
 
             await LoadSelects(plySel);
 
-            // 👉 acá cargamos el nombre
             var playa = await _ctx.Playas
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.PlyID == plySel);
@@ -278,6 +277,13 @@ namespace estacionamientos.Controllers
                 if (!ModelState.IsValid)
                 {
                     await LoadSelects(model.PlyID, model.SerID, model.ClasVehID);
+
+                    // 🔴 Recuperar nombre de la playa para que no se borre
+                    ViewBag.PlayaNombre = await _ctx.Playas
+                        .Where(p => p.PlyID == model.PlyID)
+                        .Select(p => p.PlyNom)
+                        .FirstOrDefaultAsync();
+
                     return View(model);
                 }
 
@@ -301,10 +307,15 @@ namespace estacionamientos.Controllers
             {
                 ModelState.AddModelError("", $"Error: {ex.Message}");
                 await LoadSelects(model.PlyID, model.SerID, model.ClasVehID);
+
+                ViewBag.PlayaNombre = await _ctx.Playas
+                    .Where(p => p.PlyID == model.PlyID)
+                    .Select(p => p.PlyNom)
+                    .FirstOrDefaultAsync();
+
                 return View(model);
             }
         }
-
 
         // EDIT GET
         [Authorize(Roles = "Duenio")]
