@@ -17,13 +17,27 @@
 <div class="container">
     <!-- Encabezado -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Tarifas de Servicios</h2>
-        <a asp-action="Create" class="btn btn-primary">+ Nueva Tarifa</a>
+        <h2 class="mb-0">
+            Tarifas de Servicios
+            @if (ViewBag.PlayaNombre != null)
+            {
+                <span>: @ViewBag.PlayaNombre</span>
+            }
+        </h2>
+
+        <a asp-action="Create"
+           asp-route-plySel="@ViewBag.PlyID"
+           class="btn btn-primary">
+            + Nueva Tarifa
+        </a>
     </div>
 
     <!-- Formulario de búsqueda/filtros -->
     <form method="get" id="searchForm" class="row g-2 align-items-center">
-        <!-- Campo de texto (para playa, servicio, clase, todos) -->
+        <!-- 👇 input oculto para mantener la playa -->
+        <input type="hidden" name="plyID" value="@ViewBag.PlyID" />
+
+        <!-- Campo de texto -->
         <div class="col-md-5 @(Model.FilterBy == "vigencia" ? "d-none" : "")" id="qWrapper">
             <input name="Q" id="qInput" value="@Model.Q" class="form-control" placeholder="Buscar..." />
         </div>
@@ -36,7 +50,6 @@
                     selected="@(Model.SelectedOption != null && Model.SelectedOption.Equals("Vigente", StringComparison.OrdinalIgnoreCase) ? "selected" : null)">
                     Vigente
                 </option>
-
                 <option value="No vigente"
                     selected="@(Model.SelectedOption != null && Model.SelectedOption.Equals("No vigente", StringComparison.OrdinalIgnoreCase) ? "selected" : null)">
                     No vigente
@@ -54,10 +67,9 @@
                 </button>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="#" data-value="all">Todos</a></li>
-                    <li><a class="dropdown-item" href="#" data-value="playa">Playa</a></li>
                     <li><a class="dropdown-item" href="#" data-value="servicio">Servicio</a></li>
                     <li><a class="dropdown-item" href="#" data-value="clase">Clase</a></li>
-                    <li><a class="dropdown-item" href="#" data-value="vigencia">Vigencia</a></li> <!-- 👈 agregado -->
+                    <li><a class="dropdown-item" href="#" data-value="vigencia">Vigencia</a></li>
                 </ul>
             </div>
         </div>
@@ -68,21 +80,19 @@
                 <i class="bi bi-search"></i>
             </button>
             <a id="btnLimpiar"
-            class="btn btn-outline-secondary"
-            asp-action="Index"
-            title="Limpiar filtros">
+               class="btn btn-outline-secondary"
+               asp-action="Index"
+               asp-route-plyID="@ViewBag.PlyID"
+               title="Limpiar filtros">
                 <i class="bi bi-x-circle"></i>
             </a>
         </div>
     </form>
 
-
-
     <!-- Tabla -->
     <table class="table table-hover align-middle">
         <thead>
             <tr>
-                <th>Playa</th>
                 <th>Servicio</th>
                 <th>Clase Vehículo</th>
                 <th>Vigencia</th>
@@ -103,7 +113,6 @@
             {
                 var esVigente = item.TasFecFin == null || item.TasFecFin > DateTime.Now;
                 <tr class="@(esVigente ? "" : "table-secondary")">
-                    <td>@item.ServicioProveido.Playa.PlyNom</td>
                     <td>@item.ServicioProveido.Servicio.SerNom</td>
                     <td>@item.ClasificacionVehiculo.ClasVehTipo</td>
                     <td>
@@ -162,6 +171,15 @@
     </table>
 </div>
 
+@if (ViewBag.PlayaNombre != null)
+{
+    <div class="mt-3">
+        <a asp-controller="PlayaEstacionamiento" asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+}
+
 <script>
   const mapLbl = {
     all: 'Todos',
@@ -181,14 +199,13 @@
       document.getElementById('filterBy').value = value;
       document.getElementById('filterBtn').innerHTML =
         '<i class="bi bi-funnel"></i> Filtrar: ' + (mapLbl[value] || 'Todos');
-
-      formEl.submit(); // 👈 actualizar automáticamente
+      formEl.submit();
     });
   });
 
   // Cambiar la opción de Vigencia
   document.getElementById('vigSelect')?.addEventListener('change', () => {
-    formEl.submit(); // 👈 actualizar automáticamente
+    formEl.submit();
   });
 
   // Buscar con Enter en el input de texto
@@ -199,4 +216,3 @@
     }
   });
 </script>
-

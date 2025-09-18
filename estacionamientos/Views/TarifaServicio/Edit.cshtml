@@ -27,7 +27,9 @@
 
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary">Guardar</button>
-            <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+            <a asp-action="Index"
+               asp-route-plyID="@Model.PlyID"
+               class="btn btn-secondary">Cancelar</a>
         </div>
     </form>
 </div>

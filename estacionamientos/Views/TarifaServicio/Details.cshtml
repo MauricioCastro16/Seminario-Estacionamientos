@@ -33,5 +33,13 @@
     <dd class="col-sm-9">$@Model.TasMonto</dd>
 </dl>
 
-<a asp-action="Edit" asp-route-plyID="@Model.PlyID" asp-route-serID="@Model.SerID" asp-route-clasVehID="@Model.ClasVehID" asp-route-tasFecIni="@Model.TasFecIni" class="btn btn-primary flex-fill">Editar</a>
-<a asp-action="Index" class="btn btn-secondary">Volver</a>
+<a asp-action="Edit"
+   asp-route-plyID="@Model.PlyID"
+   asp-route-serID="@Model.SerID"
+   asp-route-clasVehID="@Model.ClasVehID"
+   asp-route-tasFecIni="@Model.TasFecIni"
+   class="btn btn-primary flex-fill">Editar</a>
+
+<a asp-action="Index"
+   asp-route-plyID="@Model.PlyID"
+   class="btn btn-secondary">Volver</a>

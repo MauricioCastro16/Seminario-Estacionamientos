@@ -8,11 +8,9 @@
 
     <form asp-action="Create" method="post" class="card p-4 shadow-sm">
         <div class="mb-3">
-            <label asp-for="PlyID" class="form-label">Playa</label>
-            <select asp-for="PlyID" class="form-select" asp-items="ViewBag.PlyID"
-                    onchange="location.href='@Url.Action("Create", "TarifaServicio")?plySel=' + this.value">
-            </select>
-            <span asp-validation-for="PlyID" class="text-danger"></span>
+            <label class="form-label">Playa</label>
+            <input type="hidden" asp-for="PlyID" />
+            <input type="text" class="form-control bg-light fw-bold" value="@ViewBag.PlayaNombre" readonly />
         </div>
 
         <div class="mb-3">
@@ -55,7 +53,10 @@
         
         <div class="d-flex w-100 mt-4 gap-2">
             <button type="submit" class="btn btn-primary flex-fill" id="btnGuardar">Guardar Cambios</button>
-            <a asp-controller="TarifaServicio" asp-action="Index" class="btn btn-outline-secondary flex-fill">Cancelar</a>
+            <a asp-controller="TarifaServicio"
+               asp-action="Index"
+               asp-route-plyID="@Model.PlyID"   
+               class="btn btn-outline-secondary flex-fill">Cancelar</a>
         </div>
     </form>
 </div>

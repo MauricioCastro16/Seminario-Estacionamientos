@@ -30,6 +30,8 @@
     <input type="hidden" asp-for="ClasVehID" />
     <input type="hidden" asp-for="TasFecIni" />
 
-    <button type="submit" class="btn btn-danger">Cerrar Tarifa</button>
-    <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+     <button type="submit" class="btn btn-danger">Cerrar Tarifa</button>
+    <a asp-action="Index"
+       asp-route-plyID="@Model.PlyID" 
+       class="btn btn-secondary">Cancelar</a>
 </form>

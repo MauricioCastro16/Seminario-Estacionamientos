@@ -65,14 +65,28 @@ namespace estacionamientos.Controllers
             List<string>? Clases = null,
             List<string>? Vigencias = null,
             List<string>? Todos = null,
-            string? selectedOption = null,   // 👈 ahora queda antes
-            string? remove = null)           // 👈 último
+            string? selectedOption = null,
+            string? remove = null,
+            int? plyID = null)   // 👈 nuevo
         {
             var tarifas = _ctx.TarifasServicio
                 .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Playa)
                 .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Servicio)
                 .Include(t => t.ClasificacionVehiculo)
                 .AsQueryable();
+
+            if (plyID.HasValue)
+            {
+                tarifas = tarifas.Where(t => t.PlyID == plyID.Value);
+
+                // Traer el nombre de la playa para mostrarlo en la vista
+                var playa = await _ctx.Playas
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PlyID == plyID.Value);
+
+                if (playa != null)
+                    ViewBag.PlayaNombre = playa.PlyNom;
+            }
 
             // quitar un filtro (igual que en Playas)
             if (!string.IsNullOrEmpty(remove))
@@ -122,16 +136,22 @@ namespace estacionamientos.Controllers
 
             // filtros acumulados
             if (Playas?.Any() ?? false)
-                tarifas = tarifas.Where(t => Playas
-                    .Any(p => p.Equals(t.ServicioProveido.Playa.PlyNom, StringComparison.OrdinalIgnoreCase)));
+            {
+                var playasLower = Playas.Select(p => p.ToLower()).ToList();
+                tarifas = tarifas.Where(t => playasLower.Contains(t.ServicioProveido.Playa.PlyNom.ToLower()));
+            }
 
             if (Servicios?.Any() ?? false)
-                tarifas = tarifas.Where(t => Servicios
-                    .Any(s => s.Equals(t.ServicioProveido.Servicio.SerNom, StringComparison.OrdinalIgnoreCase)));
+            {
+                var serviciosLower = Servicios.Select(s => s.ToLower()).ToList();
+                tarifas = tarifas.Where(t => serviciosLower.Contains(t.ServicioProveido.Servicio.SerNom.ToLower()));
+            }
 
             if (Clases?.Any() ?? false)
-                tarifas = tarifas.Where(t => Clases
-                    .Any(c => c.Equals(t.ClasificacionVehiculo.ClasVehTipo, StringComparison.OrdinalIgnoreCase)));
+            {
+                var clasesLower = Clases.Select(c => c.ToLower()).ToList();
+                tarifas = tarifas.Where(t => clasesLower.Contains(t.ClasificacionVehiculo.ClasVehTipo.ToLower()));
+            }
 
             if (Vigencias?.Any() ?? false)
             {
@@ -143,21 +163,25 @@ namespace estacionamientos.Controllers
                     tarifas = tarifas.Where(t => t.TasFecFin != null && t.TasFecFin <= ahora);
             }
 
-            var vm = new TarifasIndexVM
-            {
-                Tarifas = await tarifas.AsNoTracking().ToListAsync(),
-                Q = q ?? "",
-                FilterBy = filterBy,
-                Playas = Playas ?? new(),
-                Servicios = Servicios ?? new(),
-                Clases = Clases ?? new(),
-                Vigencias = Vigencias ?? new(),
-                Todos = Todos ?? new(),
-                SelectedOption = selectedOption
-            };
 
-            return View(vm);
-        }
+            var vm = new TarifasIndexVM
+                {
+                    Tarifas = await tarifas.AsNoTracking().ToListAsync(),
+                    Q = q ?? "",
+                    FilterBy = filterBy,
+                    Playas = Playas ?? new(),
+                    Servicios = Servicios ?? new(),
+                    Clases = Clases ?? new(),
+                    Vigencias = Vigencias ?? new(),
+                    Todos = Todos ?? new(),
+                    SelectedOption = selectedOption
+                };
+
+                // Pasamos el plyID a la vista para usarlo en el botón "Nueva Tarifa"
+                ViewBag.PlyID = plyID;
+
+                return View(vm);
+            }
 
         // DETAILS
         [Authorize(Roles = "Duenio")]
@@ -197,6 +221,14 @@ namespace estacionamientos.Controllers
             }
 
             await LoadSelects(plySel);
+
+            // 👉 acá cargamos el nombre
+            var playa = await _ctx.Playas
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.PlyID == plySel);
+
+            ViewBag.PlayaNombre = playa?.PlyNom ?? "";
+
 
             return View(new TarifaServicio
             {
@@ -253,7 +285,7 @@ namespace estacionamientos.Controllers
 
                 if (TempData["Saved"] != null)
                 {
-                    return RedirectToAction("Index", "TarifaServicio"); // Redirigir a la acción Index de TarifaServicio
+                    return RedirectToAction(nameof(Index), new { plyID = model.PlyID });
                 }
                 else
                 {
@@ -325,7 +357,7 @@ namespace estacionamientos.Controllers
 
             _ctx.Entry(model).State = EntityState.Modified;
             await _ctx.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { plyID = model.PlyID });
         }
 
 
@@ -364,8 +396,7 @@ namespace estacionamientos.Controllers
 
             _ctx.Update(item);
             await _ctx.SaveChangesAsync();
-
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { plyID = plyID });
         }
 
         [Authorize(Roles = "Playero")]

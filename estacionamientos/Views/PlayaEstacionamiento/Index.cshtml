@@ -305,8 +305,13 @@
                           title="Gestionar Servicios">
                             <i class="bi bi-clipboard2-check-fill"></i> 
                         </a>
-
-
+                        <a class="btn btn-outline-secondary btn-sm"
+                          asp-action="Index"
+                          asp-controller="TarifaServicio"
+                          asp-route-plyID="@playa.PlyID"
+                          title="Ver tarifas">
+                            <i class="bi bi-cash-stack"></i>
+                        </a>
                     </td>
                 </tr>
             }
