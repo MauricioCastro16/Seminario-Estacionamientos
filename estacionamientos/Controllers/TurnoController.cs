@@ -223,7 +223,7 @@ namespace estacionamientos.Controllers
             _ctx.Turnos.Add(model);
             await _ctx.SaveChangesAsync();
 
-            TempData["Ok"] = "Turno iniciado.";
+            TempData["Ok"] = " Turno iniciado.";
 
             var returnUrl = Request.Form["returnUrl"].FirstOrDefault() ?? Request.Query["returnUrl"].FirstOrDefault();
             if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
@@ -306,7 +306,7 @@ namespace estacionamientos.Controllers
 
             _ctx.Update(db);
             await _ctx.SaveChangesAsync();
-            TempData["Ok"] = "Turno actualizado.";
+            TempData["Ok"] = " Turno actualizado.";
 
             // --- CAMBIO mínimo: respetar returnUrl (query o form) ---
             var returnUrl = Request.Form["returnUrl"].FirstOrDefault() ?? Request.Query["returnUrl"].FirstOrDefault();
@@ -342,7 +342,7 @@ namespace estacionamientos.Controllers
 
             _ctx.Turnos.Remove(item);
             await _ctx.SaveChangesAsync();
-            TempData["Ok"] = "Turno eliminado.";
+            TempData["Ok"] = " Turno eliminado.";
             return RedirectToAction(nameof(Index));
         }
     }
