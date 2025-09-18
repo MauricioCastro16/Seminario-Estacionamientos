@@ -49,7 +49,7 @@
                 <input type="hidden" name="FilterBy" id="filterBy" value="@Model.FilterBy" />
                 <button type="button" class="btn btn-outline-secondary dropdown-toggle"
                         data-bs-toggle="dropdown" aria-expanded="false" id="filterBtn">
-                    <i class="bi bi-funnel"></i> Filtrar: @LabelFiltro(Model.FilterBy)
+                    <i class="fa-solid fa-filter"></i> Filtrar: @LabelFiltro(Model.FilterBy)
                 </button>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="#" data-value="all">Todos</a></li>
@@ -64,13 +64,13 @@
         <!-- Buscar + Limpiar -->
         <div class="col-auto">
             <button type="submit" class="btn btn-secondary" title="Buscar">
-                <i class="bi bi-search"></i>
+                <i class="fa-solid fa-magnifying-glass"></i>
             </button>
             <a id="btnLimpiar"
             class="btn btn-outline-secondary @(hayFiltros ? "" : "d-none")"
             asp-action="Index"
             title="Limpiar filtros">
-                <i class="bi bi-x-circle"></i>
+        <i class="fa-regular fa-circle-xmark"></i>
             </a>
         </div>
 
@@ -80,7 +80,7 @@
             asp-controller="PlayaEstacionamiento"
             asp-action="Create"
             title="Agregar playa">
-                <i class="bi bi-plus-lg me-1"></i> Agregar Playa
+        <i class="fa-solid fa-plus"></i> Agregar Playa
             </a>
         </div>
 
@@ -145,7 +145,7 @@
                     asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
                     asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
                     title="Quitar">
-                      <i class="bi bi-x-circle"></i>
+                      <i class="fa-regular fa-circle-xmark"></i>
                   </a>
               </span>
           }
@@ -170,7 +170,7 @@
                     asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
                     asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
                     title="Quitar">
-                      <i class="bi bi-x-circle"></i>
+                      <i class="fa-regular fa-circle-xmark"></i>
                   </a>
               </span>
           }
@@ -195,7 +195,7 @@
                     asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
                     asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
                     title="Quitar">
-                      <i class="bi bi-x-circle"></i>
+              <i class="fa-regular fa-circle-xmark"></i>
                   </a>
               </span>
           }
@@ -220,7 +220,7 @@
                     asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
                     asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
                     title="Quitar">
-                      <i class="bi bi-x-circle"></i>
+              <i class="fa-regular fa-circle-xmark"></i>
                   </a>
               </span>
           }
@@ -245,7 +245,7 @@
                     asp-route-Direcciones="@(string.Join(",", Model.Direcciones ?? new List<string>()))"
                     asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
                     title="Quitar">
-                      <i class="bi bi-x-circle"></i>
+                      <i class="fa-regular fa-circle-xmark"></i>
                   </a>
               </span>
           }
@@ -289,28 +289,28 @@
                            asp-controller="PlazaEstacionamiento"
                            asp-route-plyID="@playa.PlyID"
                            title="Configurar Plazas">
-                            <i class="bi bi-grid"></i>
+                            <i class="fa-solid fa-grip"></i>
                         </a>
                         <a class="btn btn-outline-secondary btn-sm"
                            asp-action="Index"
                            asp-controller="AceptaMetodoPago"
                            asp-route-plyID="@playa.PlyID"
                            title="Métodos de Pago">
-                            <i class="bi bi-credit-card"></i>
+                            <i class="fa-regular fa-credit-card"></i>
                         </a>
                         <a class="btn btn-outline-primary btn-sm"
                           asp-action="Servicios"
                           asp-controller="ServicioProveido"
                           asp-route-plyID="@playa.PlyID"
                           title="Gestionar Servicios">
-                            <i class="bi bi-clipboard2-check-fill"></i> 
+                            <i class="fa-regular fa-clipboard"></i>
                         </a>
                         <a class="btn btn-outline-secondary btn-sm"
                           asp-action="Index"
                           asp-controller="TarifaServicio"
                           asp-route-plyID="@playa.PlyID"
                           title="Ver tarifas">
-                            <i class="bi bi-cash-stack"></i>
+                            <i class="fa-solid fa-money-bills"></i>
                         </a>
                     </td>
                 </tr>
@@ -343,7 +343,7 @@
     }
 
     document.getElementById('filterBtn').innerHTML =
-      '<i class="bi bi-funnel"></i> Filtrar: ' + (mapLbl[fb] || 'Todos');
+      '<i class="fa-solid fa-filter"></i> Filtrar: ' + (mapLbl[fb] || 'Todos');
 
     toggleLimpiar();
     toggleAddButton(); // << clave: actualizar el estado del botón al cambiar de filtro
