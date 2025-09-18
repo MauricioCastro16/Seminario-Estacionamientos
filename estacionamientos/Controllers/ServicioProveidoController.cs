@@ -90,26 +90,6 @@ namespace estacionamientos.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        public async Task<IActionResult> Delete(int plyID, int serID)
-        {
-            var item = await _ctx.ServiciosProveidos
-                .Include(sp => sp.Playa)
-                .Include(sp => sp.Servicio)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(sp => sp.PlyID == plyID && sp.SerID == serID);
-            return item is null ? NotFound() : View(item);
-        }
-
-        [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int plyID, int serID)
-        {
-            var item = await _ctx.ServiciosProveidos.FindAsync(plyID, serID);
-            if (item is null) return NotFound();
-            _ctx.ServiciosProveidos.Remove(item);
-            await _ctx.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
         public async Task<IActionResult> Servicios(int plyID)
         {
             var playa = await _ctx.Playas
@@ -123,11 +103,12 @@ namespace estacionamientos.Controllers
             // Obtener todos los servicios disponibles
             var serviciosDisponibles = await _ctx.Servicios.AsNoTracking().ToListAsync();
 
-            // Obtener los servicios ya asociados a la playa
+            // Solo los habilitados se marcan como asignados
             var serviciosAsignados = await _ctx.ServiciosProveidos
-                .Where(sp => sp.PlyID == plyID)
+                .Where(sp => sp.PlyID == plyID && sp.SerProvHab)
                 .Select(sp => sp.SerID)
                 .ToListAsync();
+
 
             // Pasar los servicios a la vista
             var viewModel = new ServiciosViewModel
@@ -149,6 +130,23 @@ namespace estacionamientos.Controllers
             if (servicioProveido != null)
             {
                 servicioProveido.SerProvHab = habilitado;
+
+                // 👇 Si se deshabilita, cerrar todas las tarifas vigentes
+                if (!habilitado)
+                {
+                    var tarifasVigentes = await _ctx.TarifasServicio
+                        .Where(t => t.PlyID == plyID &&
+                                    t.SerID == serID &&
+                                    t.TasFecFin == null)
+                        .ToListAsync();
+
+                    foreach (var t in tarifasVigentes)
+                    {
+                        t.TasFecFin = DateTime.UtcNow; // o la fecha que vos definas como baja
+                        _ctx.TarifasServicio.Update(t);
+                    }
+                }
+
                 await _ctx.SaveChangesAsync();
             }
 
@@ -158,28 +156,41 @@ namespace estacionamientos.Controllers
         [HttpPost]
         public async Task<IActionResult> AsignarServicios(ServiciosViewModel model)
         {
-            // Eliminar los servicios existentes asociados a la playa
+            // Traer todos los servicios que ya existen para la playa
             var serviciosExistentes = await _ctx.ServiciosProveidos
                 .Where(sp => sp.PlyID == model.PlayaID)
                 .ToListAsync();
 
-            _ctx.ServiciosProveidos.RemoveRange(serviciosExistentes);
-
-            foreach (var servicioID in model.ServiciosAsignados)
+            // Marcar todos como deshabilitados inicialmente
+            // Activar/desactivar según la selección
+            foreach (var sp in serviciosExistentes)
             {
-                _ctx.ServiciosProveidos.Add(new ServicioProveido
-                {
-                    PlyID = model.PlayaID,
-                    SerID = servicioID, // Ahora estamos agregando el ID del servicio
-                    SerProvHab = true // Estado activo
-                });
-            }
+                bool debeHabilitar = model.ServiciosAsignados.Contains(sp.SerID);
 
+                if (sp.SerProvHab != debeHabilitar)
+                {
+                    sp.SerProvHab = debeHabilitar;
+
+                    if (!debeHabilitar)
+                    {
+                        // Cierro solo si lo estoy deshabilitando ahora
+                        var tarifasVigentes = await _ctx.TarifasServicio
+                            .Where(t => t.PlyID == sp.PlyID &&
+                                        t.SerID == sp.SerID &&
+                                        t.TasFecFin == null)
+                            .ToListAsync();
+
+                        foreach (var t in tarifasVigentes)
+                            t.TasFecFin = DateTime.UtcNow;
+                    }
+                }
+            }
 
             await _ctx.SaveChangesAsync();
 
-            return RedirectToAction("Index", "PlayaEstacionamiento"); // O la página que prefieras
+            return RedirectToAction("Index", "PlayaEstacionamiento");
         }
+
 
 
     }
