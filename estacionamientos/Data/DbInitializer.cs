@@ -441,6 +441,426 @@ public static class DbInitializer
         context.Plazas.AddRange(plazas);
         context.SaveChanges();
 
+        // =========================
+        // 10) Conductores (10 en total)
+        // =========================
+        var conductores = new List<Conductor>();
+        for (int i = 0; i < 10; i++) // Puedes ajustar la cantidad de conductores
+        {
+            var correo = faker.Internet.Email();
+            if (!correo.Contains("@")) correo += "@mail.com";
+
+            conductores.Add(new Conductor
+            {
+                UsuNU = nextUsuNu++, // ID incremental
+                UsuNyA = faker.Name.FullName(),
+                UsuEmail = correo,
+                UsuPswd = "12345678",
+                UsuNumTel = faker.Phone.PhoneNumber("##########"),
+                // Las colecciones las dejamos vacías por ahora, pero puedes agregarlas si lo necesitas
+                Conducciones = new List<Conduce>(),
+                UbicacionesFavoritas = new List<UbicacionFavorita>(),
+                Valoraciones = new List<Valoracion>()
+            });
+        }
+
+        context.Conductores.AddRange(conductores);
+        context.SaveChanges();
+
+
+        // =========================
+        // 11) Ubicaciones favoritas (2-4 por conductor) 
+        // =========================
+        var ubicacionesFavoritas = new List<UbicacionFavorita>();
+        foreach (var conductor in conductores)
+        {
+            int cantidadUbicaciones = faker.Random.Int(2, 4); // 2 a 4 ubicaciones por conductor
+            for (int j = 0; j < cantidadUbicaciones; j++)
+            {
+                var ubicacion = new UbicacionFavorita
+                {
+                    ConNU = conductor.UsuNU, // Asociamos al conductor
+                    UbfApodo = faker.Commerce.ProductName(), // Nombre o apodo
+                    UbfProv = faker.Address.State(), // Provincia
+                    UbfCiu = faker.Address.City(), // Ciudad
+                    UbfDir = faker.Address.StreetAddress(), // Dirección
+                    UbfTipo = faker.Random.Bool() ? "Casa" : "Trabajo" // Tipo aleatorio
+                };
+
+                ubicacionesFavoritas.Add(ubicacion);
+            }
+        }
+
+        context.UbicacionesFavoritas.AddRange(ubicacionesFavoritas);
+        context.SaveChanges();
+
+        // =========================
+        // 12) Valoraciones (2-3 por conductor)
+        // =========================
+        var valoraciones = new List<Valoracion>();
+        foreach (var conductor in conductores)
+        {
+            int cantidadValoraciones = faker.Random.Int(2, 3); // 2 a 3 valoraciones por conductor
+            var playasValoradas = new HashSet<int>(); // Conjunto para asegurarnos que un conductor no valore más de una vez la misma playa
+
+            for (int j = 0; j < cantidadValoraciones; j++)
+            {
+                // Seleccionamos una playa aleatoria que el conductor aún no haya valorado
+                PlayaEstacionamiento playa;
+                do
+                {
+                    playa = faker.PickRandom(context.Playas.ToList()); // Elegir una playa aleatoria
+                }
+                while (playasValoradas.Contains(playa.PlyID)); // Aseguramos que la playa no ha sido valorada aún por este conductor
+
+                // Añadimos la playa a las playas valoradas para este conductor
+                playasValoradas.Add(playa.PlyID);
+
+                // Crear la valoracion
+                valoraciones.Add(new Valoracion
+                {
+                    PlyID = playa.PlyID, // ID de la playa asociada
+                    ConNU = conductor.UsuNU, // ID del conductor asociado
+                    ValNumEst = faker.Random.Int(1, 5), // Estrellas entre 1 y 5
+                    ValFav = faker.Random.Bool(), // Aleatorio si es favorito o no
+                });
+            }
+        }
+
+        context.Valoraciones.AddRange(valoraciones);
+        context.SaveChanges();
+
+        // =========================
+        // 13) Abonados (5% de los conductores)
+        // =========================
+        var abonados = new List<Abonado>();
+        var conductoresAbonados = conductores
+            .Where(c => faker.Random.Float() <= 0.05f) // 5% de los conductores
+            .ToList();
+
+        foreach (var conductor in conductoresAbonados)
+        {
+            var abonado = new Abonado
+            {
+                AboDNI = faker.Random.ReplaceNumbers("########"), // DNI aleatorio
+                AboNom = conductor.UsuNyA, // Nombre del conductor
+                ConNU = conductor.UsuNU, // Conductor asociado
+            };
+
+            abonados.Add(abonado);
+        }
+
+        context.Abonados.AddRange(abonados);
+        context.SaveChanges();
+
+        // =========================
+        // 14) Vehiculos
+        // =========================
+        var vehiculos = new List<Vehiculo>();
+        foreach (var conductor in conductores)
+        {
+            int cantidadVehiculos = faker.Random.Int(1, 2); // Cada conductor puede tener 1 o 2 vehículos
+            for (int j = 0; j < cantidadVehiculos; j++)
+            {
+                var vehiculo = new Vehiculo
+                {
+                    VehPtnt = faker.Vehicle.Vin().Substring(0, 10), // Generar un número de patente aleatorio, limitada a 10 caracteres
+                    VehMarc = faker.Vehicle.Manufacturer(), // Generar marca del vehículo
+                    ClasVehID = faker.PickRandom(context.ClasificacionesVehiculo.Select(c => c.ClasVehID).ToList()) // Asignar clasificación aleatoria
+                };
+
+                vehiculos.Add(vehiculo);
+            }
+        }
+
+        context.Vehiculos.AddRange(vehiculos);
+        context.SaveChanges();
+
+        // =========================
+        // 15) Conduce (Asociar vehículos con conductores)
+        // =========================
+        var conduceList = new List<Conduce>();
+        foreach (var conductor in conductores)
+        {
+            // Seleccionamos aleatoriamente entre 1 y 2 vehículos para cada conductor
+            var cantidadVehiculos = faker.Random.Int(1, 2); // Cada conductor puede tener entre 1 o 2 vehículos
+            var vehiculosDisponibles = vehiculos.ToList(); // Lista de vehículos disponibles
+
+            // Asociar vehículos al conductor
+            var vehiculosAsignados = faker.PickRandom(vehiculosDisponibles, cantidadVehiculos).ToList();
+
+            foreach (var vehiculo in vehiculosAsignados)
+            {
+                // Crear la relación en la tabla intermedia
+                conduceList.Add(new Conduce
+                {
+                    ConNU = conductor.UsuNU, // ID del conductor
+                    VehPtnt = vehiculo.VehPtnt, // Patente del vehículo
+                    Conductor = conductor, // Relación de navegación con Conductor
+                    Vehiculo = vehiculo // Relación de navegación con Vehículo
+                });
+            }
+        }
+
+        context.Conduces.AddRange(conduceList);
+        context.SaveChanges();
+
+        // =========================
+        // 16) Pagos (5-10 por playa)
+        // =========================
+        var pagosList = new List<Pago>();
+        foreach (var playa in playas)
+        {
+            // Obtener los métodos de pago disponibles para esta playa
+            var metodosPago = context.AceptaMetodosPago
+                .Where(ap => ap.PlyID == playa.PlyID)  // Métodos aceptados por la playa
+                .ToList();
+
+            // Seleccionar un número aleatorio de pagos entre 5 y 10 por playa
+            int cantidadPagos = faker.Random.Int(5, 10);
+
+            for (int i = 0; i < cantidadPagos; i++)
+            {
+                // Seleccionar un método de pago aleatorio de los aceptados por la playa
+                var metodoPago = faker.PickRandom(metodosPago);
+
+                // Crear un nuevo pago
+                var pago = new Pago
+                {
+                    PlyID = playa.PlyID, // ID de la playa asociada
+                    PagNum = i + 1, // Número de pago (podrías usar un contador si prefieres secuencias)
+                    MepID = metodoPago.MepID, // ID del método de pago
+                    PagMonto = faker.Random.Decimal(100, 5000), // Monto del pago (ajustable según necesidades)
+                    PagFyh = faker.Date.Between(DateTime.UtcNow.AddDays(-30), DateTime.UtcNow), // Fecha y hora de pago
+                    Playa = playa, // Relación de navegación con Playa
+                    MetodoPago = metodoPago.MetodoPago, // Relación de navegación con MetodoPago
+                    AceptaMetodoPago = metodoPago // Relación con AceptaMetodoPago
+                };
+
+                pagosList.Add(pago);
+            }
+        }
+
+        context.Pagos.AddRange(pagosList);
+        context.SaveChanges();
+
+        // =========================
+        // 17) Ocupaciones (2-5 por playa)
+        // =========================
+        var ocupacionesList = new List<Ocupacion>();
+        foreach (var playa in playas)
+        {
+            // Obtener las plazas disponibles para la playa (filtrar por plazas no ocupadas)
+            var plazasDisponibles = context.Plazas
+                .Where(p => p.PlyID == playa.PlyID && !p.PlzOcupada) // Solo las plazas no ocupadas
+                .ToList();
+
+            // Seleccionar un número aleatorio de ocupaciones entre 2 y 5 por playa
+            int cantidadOcupaciones = faker.Random.Int(2, 5);
+
+            for (int i = 0; i < cantidadOcupaciones; i++)
+            {
+                // Seleccionar una plaza aleatoria para la ocupación
+                var plaza = faker.PickRandom(plazasDisponibles);
+
+                // Obtener un vehículo aleatorio para la ocupación (debe estar disponible)
+                var vehiculosDisponibles = context.Vehiculos
+                    .Where(v => v.ClasVehID == plaza.ClasVehID) // El vehículo debe ser compatible con la plaza
+                    .ToList();
+
+                var vehiculo = faker.PickRandom(vehiculosDisponibles); // Elegir un vehículo aleatorio
+
+                // Obtener un método de pago aleatorio (aceptado por la playa)
+                var metodoPago = faker.PickRandom(context.AceptaMetodosPago
+                    .Where(ap => ap.PlyID == playa.PlyID)
+                    .ToList());
+
+                // Verificar si la plaza ya tiene un pago registrado
+                var pagoExistente = context.Pagos
+                    .FirstOrDefault(p => p.PlyID == playa.PlyID && p.PagNum == i + 1); // Número de pago único por cada ocupación
+
+                if (pagoExistente != null) // Si ya existe un pago
+                {
+                    // Si el pago ya existe, liberamos la plaza
+                    plaza.PlzOcupada = false;
+                }
+                else
+                {
+                    // Si no hay pago, ocupamos la plaza
+                    plaza.PlzOcupada = true;
+                }
+
+                // Crear la ocupación
+                var ocupacion = new Ocupacion
+                {
+                    PlyID = playa.PlyID,
+                    PlzNum = plaza.PlzNum,
+                    VehPtnt = vehiculo.VehPtnt,
+                    OcufFyhIni = faker.Date.Between(DateTime.UtcNow.AddDays(-7), DateTime.UtcNow), // Fecha de ingreso aleatoria
+                    OcufFyhFin = faker.Random.Bool() ? (DateTime?)faker.Date.Between(DateTime.UtcNow, DateTime.UtcNow.AddDays(7)) : null, // Fecha de egreso opcional
+                    OcuLlavDej = faker.Random.Bool(), // Aleatorio si se dejaron llaves
+                    PagNum = faker.Random.Int(1, 100), // Asignar un número de pago aleatorio
+                    Plaza = plaza, // Relación con la plaza
+                    Vehiculo = vehiculo, // Relación con el vehículo
+                    Pago = pagoExistente ?? new Pago // Si hay pago, asignamos el pago, si no, lo dejamos vacío
+                    {
+                        PlyID = playa.PlyID,
+                        PagNum = i + 1, // Número de pago único por cada ocupación
+                        MepID = metodoPago.MepID, // Método de pago
+                        PagMonto = faker.Random.Decimal(100, 5000), // Monto aleatorio
+                        PagFyh = DateTime.Now // Fecha de pago actual
+                    }
+                };
+
+                // Añadir la ocupación a la lista
+                ocupacionesList.Add(ocupacion);
+            }
+        }
+
+        context.Ocupaciones.AddRange(ocupacionesList);
+        context.SaveChanges();
+
+
+        // =========================
+        // 18) Clasificación de días (Entre semana, Fin de semana, Festivos, etc.)
+        // =========================
+        var clasificacionesDiasList = new List<ClasificacionDias>();
+
+
+        // Crear datos con Faker para agregar más diversidad y asegurarse de que no haya duplicados
+        var tiposDias = new List<string>
+        {
+            "Lunes a Viernes (Laborables)",
+            "Sábado y Domingo (Fin de semana)",
+            "Festivos Nacionales",
+            "Vacaciones de Invierno",
+            "Vacaciones de Verano",
+            "Días de descanso programado",
+            "Jornadas especiales (eventos)"
+        };
+
+        var descripcionesDias = new List<string>
+        {
+            "De lunes a viernes, con horario laboral habitual, dedicado al trabajo o estudio.",
+            "Sábado y domingo, días de descanso y actividades recreativas.",
+            "Días festivos nacionales y locales, sin actividad laboral.",
+            "Periodo de descanso durante el invierno, usualmente para desconectar del trabajo.",
+            "Periodo de descanso durante el verano, ideal para vacaciones y actividades al aire libre.",
+            "Días específicos programados para descanso o desconexión laboral, por ejemplo, días de puente.",
+            "Jornadas especiales relacionadas a eventos importantes o celebraciones."
+        };
+
+        // Agregar las entradas a la lista con Faker, asegurando que cada "ClaDiasID" sea único
+        for (int i = 0; i < tiposDias.Count; i++)
+        {
+            var clasificacionDia = new ClasificacionDias
+            {
+                // Dejar que el ClaDiasID sea autoincrementable si está configurado así
+                ClaDiasTipo = tiposDias[i], // Tipo de día
+                ClaDiasDesc = descripcionesDias[i] // Descripción
+            };
+
+            clasificacionesDiasList.Add(clasificacionDia);
+        }
+
+        // Eliminar los registros existentes antes de agregar los nuevos
+        context.ClasificacionesDias.RemoveRange(context.ClasificacionesDias);
+        context.SaveChanges();
+
+        // Añadir los datos a la base de datos
+        context.ClasificacionesDias.AddRange(clasificacionesDiasList);
+        context.SaveChanges();
+
+
+        // =========================
+        // 19) Horarios de atención de una Playa en una Clasificación de días
+        // =========================
+        var horariosList = new List<Horario>();
+        foreach (var playa in playas)
+        {
+            // Para cada playa, asignamos horarios a cada tipo de día (ClasificacionDias)
+            foreach (var clasificacionDia in context.ClasificacionesDias.ToList())
+            {
+                // Generar entre 1 y 3 franjas horarias por clasificación de días
+                int cantidadHorarios = faker.Random.Int(1, 3); // Entre 1 y 3 franjas horarias por día
+
+                for (int i = 0; i < cantidadHorarios; i++)
+                {
+                    // Hora de inicio aleatoria entre 6:00 AM y 9:00 AM
+                    var horaInicio = faker.Date.Between(DateTime.UtcNow.AddDays(-30), DateTime.UtcNow).AddHours(faker.Random.Int(6, 9)).AddMinutes(faker.Random.Int(0, 59));
+
+                    // Hora de fin aleatoria entre 3 y 5 horas después de la hora de inicio
+                    var horaFin = horaInicio.AddHours(faker.Random.Int(3, 5));
+
+                    // Crear el horario para la combinación de playa y clasificación de días
+                    var horario = new Horario
+                    {
+                        PlyID = playa.PlyID, // ID de la playa
+                        ClaDiasID = clasificacionDia.ClaDiasID, // ID de la clasificación de días
+                        HorFyhIni = horaInicio, // Hora de inicio
+                        HorFyhFin = horaFin // Hora de fin
+                    };
+
+                    horariosList.Add(horario);
+                }
+            }
+        }
+
+        context.Horarios.AddRange(horariosList);
+        context.SaveChanges();
+
+// =========================
+// 20) Servicio Extra Realizado (Asociar el 30% de los pagos de cada playa)
+// =========================
+var servicioExtraList = new List<ServicioExtraRealizado>();
+foreach (var playa in playas)
+{
+    // Obtener todos los pagos asociados a la playa
+    var pagosDePlaya = context.Pagos
+        .Where(p => p.PlyID == playa.PlyID)
+        .ToList();
+
+    // Determinar el 30% de los pagos para asociar con un servicio extra realizado
+    int cantidadPagos = (int)(pagosDePlaya.Count * 0.30); // 30% de los pagos de la playa
+    var pagosSeleccionados = pagosDePlaya.Take(cantidadPagos).ToList(); // Seleccionamos el 30%
+
+    // Para cada pago seleccionado, generar un servicio extra realizado
+    foreach (var pago in pagosSeleccionados)
+    {
+        // Obtener un vehículo aleatorio (asegurándonos de que tenga una patente)
+        var vehiculo = faker.PickRandom(context.Vehiculos.Where(v => v.VehPtnt != null).ToList());
+
+        // Seleccionar un servicio extra aleatorio para este pago (servicios disponibles en esta playa)
+        var servicioExtra = faker.PickRandom(context.ServiciosProveidos
+            .Where(sp => sp.PlyID == playa.PlyID) // Solo servicios de esta playa
+            .ToList());
+
+        // Crear un servicio extra realizado
+        var servicioExtraRealizado = new ServicioExtraRealizado
+        {
+            PlyID = playa.PlyID, // Playa asociada
+            SerID = servicioExtra.SerID, // Servicio extra asociado
+            VehPtnt = vehiculo.VehPtnt, // Patente del vehículo
+            ServExFyHIni = faker.Date.Between(DateTime.UtcNow.AddDays(-30), DateTime.UtcNow), // Fecha de inicio aleatoria
+            ServExFyHFin = faker.Random.Bool() ? (DateTime?)faker.Date.Between(DateTime.UtcNow, DateTime.UtcNow.AddDays(7)) : null, // Fecha de fin aleatoria
+            ServExComp = faker.Random.Bool() ? faker.Lorem.Sentence() : null, // Comentario aleatorio
+            PagNum = pago.PagNum, // Número de pago asociado
+            ServicioProveido = servicioExtra, // Relación con el servicio extra
+            Vehiculo = vehiculo, // Relación con el vehículo
+            Pago = pago // Relación con el pago
+        };
+
+        // Añadir el servicio extra realizado a la lista
+        servicioExtraList.Add(servicioExtraRealizado);
+    }
+}
+
+// Guardar los servicios extra realizados en la base de datos
+context.ServiciosExtrasRealizados.AddRange(servicioExtraList);
+context.SaveChanges();
+
+
+
     }
 
     private static decimal Redondear(decimal monto)
