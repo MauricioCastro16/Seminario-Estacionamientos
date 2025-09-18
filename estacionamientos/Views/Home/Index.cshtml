@@ -46,7 +46,7 @@
                             <a class="btn btn-primary"
                                 asp-action="Create" asp-controller="Turno"
                                 asp-route-returnUrl="@Url.Action("Index","Home")">
-                                <i class="bi bi-play-circle me-1"></i> Abrir turno
+                                <i class="fa-regular fa-circle-play"></i> Abrir turno
                             </a>
                         </div>
                     </div>
@@ -77,7 +77,7 @@
                                     asp-route-plaNU="@abierto.PlaNU"
                                     asp-route-turFyhIni="@abierto.TurFyhIni.ToString("o")"
                                     asp-route-returnUrl="@Url.Action("Index","Home")">
-                                    <i class="bi bi-stop-circle me-1"></i> Finalizar turno
+                                    <i class="fa-regular fa-circle-stop"></i> Finalizar turno
                                 </a>
                                 <a class="btn btn-outline-secondary"
                                     asp-controller="Turno" asp-action="Details"
@@ -85,9 +85,8 @@
                                     asp-route-plaNU="@abierto.PlaNU"
                                     asp-route-turFyhIni="@abierto.TurFyhIni.ToString("o")"
                                     asp-route-returnUrl="@Url.Action("Index","Home")">
-                                    <i class="bi bi-eye me-1"></i>
+                                    <i class="fa-solid fa-eye"></i> Ver detalles
                                 </a>
-
                             </div>
                         </div>
                     </div>

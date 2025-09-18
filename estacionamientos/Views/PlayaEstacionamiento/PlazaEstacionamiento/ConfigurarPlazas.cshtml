@@ -166,17 +166,17 @@
                 <!-- ACCIONES -->
                 <td class="text-center">
                     <button type="button" class="btn btn-sm btn-outline-secondary btn-edit" data-row="@rowKey" title="Editar">
-                        <i class="bi bi-pencil"></i>
+                        <i class="fa-regular fa-pen-to-square"></i>
                         <span class="visually-hidden">Editar</span>
                     </button>
 
                     <button type="submit" class="btn btn-sm btn-success d-none btn-save" form="edit-form-@rowKey" formnovalidate title="Guardar">
-                        <i class="bi bi-check"></i>
+                            <i class="fa-solid fa-check"></i>
                         <span class="visually-hidden">Guardar</span>
                     </button>
 
                     <button type="button" class="btn btn-sm btn-secondary d-none btn-cancel" data-row="@rowKey" title="Cancelar">
-                        <i class="bi bi-x"></i>
+                        <i class="fa-solid fa-xmark"></i>
                         <span class="visually-hidden">Cancelar</span>
                     </button>
 
@@ -186,7 +186,7 @@
                         <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
                         <button type="submit" class="btn btn-sm btn-outline-danger"
                                 onclick="return confirm('¿Quiere eliminar la plaza?');" title="Eliminar">
-                            <i class="bi bi-trash"></i>
+                            <i class="fa-regular fa-trash-can"></i>
                             <span class="visually-hidden">Eliminar</span>
                         </button>
                     </form>

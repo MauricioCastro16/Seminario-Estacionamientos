@@ -11,10 +11,10 @@
         <h1 class="mb-0">Playeros</h1>
         <div>
             <a class="btn btn-primary" asp-controller="Playero" asp-action="Create" title="Agregar playero">
-                <i class="bi bi-plus-lg me-1"></i> Agregar Playero
+                <i class="fa-solid fa-plus"></i> Agregar Playero
             </a>
             <a class="btn btn-outline-secondary" asp-controller="Playero" asp-action="HistorialAgrupado">
-                <i class="bi bi-clock-history me-1"></i> Historial agrupado
+                <i class="fa-solid fa-clock-rotate-left"></i> Historial agrupado
             </a>
         </div>
     </div>
@@ -62,7 +62,7 @@
                                                     class="remove-btn"
                                                     title="Desasignar"
                                                     onclick="return confirm('¿Quitar esta asignación?');">
-                                                <i class="bi bi-x-circle"></i>
+                                                <i class="fa-regular fa-circle-xmark"></i>
                                             </button>
                                         </div>
                                     </form>
@@ -74,7 +74,7 @@
                             <!--
                             <a class="btn btn-outline-primary btn-sm me-2" asp-controller="Playero" asp-action="Edit"
                                 asp-route-id="@p.UsuNU" title="Editar">
-                                <i class="bi bi-pencil"></i>
+                                        <i class="fa-regular fa-pen-to-square"></i>
                             </a>
                             -->
                             <a class="btn btn-outline-secondary btn-sm me-2" asp-controller="Playero" asp-action="Assign"
