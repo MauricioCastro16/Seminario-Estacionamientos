@@ -78,8 +78,8 @@
                             </a>
                             -->
                             <a class="btn btn-outline-secondary btn-sm me-2" asp-controller="Playero" asp-action="Assign"
-                                asp-route-id="@p.UsuNU" title="Vincular a playa">
-                                <i class="bi bi-link-45deg"></i>
+                                asp-route-id="@p.UsuNU" title="Vincular a una playa">
+                                <i class="fa-solid fa-link"></i>
                             </a>
 
                             <form asp-controller="Playero"
@@ -90,9 +90,9 @@
                                 @Html.AntiForgeryToken()
                                 <button type="submit"
                                         class="btn btn-outline-danger btn-sm"
-                                        title="Eliminar"
+                                        title="Desvincular todas las playas"
                                         onclick="return confirm('¿Estás seguro de eliminar este playero?');">
-                                    <i class="bi bi-trash"></i>
+                                    <i class="fa-solid fa-link-slash"></i>
                                 </button>
                             </form>
 
