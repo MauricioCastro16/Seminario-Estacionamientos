@@ -111,12 +111,12 @@
         {
             @foreach (var item in Model.Tarifas)
             {
-                var esVigente = item.TasFecFin == null || item.TasFecFin > DateTime.Now;
+                var esVigente = item.TasFecFin == null || item.TasFecFin > DateTime.UtcNow;
                 <tr class="@(esVigente ? "" : "table-secondary")">
                     <td>@item.ServicioProveido.Servicio.SerNom</td>
                     <td>@item.ClasificacionVehiculo.ClasVehTipo</td>
                     <td>
-                        @if (esVigente)
+                        @if (esVigente && item.ServicioProveido?.SerProvHab == true)
                         {
                             <span class="badge bg-success">Vigente</span>
                         }
@@ -125,6 +125,7 @@
                             <span class="badge bg-danger">No vigente</span>
                         }
                     </td>
+
                     <td>$@item.TasMonto</td>
                     <td class="text-center align-middle">
                         <a asp-action="Details"
