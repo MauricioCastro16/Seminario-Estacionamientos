@@ -13,25 +13,12 @@
     bool hayFiltros = (Model.FilterBy?.ToLower() ?? "todos") != "todos"
                       || !string.IsNullOrWhiteSpace(Model.Q);
 }
-
 <div class="container">
-    <!-- Encabezado -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="mb-0">
-            Tarifas de Servicios
-            @if (ViewBag.PlayaNombre != null)
-            {
-                <span>: @ViewBag.PlayaNombre</span>
-            }
-        </h1>
-
-        <a asp-action="Create"
-           asp-route-plySel="@ViewBag.PlyID"
-           class="btn btn-primary">
-            + Nueva Tarifa
-        </a>
+    <!-- Título -->
+    <div class="mb-3">
+        <h1 class="display-6 fw-semibold">@ViewData["Title"]</h1>
+        <h5 class="text-muted">@ViewBag.PlayaNombre</h5>
     </div>
-
     <!-- Formulario de búsqueda/filtros -->
     <form method="get" id="searchForm" class="row g-2 align-items-center">
         <input type="hidden" name="plyID" value="@ViewBag.PlyID" />
@@ -81,6 +68,16 @@
                asp-route-plyID="@ViewBag.PlyID"
                title="Limpiar filtros">
                 <i class="fa-regular fa-circle-xmark"></i>
+            </a>
+        </div>
+
+        <!-- Botón Agregar Playa alineado a la derecha -->
+        <div class="col-auto ms-auto">
+            <a class="btn btn-primary"
+            asp-action="Create"
+            asp-route-plySel="@ViewBag.PlyID"      
+            title="+ Nueva Tarifa">
+        <i class="fa-solid fa-plus"></i> Agregar Tarifa
             </a>
         </div>
     </form>
