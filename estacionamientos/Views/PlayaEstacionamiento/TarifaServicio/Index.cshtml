@@ -3,16 +3,15 @@
     ViewData["Title"] = "Tarifas de Servicios";
 
     string LabelFiltro(string v) => v?.ToLower() switch {
-    "playa" => "Playa",
-    "servicio" => "Servicio",
-    "clase" => "Clase Vehículo",
-    "vigencia" => "Vigencia",
-    _ => "Todos"
-};
+        "playa" => "Playa",
+        "servicio" => "Servicio",
+        "clase" => "Clase Vehículo",
+        "vigencia" => "Vigencia",
+        _ => "Todos"
+    };
 
-
-    bool hayFiltros = Model.FilterBy != "Todos"
-                   || !string.IsNullOrWhiteSpace(Model.Q);
+    bool hayFiltros = (Model.FilterBy?.ToLower() ?? "todos") != "todos"
+                      || !string.IsNullOrWhiteSpace(Model.Q);
 }
 
 <div class="container">
@@ -37,19 +36,19 @@
     <form method="get" id="searchForm" class="row g-2 align-items-center">
         <input type="hidden" name="plyID" value="@ViewBag.PlyID" />
 
-        <div class="col-md-5 @(Model.FilterBy == "vigencia" ? "d-none" : "")" id="qWrapper">
+        <div class="col-md-5 @(Model.FilterBy?.ToLower() == "vigencia" ? "d-none" : "")" id="qWrapper">
             <input name="Q" id="qInput" value="@Model.Q" class="form-control" placeholder="Buscar..." />
         </div>
 
-        <div class="col-md-5 @(Model.FilterBy == "vigencia" ? "" : "d-none")" id="vigWrapper">
+        <div class="col-md-5 @(Model.FilterBy?.ToLower() == "vigencia" ? "" : "d-none")" id="vigWrapper">
             <select name="selectedOption" id="vigSelect" class="form-select">
                 <option value="">Seleccionar vigencia…</option>
                 <option value="Vigente"
-                    selected="@(Model.SelectedOption != null && Model.SelectedOption.Equals("Vigente", StringComparison.OrdinalIgnoreCase) ? "selected" : null)">
+                        selected="@(Model.SelectedOption != null && Model.SelectedOption.Equals("Vigente", StringComparison.OrdinalIgnoreCase) ? "selected" : null)">
                     Vigente
                 </option>
                 <option value="No vigente"
-                    selected="@(Model.SelectedOption != null && Model.SelectedOption.Equals("No vigente", StringComparison.OrdinalIgnoreCase) ? "selected" : null)">
+                        selected="@(Model.SelectedOption != null && Model.SelectedOption.Equals("No vigente", StringComparison.OrdinalIgnoreCase) ? "selected" : null)">
                     No vigente
                 </option>
             </select>
@@ -62,7 +61,6 @@
                         data-bs-toggle="dropdown" aria-expanded="false" id="filterBtn">
                     <i class="fa-solid fa-filter"></i> Filtrar: @LabelFiltro(Model.FilterBy)
                 </button>
-
 
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="#" data-value="todos">Todos</a></li>
@@ -91,18 +89,20 @@
     <table class="table table-hover align-middle">
         <thead>
             <tr>
-            <th style="width: 30%">Servicio</th>
-            <th style="width: 20%">Clase Vehículo</th>
-            <th style="width: 15%">Vigencia</th>
-            <th style="width: 15%">Monto</th>
-            <th style="width: 20%" class="text-end">Acciones</th>
-        </tr>
+                <th style="width: 25%">Servicio</th>
+                <th style="width: 15%">Clase Vehículo</th>
+                <th style="width: 15%">Vigencia</th>
+                <th style="width: 10%">Desde</th>
+                <th style="width: 10%">Hasta</th>
+                <th style="width: 10%">Monto</th>
+                <th style="width: 15%" class="text-end">Acciones</th>
+            </tr>
         </thead>
         <tbody>
         @if (Model.Tarifas == null || !Model.Tarifas.Any())
         {
             <tr>
-                <td colspan="5" class="text-center text-muted py-4">No se encontraron resultados.</td>
+                <td colspan="7" class="text-center text-muted py-4">No se encontraron resultados.</td>
             </tr>
         }
         else
@@ -121,10 +121,11 @@
                             <td rowspan="@rowCount" class="align-middle fw-bold bg-light border-end">
                                 @grupo.Key
                             </td>
-
                             first = false;
                         }
+
                         <td>@item.ClasificacionVehiculo.ClasVehTipo</td>
+
                         <td>
                             @if (esVigente && item.ServicioProveido?.SerProvHab == true)
                             {
@@ -135,56 +136,62 @@
                                 <span class="badge bg-danger">No vigente</span>
                             }
                         </td>
-                        <td>$@item.TasMonto</td>
+
+                        <td>@item.TasFecIni.ToString("dd/MM/yyyy")</td>
+
+                        <td>
+                            @if (item.TasFecFin.HasValue)
+                            {
+                                @item.TasFecFin.Value.ToString("dd/MM/yyyy")
+                            }
+                        </td>
+
+                        <td>$@item.TasMonto.ToString("N2")</td>
+
                         <td class="text-end">
-                            <a asp-action="Details"
-                               asp-route-plyID="@item.PlyID"
-                               asp-route-serID="@item.SerID"
-                               asp-route-clasVehID="@item.ClasVehID"
-                               asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
-                               class="btn btn-outline-primary btn-sm me-2"
-                               title="Detalles">
-                                <i class="fa-solid fa-eye"></i>
-                            </a>
-                            <a asp-action="Edit"
-                               asp-route-plyID="@item.PlyID"
-                               asp-route-serID="@item.SerID"
-                               asp-route-clasVehID="@item.ClasVehID"
-                               asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
-                               class="btn btn-sm btn-outline-secondary me-1"
-                               title="Editar">
-                                <i class="fa-regular fa-pen-to-square"></i>
-                            </a>
                             @if (esVigente)
                             {
+                                <a asp-action="Edit"
+                                   asp-route-plyID="@item.PlyID"
+                                   asp-route-serID="@item.SerID"
+                                   asp-route-clasVehID="@item.ClasVehID"
+                                   asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
+                                   class="btn btn-sm btn-outline-secondary me-1"
+                                   title="Editar">
+                                    <i class="fa-regular fa-pen-to-square"></i>
+                                </a>
+
                                 <form asp-action="Delete"
-                                    asp-route-plyID="@item.PlyID"
-                                    asp-route-serID="@item.SerID"
-                                    asp-route-clasVehID="@item.ClasVehID"
-                                    asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
-                                    method="post" class="d-inline"
-                                    onsubmit="return confirm('¿Estás seguro de cerrar esta tarifa?');">
+                                      asp-route-plyID="@item.PlyID"
+                                      asp-route-serID="@item.SerID"
+                                      asp-route-clasVehID="@item.ClasVehID"
+                                      asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
+                                      method="post" class="d-inline"
+                                      onsubmit="return confirm('¿Estás seguro de cerrar esta tarifa?');">
                                     <button type="submit"
-                                            class="btn btn-outline-danger btn-sm"
+                                            class="btn btn-sm btn-outline-danger"
                                             title="Suspender tarifa">
                                         <i class="fa-regular fa-circle-xmark"></i>
                                     </button>
                                 </form>
-
                             }
                             else
                             {
-                                <button class="btn btn-sm btn-outline-danger" disabled title="No vigente">
+                                <!-- Botones deshabilitados con el MISMO tamaño (btn-sm) y aspecto consistente -->
+                                <button class="btn btn-sm btn-outline-secondary disabled me-1" title="No vigente" tabindex="-1" aria-disabled="true">
+                                    <i class="fa-regular fa-pen-to-square"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary disabled" title="No vigente" tabindex="-1" aria-disabled="true">
                                     <i class="fa-regular fa-circle-xmark"></i>
                                 </button>
+                                @* Si preferís en rojo aún deshabilitados, cambiá ambos outline-secondary por outline-danger *@
                             }
                         </td>
                     </tr>
                 }
             }
         }
-    </tbody>
-
+        </tbody>
     </table>
 </div>
 
@@ -199,35 +206,34 @@
 
 <script>
     const mapLbl = {
-    todos: 'Todos',
-    playa: 'Playa',
-    servicio: 'Servicio',
-    clase: 'Clase Vehículo',
-    vigencia: 'Vigencia'
+        todos: 'Todos',
+        playa: 'Playa',
+        servicio: 'Servicio',
+        clase: 'Clase Vehículo',
+        vigencia: 'Vigencia'
     };
 
+    const formEl = document.getElementById('searchForm');
 
-  const formEl = document.getElementById('searchForm');
-
-  document.querySelectorAll('.dropdown-menu .dropdown-item').forEach(el => {
-    el.addEventListener('click', (e) => {
-      e.preventDefault();
-      const value = el.getAttribute('data-value');
-      document.getElementById('filterBy').value = value;
-      document.getElementById('filterBtn').innerHTML =
-        '<i class="fa-solid fa-filter"></i> Filtrar: ' + (mapLbl[value] || 'Todos');
-      formEl.submit();
+    document.querySelectorAll('.dropdown-menu .dropdown-item').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.preventDefault();
+            const value = el.getAttribute('data-value');
+            document.getElementById('filterBy').value = value;
+            document.getElementById('filterBtn').innerHTML =
+                '<i class="fa-solid fa-filter"></i> Filtrar: ' + (mapLbl[value] || 'Todos');
+            formEl.submit();
+        });
     });
-  });
 
-  document.getElementById('vigSelect')?.addEventListener('change', () => {
-    formEl.submit();
-  });
+    document.getElementById('vigSelect')?.addEventListener('change', () => {
+        formEl.submit();
+    });
 
-  document.getElementById('qInput')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      formEl.submit();
-    }
-  });
+    document.getElementById('qInput')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            formEl.submit();
+        }
+    });
 </script>
