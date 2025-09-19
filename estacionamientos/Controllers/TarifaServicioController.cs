@@ -59,7 +59,7 @@ namespace estacionamientos.Controllers
         [Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Index(
             string q,
-            string filterBy = "all",
+            string filterBy = "todos",
             List<string>? Playas = null,
             List<string>? Servicios = null,
             List<string>? Clases = null,
@@ -182,7 +182,7 @@ namespace estacionamientos.Controllers
             {
                 Tarifas = lista,
                 Q = q ?? "",
-                FilterBy = filterBy,
+                FilterBy = string.IsNullOrEmpty(filterBy) ? "todos" : filterBy.ToLower(),
                 Playas = Playas ?? new(),
                 Servicios = Servicios ?? new(),
                 Clases = Clases ?? new(),
@@ -384,27 +384,6 @@ namespace estacionamientos.Controllers
             _ctx.Entry(model).State = EntityState.Modified;
             await _ctx.SaveChangesAsync();
             return RedirectToAction(nameof(Index), new { plyID = model.PlyID });
-        }
-
-
-        // DELETE GET
-        [Authorize(Roles = "Duenio")]
-        public async Task<IActionResult> Delete(int plyID, int serID, int clasVehID, DateTime tasFecIni)
-        {
-            tasFecIni = ToUtc(tasFecIni);
-
-            var item = await _ctx.TarifasServicio
-                .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Servicio)
-                .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Playa)
-                .Include(t => t.ClasificacionVehiculo)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(t =>
-                    t.PlyID == plyID &&
-                    t.SerID == serID &&
-                    t.ClasVehID == clasVehID &&
-                    t.TasFecIni == tasFecIni);
-
-            return item is null ? NotFound() : View(item);
         }
 
         // DELETE POST

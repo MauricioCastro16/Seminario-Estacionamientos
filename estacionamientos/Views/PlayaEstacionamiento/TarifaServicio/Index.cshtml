@@ -2,15 +2,16 @@
 @{
     ViewData["Title"] = "Tarifas de Servicios";
 
-    string LabelFiltro(string v) => v switch {
-        "playa" => "Playa",
-        "servicio" => "Servicio",
-        "clase" => "Clase Vehículo",
-        "vigencia" => "Vigencia",
-        _ => "Todos"
-    };
+    string LabelFiltro(string v) => v?.ToLower() switch {
+    "playa" => "Playa",
+    "servicio" => "Servicio",
+    "clase" => "Clase Vehículo",
+    "vigencia" => "Vigencia",
+    _ => "Todos"
+};
 
-    bool hayFiltros = Model.FilterBy != "all"
+
+    bool hayFiltros = Model.FilterBy != "Todos"
                    || !string.IsNullOrWhiteSpace(Model.Q);
 }
 
@@ -59,12 +60,14 @@
                 <input type="hidden" name="FilterBy" id="filterBy" value="@Model.FilterBy" />
                 <button type="button" class="btn btn-outline-secondary dropdown-toggle"
                         data-bs-toggle="dropdown" aria-expanded="false" id="filterBtn">
-                    <i class="fa-solid fa-filter"></i> Filtrar: @Model.FilterBy
+                    <i class="fa-solid fa-filter"></i> Filtrar: @LabelFiltro(Model.FilterBy)
                 </button>
+
+
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" data-value="all">Todos</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="todos">Todos</a></li>
                     <li><a class="dropdown-item" href="#" data-value="servicio">Servicio</a></li>
-                    <li><a class="dropdown-item" href="#" data-value="clase">Clase</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="clase">Clase Vehículo</a></li>
                     <li><a class="dropdown-item" href="#" data-value="vigencia">Vigencia</a></li>
                 </ul>
             </div>
@@ -88,12 +91,12 @@
     <table class="table table-hover align-middle">
         <thead>
             <tr>
-                <th>Servicio</th>
-                <th>Clase Vehículo</th>
-                <th>Vigencia</th>
-                <th>Monto</th>
-                <th class="text-end">Acciones</th>
-            </tr>
+            <th style="width: 30%">Servicio</th>
+            <th style="width: 20%">Clase Vehículo</th>
+            <th style="width: 15%">Vigencia</th>
+            <th style="width: 15%">Monto</th>
+            <th style="width: 20%" class="text-end">Acciones</th>
+        </tr>
         </thead>
         <tbody>
         @if (Model.Tarifas == null || !Model.Tarifas.Any())
@@ -104,65 +107,84 @@
         }
         else
         {
-            @foreach (var item in Model.Tarifas)
+            @foreach (var grupo in Model.Tarifas.GroupBy(t => t.ServicioProveido.Servicio.SerNom))
             {
-                var esVigente = item.TasFecFin == null || item.TasFecFin > DateTime.UtcNow;
-                <tr class="@(esVigente ? "" : "table-secondary")">
-                    <td>@item.ServicioProveido.Servicio.SerNom</td>
-                    <td>@item.ClasificacionVehiculo.ClasVehTipo</td>
-                    <td>
-                        @if (esVigente && item.ServicioProveido?.SerProvHab == true)
+                var rowCount = grupo.Count();
+                var first = true;
+
+                foreach (var item in grupo)
+                {
+                    var esVigente = item.TasFecFin == null || item.TasFecFin > DateTime.UtcNow;
+                    <tr class="@(esVigente ? "" : "table-secondary")">
+                        @if (first)
                         {
-                            <span class="badge bg-success">Vigente</span>
+                            <td rowspan="@rowCount" class="align-middle fw-bold bg-light border-end">
+                                @grupo.Key
+                            </td>
+
+                            first = false;
                         }
-                        else
-                        {
-                            <span class="badge bg-danger">No vigente</span>
-                        }
-                    </td>
-                    <td>$@item.TasMonto</td>
-                    <td class="text-center align-middle">
-                        <a asp-action="Details"
-                           asp-route-plyID="@item.PlyID"
-                           asp-route-serID="@item.SerID"
-                           asp-route-clasVehID="@item.ClasVehID"
-                           asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
-                           class="btn btn-outline-primary btn-sm me-2"
-                           title="Detalles">
-                            <i class="fa-solid fa-eye"></i>
-                        </a>
-                        <a asp-action="Edit"
-                           asp-route-plyID="@item.PlyID"
-                           asp-route-serID="@item.SerID"
-                           asp-route-clasVehID="@item.ClasVehID"
-                           asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
-                           class="btn btn-sm btn-outline-secondary me-1"
-                           title="Editar">
-                            <i class="fa-regular fa-pen-to-square"></i>
-                        </a>
-                        @if (esVigente)
-                        {
-                            <a asp-action="Delete"
+                        <td>@item.ClasificacionVehiculo.ClasVehTipo</td>
+                        <td>
+                            @if (esVigente && item.ServicioProveido?.SerProvHab == true)
+                            {
+                                <span class="badge bg-success">Vigente</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">No vigente</span>
+                            }
+                        </td>
+                        <td>$@item.TasMonto</td>
+                        <td class="text-end">
+                            <a asp-action="Details"
                                asp-route-plyID="@item.PlyID"
                                asp-route-serID="@item.SerID"
                                asp-route-clasVehID="@item.ClasVehID"
                                asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
-                               class="btn btn-outline-danger btn-sm"
-                               title="Suspender tarifa">
-                                <i class="fa-regular fa-trash-can"></i>
+                               class="btn btn-outline-primary btn-sm me-2"
+                               title="Detalles">
+                                <i class="fa-solid fa-eye"></i>
                             </a>
-                        }
-                        else
-                        {
-                            <button class="btn btn-sm btn-outline-secondary" disabled title="No vigente">
-                                <i class="fa-regular fa-circle-xmark"></i>
-                            </button>
-                        }
-                    </td>
-                </tr>
+                            <a asp-action="Edit"
+                               asp-route-plyID="@item.PlyID"
+                               asp-route-serID="@item.SerID"
+                               asp-route-clasVehID="@item.ClasVehID"
+                               asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
+                               class="btn btn-sm btn-outline-secondary me-1"
+                               title="Editar">
+                                <i class="fa-regular fa-pen-to-square"></i>
+                            </a>
+                            @if (esVigente)
+                            {
+                                <form asp-action="Delete"
+                                    asp-route-plyID="@item.PlyID"
+                                    asp-route-serID="@item.SerID"
+                                    asp-route-clasVehID="@item.ClasVehID"
+                                    asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
+                                    method="post" class="d-inline"
+                                    onsubmit="return confirm('¿Estás seguro de cerrar esta tarifa?');">
+                                    <button type="submit"
+                                            class="btn btn-outline-danger btn-sm"
+                                            title="Suspender tarifa">
+                                        <i class="fa-regular fa-circle-xmark"></i>
+                                    </button>
+                                </form>
+
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-danger" disabled title="No vigente">
+                                    <i class="fa-regular fa-circle-xmark"></i>
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
             }
         }
-        </tbody>
+    </tbody>
+
     </table>
 </div>
 
@@ -176,13 +198,14 @@
 }
 
 <script>
-  const mapLbl = {
-    all: 'Todos',
+    const mapLbl = {
+    todos: 'Todos',
     playa: 'Playa',
     servicio: 'Servicio',
     clase: 'Clase Vehículo',
     vigencia: 'Vigencia'
-  };
+    };
+
 
   const formEl = document.getElementById('searchForm');
 
