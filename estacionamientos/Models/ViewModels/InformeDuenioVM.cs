@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace estacionamientos.ViewModels
 {
@@ -41,11 +42,22 @@ namespace estacionamientos.ViewModels
         public decimal TicketPromedio => CantPagos > 0 ? IngresosTotales / CantPagos : 0m;
     }
 
+    // Punto genérico para series
+    public class SeriePuntoVM
+    {
+        public string Label { get; set; } = "";
+        public decimal Valor { get; set; }
+    }
+
     // VM raíz para la vista
     public class InformeDuenioVM
     {
         public InformeFiltroVM Filtros { get; set; } = new();
         public InformeKpisVM Kpis { get; set; } = new();
         public List<InformePlayaRowVM> PorPlaya { get; set; } = new();
+
+        // Series para gráficos
+        public List<SeriePuntoVM> IngresosPorDia { get; set; } = new();   // etiqueta = "dd/MM"
+        public List<SeriePuntoVM> IngresosPorHora { get; set; } = new();  // etiqueta = "00-23"
     }
 }
