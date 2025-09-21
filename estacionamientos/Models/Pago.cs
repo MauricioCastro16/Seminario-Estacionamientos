@@ -15,7 +15,7 @@ namespace estacionamientos.Models
         public decimal PagMonto { get; set; }
 
         [Required]
-        public DateTime PagFyh { get; set; } = DateTime.Now;
+        public DateTime PagFyh { get; set; } = DateTime.UtcNow;
 
         // Navs
         public PlayaEstacionamiento Playa { get; set; } = default!;
