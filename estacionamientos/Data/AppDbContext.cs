@@ -404,6 +404,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             });
         modelBuilder.Entity<Pago>(e =>
             {
+
                 e.ToTable("Pago");
 
                 // PK compuesta (PlyID, PagNum)
@@ -435,6 +436,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
                 // (Opcional) índice para consultas por fecha
                 e.HasIndex(p => new { p.PlyID, p.PagFyh });
+
+
+                // AceptaMetodoPago: (PlyID, MepID) -> uno (aceptación) a muchos (pagos)
+                e.HasOne(p => p.AceptaMetodoPago)
+                .WithMany()    // si tenés colección, ponela
+                .HasForeignKey(p => new { p.PlyID, p.MepID })
+                .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(p => p.Playa)
+                .WithMany(pl => pl.Pagos)
+                .HasForeignKey(p => p.PlyID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(p => p.MetodoPago)
+                .WithMany() // si tenés colección en MetodoPago, apuntala acá
+                .HasForeignKey(p => p.MepID)
+                .OnDelete(DeleteBehavior.Restrict);
+                
             });
         modelBuilder.Entity<PlazaEstacionamiento>(e =>
         {
@@ -459,6 +478,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<Ocupacion>(e =>
             {
+
+                // FK (opcional) hacia Pago: (PlyID, PagNum)
+                e.HasOne(o => o.Pago)
+                .WithMany(p => p.Ocupaciones)
+                .HasForeignKey(o => new { o.PlyID, o.PagNum })
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull); // si se borra el pago, deja PagNum en null
+
+
+
                 e.ToTable("Ocupacion");
                 e.HasKey(o => new { o.PlyID, o.PlzNum, o.VehPtnt, o.OcufFyhIni });
 
@@ -525,6 +554,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             });
         modelBuilder.Entity<ServicioExtraRealizado>(e =>
             {
+
+        
+
+                // FK (opcional) hacia Pago: (PlyID, PagNum)
+                e.HasOne(s => s.Pago)
+                .WithMany(p => p.ServiciosExtras)
+                .HasForeignKey(s => new { s.PlyID, s.PagNum })
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+
                 e.ToTable("ServicioExtraRealizado");
                 e.HasKey(se => new { se.PlyID, se.SerID, se.VehPtnt, se.ServExFyHIni });
 

@@ -1,0 +1,241 @@
+@model estacionamientos.ViewModels.InformeDuenioVM
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Informes";
+    var k = Model.Kpis;
+
+    // Data para gráficos en JS (labels + values)
+    var labelsDia = Model.IngresosPorDia.Select(x => x.Label).ToList();
+    var valoresDia = Model.IngresosPorDia.Select(x => x.Valor).ToList();
+
+    var labelsHora = Model.IngresosPorHora.Select(x => x.Label).ToList();
+    var valoresHora = Model.IngresosPorHora.Select(x => x.Valor).ToList();
+
+    string J(object o) => JsonSerializer.Serialize(o);
+}
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Informes</h1>
+        <div class="btn-group">
+            <a class="btn btn-outline-secondary"
+               asp-controller="Informes" asp-action="Index"
+               asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
+               asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")">
+                <i class="fa-solid fa-rotate-right"></i> Actualizar
+            </a>
+
+            <a class="btn btn-primary"
+               asp-controller="Informes" asp-action="Descargar"
+               asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
+               asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")">
+                <i class="fa-solid fa-file-pdf"></i> Descargar PDF
+            </a>
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Ingresos Totales</div>
+                    <div class="h4 m-0">$ @k.IngresosTotales.ToString("N2")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Cantidad de Pagos</div>
+                    <div class="h4 m-0">@k.CantPagos</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Ticket Promedio</div>
+                    <div class="h4 m-0">$ @(k.TicketPromedio.ToString("N2"))</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Ingresos por día</h5>
+                    <div class="chart-container">
+                        <canvas id="chartDia"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Ingresos por hora</h5>
+                    <div class="chart-container">
+                        <canvas id="chartHora"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mix por método de pago -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Mix por método de pago</h5>
+            @if (k.MixMetodos?.Any() == true)
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Método</th>
+                                <th class="text-end">Monto</th>
+                                <th class="text-end"># Pagos</th>
+                                <th class="text-end">% del Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var m in k.MixMetodos)
+                        {
+                            <tr>
+                                <td>@m.Metodo</td>
+                                <td class="text-end">$ @m.Monto.ToString("N2")</td>
+                                <td class="text-end">@m.Cantidad</td>
+                                <td class="text-end">@m.PorcentajeMonto.ToString("0.0")%</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-muted">Sin datos en el período.</div>
+            }
+        </div>
+    </div>
+
+    <!-- Desglose por playa -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Desglose por playa</h5>
+
+            @if (Model.PorPlaya?.Any() == true)
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Playa</th>
+                                <th class="text-end"># Pagos</th>
+                                <th class="text-end">Ingresos</th>
+                                <th class="text-end">Ticket Prom.</th>
+                                <th class="text-center">Acciones</th>  <!-- NUEVA -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var r in Model.PorPlaya)
+                        {
+                            <tr>
+                                <td>@r.PlayaNombre</td>
+                                <td class="text-end">@r.CantPagos</td>
+                                <td class="text-end">$ @r.IngresosTotales.ToString("N2")</td>
+                                <td class="text-end">$ @r.TicketPromedio.ToString("N2")</td>
+                                <td class="text-center">
+                                    <a class="btn btn-sm btn-outline-primary"
+                                    asp-controller="Informes" asp-action="DetallePlaya"
+                                    asp-route-plyID="@r.PlyID"
+                                    asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
+                                    asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")">
+                                        Ver pagos
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+    
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-muted">Todavía no hay pagos registrados para generar informes.</div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+  .chart-container {
+    position: relative;
+    height: 280px;      /* ajustá a gusto: ej. clamp(220px, 30vh, 360px) */
+    width: 100%;
+  }
+  .chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  (function () {
+    const labelsDia = @Html.Raw(J(labelsDia));
+    const valoresDia = @Html.Raw(J(valoresDia));
+    const labelsHora = @Html.Raw(J(labelsHora));
+    const valoresHora = @Html.Raw(J(valoresHora));
+
+    // Evitar duplicados en hot reload o navegaciones parciales:
+    window._charts ??= {};
+    if (window._charts.chartDia) window._charts.chartDia.destroy();
+    if (window._charts.chartHora) window._charts.chartHora.destroy();
+
+    const optCommon = {
+      responsive: true,
+      maintainAspectRatio: false, // usa la altura del contenedor
+      scales: { y: { beginAtZero: true } }
+    };
+
+    window._charts.chartDia = new Chart(
+      document.getElementById('chartDia').getContext('2d'),
+      {
+        type: 'line',
+        data: {
+          labels: labelsDia,
+          datasets: [{
+            label: 'Ingresos ($)',
+            data: valoresDia,
+            fill: false,
+            tension: 0.3
+          }]
+        },
+        options: optCommon
+      }
+    );
+
+    window._charts.chartHora = new Chart(
+      document.getElementById('chartHora').getContext('2d'),
+      {
+        type: 'bar',
+        data: {
+          labels: labelsHora,
+          datasets: [{
+            label: 'Ingresos ($)',
+            data: valoresHora
+          }]
+        },
+        options: optCommon
+      }
+    );
+  })();
+</script>
