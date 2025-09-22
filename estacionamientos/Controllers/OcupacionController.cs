@@ -70,7 +70,9 @@ namespace estacionamientos.Controllers
                     return View("NoTurno");
 
                 var q = _ctx.Ocupaciones
-                    .Include(o => o.Plaza).ThenInclude(p => p.Clasificacion)
+                    .Include(o => o.Plaza)
+                        .ThenInclude(p => p.Clasificaciones)
+                            .ThenInclude(pc => pc.Clasificacion)
                     .Include(o => o.Plaza).ThenInclude(p => p.Playa)
                     .Include(o => o.Vehiculo).ThenInclude(v => v.Clasificacion)
                     .Include(o => o.Pago)
@@ -81,7 +83,9 @@ namespace estacionamientos.Controllers
             }
 
             var qAll = _ctx.Ocupaciones
-                .Include(o => o.Plaza).ThenInclude(p => p.Clasificacion)
+                .Include(o => o.Plaza)
+                    .ThenInclude(p => p.Clasificaciones)
+                        .ThenInclude(pc => pc.Clasificacion)
                 .Include(o => o.Plaza).ThenInclude(p => p.Playa)
                 .Include(o => o.Vehiculo).ThenInclude(v => v.Clasificacion)
                 .Include(o => o.Pago)
@@ -184,7 +188,9 @@ namespace estacionamientos.Controllers
                     piso = p.Piso,           // para el combo de pisos
                     hab = p.PlzHab,
                     techada = p.PlzTecho,
-                    compatible = (clasVehID == null || p.ClasVehID == clasVehID),
+                    compatible = (clasVehID == null || 
+                                p.Clasificaciones.Any(pc => pc.ClasVehID == clasVehID)),
+
                     ocupada = _ctx.Ocupaciones.Any(o => o.PlyID == p.PlyID
                                                         && o.PlzNum == p.PlzNum
                                                         && o.OcufFyhFin == null)
@@ -298,11 +304,13 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var plazaValida = await _ctx.Plazas.AnyAsync(p =>
-                p.PlyID == model.PlyID &&
-                p.PlzNum == model.PlzNum!.Value &&
-                p.ClasVehID == ClasVehID &&
-                p.PlzHab == true);
+            var plazaValida = await _ctx.Plazas
+                .AnyAsync(p =>
+                    p.PlyID == model.PlyID &&
+                    p.PlzNum == model.PlzNum!.Value &&
+                    p.PlzHab == true &&
+                    p.Clasificaciones.Any(pc => pc.ClasVehID == ClasVehID));
+
 
             if (!plazaValida)
             {

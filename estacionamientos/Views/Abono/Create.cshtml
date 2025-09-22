@@ -1,0 +1,89 @@
+@model estacionamientos.Models.Abono
+
+@{
+    ViewData["Title"] = "Registrar Abono";
+}
+
+<div class="container py-1">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="text-center mb-3">
+                        <h2 class="mb-1">@ViewData["Title"]</h2>
+                        <p class="text-secondary small">Completá los datos del abono</p>
+                    </div>
+
+
+                    <form asp-action="Create" method="post" class="d-grid gap-3">
+                        <div class="row g-3">
+
+                            <!-- Playa -->
+                            <div class="col-12">
+                                <label class="form-label fw-medium">Playa</label>
+                                <input type="text" class="form-control" value="@ViewBag.PlayaNombre" disabled />
+                                <input type="hidden" asp-for="PlyID" value="@Model.PlyID" />
+                            </div>
+
+                            <!-- Plaza -->
+                            <div class="col-12 col-md-6">
+                                <label asp-for="PlzNum" class="form-label fw-medium">Plaza</label>
+                                <select asp-for="PlzNum" asp-items="ViewBag.PlzNum" class="form-select">
+                                    <option value="">-- Seleccione plaza --</option>
+                                </select>
+                                <span asp-validation-for="PlzNum" class="text-danger small"></span>
+                            </div>
+
+                            <!-- Abonado -->
+                            <div class="col-12 col-md-6">
+                                <label asp-for="AboDNI" class="form-label fw-medium">Abonado</label>
+                                <select asp-for="AboDNI" asp-items="ViewBag.AboDNI" class="form-select">
+                                    <option value="">-- Seleccione abonado --</option>
+                                </select>
+                                <span asp-validation-for="AboDNI" class="text-danger small"></span>
+                            </div>
+
+                            <!-- Pago -->
+                            <div class="col-12 col-md-6">
+                                <label asp-for="PagNum" class="form-label fw-medium">Pago</label>
+                                <select asp-for="PagNum" asp-items="ViewBag.PagNum" class="form-select">
+                                    <option value="">-- Seleccione pago --</option>
+                                </select>
+                                <span asp-validation-for="PagNum" class="text-danger small"></span>
+                            </div>
+
+                            <!-- Fecha inicio -->
+                            <div class="col-12 col-md-6">
+                                <label asp-for="AboFyhIni" class="form-label fw-medium">Fecha inicio</label>
+                                <input asp-for="AboFyhIni" type="date" class="form-control" />
+                                <span asp-validation-for="AboFyhIni" class="text-danger small"></span>
+                            </div>
+
+                            <!-- Fecha fin -->
+                            <div class="col-12 col-md-6">
+                                <label asp-for="AboFyhFin" class="form-label fw-medium">Fecha fin</label>
+                                <input asp-for="AboFyhFin" type="date" class="form-control" />
+                                <span asp-validation-for="AboFyhFin" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="text-center mt-3">
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="bi bi-check-circle me-1"></i> Confirmar Abono
+                            </button>
+                            <a asp-action="Index" class="btn btn-secondary px-4 ms-2">Cancelar</a>
+                        </div>
+                    </form>
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

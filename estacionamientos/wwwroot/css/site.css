@@ -105,3 +105,22 @@ span.field-validation-valid,
   box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .2);
   border-color: rgba(var(--bs-primary-rgb), .5);
 }
+
+/* Quitar borde raro al enfocar inválido */
+select:invalid:focus {
+    box-shadow: none;
+}
+
+/* Forzar que el tooltip nativo aparezca abajo (Chrome/Edge) */
+select:invalid:focus::-webkit-validation-bubble,
+select:invalid:focus::-webkit-validation-bubble-message {
+    position: absolute !important;
+    transform: translateY(30px); /* mueve hacia abajo */
+}
+
+/* Ajuste Firefox: quita borde rojo/azul automático */
+select:invalid:focus::-moz-ui-invalid {
+    box-shadow: none !important;
+}
+
+

@@ -34,6 +34,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Abonado> Abonados { get; set; } = default!;
     public DbSet<Abono> Abonos { get; set; } = default!;
     public DbSet<VehiculoAbonado> VehiculosAbonados { get; set; } = default!;
+    public DbSet<PlazaClasificacion> PlazasClasificaciones { get; set; } = default!;
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -470,11 +472,28 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .OnDelete(DeleteBehavior.Cascade);
 
             // 🔹 Relación con ClasificacionVehiculo
-            e.HasOne(p => p.Clasificacion)
+            //e.HasOne(p => p.Clasificacion)
+                //.WithMany()
+                //.HasForeignKey(p => p.ClasVehID)
+                //.OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PlazaClasificacion>(e =>
+        {
+            e.ToTable("PlazaClasificacion");
+            e.HasKey(pc => new { pc.PlyID, pc.PlzNum, pc.ClasVehID });
+
+            e.HasOne(pc => pc.Plaza)
+                .WithMany(p => p.Clasificaciones)
+                .HasForeignKey(pc => new { pc.PlyID, pc.PlzNum })
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(pc => pc.Clasificacion)
                 .WithMany()
-                .HasForeignKey(p => p.ClasVehID)
+                .HasForeignKey(pc => pc.ClasVehID)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
 
         modelBuilder.Entity<Ocupacion>(e =>
             {
