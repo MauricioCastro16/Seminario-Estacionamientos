@@ -56,7 +56,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             new ClasificacionVehiculo { ClasVehID = 2, ClasVehTipo = "Camioneta", ClasVehDesc = "Vehículo utilitario" },
             new ClasificacionVehiculo { ClasVehID = 3, ClasVehTipo = "Camión", ClasVehDesc = "Vehículo de carga" },
             new ClasificacionVehiculo { ClasVehID = 4, ClasVehTipo = "Motocicleta", ClasVehDesc = "Vehículo de dos ruedas" },
-            new ClasificacionVehiculo { ClasVehID = 5, ClasVehTipo = "Bicicleta", ClasVehDesc = "Vehículo de dos ruedas sin motor" },
             new ClasificacionVehiculo { ClasVehID = 6, ClasVehTipo = "Otro", ClasVehDesc = "Otro tipo de vehículo" }
         );
 
