@@ -45,6 +45,9 @@ namespace estacionamientos.Controllers
             if (playa == null)
                 return NotFound();
 
+            ViewBag.PlyID  = playa.PlyID;
+            ViewBag.PlyNom = playa.PlyNom;
+
             return View((metodos, metodosAceptados, playa));
         }
 

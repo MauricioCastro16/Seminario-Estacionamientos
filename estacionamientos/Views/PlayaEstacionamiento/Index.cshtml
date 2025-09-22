@@ -42,7 +42,6 @@
                 }
             </select>
         </div>
-
         <!-- Botón Filtrar -->
         <div class="col-auto">
             <div class="btn-group">
@@ -283,14 +282,8 @@
                     <td>@playa.PlyProv</td>
                     <td>@playa.PlyCiu</td>
                     <td>@playa.PlyDir</td>
+
                     <td class="text-center">
-                        <a class="btn btn-outline-primary btn-sm me-2"
-                           asp-action="ConfigurarPlazas"
-                           asp-controller="PlazaEstacionamiento"
-                           asp-route-plyID="@playa.PlyID"
-                           title="Configurar Plazas">
-                            <i class="fa-solid fa-grip"></i>
-                        </a>
                         <a class="btn btn-outline-secondary btn-sm"
                            asp-action="Index"
                            asp-controller="AceptaMetodoPago"
@@ -312,7 +305,15 @@
                           title="Ver tarifas">
                             <i class="fa-solid fa-money-bills"></i>
                         </a>
+                        <a class="btn btn-outline-primary btn-sm" 
+                          asp-action="ConfigurarPlazas"
+                          asp-controller="PlazaEstacionamiento" 
+                          asp-route-plyID="@playa.PlyID" 
+                          title="Configurar Plazas">
+                            <i class="fa-solid fa-grip"></i>
+                        </a>
                     </td>
+
                 </tr>
             }
         }

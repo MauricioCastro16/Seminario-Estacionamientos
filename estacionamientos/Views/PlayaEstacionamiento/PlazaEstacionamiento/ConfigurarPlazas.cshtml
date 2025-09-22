@@ -1,11 +1,14 @@
 @model IEnumerable<estacionamientos.Models.PlazaEstacionamiento>
 
 @{
-    ViewData["Title"] = "Añadir plaza de estacionamiento";
+    ViewData["Title"] = "Plazas de estacionamiento";
 }
 
 <div class="container" style="max-width: max-content">
-    <h6 class="text-black text-center mb-3">Estacionamiento @ViewBag.PlyNom</h6>
+    <div class="mb-3">
+        <h1 class="display-6 fw-semibold">@ViewData["Title"]</h1>
+        <h5 class="text-muted">@ViewBag.PlyNom</h5>
+    </div>
 
     @if (TempData["Error"] is string err)
     {

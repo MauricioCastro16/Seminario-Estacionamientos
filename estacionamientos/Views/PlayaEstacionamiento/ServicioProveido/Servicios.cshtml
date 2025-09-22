@@ -8,8 +8,11 @@
       method="post"
       class="container d-flex flex-column gap-3 align-items-center"
       style="max-width:1000px;">
-    <h1 class="display-6 fw-semibold">@ViewData["Title"]</h1>
-    <h6 class="text-muted">@Model.PlayaNom</h6>
+      
+    <div class="mb-3 text-center">
+      <h1 class="display-6 fw-semibold">@ViewData["Title"]</h1>
+      <h5 class="text-muted">@Model.PlayaNom</h5>
+    </div>
 
     <div class="row row-cols-1 row-cols-md-3 g-4">
         @for (int i = 0; i < Model.ServiciosDisponibles.Count; i++)
@@ -57,7 +60,7 @@
     <input type="hidden" name="PlayaID" value="@Model.PlayaID" />
 
     <div class="d-flex w-100 mt-4 gap-2">
-        <button type="submit" class="btn btn-primary flex-fill" id="btnGuardar">Guardar Cambios</button>
+        <button type="submit" class="btn btn-primary flex-fill" id="btnGuardar">Guardar</button>
         <a asp-controller="PlayaEstacionamiento" asp-action="Index" class="btn btn-outline-secondary flex-fill">Cancelar</a>
     </div>
 </form>

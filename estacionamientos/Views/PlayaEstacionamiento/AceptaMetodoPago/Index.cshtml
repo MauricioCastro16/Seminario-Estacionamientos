@@ -3,12 +3,18 @@
 }
 @model (List<estacionamientos.Models.MetodoPago> Metodos, List<int> Aceptados, estacionamientos.Models.PlayaEstacionamiento playa)
 
+
+
 <form asp-action="Guardar" asp-route-plyID="@Model.playa.PlyID"
       method="post"
       class="container d-flex flex-column gap-3 align-items-center"
       style="max-width:500px;">
+      
+  <div class="mb-3 text-center">
     <h1 class="display-6 fw-semibold">@ViewData["Title"]</h1>
-    <h6 class="text-muted">Estacionamiento @Model.playa.PlyID</h6>
+    <h5 class="text-muted">@ViewBag.PlyNom</h5>
+  </div>
+  
 
     @for (int i = 0; i < Model.Metodos.Count; i++)
     {
