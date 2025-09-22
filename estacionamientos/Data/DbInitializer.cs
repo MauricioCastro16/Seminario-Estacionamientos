@@ -34,6 +34,7 @@ public static class DbInitializer
                 UsuEmail = correo,
                 UsuPswd = "12345678",
                 UsuNumTel = faker.Phone.PhoneNumber("##########"),
+                UsuNomUsu = faker.Internet.UserName(), // Nombre de usuario
                 DueCuit = faker.Random.ReplaceNumbers("###########")
             });
         }
@@ -99,6 +100,7 @@ public static class DbInitializer
                     UsuEmail = correo,
                     UsuPswd = "12345678",
                     UsuNumTel = faker.Phone.PhoneNumber("##########"),
+                    UsuNomUsu = faker.Internet.UserName(), // Nombre de usuario
                 });
             }
         }
@@ -468,6 +470,7 @@ public static class DbInitializer
                 UsuEmail = correo,
                 UsuPswd = "12345678",
                 UsuNumTel = faker.Phone.PhoneNumber("##########"),
+                UsuNomUsu = faker.Internet.UserName(), // Nombre de usuario
                 // Las colecciones las dejamos vacías por ahora, pero puedes agregarlas si lo necesitas
                 Conducciones = new List<Conduce>(),
                 UbicacionesFavoritas = new List<UbicacionFavorita>(),

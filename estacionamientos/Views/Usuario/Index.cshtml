@@ -66,6 +66,7 @@
                             <th>Id</th> 
                             <th>Nombre y Apellido</th> 
                             <th>Email</th> 
+                            <th>Nombre de Usuario</th>
                             <th>Teléfono</th> 
                             <th>CUIT</th> 
                             <th>Acciones</th> 
@@ -78,6 +79,7 @@
                                     <td>@d.UsuNU</td> 
                                     <td>@d.UsuNyA</td> 
                                     <td>@d.UsuEmail</td> 
+                                    <td>@d.UsuNomUsu</td>
                                     <td>@d.UsuNumTel</td> 
                                     <td>@d.DueCuit</td> 
                                     <td> 
@@ -114,6 +116,7 @@
                     <th>Id</th>
                     <th>Nombre y Apellido</th>
                     <th>Email</th>
+                    <th>Nombre de Usuario</th>
                     <th>Teléfono</th>
                     <th>Acciones</th>
                 </tr>
@@ -125,6 +128,7 @@
                     <td>@c.UsuNU</td>
                     <td>@c.UsuNyA</td>
                     <td>@c.UsuEmail</td>
+                    <td>@c.UsuNomUsu</td>
                     <td>@c.UsuNumTel</td>
                     <td>
                         <a asp-controller="Usuario" asp-action="EditConductor" asp-route-id="@c.UsuNU" 
@@ -161,6 +165,7 @@
                     <th>Id</th>
                     <th>Nombre y Apellido</th>
                     <th>Email</th>
+                    <th>Nombre de Usuario</th>
                     <th>Teléfono</th>
                     <th>Acciones</th>
                 </tr>
@@ -172,6 +177,7 @@
                     <td>@a.UsuNU</td>
                     <td>@a.UsuNyA</td>
                     <td>@a.UsuEmail</td>
+                    <td>@a.UsuNomUsu</td>
                     <td>@a.UsuNumTel</td>
                     <td>
                         <a asp-controller="Usuario" asp-action="EditAdministrador" asp-route-id="@a.UsuNU" 
@@ -208,6 +214,7 @@
                     <th>Id</th>
                     <th>Nombre y Apellido</th>
                     <th>Email</th>
+                    <th>Nombre de Usuario</th>
                     <th>Teléfono</th>
                     <th>Acciones</th>
                 </tr>
@@ -219,6 +226,7 @@
                     <td>@p.UsuNU</td>
                     <td>@p.UsuNyA</td>
                     <td>@p.UsuEmail</td>
+                    <td>@p.UsuNomUsu</td>
                     <td>@p.UsuNumTel</td>
                     <td>
                     <td>

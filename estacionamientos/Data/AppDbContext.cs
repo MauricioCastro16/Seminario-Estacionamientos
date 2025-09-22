@@ -172,14 +172,78 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasBaseType<Usuario>();
         });
         modelBuilder.Entity<Administrador>().HasData(
-            new Administrador { UsuNU = 1, UsuNyA = "Mauricio Nicolás Castro", UsuEmail = "castromauricionicolas@hotmail.com", UsuPswd = "12345678", UsuNumTel = "1234567890" },
-            new Administrador { UsuNU = 2, UsuNyA = "Yoel Brizuela Silvestri", UsuEmail = "brizuelajoelelian@gmail.com", UsuPswd = "12345678", UsuNumTel = "0987654321" },
-            new Administrador { UsuNU = 3, UsuNyA = "Nadine Andrea Peralta Ruiz", UsuEmail = "nadineperaltaruiz@gmail.com", UsuPswd = "12345678", UsuNumTel = "1122334455" },
-            new Administrador { UsuNU = 4, UsuNyA = "Mateo Beneyto", UsuEmail = "mateobeneyto@gmail.com", UsuPswd = "12345678", UsuNumTel = "5566778899" },
-            new Administrador { UsuNU = 5, UsuNyA = "Iván Josué Nikcevich", UsuEmail = "ivan.nikcevich@hotmail.com", UsuPswd = "12345678", UsuNumTel = "2233445566" },
-            new Administrador { UsuNU = 6, UsuNyA = "Adriano Nikcevich", UsuEmail = "adri.nikce30@gmail.com", UsuPswd = "12345678", UsuNumTel = "6677889900" },
-            new Administrador { UsuNU = 7, UsuNyA = "Solana Livio", UsuEmail = "solana.livio1976@gmail.com", UsuPswd = "12345678", UsuNumTel = "3344556677" },
-            new Administrador { UsuNU = 8, UsuNyA = "Elías Obregón", UsuEmail = "obregon.elias@gmail.com", UsuPswd = "12345678", UsuNumTel = "7788990011" }
+            new Administrador
+            {
+                UsuNU = 1,
+                UsuNyA = "Mauricio Nicolás Castro",
+                UsuEmail = "castromauricionicolas@hotmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "1234567890",
+                UsuNomUsu = "MauriCastro"
+            },
+            new Administrador
+            {
+                UsuNU = 2,
+                UsuNyA = "Yoel Brizuela Silvestri",
+                UsuEmail = "brizuelajoelelian@gmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "0987654321",
+                UsuNomUsu = "YoelBrizuela"
+            },
+            new Administrador
+            {
+                UsuNU = 3,
+                UsuNyA = "Nadine Andrea Peralta Ruiz",
+                UsuEmail = "nadineperaltaruiz@gmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "1122334455",
+                UsuNomUsu = "NadinePeralta"
+            },
+            new Administrador
+            {
+                UsuNU = 4,
+                UsuNyA = "Mateo Beneyto",
+                UsuEmail = "mateobeneyto@gmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "5566778899",
+                UsuNomUsu = "MateoBeneyto"
+            },
+            new Administrador
+            {
+                UsuNU = 5,
+                UsuNyA = "Iván Josué Nikcevich",
+                UsuEmail = "ivan.nikcevich@hotmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "2233445566",
+                UsuNomUsu = "IvanNikcevich"
+            },
+            new Administrador
+            {
+                UsuNU = 6,
+                UsuNyA = "Adriano Nikcevich",
+                UsuEmail = "adri.nikce30@gmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "6677889900",
+                UsuNomUsu = "AdrianoNikcevich"
+            },
+            new Administrador
+            {
+                UsuNU = 7,
+                UsuNyA = "Solana Livio",
+                UsuEmail = "solana.livio1976@gmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "3344556677",
+                UsuNomUsu = "SolanaLivio"
+            },
+            new Administrador
+            {
+                UsuNU = 8,
+                UsuNyA = "Elías Obregón",
+                UsuEmail = "obregon.elias@gmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "7788990011",
+                UsuNomUsu = "EliasObregon"
+            }
         );
 
         //Tablas dinámicas
@@ -198,6 +262,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 entity.Property(e => e.UsuPswd).HasMaxLength(200).IsRequired();
                 entity.Property(e => e.UsuNumTel).HasMaxLength(30);
                 entity.HasIndex(e => e.UsuEmail).IsUnique();
+                entity.HasIndex(e => e.UsuNomUsu).IsUnique();
             });
         modelBuilder.Entity<Duenio>(entity =>
             {

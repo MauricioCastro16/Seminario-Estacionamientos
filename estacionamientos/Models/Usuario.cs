@@ -23,5 +23,10 @@ namespace estacionamientos.Models
 
         [Display(Name = "Número de teléfono")]
         public string? UsuNumTel { get; set; }
+
+        [Required(ErrorMessage = "* El nombre de usuario es obligatorio.")]
+        [StringLength(50, ErrorMessage = "* El nombre de usuario no debe exceder los 50 caracteres.")]
+        [Display(Name = "Nombre de Usuario")]
+        public string UsuNomUsu { get; set; } = string.Empty;  // Nombre de usuario obligatorio
     }
 }
