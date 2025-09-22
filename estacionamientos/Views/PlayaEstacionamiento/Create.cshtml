@@ -61,12 +61,10 @@
                 <option>Asfalto</option>
                 <option>Ripio</option>
                 <option>Tierra</option>
-                <option value="__OTRO__">Otros (escribir)</option>
             </select>
-            <input type="text" class="form-control d-none" id="pisoInput"
-                   placeholder="Escribí el tipo de piso" autocomplete="off" />
             <span asp-validation-for="PlyTipoPiso" class="text-danger"></span>
         </div>
+
 
         <!-- Llave requerida -->
         <div class="mb-3">
@@ -210,21 +208,16 @@
             }
         });
 
-        // Piso "Otro"
         const pisoSelect = $("pisoSelect");
         const pisoInput  = $("pisoInput");
         const pisoHidden = $("pisoHidden");
+
+        // Eliminar el código que maneja la opción "Otro"
         pisoSelect.addEventListener("change", () => {
-            if (pisoSelect.value === "__OTRO__") {
-                pisoInput.classList.remove("d-none");
-                pisoInput.disabled = false;
-                pisoInput.focus();
-            } else {
-                pisoInput.classList.add("d-none");
-                pisoInput.disabled = true;
-                pisoHidden.value = pisoSelect.value || "";
-            }
+            // Ya no es necesario mostrar el input para escribir otro tipo de piso
+            // Solo lo que está en el select
+            pisoHidden.value = pisoSelect.value || "";
         });
-        pisoInput.addEventListener("input", () => { pisoHidden.value = pisoInput.value.trim(); });
+
     </script>
 }
