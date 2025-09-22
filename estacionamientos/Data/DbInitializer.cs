@@ -674,10 +674,16 @@ public static class DbInitializer
                 // Seleccionar una plaza aleatoria para la ocupación
                 var plaza = faker.PickRandom(plazasDisponibles);
 
-                // Obtener un vehículo aleatorio para la ocupación (debe estar disponible)
-                var vehiculosDisponibles = context.Vehiculos
-                    .Where(v => v.ClasVehID == plaza.ClasVehID) // El vehículo debe ser compatible con la plaza
+                // Buscar vehículos compatibles según las clasificaciones asociadas a la plaza
+                var clasificaciones = context.PlazasClasificaciones
+                    .Where(pc => pc.PlyID == plaza.PlyID && pc.PlzNum == plaza.PlzNum)
+                    .Select(pc => pc.ClasVehID)
                     .ToList();
+
+                var vehiculosDisponibles = context.Vehiculos
+                    .Where(v => clasificaciones.Contains(v.ClasVehID))
+                    .ToList();
+
 
                 var vehiculo = faker.PickRandom(vehiculosDisponibles); // Elegir un vehículo aleatorio
 
