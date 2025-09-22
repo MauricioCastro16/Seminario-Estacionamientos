@@ -104,4 +104,5 @@ using (var scope = app.Services.CreateScope())
 }
 // using QuestPDF.Infrastructure;
 QuestPDF.Settings.License = LicenseType.Community;
+QuestPDF.Settings.EnableDebugging = true;
 app.Run();

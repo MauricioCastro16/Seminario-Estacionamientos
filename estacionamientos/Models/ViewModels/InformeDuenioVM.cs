@@ -60,4 +60,26 @@ namespace estacionamientos.ViewModels
         public List<SeriePuntoVM> IngresosPorDia { get; set; } = new();   // etiqueta = "dd/MM"
         public List<SeriePuntoVM> IngresosPorHora { get; set; } = new();  // etiqueta = "00-23"
     }
+
+    // ----- detalle por playa -----
+    public class InformeDetallePlayaItemVM
+    {
+        public int PlyID { get; set; }
+        public int PagNum { get; set; }
+        public DateTime FechaUtc { get; set; }
+        public decimal Monto { get; set; }
+        public string Metodo { get; set; } = "";
+        public string Tipo { get; set; } = "N/D"; // Ocupación | Servicio | Ambos | N/D (hasta conectar tablas)
+    }
+
+    public class InformeDetallePlayaVM
+    {
+        public int PlyID { get; set; }
+        public string PlayaNombre { get; set; } = "";
+        public InformeFiltroVM Filtros { get; set; } = new();
+        public List<InformeDetallePlayaItemVM> Items { get; set; } = new();
+
+        public int CantPagos => Items.Count;
+        public decimal Total => Items.Sum(x => x.Monto);
+    }
 }

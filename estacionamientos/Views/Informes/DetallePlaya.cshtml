@@ -1,0 +1,78 @@
+@model estacionamientos.ViewModels.InformeDetallePlayaVM
+
+@{
+    ViewData["Title"] = "Pagos de " + Model.PlayaNombre;
+}
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Pagos — @Model.PlayaNombre</h2>
+        <div class="btn-group">
+            <a class="btn btn-outline-secondary"
+               asp-controller="Informes" asp-action="Index"
+               asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
+               asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")">
+                ← Volver
+            </a>
+            <a class="btn btn-primary"
+               asp-controller="Informes" asp-action="Descargar"
+               asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
+               asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")"
+               asp-route-playasIds="@Model.PlyID">
+                <i class="fa-solid fa-file-pdf"></i> Descargar PDF
+            </a>
+        </div>
+    </div>
+
+    <div class="mb-3 text-muted">
+        Período: @Model.Filtros.Desde.ToString("dd/MM/yyyy") — @Model.Filtros.Hasta.ToString("dd/MM/yyyy")
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="card shadow-sm"><div class="card-body">
+                <div class="text-muted small"># Pagos</div>
+                <div class="h5 m-0">@Model.CantPagos</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card shadow-sm"><div class="card-body">
+                <div class="text-muted small">Total</div>
+                <div class="h5 m-0">$ @Model.Total.ToString("N2")</div>
+            </div></div>
+        </div>
+    </div>
+
+    @if (Model.Items.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th># Pago</th>
+                        <th>Fecha</th>
+                        <th class="text-end">Monto</th>
+                        <th>Método</th>
+                        <th>Tipo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var x in Model.Items)
+                {
+                    <tr>
+                        <td>@x.PagNum</td>
+                        <td>@x.FechaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        <td class="text-end">$ @x.Monto.ToString("N2")</td>
+                        <td>@x.Metodo</td>
+                        <td>@x.Tipo</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="text-muted">No hay pagos en el período.</div>
+    }
+</div>

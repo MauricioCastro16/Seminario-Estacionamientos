@@ -139,6 +139,7 @@
                                 <th class="text-end"># Pagos</th>
                                 <th class="text-end">Ingresos</th>
                                 <th class="text-end">Ticket Prom.</th>
+                                <th class="text-center">Acciones</th>  <!-- NUEVA -->
                             </tr>
                         </thead>
                         <tbody>
@@ -149,9 +150,19 @@
                                 <td class="text-end">@r.CantPagos</td>
                                 <td class="text-end">$ @r.IngresosTotales.ToString("N2")</td>
                                 <td class="text-end">$ @r.TicketPromedio.ToString("N2")</td>
+                                <td class="text-center">
+                                    <a class="btn btn-sm btn-outline-primary"
+                                    asp-controller="Informes" asp-action="DetallePlaya"
+                                    asp-route-plyID="@r.PlyID"
+                                    asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
+                                    asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")">
+                                        Ver pagos
+                                    </a>
+                                </td>
                             </tr>
                         }
                         </tbody>
+    
                     </table>
                 </div>
             }

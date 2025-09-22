@@ -21,5 +21,10 @@ namespace estacionamientos.Models
         public PlayaEstacionamiento Playa { get; set; } = default!;
         public MetodoPago MetodoPago { get; set; } = default!;
         public AceptaMetodoPago AceptaMetodoPago { get; set; } = default!; // (PlyID, MepID)
+
+        // NUEVO: relaciones inversas
+        public ICollection<Ocupacion> Ocupaciones { get; set; } = new List<Ocupacion>();
+        public ICollection<ServicioExtraRealizado> ServiciosExtras { get; set; } = new List<ServicioExtraRealizado>();
+
     }
 }
