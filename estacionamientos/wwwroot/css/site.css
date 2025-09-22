@@ -105,3 +105,12 @@ span.field-validation-valid,
   box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .2);
   border-color: rgba(var(--bs-primary-rgb), .5);
 }
+
+/* Fija la primera columna (Servicio) al scrollear */
+.sticky-col {
+    position: sticky;
+    top: 0;             /* 👈 siempre visible al scrollear vertical */
+    left: 0;            /* opcional: fijo al scrollear horizontal */
+    z-index: 2;         /* asegura que quede por encima de otras celdas */
+    background: #f8f9fa; /* fondo consistente (Bootstrap table-light) */
+}
