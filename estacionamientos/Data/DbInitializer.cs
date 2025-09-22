@@ -417,7 +417,8 @@ public static class DbInitializer
                 var piso = pisos == 1 ? 1 : faker.Random.Int(1, pisos);
                 var nombre = $"P{piso}-{plzNum.ToString("D3")}";
 
-                plazas.Add(new PlazaEstacionamiento
+                // Crear plaza
+                var plaza = new PlazaEstacionamiento
                 {
                     PlyID = p.PlyID,
                     PlzNum = plzNum++,
@@ -426,10 +427,20 @@ public static class DbInitializer
                     PlzAlt = Math.Round(faker.Random.Decimal(1.80m, 3.30m), 2), // precisión 2 decimales
                     PlzHab = true,
                     PlzNombre = nombre,
-                    Piso = piso,
+                    Piso = piso
+                };
+
+                // 🔹 agregar clasificación en tabla intermedia
+                plaza.Clasificaciones.Add(new PlazaClasificacion
+                {
+                    PlyID = plaza.PlyID,
+                    PlzNum = plaza.PlzNum,
                     ClasVehID = clasId
                 });
+
+                plazas.Add(plaza);
             }
+
         }
 
         // Evitar duplicados (por si se ejecuta dos veces antes de guardar)

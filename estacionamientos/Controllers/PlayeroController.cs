@@ -324,7 +324,8 @@ namespace estacionamientos.Controllers
             }
 
             var plazas = await _context.Plazas
-                .Include(p => p.Clasificacion)    // 🔹 incluí la relación Clasificación
+                .Include(p => p.Clasificaciones)
+                    .ThenInclude(pc => pc.Clasificacion)
                 .Where(p => p.PlyID == turno.PlyID)
                 .OrderBy(p => p.PlzNum)
                 .Select(p => new PlazaEstacionamiento
@@ -335,14 +336,21 @@ namespace estacionamientos.Controllers
                     PlzTecho = p.PlzTecho,
                     PlzAlt = p.PlzAlt,
                     PlzHab = p.PlzHab,
-                    ClasVehID = p.ClasVehID,
-                    Clasificacion = p.Clasificacion,
-                    // 🔹 Estado dinámico: ocupado si hay Ocupación activa
                     PlzOcupada = _context.Ocupaciones
-                        .Any(o => o.PlyID == p.PlyID && o.PlzNum == p.PlzNum && o.OcufFyhFin == null)
+                        .Any(o => o.PlyID == p.PlyID && o.PlzNum == p.PlzNum && o.OcufFyhFin == null),
+
+                    // 🔹 inicializar la colección de clasificaciones (ya no hay un solo campo)
+                    Clasificaciones = p.Clasificaciones.Select(pc => new PlazaClasificacion
+                    {
+                        PlyID = pc.PlyID,
+                        PlzNum = pc.PlzNum,
+                        ClasVehID = pc.ClasVehID,
+                        Clasificacion = pc.Clasificacion
+                    }).ToList()
                 })
                 .AsNoTracking()
                 .ToListAsync();
+
 
             ViewBag.PlyID = turno.PlyID;
             return View(plazas);

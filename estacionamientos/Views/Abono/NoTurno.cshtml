@@ -1,0 +1,18 @@
+@{
+    ViewData["Title"] = "Abonos";
+}
+
+<div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="card shadow-sm" style="max-width: 500px; width: 100%;">
+        <div class="card-body text-start">
+            <h4 class="card-title mb-3">No puede gestionar abonos</h4>
+            <p class="card-text text-muted">
+                Recuerde que debe iniciar su turno primero para poder registrar abonos.
+            </p>
+            <a asp-controller="Turno" asp-action="Create" class="btn btn-primary">
+                <i class="bi bi-play-circle"></i> Iniciar turno
+            </a>
+        </div>
+    </div>
+</div>
+

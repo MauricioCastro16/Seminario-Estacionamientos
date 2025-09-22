@@ -42,7 +42,17 @@
             <tr>
                 <td>@plaza.PlzNum</td>
                 <td>@(string.IsNullOrWhiteSpace(plaza.PlzNombre) ? "-" : plaza.PlzNombre)</td>
-                <td>@plaza.Clasificacion?.ClasVehTipo</td>
+                <td>
+                    @if (plaza.Clasificaciones != null && plaza.Clasificaciones.Any())
+                    {
+                        @string.Join(", ", plaza.Clasificaciones.Select(pc => pc.Clasificacion.ClasVehTipo))
+                    }
+                    else
+                    {
+                        <span class="text-muted">–</span>
+                    }
+                </td>
+
                 <td>@(plaza.PlzTecho ? "Sí" : "No")</td>
                 <td>@plaza.PlzAlt</td>
                 <td class="text-center">

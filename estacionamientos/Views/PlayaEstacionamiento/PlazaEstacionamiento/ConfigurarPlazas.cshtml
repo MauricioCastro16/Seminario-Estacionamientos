@@ -64,21 +64,26 @@
                            value="@(ViewBag.DefaultPiso ?? 0)" required />
                     @Html.ValidationMessage("piso", null, new { @class = "text-danger" })
                 </div>
-
                 <div>
-                    <label class="mb-2" for="clasVehID">Clasificación de vehículo</label>
-                    <select id="clasVehID" name="clasVehID" asp-items="ViewBag.Clasificaciones" class="form-select" required>
-                        <option value="">- Opciones -</option>
+                    <label class="mb-2" for="clasVehID">Vehículos que soporta</label>
+                    <select id="clasVehID" 
+                            name="clasVehID[]" 
+                            asp-items="ViewBag.Clasificaciones" 
+                            class="form-select" 
+                            multiple="multiple"
+                            required>
+                        <option></option> 
                     </select>
-                    @Html.ValidationMessage("clasVehID", null, new { @class = "text-danger" })
                 </div>
+
             </div>
 
             <input type="hidden" name="plyID" value="@ViewBag.PlyID" />
 
-            <button type="submit" class="btn btn-primary" style="min-width: max-content; height: max-content">
-                Añadir plazas
+            <button type="submit" class="btn btn-primary text-nowrap">
+                <i class="bi bi-plus-lg me-1"></i> Agregar plaza
             </button>
+
         </div>
     </form>
 
@@ -93,7 +98,7 @@
                 <th>Techo</th>
                 <th>Altura (m)</th>
                 <th>Planta</th>
-                <th>Clasificación</th>
+                <th>Vehículos que soporta</th>
                 <th class="text-center">Habilitada</th>
                 <th class="text-center">Acciones</th>
             </tr>
@@ -135,7 +140,7 @@
                            placeholder="Ej: 2.10" />
                 </td>
 
-                <!-- PISO -->
+                <!-- PLANTA -->
                 <td>
                     <span class="view-piso">@((plaza.Piso.HasValue ? plaza.Piso.Value.ToString() : "0"))</span>
                     <input name="piso" form="edit-form-@rowKey"
@@ -146,7 +151,49 @@
                            placeholder="Ej: 0" />
                 </td>
 
-                <td>@plaza.Clasificacion?.ClasVehTipo</td>
+                <!-- VEHÍCULOS QUE SOPORTA -->
+
+                <td>
+                    <!-- Vista normal -->
+                    <span class="view-clasificaciones">
+                        @if (plaza.Clasificaciones != null && plaza.Clasificaciones.Any())
+                        {
+                            if (plaza.Clasificaciones.Count > 1)
+                            {
+                                <div class="d-inline-block position-relative">
+                                    <span class="toggle-varios text-dark" style="cursor: pointer;" data-row="@rowKey">
+                                        Varios <i class="bi bi-caret-right-fill text-dark"></i>
+                                    </span>
+                                    <div class="varios-list bg-light border rounded p-2 position-absolute start-100 top-0 ms-2 d-none shadow-sm"
+                                        style="white-space: nowrap; z-index: 1000;">
+                                        @foreach (var clas in plaza.Clasificaciones)
+                                        {
+                                            <div>@clas.Clasificacion.ClasVehTipo</div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                @plaza.Clasificaciones.First().Clasificacion.ClasVehTipo
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-muted">–</span>
+                        }
+                    </span>
+
+                    <!-- Campo editable con select2 -->
+                    <select name="clasVehID[]" form="edit-form-@rowKey"
+                            class="form-select d-none edit-field edit-clasVehID"
+                            multiple="multiple"
+                            asp-items="ViewBag.Clasificaciones"
+                            data-orig-value="@string.Join(",", plaza.Clasificaciones?.Select(c => c.ClasVehID) ?? Enumerable.Empty<int>())">
+                    </select>
+
+                </td>
+
 
                 <!-- HABILITADA -->
                 <td class="text-center">
@@ -165,39 +212,52 @@
 
                 <!-- ACCIONES -->
                 <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-outline-secondary btn-edit" data-row="@rowKey" title="Editar">
-                        <i class="fa-regular fa-pen-to-square"></i>
-                        <span class="visually-hidden">Editar</span>
-                    </button>
+                    <div class="d-flex justify-content-center align-items-center gap-1">
 
-                    <button type="submit" class="btn btn-sm btn-success d-none btn-save" form="edit-form-@rowKey" formnovalidate title="Guardar">
-                            <i class="fa-solid fa-check"></i>
-                        <span class="visually-hidden">Guardar</span>
-                    </button>
-
-                    <button type="button" class="btn btn-sm btn-secondary d-none btn-cancel" data-row="@rowKey" title="Cancelar">
-                        <i class="fa-solid fa-xmark"></i>
-                        <span class="visually-hidden">Cancelar</span>
-                    </button>
-
-                    <form asp-controller="PlazaEstacionamiento" asp-action="DeleteInline" method="post" class="d-inline ms-1">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="plyID" value="@plaza.PlyID" />
-                        <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
-                        <button type="submit" class="btn btn-sm btn-outline-danger"
-                                onclick="return confirm('¿Quiere eliminar la plaza?');" title="Eliminar">
-                            <i class="fa-regular fa-trash-can"></i>
-                            <span class="visually-hidden">Eliminar</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-edit" data-row="@rowKey" title="Editar">
+                            <i class="fa-regular fa-pen-to-square"></i>
+                            <span class="visually-hidden">Editar</span>
                         </button>
-                    </form>
 
-                    <!-- Form para guardar edición -->
-                    <form id="edit-form-@rowKey" asp-controller="PlazaEstacionamiento" asp-action="EditInline" method="post" class="d-none">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="plyID" value="@plaza.PlyID" />
-                        <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
-                    </form>
+                        <button type="submit" class="btn btn-sm btn-success d-none btn-save"
+                                form="edit-form-@rowKey" formnovalidate title="Guardar">
+                            <i class="fa-solid fa-check"></i>
+                            <span class="visually-hidden">Guardar</span>
+                        </button>
+
+                        <button type="button" class="btn btn-sm btn-secondary d-none btn-cancel" data-row="@rowKey" title="Cancelar">
+                            <i class="fa-solid fa-xmark"></i>
+                            <span class="visually-hidden">Cancelar</span>
+                        </button>
+
+                        <form asp-controller="PlazaEstacionamiento"
+                            asp-action="DeleteInline"
+                            method="post"
+                            class="d-inline btn-delete">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="plyID" value="@plaza.PlyID" />
+                            <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('¿Quiere eliminar la plaza?');"
+                                    title="Eliminar">
+                                <i class="fa-regular fa-trash-can"></i>
+                                <span class="visually-hidden">Eliminar</span>
+                            </button>
+                        </form>
+
+                        <!-- Form para guardar edición -->
+                        <form id="edit-form-@rowKey"
+                            asp-controller="PlazaEstacionamiento"
+                            asp-action="EditInline"
+                            method="post"
+                            class="d-none">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="plyID" value="@plaza.PlyID" />
+                            <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
+                        </form>
+                    </div>
                 </td>
+
             </tr>
         }
         </tbody>
@@ -206,6 +266,317 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+
+<script>
+// 🔹 Función global, accesible desde alta masiva y edición inline
+function initSelect2($sel, origVals = null) {
+    if (!$sel || $sel.length === 0) return;
+
+    if ($sel.data('select2')) {
+        $sel.select2('destroy');
+    }
+
+    if (origVals) {
+        $sel.val(origVals);
+    }
+
+    $sel.select2({
+        placeholder: "- Opciones -",
+        closeOnSelect: false,
+        theme: "bootstrap-5",
+        multiple: true,
+        minimumResultsForSearch: Infinity,
+        dropdownAutoWidth: true,
+        width: 'resolve',
+        escapeMarkup: m => m,
+
+        dropdownParent: $('body'),
+        dropdownCssClass: 'force-down',
+
+        templateResult: function (data) {
+            if (!data.id) return data.text;
+            var selected = ($sel.val() || []).includes(data.id);
+            var checked = selected ? "checked" : "";
+            return `
+                <div class="form-check m-0">
+                    <input type="checkbox" class="form-check-input me-2" ${checked} onclick="return false;" />
+                    <label class="form-check-label">${data.text}</label>
+                </div>
+            `;
+        },
+
+        templateSelection: function (data, container) {
+            $(container).removeAttr('title');
+            var seleccionados = $sel.val();
+
+            if (seleccionados?.length === 1) {
+                return $sel.find("option[value='" + seleccionados[0] + "']").text();
+            }
+            if (seleccionados?.length > 1) return "Varios";
+            return "–";
+        }
+    });
+
+    // 🔹 Parche manual para forzar abajo
+    $sel.on('select2:open', function () {
+        let $dropdown = $('.select2-container--open .select2-dropdown');
+        $dropdown.removeClass('select2-dropdown--above').addClass('select2-dropdown--below');
+        $dropdown.css({
+            top: '100%',
+            bottom: 'auto',
+            marginTop: '.25rem'
+        });
+    });
+
+    $sel.trigger('change');
+
+}
+
+</script>
+
+<script>
+
+// 🔹 Función genérica para toggle de opciones (sirve en alta y edición)
+// ✅ Función auxiliar: sincroniza solo 1 checkbox
+function syncCheckbox($select, dataId, isSelected) {
+    let $opt = $('.select2-results__option').filter(function () {
+        return $(this).text().trim() === $select.find("option[value='" + dataId + "']").text().trim();
+    });
+    $opt.find('input[type="checkbox"]').prop('checked', isSelected);
+}
+
+function toggleOption($select, $optionEl, id) {
+    var optionEl = $select.find("option[value='" + id + "']");
+    var selected = optionEl.prop('selected');
+
+    // Toggle
+    optionEl.prop('selected', !selected).trigger('change');
+
+    // ✅ actualizar solo esa opción
+    syncCheckbox($select, id, !selected);
+
+    if ($select.attr("id") === "clasVehID") {
+        actualizarX();
+    } else {
+        actualizarVisual($select);
+    }
+}
+
+// 🔹 Refresca el contenido visual de un select2 (texto, X o flecha)
+function actualizarVisual($select) {
+    var container = $select.next('.select2-container');
+    var rendered = container.find('.select2-selection__rendered');
+    var seleccionados = $select.val();
+
+    rendered.empty();
+
+    let texto = "- Opciones -";
+    if (seleccionados && seleccionados.length > 0) {
+        if (seleccionados.length === 1) {
+            texto = $select.find("option[value='" + seleccionados[0] + "']").text();
+        } else {
+            texto = "Varios";
+        }
+    }
+
+    // Siempre muestro el texto
+    rendered.append('<span class="select2-selection__rendered-text">' + texto + '</span>');
+
+    if (seleccionados && seleccionados.length > 0) {
+        // ✅ Siempre que haya seleccionados muestro la ❌
+        rendered.append('<span class="custom-clear">×</span>');
+    } else {
+        // ✅ Cuando está vacío, muestro la flechita ▼
+        rendered.append('<span class="dropdown-arrow"></span>');
+
+    }
+}
+
+
+$(document).ready(function () {
+    var $selectAlta = $('#clasVehID');
+    initSelect2($selectAlta);
+
+    // 🔹 Función exclusiva para el alta masiva
+    function actualizarX() {
+        var container = $selectAlta.next('.select2-container');
+        var rendered = container.find('.select2-selection__rendered');
+        var seleccionados = $selectAlta.val();
+
+    rendered.empty();
+
+    let texto = "- Opciones -"; // por defecto
+    if (seleccionados && seleccionados.length > 0) {
+        if (seleccionados.length === 1) {
+            texto = $selectAlta.find("option[value='" + seleccionados[0] + "']").text();
+        } else {
+            texto = "Varios";
+        }
+    }
+
+
+
+    // 👉 texto
+    rendered.append('<span class="select2-selection__rendered-text">' + texto + '</span>');
+
+    if (seleccionados && seleccionados.length > 0) {
+        // 👉 SOLO si hay seleccionados → muestro la X
+        rendered.append('<span class="custom-clear">×</span>');
+    } else {
+        // 👉 si no hay seleccionados → muestro la flecha
+        rendered.append('<span class="dropdown-arrow"></span>');
+    }
+}
+
+
+
+// 🔹 SOLO para el alta
+$(document).on('click', '#clasVehID + .select2 .custom-clear', function (e) {
+    e.stopPropagation();
+    $selectAlta.val([]).trigger('change');  
+
+
+    // 🔹 desmarcar todos los checkboxes del dropdown
+    $('#clasVehID').next('.select2-container')
+        .find('.select2-results__option input[type="checkbox"]')
+        .prop('checked', false);
+
+    var container = $selectAlta.next('.select2-container');
+    var rendered = container.find('.select2-selection__rendered');
+    rendered.empty()
+        .append('<span class="select2-selection__rendered-text">- Opciones -</span>')
+        .append('<span class="dropdown-arrow"></span>');
+});
+
+// 🔹 SOLO para edición inline
+$(document).on('click', '.edit-clasVehID + .select2 .custom-clear', function (e) {
+    e.stopPropagation();
+    var $sel = $(this).closest('.select2-container').prev('select');
+    $sel.val([]).trigger('change');
+
+
+    // 🔹 desmarcar todos los checkboxes del dropdown de esta fila
+    $sel.next('.select2-container')
+        .find('.select2-results__option input[type="checkbox"]')
+        .prop('checked', false);
+
+    actualizarVisual($sel);
+});
+
+
+
+    $selectAlta.on('change select2:select select2:unselect select2:clear', function () {
+        actualizarX();
+    });
+
+    // Estado inicial
+    actualizarX();
+
+
+// 🔹 Sincronizar checkboxes (versión corregida)
+
+$selectAlta.on('select2:select select2:unselect', function (e) {
+    var selected = ($selectAlta.val() || []).includes(e.params.data.id);
+    syncCheckbox($selectAlta, e.params.data.id, selected);
+});
+
+
+
+
+   // 🔹 SOLO para alta masiva
+$(document).on('mouseup', '#clasVehID + .select2 .select2-results__option', function (e) {
+    e.preventDefault();
+    const $option = $(this);
+    const id = $option.data('select2-id');
+    toggleOption($('#clasVehID'), $option, id);
+    actualizarX();
+});
+
+// 🔹 SOLO para alta masiva – clic directo en checkbox
+$(document).on('click', '#clasVehID + .select2 .select2-results__option input[type="checkbox"]', function (e) {
+    e.preventDefault();   // 🚨 anula el toggle automático del checkbox
+    e.stopPropagation();  // evita burbujeo
+
+    const $option = $(this).closest('.select2-results__option');
+    const id = $option.data('select2-id');
+
+    // Toggle manual
+    var $optEl = $('#clasVehID').find("option[value='" + id + "']");
+    $optEl.prop('selected', !$optEl.prop('selected'));
+
+    // Sincronizar
+    $('#clasVehID').trigger('change');
+    actualizarX();
+});
+
+
+    // Estado inicial
+    $selectAlta.trigger('change');
+
+});
+
+
+// 🔹 SOLO para edición inline
+$(document).on('mouseup', '.edit-clasVehID + .select2 .select2-results__option', function (e) {
+    e.preventDefault();
+    const $select = $(this).closest('.select2').prev('select');
+    const id = $(this).data('select2-id');
+    toggleOption($select, $(this), id);
+    actualizarVisual($select);
+});
+
+$(document).on('click', '.edit-clasVehID + .select2 .select2-results__option input[type="checkbox"]', function (e) {
+    e.preventDefault();   // 🚨
+    e.stopPropagation();  // 🚨
+
+    const $option = $(this).closest('.select2-results__option');
+    const $select = $option.closest('.select2').prev('select');
+    const id = $option.data('select2-id');
+
+    var optionEl = $select.find("option[value='" + id + "']");
+    optionEl.prop('selected', !optionEl.prop('selected')).trigger('change');
+
+    actualizarVisual($select);
+});
+
+
+// 🔹 Forzar render del texto cuando cambia en edición inline
+$(document).on('change', '.edit-clasVehID', function () {
+    const $sel = $(this);
+    const seleccionados = $sel.val();
+    let texto = "–";
+    if (seleccionados?.length === 1) {
+        texto = $sel.find("option[value='" + seleccionados[0] + "']").text();
+    } else if (seleccionados?.length > 1) {
+        texto = "Varios";
+    }
+    const rendered = $sel.next('.select2-container').find('.select2-selection__rendered');
+    rendered.text(texto);
+});
+
+// 🔹 Refrescar visual en edición inline en cada cambio
+$(document).on('change select2:select select2:unselect select2:clear', '.edit-clasVehID', function () {
+    actualizarVisual($(this));
+});
+
+// 🔹 Click en la X para limpiar selección en edición inline
+$(document).on('click', '.edit-clasVehID + .select2 .custom-clear', function (e) {
+    e.stopPropagation();
+    var $sel = $(this).closest('.select2-container').prev('select');
+    $sel.val([]).trigger('change');
+    actualizarVisual($sel);
+});
+
+// 🔹 Sincronizar checkbox solo de la opción afectada (edición inline)
+$(document).on('select2:select select2:unselect', '.edit-clasVehID', function (e) {
+    var $sel = $(this);
+    var selected = ($sel.val() || []).includes(e.params.data.id);
+    syncCheckbox($sel, e.params.data.id, selected);
+});
+
+
+
+</script>
     <script>
         (function () {
             // ======================
@@ -240,6 +611,7 @@
                 const inpAlt   = row.querySelector('.edit-plzAlt');
                 const inpNombre= row.querySelector('.edit-plzNombre');
                 const inpPiso  = row.querySelector('.edit-piso');
+                const selClasif= row.querySelector('.edit-clasVehID');
 
                 if (selTecho && selTecho.dataset.origValue !== undefined) selTecho.value = selTecho.dataset.origValue;
                 if (inpAlt && inpAlt.dataset.origValue !== undefined)     inpAlt.value   = inpAlt.dataset.origValue;
@@ -250,37 +622,80 @@
                     const orig = (inpPiso.dataset.origValue ?? "").toString().trim();
                     inpPiso.value = orig === "" ? "0" : orig;
                 }
+
+                if (selClasif) {
+                    const origVals = (selClasif.dataset.origValue ?? "").split(',').filter(v => v);
+                    selClasif.value = origVals;
+                    $(selClasif).trigger('change');
+                }
             }
 
             function toggleRowEdit(rowKey, editing) {
                 const row = document.getElementById('row-' + rowKey);
                 if (!row) return;
 
-                const viewTecho = row.querySelector('.view-techo');
+                const viewTecho  = row.querySelector('.view-techo');
                 const viewAltura = row.querySelector('.view-altura');
                 const viewNombre = row.querySelector('.view-nombre');
                 const viewPiso   = row.querySelector('.view-piso');
+                const viewClasif = row.querySelector('.view-clasificaciones');
 
-                const selTecho = row.querySelector('.edit-plzTecho');
-                const inpAlt = row.querySelector('.edit-plzAlt');
-                const inpNombre = row.querySelector('.edit-plzNombre');
-                const inpPiso = row.querySelector('.edit-piso');
+                const selTecho   = row.querySelector('.edit-plzTecho');
+                const inpAlt     = row.querySelector('.edit-plzAlt');
+                const inpNombre  = row.querySelector('.edit-plzNombre');
+                const inpPiso    = row.querySelector('.edit-piso');
+                const selClasif  = row.querySelector('.edit-clasVehID');
 
-                const btnEdit = row.querySelector('.btn-edit');
-                const btnSave = row.querySelector('.btn-save');
+                const btnEdit   = row.querySelector('.btn-edit');
+                const btnSave   = row.querySelector('.btn-save');
                 const btnCancel = row.querySelector('.btn-cancel');
+                const btnDelete = row.querySelector('.btn-delete');
+
 
                 if (editing) {
-                    applyOrigValues(row);
-                    syncRowAltura(row);
+                            console.log("Entró en toggleRowEdit para fila:", rowKey, "editing:", editing);
+                            applyOrigValues(row);
+                            syncRowAltura(row);
+
+                        if (selClasif) {
+                        const origVals = (selClasif.dataset.origValue ?? "")
+                            .split(',')
+                            .filter(v => v);
+
+                        initSelect2($(selClasif), origVals);
+                        actualizarVisual($(selClasif));
+
+                        // 🔹 Forzar sincronización inicial de los checkboxes en edición
+                        $(selClasif).find('option:selected').each(function () {
+                            const data = { id: this.value, text: $(this).text() };
+                            var selected = true;
+                            $(selClasif).next('.select2-container').find('.select2-results__option').each(function () {
+                                if ($(this).text().trim() === data.text.trim()) {
+                                    $(this).find('input[type="checkbox"]').prop('checked', selected);
+                                }
+                            });
+                        });
+
+                    }
+                } else {
+                    // 🔹 Cuando salgo de edición → destruir select2
+                    if (selClasif && $(selClasif).data('select2')) {
+                        $(selClasif).select2('destroy');
+                    }
                 }
 
-                [viewTecho, viewAltura, viewNombre, viewPiso].forEach(el => el && el.classList.toggle('d-none', editing));
-                [selTecho, inpAlt, inpNombre, inpPiso].forEach(el => el && el.classList.toggle('d-none', !editing));
+                [viewTecho, viewAltura, viewNombre, viewPiso, viewClasif].forEach(el =>
+                    el && el.classList.toggle('d-none', editing)
+                );
+
+                [selTecho, inpAlt, inpNombre, inpPiso, selClasif].forEach(el =>
+                    el && el.classList.toggle('d-none', !editing)
+                );
 
                 btnEdit && btnEdit.classList.toggle('d-none', editing);
                 btnSave && btnSave.classList.toggle('d-none', !editing);
                 btnCancel && btnCancel.classList.toggle('d-none', !editing);
+                btnDelete && btnDelete.classList.toggle('d-none', editing);
             }
 
             function restoreRowValues(row) {
@@ -296,16 +711,16 @@
 
                 const conTecho = (selTecho.value === 'true');
                 inpAlt.disabled = !conTecho;
-                // En edición inline no vuelvo "required" para no romper envíos masivos,
-                // pero podés habilitarlo si lo necesitás:
-                // inpAlt.required = conTecho;
                 if (!conTecho) inpAlt.value = '';
             }
 
-            // Click en ✏️
-            document.querySelectorAll('.btn-edit').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    const newKey = this.getAttribute('data-row');
+            // ✅ Click en ✏️ (delegado)
+            document.addEventListener('click', function (e) {
+                if (e.target.closest('.btn-edit')) {
+                    const btn = e.target.closest('.btn-edit');
+                    const newKey = btn.getAttribute('data-row');
+
+                    console.log("Click detectado en ✏️ para fila:", newKey);
 
                     if (currentEditingRowKey && currentEditingRowKey !== newKey) {
                         const prevRow = document.getElementById('row-' + currentEditingRowKey);
@@ -317,13 +732,14 @@
 
                     toggleRowEdit(newKey, true);
                     currentEditingRowKey = newKey;
-                });
+                }
             });
 
-            // Click en ✖️
-            document.querySelectorAll('.btn-cancel').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    const rowKey = this.getAttribute('data-row');
+            // ✅ Click en ✖️ (delegado)
+            document.addEventListener('click', function (e) {
+                if (e.target.closest('.btn-cancel')) {
+                    const btn = e.target.closest('.btn-cancel');
+                    const rowKey = btn.getAttribute('data-row');
                     const row = document.getElementById('row-' + rowKey);
                     if (!row) return;
 
@@ -331,8 +747,9 @@
                     toggleRowEdit(rowKey, false);
 
                     if (currentEditingRowKey === rowKey) currentEditingRowKey = null;
-                });
+                }
             });
+
 
             // Cambio de "Techo" dentro de una fila en edición
             document.querySelectorAll('.edit-plzTecho').forEach(sel => {
@@ -350,5 +767,83 @@
                 }
             }, 3000);
         })();
+    </script>
+    <script>
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+    </script>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll(".toggle-varios").forEach(function (toggle) {
+            toggle.addEventListener("click", function (e) {
+                e.stopPropagation(); // evitar que se cierre al hacer clic en sí mismo
+                const container = this.closest(".d-inline-block");
+                const list = container.querySelector(".varios-list");
+                const icon = this.querySelector("i");
+
+                // Cerrar cualquier otro abierto
+                document.querySelectorAll(".varios-list").forEach(function (otherList) {
+                    if (otherList !== list) {
+                        otherList.classList.add("d-none");
+                        const otherIcon = otherList.closest(".d-inline-block").querySelector("i");
+                        if (otherIcon) {
+                            otherIcon.classList.remove("bi-caret-left-fill");
+                            otherIcon.classList.add("bi-caret-right-fill");
+                        }
+                    }
+                });
+
+                // Toggle el actual
+                if (list.classList.contains("d-none")) {
+                    list.classList.remove("d-none");
+                    icon.classList.remove("bi-caret-right-fill");
+                    icon.classList.add("bi-caret-left-fill");
+                } else {
+                    list.classList.add("d-none");
+                    icon.classList.remove("bi-caret-left-fill");
+                    icon.classList.add("bi-caret-right-fill");
+                }
+            });
+        });
+
+        // Cerrar si se hace clic fuera
+        document.addEventListener("click", function () {
+            document.querySelectorAll(".varios-list").forEach(function (list) {
+                if (!list.classList.contains("d-none")) {
+                    list.classList.add("d-none");
+                    const icon = list.closest(".d-inline-block").querySelector("i");
+                    if (icon) {
+                        icon.classList.remove("bi-caret-left-fill");
+                        icon.classList.add("bi-caret-right-fill");
+                    }
+                }
+            });
+        });
+    });
+
+    </script>
+
+    <script>
+
+    (function($) {
+        if ($.fn.select2 && $.fn.select2.amd) {
+            var attachPosition = $.fn.select2.amd.require('select2/dropdown/attachBody');
+            var oldPosition = attachPosition.prototype._positionDropdown;
+
+            attachPosition.prototype._positionDropdown = function() {
+                this.$dropdown.removeClass('select2-dropdown--above').addClass('select2-dropdown--below');
+                // forzamos los estilos hacia abajo
+                this.$dropdown.css({
+                    top: '100%',
+                    bottom: 'auto',
+                    marginTop: '.25rem'
+                });
+                return oldPosition.apply(this, arguments);
+            };
+        }
+    })(jQuery);
     </script>
 }

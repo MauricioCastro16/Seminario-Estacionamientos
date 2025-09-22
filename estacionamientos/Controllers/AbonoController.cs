@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
 using estacionamientos.ViewModels.SelectOptions;
+using System.Security.Claims;
+
 
 namespace estacionamientos.Controllers
 {
@@ -47,13 +49,38 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var q = _ctx.Abonos
+            if (User.IsInRole("Playero"))
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                var turno = await _ctx.Turnos
+                    .Where(t => t.PlaNU.ToString() == userId && t.TurFyhFin == null)
+                    .Include(t => t.Playa)
+                    .FirstOrDefaultAsync();
+
+                if (turno == null)
+                    return View("NoTurno");
+
+                var q = _ctx.Abonos
+                    .Include(a => a.Plaza).ThenInclude(p => p.Playa)
+                    .Include(a => a.Abonado)
+                    .Include(a => a.Pago)
+                    .Where(a => a.PlyID == turno.PlyID) // solo abonos de la playa del turno
+                    .AsNoTracking();
+
+                return View(await q.ToListAsync());
+            }
+
+            // Si no es playero → muestra todos los abonos
+            var qAll = _ctx.Abonos
                 .Include(a => a.Plaza).ThenInclude(p => p.Playa)
                 .Include(a => a.Abonado)
                 .Include(a => a.Pago)
                 .AsNoTracking();
-            return View(await q.ToListAsync());
+
+            return View(await qAll.ToListAsync());
         }
+
 
         public async Task<IActionResult> Details(int plyID, int plzNum, DateTime aboFyhIni)
         {
@@ -68,13 +95,62 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> Create()
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (User.IsInRole("Playero"))
+            {
+                var turno = await _ctx.Turnos
+                    .Where(t => t.PlaNU.ToString() == userId && t.TurFyhFin == null)
+                    .FirstOrDefaultAsync();
+
+                if (turno == null)
+                {
+                    TempData["Error"] = "Debe tener un turno activo para registrar abonos.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                var playaNombre = await _ctx.Playas
+                    .Where(p => p.PlyID == turno.PlyID)
+                    .Select(p => p.PlyNom)
+                    .FirstOrDefaultAsync();
+
+                ViewBag.PlayaNombre = playaNombre;
+
+                await LoadSelects(turno.PlyID);
+
+                return View(new Abono
+                {
+                    AboFyhIni = DateTime.UtcNow,
+                    PlyID = turno.PlyID
+                });
+            }
+
             await LoadSelects();
-            return View(new Abono { AboFyhIni = DateTime.Now });
+            return View(new Abono { AboFyhIni = DateTime.UtcNow });
         }
+
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Abono model)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (User.IsInRole("Playero"))
+            {
+                var turno = await _ctx.Turnos
+                    .Where(t => t.PlaNU.ToString() == userId && t.TurFyhFin == null)
+                    .FirstOrDefaultAsync();
+
+                if (turno == null)
+                {
+                    TempData["Error"] = "Debe tener un turno activo para registrar abonos.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                // Forzar siempre la playa del turno activo
+                model.PlyID = turno.PlyID;
+            }
+
             if (!await PagoExiste(model.PlyID, model.PagNum))
                 ModelState.AddModelError(nameof(model.PagNum), "El pago no existe para esa playa.");
 
@@ -88,6 +164,7 @@ namespace estacionamientos.Controllers
             await _ctx.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
+
 
         public async Task<IActionResult> Edit(int plyID, int plzNum, DateTime aboFyhIni)
         {
