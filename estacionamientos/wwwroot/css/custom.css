@@ -258,3 +258,9 @@
         color: #6c757d;
     }
 
+        button.btn[disabled] {
+        opacity: 0.5 !important;
+        cursor: not-allowed !important;
+        filter: grayscale(100%) !important;
+    }
+

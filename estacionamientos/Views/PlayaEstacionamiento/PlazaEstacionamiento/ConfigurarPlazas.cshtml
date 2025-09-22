@@ -202,10 +202,11 @@
                         <input type="hidden" name="plyID" value="@plaza.PlyID" />
                         <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
                         <div class="form-check form-switch d-inline-block">
-                            <input class="form-check-input" type="checkbox"
-                                   onchange="this.form.submit();"
-                                   @(plaza.PlzHab ? "checked" : "")
-                                   @(plaza.PlzOcupada ? "disabled" : "") />
+                        <input class="form-check-input" type="checkbox"
+                            onchange="this.form.submit();"
+                            @(plaza.PlzHab ? "checked" : "")
+                            @(plaza.PlzOcupada ? "disabled" : "") />
+
                         </div>
                     </form>
                 </td>
@@ -214,18 +215,23 @@
                 <td class="text-center">
                     <div class="d-flex justify-content-center align-items-center gap-1">
 
-                        <button type="button" class="btn btn-sm btn-outline-secondary btn-edit" data-row="@rowKey" title="Editar">
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-edit" data-row="@rowKey" title="Editar"
+                        @(plaza.PlzOcupada ? "disabled" : "")>
+
                             <i class="fa-regular fa-pen-to-square"></i>
                             <span class="visually-hidden">Editar</span>
                         </button>
 
                         <button type="submit" class="btn btn-sm btn-success d-none btn-save"
-                                form="edit-form-@rowKey" formnovalidate title="Guardar">
+                                form="edit-form-@rowKey" formnovalidate title="Guardar"
+                                @(plaza.PlzOcupada ? "disabled" : "")>
                             <i class="fa-solid fa-check"></i>
                             <span class="visually-hidden">Guardar</span>
                         </button>
 
-                        <button type="button" class="btn btn-sm btn-secondary d-none btn-cancel" data-row="@rowKey" title="Cancelar">
+                        <button type="button" class="btn btn-sm btn-secondary d-none btn-cancel" data-row="@rowKey" title="Cancelar"
+                        @(plaza.PlzOcupada ? "disabled" : "")>
+
                             <i class="fa-solid fa-xmark"></i>
                             <span class="visually-hidden">Cancelar</span>
                         </button>
@@ -239,7 +245,8 @@
                             <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
                             <button type="submit" class="btn btn-sm btn-outline-danger"
                                     onclick="return confirm('¿Quiere eliminar la plaza?');"
-                                    title="Eliminar">
+                                    title="Eliminar"
+                                    @(plaza.PlzOcupada ? "disabled" : "")>
                                 <i class="fa-regular fa-trash-can"></i>
                                 <span class="visually-hidden">Eliminar</span>
                             </button>
