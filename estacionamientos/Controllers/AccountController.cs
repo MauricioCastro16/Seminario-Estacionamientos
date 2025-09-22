@@ -31,7 +31,7 @@ namespace estacionamientos.Controllers
 
             // 1) Buscar usuario por email
             var user = await _ctx.Usuarios.AsNoTracking()
-                .FirstOrDefaultAsync(u => u.UsuEmail == model.Email);
+                .FirstOrDefaultAsync(u => u.UsuEmail == model.EmailOrUsername || u.UsuNomUsu == model.EmailOrUsername);
 
             // 2) Verificar contraseña
             var passwordOk = false;

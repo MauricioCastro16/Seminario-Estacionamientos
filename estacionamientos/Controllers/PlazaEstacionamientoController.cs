@@ -14,13 +14,15 @@ namespace estacionamientos.Controllers
         // ===========================
         // Helpers (combos / viewbags)
         // ===========================
-        private async Task LoadClasificaciones(int? selected = null)
+        private async Task LoadClasificaciones(List<int>? selected = null)
+
         {
             var clasifs = await _ctx.ClasificacionesVehiculo
                 .OrderBy(c => c.ClasVehTipo)
                 .ToListAsync();
 
-            ViewBag.Clasificaciones = new SelectList(clasifs, "ClasVehID", "ClasVehTipo", selected);
+            ViewBag.Clasificaciones = new MultiSelectList(clasifs, "ClasVehID", "ClasVehTipo", selected);
+
         }
 
         private async Task LoadPlayas(int? selected = null)
@@ -74,9 +76,11 @@ namespace estacionamientos.Controllers
         {
             var playa = await _ctx.Playas
                 .Include(p => p.Plazas)
-                    .ThenInclude(pl => pl.Clasificacion)
+                    .ThenInclude(pl => pl.Clasificaciones)
+                        .ThenInclude(pc => pc.Clasificacion)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.PlyID == plyID);
+
 
             if (playa == null) return NotFound();
 
@@ -97,9 +101,10 @@ namespace estacionamientos.Controllers
             int cantidad = 1,
             bool? plzTecho = null,
             decimal? plzAlt = null,
-            int clasVehID = 0,
-            int? piso = null // 👈 nuevo parámetro
+            List<int>? clasVehID = null,
+            int? piso = null
         )
+
         {
             var playa = await _ctx.Playas
                 .Include(p => p.Plazas)
@@ -130,8 +135,10 @@ namespace estacionamientos.Controllers
                 await _ctx.Entry(playa)
                     .Collection(p => p.Plazas)
                     .Query()
-                    .Include(pl => pl.Clasificacion)
+                    .Include(pl => pl.Clasificaciones)
+                        .ThenInclude(pc => pc.Clasificacion)
                     .LoadAsync();
+
 
                 var plazas = playa.Plazas.OrderBy(z => z.PlzNum).ToList();
 
@@ -152,42 +159,57 @@ namespace estacionamientos.Controllers
                 return View(plazas);
             }
 
-            if (clasVehID == 0)
+            if (clasVehID == null || !clasVehID.Any())
             {
                 ViewBag.PlyID = playa.PlyID;
                 ViewBag.PlyNom = playa.PlyNom;
                 ViewBag.DefaultCantidad = 1;
                 ViewBag.DefaultPiso = piso;
 
-                await LoadClasificaciones(clasVehID);
-                ModelState.AddModelError("clasVehID", "Debe seleccionar una clasificación.");
+                await LoadClasificaciones();
+                ModelState.AddModelError("clasVehID", "Debe seleccionar al menos una clasificación.");
 
                 await _ctx.Entry(playa)
                     .Collection(p => p.Plazas)
                     .Query()
-                    .Include(pl => pl.Clasificacion)
+                    .Include(pl => pl.Clasificaciones)
+                        .ThenInclude(pc => pc.Clasificacion)
                     .LoadAsync();
 
                 return View(playa.Plazas.OrderBy(z => z.PlzNum));
             }
+
 
             // calcular desde qué número crear
             int nextNum = playa.Plazas.Any() ? playa.Plazas.Max(pl => pl.PlzNum) + 1 : 1;
 
             for (int i = 0; i < cantidad; i++)
             {
-                var plaza = new PlazaEstacionamiento
+            var plaza = new PlazaEstacionamiento
+            {
+                PlyID = plyID,
+                PlzNum = nextNum + i,
+                PlzTecho = plzTecho.Value,
+                PlzAlt = plzTecho.Value ? plzAlt : null,
+                PlzHab = true,
+                PlzNombre = null,
+                Piso = piso
+            };
+
+
+            // 🔹 agregar las clasificaciones seleccionadas
+            foreach (var clasId in clasVehID)
+            {
+                plaza.Clasificaciones.Add(new PlazaClasificacion
                 {
                     PlyID = plyID,
-                    PlzNum = nextNum + i,
-                    PlzTecho = plzTecho.Value,
-                    PlzAlt = plzTecho.Value ? plzAlt : null,
-                    PlzHab = true,
-                    ClasVehID = clasVehID,
-                    PlzNombre = null,
-                    Piso = piso // 👈 setear piso en alta
-                };
-                _ctx.Plazas.Add(plaza);
+                    PlzNum = plaza.PlzNum,
+                    ClasVehID = clasId
+                });
+            }
+
+            _ctx.Plazas.Add(plaza);
+
             }
 
             await _ctx.SaveChangesAsync();
@@ -202,45 +224,62 @@ namespace estacionamientos.Controllers
             bool plzTecho,
             decimal? plzAlt,
             string? plzNombre,
-            int? piso // 👈 nuevo parámetro para edición inline
+            int? piso,
+            int[] clasVehID
         )
         {
-            var plaza = await _ctx.Plazas.FindAsync(plyID, plzNum);
+            var plaza = await _ctx.Plazas
+                .Include(p => p.Clasificaciones) // 🔹 importante para poder limpiar y reasignar
+                .FirstOrDefaultAsync(p => p.PlyID == plyID && p.PlzNum == plzNum);
+
             if (plaza is null)
             {
                 TempData["Error"] = $"No se encontró la plaza {plzNum}.";
                 return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
             }
 
-            // sin techo => sin altura
-            if (!plzTecho) plzAlt = null;
+            if (clasVehID == null || !clasVehID.Any())
+            {
+                TempData["Error"] = "Debe seleccionar al menos una clasificación.";
+                return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
+            }
 
-            // con techo => altura >= 2
+
+            // Validaciones
+            if (!plzTecho) plzAlt = null;
             if (plzTecho && (!plzAlt.HasValue || plzAlt.Value < 2m))
             {
                 TempData["Error"] = "La altura mínima permitida es 2m";
                 return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
             }
 
-            // (Opcional) validar rango de piso
-            // if (piso.HasValue && (piso.Value < -5 || piso.Value > 50))
-            // {
-            //     TempData["Error"] = "El piso debe estar entre -5 y 50.";
-            //     return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
-            // }
-
+            // Actualizar datos básicos
             plaza.PlzTecho = plzTecho;
             plaza.PlzAlt = plzAlt;
+            plaza.PlzNombre = string.IsNullOrWhiteSpace(plzNombre) ? null : plzNombre.Trim();
+            plaza.Piso = piso;
 
-            plzNombre = string.IsNullOrWhiteSpace(plzNombre) ? null : plzNombre.Trim();
-            plaza.PlzNombre = plzNombre;
-
-            plaza.Piso = piso; // 👈 actualizar piso
+            // 🔹 Actualizar clasificaciones
+            plaza.Clasificaciones.Clear();
+            if (clasVehID != null)
+            {
+                foreach (var id in clasVehID)
+                {
+                    plaza.Clasificaciones.Add(new PlazaClasificacion
+                    {
+                        PlyID = plyID,
+                        PlzNum = plzNum,
+                        ClasVehID = id
+                    });
+                }
+            }
 
             await _ctx.SaveChangesAsync();
+
             TempData["Ok"] = $"Plaza {plzNum} actualizada.";
             return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
         }
+
 
         [HttpPost]
         [ValidateAntiForgeryToken]

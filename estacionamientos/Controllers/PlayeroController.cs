@@ -128,15 +128,28 @@ namespace estacionamientos.Controllers
                 return View(vm);
             }
 
+            // Calcular el siguiente UsuNU disponible dinámicamente:
+            int nextUsuNu = Math.Max(9, (await _context.Usuarios.MaxAsync(u => u.UsuNU)) + 1);
+
+            // Verificar que no haya colisión con el valor de UsuNU
+            while (await _context.Usuarios.AnyAsync(u => u.UsuNU == nextUsuNu))
+            {
+                nextUsuNu++;
+            }
+
+            // Asignar el UsuNU calculado al nuevo Playero
+            vm.Playero.UsuNU = nextUsuNu;
+
+            // Agregar el nuevo Playero a la base de datos
             _context.Playeros.Add(vm.Playero);
             await _context.SaveChangesAsync();
 
-            // CREATE (POST): vínculo inicial
+            // Crear el trabajo en la playa (relación)
             var trabajo = new TrabajaEn
             {
                 PlaNU = vm.Playero.UsuNU,
                 PlyID = vm.PlayaId,
-                TrabEnActual = true,          // compatibilidad
+                TrabEnActual = true,
                 FechaInicio = DateTime.UtcNow,
                 FechaFin = null
             };
@@ -147,6 +160,7 @@ namespace estacionamientos.Controllers
             TempData["Msg"] = "Playero creado y asignado.";
             return RedirectToAction(nameof(Index));
         }
+
 
         // ------------------------------------------------------------
         // EDIT: sólo dueños
@@ -324,7 +338,8 @@ namespace estacionamientos.Controllers
             }
 
             var plazas = await _context.Plazas
-                .Include(p => p.Clasificacion)    // 🔹 incluí la relación Clasificación
+                .Include(p => p.Clasificaciones)
+                    .ThenInclude(pc => pc.Clasificacion)
                 .Where(p => p.PlyID == turno.PlyID)
                 .OrderBy(p => p.PlzNum)
                 .Select(p => new PlazaEstacionamiento
@@ -335,14 +350,21 @@ namespace estacionamientos.Controllers
                     PlzTecho = p.PlzTecho,
                     PlzAlt = p.PlzAlt,
                     PlzHab = p.PlzHab,
-                    ClasVehID = p.ClasVehID,
-                    Clasificacion = p.Clasificacion,
-                    // 🔹 Estado dinámico: ocupado si hay Ocupación activa
                     PlzOcupada = _context.Ocupaciones
-                        .Any(o => o.PlyID == p.PlyID && o.PlzNum == p.PlzNum && o.OcufFyhFin == null)
+                        .Any(o => o.PlyID == p.PlyID && o.PlzNum == p.PlzNum && o.OcufFyhFin == null),
+
+                    // 🔹 inicializar la colección de clasificaciones (ya no hay un solo campo)
+                    Clasificaciones = p.Clasificaciones.Select(pc => new PlazaClasificacion
+                    {
+                        PlyID = pc.PlyID,
+                        PlzNum = pc.PlzNum,
+                        ClasVehID = pc.ClasVehID,
+                        Clasificacion = pc.Clasificacion
+                    }).ToList()
                 })
                 .AsNoTracking()
                 .ToListAsync();
+
 
             ViewBag.PlyID = turno.PlyID;
             return View(plazas);

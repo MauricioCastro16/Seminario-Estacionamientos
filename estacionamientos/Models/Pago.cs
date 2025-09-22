@@ -15,11 +15,16 @@ namespace estacionamientos.Models
         public decimal PagMonto { get; set; }
 
         [Required]
-        public DateTime PagFyh { get; set; } = DateTime.Now;
+        public DateTime PagFyh { get; set; } = DateTime.UtcNow;
 
         // Navs
         public PlayaEstacionamiento Playa { get; set; } = default!;
         public MetodoPago MetodoPago { get; set; } = default!;
         public AceptaMetodoPago AceptaMetodoPago { get; set; } = default!; // (PlyID, MepID)
+
+        // NUEVO: relaciones inversas
+        public ICollection<Ocupacion> Ocupaciones { get; set; } = new List<Ocupacion>();
+        public ICollection<ServicioExtraRealizado> ServiciosExtras { get; set; } = new List<ServicioExtraRealizado>();
+
     }
 }

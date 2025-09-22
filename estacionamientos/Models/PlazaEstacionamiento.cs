@@ -15,9 +15,9 @@ namespace estacionamientos.Models
         public string? PlzNombre { get; set; } // nombre o código identificatorio (opcional)
 
         public int? Piso { get; set; }
-        public int ClasVehID { get; set; }
-        public ClasificacionVehiculo Clasificacion { get; set; } = default!;
-
+        //public int ClasVehID { get; set; }
+        //public ClasificacionVehiculo Clasificacion { get; set; } = default!;
+        public ICollection<PlazaClasificacion> Clasificaciones { get; set; } = new List<PlazaClasificacion>();
         // Navs
         public PlayaEstacionamiento Playa { get; set; } = default!;
         public ICollection<Ocupacion> Ocupaciones { get; set; } = new List<Ocupacion>();

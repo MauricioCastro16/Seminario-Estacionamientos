@@ -34,6 +34,7 @@ public static class DbInitializer
                 UsuEmail = correo,
                 UsuPswd = "12345678",
                 UsuNumTel = faker.Phone.PhoneNumber("##########"),
+                UsuNomUsu = faker.Internet.UserName(), // Nombre de usuario
                 DueCuit = faker.Random.ReplaceNumbers("###########")
             });
         }
@@ -99,6 +100,7 @@ public static class DbInitializer
                     UsuEmail = correo,
                     UsuPswd = "12345678",
                     UsuNumTel = faker.Phone.PhoneNumber("##########"),
+                    UsuNomUsu = faker.Internet.UserName(), // Nombre de usuario
                 });
             }
         }
@@ -417,7 +419,8 @@ public static class DbInitializer
                 var piso = pisos == 1 ? 1 : faker.Random.Int(1, pisos);
                 var nombre = $"P{piso}-{plzNum.ToString("D3")}";
 
-                plazas.Add(new PlazaEstacionamiento
+                // Crear plaza
+                var plaza = new PlazaEstacionamiento
                 {
                     PlyID = p.PlyID,
                     PlzNum = plzNum++,
@@ -426,10 +429,20 @@ public static class DbInitializer
                     PlzAlt = Math.Round(faker.Random.Decimal(1.80m, 3.30m), 2), // precisión 2 decimales
                     PlzHab = true,
                     PlzNombre = nombre,
-                    Piso = piso,
+                    Piso = piso
+                };
+
+                // 🔹 agregar clasificación en tabla intermedia
+                plaza.Clasificaciones.Add(new PlazaClasificacion
+                {
+                    PlyID = plaza.PlyID,
+                    PlzNum = plaza.PlzNum,
                     ClasVehID = clasId
                 });
+
+                plazas.Add(plaza);
             }
+
         }
 
         // Evitar duplicados (por si se ejecuta dos veces antes de guardar)
@@ -448,7 +461,7 @@ public static class DbInitializer
         for (int i = 0; i < 10; i++) // Puedes ajustar la cantidad de conductores
         {
             var correo = faker.Internet.Email();
-            if (!correo.Contains("@")) correo += "@mail.com";
+            if (!correo.Contains('@')) correo += "@mail.com";
 
             conductores.Add(new Conductor
             {
@@ -457,6 +470,7 @@ public static class DbInitializer
                 UsuEmail = correo,
                 UsuPswd = "12345678",
                 UsuNumTel = faker.Phone.PhoneNumber("##########"),
+                UsuNomUsu = faker.Internet.UserName(), // Nombre de usuario
                 // Las colecciones las dejamos vacías por ahora, pero puedes agregarlas si lo necesitas
                 Conducciones = new List<Conduce>(),
                 UbicacionesFavoritas = new List<UbicacionFavorita>(),
@@ -663,10 +677,16 @@ public static class DbInitializer
                 // Seleccionar una plaza aleatoria para la ocupación
                 var plaza = faker.PickRandom(plazasDisponibles);
 
-                // Obtener un vehículo aleatorio para la ocupación (debe estar disponible)
-                var vehiculosDisponibles = context.Vehiculos
-                    .Where(v => v.ClasVehID == plaza.ClasVehID) // El vehículo debe ser compatible con la plaza
+                // Buscar vehículos compatibles según las clasificaciones asociadas a la plaza
+                var clasificaciones = context.PlazasClasificaciones
+                    .Where(pc => pc.PlyID == plaza.PlyID && pc.PlzNum == plaza.PlzNum)
+                    .Select(pc => pc.ClasVehID)
                     .ToList();
+
+                var vehiculosDisponibles = context.Vehiculos
+                    .Where(v => clasificaciones.Contains(v.ClasVehID))
+                    .ToList();
+
 
                 var vehiculo = faker.PickRandom(vehiculosDisponibles); // Elegir un vehículo aleatorio
 

@@ -4,10 +4,9 @@ namespace estacionamientos.Models.ViewModels.Auth
 {
     public class LoginViewModel
     {
-        [Required(ErrorMessage = "* El Email es obligatorio.")]
-        [EmailAddress(ErrorMessage = "* Ingresá un Email válido.")]
-        [Display(Name = "Email")]
-        public string Email { get; set; } = string.Empty;
+        [Required(ErrorMessage = "* El Email o nombre de usuario es obligatorio.")]
+        [Display(Name = "Nombre de Usuario o Email")]
+        public string EmailOrUsername { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "* La contraseña es obligatoria.")]
         [DataType(DataType.Password)]

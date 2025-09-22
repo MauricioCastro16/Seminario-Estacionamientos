@@ -34,6 +34,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Abonado> Abonados { get; set; } = default!;
     public DbSet<Abono> Abonos { get; set; } = default!;
     public DbSet<VehiculoAbonado> VehiculosAbonados { get; set; } = default!;
+    public DbSet<PlazaClasificacion> PlazasClasificaciones { get; set; } = default!;
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -54,7 +56,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             new ClasificacionVehiculo { ClasVehID = 2, ClasVehTipo = "Camioneta", ClasVehDesc = "Vehículo utilitario" },
             new ClasificacionVehiculo { ClasVehID = 3, ClasVehTipo = "Camión", ClasVehDesc = "Vehículo de carga" },
             new ClasificacionVehiculo { ClasVehID = 4, ClasVehTipo = "Motocicleta", ClasVehDesc = "Vehículo de dos ruedas" },
-            new ClasificacionVehiculo { ClasVehID = 5, ClasVehTipo = "Bicicleta", ClasVehDesc = "Vehículo de dos ruedas sin motor" },
             new ClasificacionVehiculo { ClasVehID = 6, ClasVehTipo = "Otro", ClasVehDesc = "Otro tipo de vehículo" }
         );
 
@@ -171,14 +172,78 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasBaseType<Usuario>();
         });
         modelBuilder.Entity<Administrador>().HasData(
-            new Administrador { UsuNU = 1, UsuNyA = "Mauricio Nicolás Castro", UsuEmail = "castromauricionicolas@hotmail.com", UsuPswd = "12345678", UsuNumTel = "1234567890" },
-            new Administrador { UsuNU = 2, UsuNyA = "Yoel Brizuela Silvestri", UsuEmail = "brizuelajoelelian@gmail.com", UsuPswd = "12345678", UsuNumTel = "0987654321" },
-            new Administrador { UsuNU = 3, UsuNyA = "Nadine Andrea Peralta Ruiz", UsuEmail = "nadineperaltaruiz@gmail.com", UsuPswd = "12345678", UsuNumTel = "1122334455" },
-            new Administrador { UsuNU = 4, UsuNyA = "Mateo Beneyto", UsuEmail = "mateobeneyto@gmail.com", UsuPswd = "12345678", UsuNumTel = "5566778899" },
-            new Administrador { UsuNU = 5, UsuNyA = "Iván Josué Nikcevich", UsuEmail = "ivan.nikcevich@hotmail.com", UsuPswd = "12345678", UsuNumTel = "2233445566" },
-            new Administrador { UsuNU = 6, UsuNyA = "Adriano Nikcevich", UsuEmail = "adri.nikce30@gmail.com", UsuPswd = "12345678", UsuNumTel = "6677889900" },
-            new Administrador { UsuNU = 7, UsuNyA = "Solana Livio", UsuEmail = "solana.livio1976@gmail.com", UsuPswd = "12345678", UsuNumTel = "3344556677" },
-            new Administrador { UsuNU = 8, UsuNyA = "Elías Obregón", UsuEmail = "obregon.elias@gmail.com", UsuPswd = "12345678", UsuNumTel = "7788990011" }
+            new Administrador
+            {
+                UsuNU = 1,
+                UsuNyA = "Mauricio Nicolás Castro",
+                UsuEmail = "castromauricionicolas@hotmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "1234567890",
+                UsuNomUsu = "MauriCastro"
+            },
+            new Administrador
+            {
+                UsuNU = 2,
+                UsuNyA = "Yoel Brizuela Silvestri",
+                UsuEmail = "brizuelajoelelian@gmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "0987654321",
+                UsuNomUsu = "YoelBrizuela"
+            },
+            new Administrador
+            {
+                UsuNU = 3,
+                UsuNyA = "Nadine Andrea Peralta Ruiz",
+                UsuEmail = "nadineperaltaruiz@gmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "1122334455",
+                UsuNomUsu = "NadinePeralta"
+            },
+            new Administrador
+            {
+                UsuNU = 4,
+                UsuNyA = "Mateo Beneyto",
+                UsuEmail = "mateobeneyto@gmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "5566778899",
+                UsuNomUsu = "MateoBeneyto"
+            },
+            new Administrador
+            {
+                UsuNU = 5,
+                UsuNyA = "Iván Josué Nikcevich",
+                UsuEmail = "ivan.nikcevich@hotmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "2233445566",
+                UsuNomUsu = "IvanNikcevich"
+            },
+            new Administrador
+            {
+                UsuNU = 6,
+                UsuNyA = "Adriano Nikcevich",
+                UsuEmail = "adri.nikce30@gmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "6677889900",
+                UsuNomUsu = "AdrianoNikcevich"
+            },
+            new Administrador
+            {
+                UsuNU = 7,
+                UsuNyA = "Solana Livio",
+                UsuEmail = "solana.livio1976@gmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "3344556677",
+                UsuNomUsu = "SolanaLivio"
+            },
+            new Administrador
+            {
+                UsuNU = 8,
+                UsuNyA = "Elías Obregón",
+                UsuEmail = "obregon.elias@gmail.com",
+                UsuPswd = "12345678",
+                UsuNumTel = "7788990011",
+                UsuNomUsu = "EliasObregon"
+            }
         );
 
         //Tablas dinámicas
@@ -197,6 +262,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 entity.Property(e => e.UsuPswd).HasMaxLength(200).IsRequired();
                 entity.Property(e => e.UsuNumTel).HasMaxLength(30);
                 entity.HasIndex(e => e.UsuEmail).IsUnique();
+                entity.HasIndex(e => e.UsuNomUsu).IsUnique();
             });
         modelBuilder.Entity<Duenio>(entity =>
             {
@@ -404,6 +470,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             });
         modelBuilder.Entity<Pago>(e =>
             {
+
                 e.ToTable("Pago");
 
                 // PK compuesta (PlyID, PagNum)
@@ -435,6 +502,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
                 // (Opcional) índice para consultas por fecha
                 e.HasIndex(p => new { p.PlyID, p.PagFyh });
+
+
+                // AceptaMetodoPago: (PlyID, MepID) -> uno (aceptación) a muchos (pagos)
+                e.HasOne(p => p.AceptaMetodoPago)
+                .WithMany()    // si tenés colección, ponela
+                .HasForeignKey(p => new { p.PlyID, p.MepID })
+                .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(p => p.Playa)
+                .WithMany(pl => pl.Pagos)
+                .HasForeignKey(p => p.PlyID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(p => p.MetodoPago)
+                .WithMany() // si tenés colección en MetodoPago, apuntala acá
+                .HasForeignKey(p => p.MepID)
+                .OnDelete(DeleteBehavior.Restrict);
+                
             });
         modelBuilder.Entity<PlazaEstacionamiento>(e =>
         {
@@ -451,14 +536,41 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .OnDelete(DeleteBehavior.Cascade);
 
             // 🔹 Relación con ClasificacionVehiculo
-            e.HasOne(p => p.Clasificacion)
+            //e.HasOne(p => p.Clasificacion)
+                //.WithMany()
+                //.HasForeignKey(p => p.ClasVehID)
+                //.OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PlazaClasificacion>(e =>
+        {
+            e.ToTable("PlazaClasificacion");
+            e.HasKey(pc => new { pc.PlyID, pc.PlzNum, pc.ClasVehID });
+
+            e.HasOne(pc => pc.Plaza)
+                .WithMany(p => p.Clasificaciones)
+                .HasForeignKey(pc => new { pc.PlyID, pc.PlzNum })
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(pc => pc.Clasificacion)
                 .WithMany()
-                .HasForeignKey(p => p.ClasVehID)
+                .HasForeignKey(pc => pc.ClasVehID)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+
         modelBuilder.Entity<Ocupacion>(e =>
             {
+
+                // FK (opcional) hacia Pago: (PlyID, PagNum)
+                e.HasOne(o => o.Pago)
+                .WithMany(p => p.Ocupaciones)
+                .HasForeignKey(o => new { o.PlyID, o.PagNum })
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull); // si se borra el pago, deja PagNum en null
+
+
+
                 e.ToTable("Ocupacion");
                 e.HasKey(o => new { o.PlyID, o.PlzNum, o.VehPtnt, o.OcufFyhIni });
 
@@ -525,6 +637,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             });
         modelBuilder.Entity<ServicioExtraRealizado>(e =>
             {
+
+        
+
+                // FK (opcional) hacia Pago: (PlyID, PagNum)
+                e.HasOne(s => s.Pago)
+                .WithMany(p => p.ServiciosExtras)
+                .HasForeignKey(s => new { s.PlyID, s.PagNum })
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+
                 e.ToTable("ServicioExtraRealizado");
                 e.HasKey(se => new { se.PlyID, se.SerID, se.VehPtnt, se.ServExFyHIni });
 

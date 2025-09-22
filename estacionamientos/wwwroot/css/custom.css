@@ -1,17 +1,266 @@
-/* Error: Can't find stylesheet to import.
- *   ,
- * 2 | @import "node_modules/bootstrap/scss/functions";
- *   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- *   '
- *   wwwroot\scss\custom.scss 2:9  root stylesheet */
 
-body::before {
-  font-family: "Source Code Pro", "SF Mono", Monaco, Inconsolata, "Fira Mono",
-      "Droid Sans Mono", monospace, monospace;
-  white-space: pre;
-  display: block;
-  padding: 1em;
-  margin-bottom: 1em;
-  border-bottom: 2px solid black;
-  content: "Error: Can't find stylesheet to import.\a   \2577 \a 2 \2502  @import \"node_modules/bootstrap/scss/functions\";\d\a   \2502          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\a   \2575 \a   wwwroot\\scss\\custom.scss 2:9  root stylesheet";
-}
+    .select2-container--bootstrap-5 .select2-selection.select2-selection--multiple,
+    .select2-container--bootstrap-5 .select2-selection.select2-selection--single {
+        border: 1px solid #ced4da !important;
+        border-radius: .375rem !important;
+        min-height: calc(1.5em + .75rem + 2px) !important;
+        padding: .375rem .75rem !important;
+        font-size: 1rem !important;
+        line-height: 1.5 !important;
+        background-color: #fff !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+    }
+
+    .select2-container--bootstrap-5.select2-container--focus .select2-selection {
+        border-color: #86b7fe !important;
+        outline: 0 !important;
+        box-shadow: 0 0 0 .25rem rgba(13,110,253,.25) !important;
+    }
+
+    .select2-selection__choice {
+        display: none !important;
+    }
+    .select2-selection__rendered {
+        padding-left: 0 !important;
+        color: #212529 !important;
+    }
+    .select2-selection__placeholder {
+        color: #6c757d !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-search__field {
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-search--inline .select2-search__field {
+        width: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection {
+        height: calc(1.5em + .75rem + 2px) !important; /* igual que .form-select */
+        min-height: calc(1.5em + .75rem + 2px) !important;
+        line-height: 1.5 !important;
+        padding: .375rem .75rem !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection__rendered,
+    .select2-container--bootstrap-5 .select2-selection__placeholder {
+        display: flex !important;
+        align-items: center !important;
+        height: 100% !important;
+        line-height: 1.5 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .select2-container--bootstrap-5 {
+        display: inline-block !important;
+        vertical-align: middle !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection__placeholder {
+        display: flex !important;
+        align-items: center !important;
+        height: 100% !important;
+        line-height: 1.5 !important;
+        padding-left: 2px; 
+    }
+
+    .select2-container--bootstrap-5 .select2-selection {
+        height: calc(1.5em + .75rem + 2px) !important; 
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection__rendered {
+        display: flex !important;
+        align-items: center !important;
+        height: 100% !important;
+        line-height: 1.5 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection__placeholder {
+        display: flex !important;
+        align-items: center !important;
+        height: 100% !important;
+        line-height: 1.5 !important;
+        margin: 0 !important;
+        padding: 0 2px !important;
+    }
+
+
+    #clasVehID + .select2-container--bootstrap-5 .select2-selection__placeholder {
+        flex: 1 !important;
+        text-align: left;
+        color: #6c757d !important; 
+    }
+    
+    #clasVehID + .select2-container--bootstrap-5 .select2-selection__clear {
+        display: none !important;
+    }
+
+    .select2-container--bootstrap-5 .custom-clear {
+        position: absolute;
+        right: 0.75rem;  
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+        font-size: .9rem;
+        cursor: pointer;
+    }
+
+    .select2-container--bootstrap-5 .custom-clear:hover {
+        color: #6c757d;
+    }
+
+    #clasVehID + .select2-container--bootstrap-5 .select2-dropdown {
+        width: 100% !important;
+
+    }
+
+    #clasVehID + .select2-container--bootstrap-5 .select2-dropdown {
+        width: auto !important;
+        min-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    #clasVehID + .select2-container--bootstrap-5 .select2-selection__placeholder {
+        color: #212529 !important;   /* negro bootstrap */
+        font-weight: 400 !important;
+    }
+
+    #clasVehID + .select2-container--bootstrap-5 .select2-selection__arrow {
+        position: absolute;
+        top: 50%;
+        right: 0.75rem;
+        transform: translateY(-50%);
+        width: .65rem;
+        height: .65rem;
+        pointer-events: none;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236c757d' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-size: .65rem;
+        background-position: center;
+    }
+    #clasVehID + .select2-container--bootstrap-5 .select2-selection__arrow b {
+        display: none !important;
+    }
+
+    #clasVehID + .select2-container--bootstrap-5 .select2-selection {
+        position: relative;
+        padding-right: 2rem !important; /* dejamos espacio para la flecha */
+    }
+
+    #clasVehID + .select2-container--bootstrap-5 .dropdown-arrow {
+        position: absolute;
+        top: 50%;
+        right: .75rem;  /* pegado al borde derecho */
+        transform: translateY(-50%);
+        width: .65rem;
+        height: .65rem;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236c757d' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-size: .65rem;
+        background-position: center;
+        pointer-events: none;
+    }
+    
+    .edit-clasVehID + .select2-container--bootstrap-5 .dropdown-arrow {
+        position: absolute;
+        top: 50%;
+        right: 0.75rem;
+        transform: translateY(-50%);
+        width: .65rem;
+        height: .65rem;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236c757d' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-size: .65rem;
+        background-position: center;
+        pointer-events: none;
+    }
+
+
+    .alert-dismissible {
+    position: relative;
+    padding-right: 2.5rem; /* deja espacio fijo a la X */
+    }
+
+    .alert-dismissible .btn-close {
+        position: absolute;
+        top: 50%;               /* al 50% del contenedor */
+        right: 1rem;            /* separado del borde */
+        transform: translateY(-50%); /* 🔹 centra verticalmente */
+        padding: 0;
+        margin: 0;
+    }
+
+    /* Fuerza que el dropdown SIEMPRE vaya hacia abajo */
+    .select2-container--bootstrap-5.select2-container--open .select2-dropdown {
+        top: 100% !important;
+        bottom: auto !important;
+        margin-top: .25rem !important; /* separación extra */
+    }
+
+    /* 🔹 Fuerza que el dropdown SIEMPRE abra hacia abajo */
+    .select2-container--open .select2-dropdown {
+        top: 100% !important;
+        bottom: auto !important;
+        margin-top: .25rem !important; /* espacio entre input y lista */
+    }
+
+    /* 🔹 Ajustes SOLO para edición inline (selects de vehículos en tabla) */
+    .edit-clasVehID + .select2-container .select2-selection {
+        width: 150px !important; /* ancho fijo más discreto */
+        height: calc(1.5em + .75rem + 2px) !important; /* misma altura que inputs */
+        font-size: 1rem !important; /* igual a los inputs normales */
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    /* 🔹 Ajustar el texto dentro */
+    .edit-clasVehID + .select2-container .select2-selection__rendered {
+        line-height: 1.5 !important;
+        padding-left: .5rem !important;
+    }
+
+
+    /* 🔹 Ajustes solo para edición inline (columna Vehículos que soporta) */
+    .edit-clasVehID + .select2-container .select2-selection {
+        height: calc(1.8125rem + 2px) !important; /* misma altura que .form-control-sm */
+        min-height: calc(1.8125rem + 2px) !important;
+        font-size: .875rem !important;            /* misma fuente que form-control-sm */
+        display: flex !important;
+        align-items: center !important;
+        padding: .25rem .5rem !important;         /* igual que Bootstrap sm */
+    }
+
+    /* 🔹 Texto dentro centrado y con misma altura */
+    .edit-clasVehID + .select2-container .select2-selection__rendered {
+        line-height: 1.5 !important;
+        font-size: .875rem !important;
+    }
+
+        /* 🔽 Flecha ▼ que se ve cuando no hay selección */
+    .select2-selection__rendered .dropdown-arrow {
+        font-size: .75rem;
+        margin-left: .5rem;
+        color: #6c757d;
+    }
+
+        button.btn[disabled] {
+        opacity: 0.5 !important;
+        cursor: not-allowed !important;
+        filter: grayscale(100%) !important;
+    }
+

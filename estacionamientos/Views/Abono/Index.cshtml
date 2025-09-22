@@ -1,0 +1,42 @@
+@model IEnumerable<estacionamientos.Models.Abono>
+
+@{
+    ViewData["Title"] = "Abonos";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Abonados</h2>
+    <a asp-action="Create" class="btn btn-primary">+ Agregar Abono</a>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Playa</th>
+            <th>Plaza</th>
+            <th>Abonado</th>
+            <th>Inicio</th>
+            <th>Fin</th>
+            <th>Pago</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>@item.Plaza.Playa.PlyCiu - @item.Plaza.Playa.PlyDir</td>
+            <td>@item.PlzNum</td>
+            <td>@item.Abonado.AboNom</td>
+            <td>@item.AboFyhIni.ToShortDateString()</td>
+            <td>@item.AboFyhFin?.ToShortDateString()</td>
+            <td>@item.Pago.PagNum</td>
+            <td>
+                <a asp-action="Details" asp-route-plyID="@item.PlyID" asp-route-plzNum="@item.PlzNum" asp-route-aboFyhIni="@item.AboFyhIni">Detalles</a> |
+                <a asp-action="Edit" asp-route-plyID="@item.PlyID" asp-route-plzNum="@item.PlzNum" asp-route-aboFyhIni="@item.AboFyhIni">Editar</a> |
+                <a asp-action="Delete" asp-route-plyID="@item.PlyID" asp-route-plzNum="@item.PlzNum" asp-route-aboFyhIni="@item.AboFyhIni">Eliminar</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

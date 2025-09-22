@@ -5,6 +5,7 @@ using System.IO;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc.Razor;
 using estacionamientos.Seed;
+using QuestPDF.Infrastructure;  
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -101,5 +102,7 @@ using (var scope = app.Services.CreateScope())
     var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     DbInitializer.Initialize(ctx);
 }
-
+// using QuestPDF.Infrastructure;
+QuestPDF.Settings.License = LicenseType.Community;
+QuestPDF.Settings.EnableDebugging = true;
 app.Run();
