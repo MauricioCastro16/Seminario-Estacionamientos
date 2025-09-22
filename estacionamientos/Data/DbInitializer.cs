@@ -459,7 +459,7 @@ public static class DbInitializer
         for (int i = 0; i < 10; i++) // Puedes ajustar la cantidad de conductores
         {
             var correo = faker.Internet.Email();
-            if (!correo.Contains("@")) correo += "@mail.com";
+            if (!correo.Contains('@')) correo += "@mail.com";
 
             conductores.Add(new Conductor
             {
