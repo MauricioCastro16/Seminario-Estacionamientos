@@ -147,7 +147,6 @@ namespace estacionamientos.Controllers
             {
                 servicioProveido.SerProvHab = habilitado;
 
-                // 👇 Si se deshabilita, cerrar todas las tarifas vigentes
                 if (!habilitado)
                 {
                     var tarifasVigentes = await _ctx.TarifasServicio
@@ -187,28 +186,27 @@ namespace estacionamientos.Controllers
                 {
                     sp.SerProvHab = debeHabilitar;
 
+                    // Marcar la entidad como modificada
+                    _ctx.Entry(sp).State = EntityState.Modified;
+
                     if (!debeHabilitar)
                     {
-                        // Cierro solo si lo estoy deshabilitando ahora
+                        // Si deshabilita, cierra las tarifas vigentes
                         var tarifasVigentes = await _ctx.TarifasServicio
-                            .Where(t => t.PlyID == sp.PlyID &&
-                                        t.SerID == sp.SerID &&
-                                        t.TasFecFin == null)
+                            .Where(t => t.PlyID == sp.PlyID && t.SerID == sp.SerID && t.TasFecFin == null)
                             .ToListAsync();
 
                         foreach (var t in tarifasVigentes)
                             t.TasFecFin = DateTime.UtcNow;
+
+                        _ctx.TarifasServicio.UpdateRange(tarifasVigentes);  // Asegúrate de que las tarifas también se actualicen
                     }
                 }
             }
 
-            await _ctx.SaveChangesAsync();
-
+            await _ctx.SaveChangesAsync(); // Guardar cambios en la base de datos
             return RedirectToAction("Index", "PlayaEstacionamiento");
         }
-
-
-
     }
 
 }
