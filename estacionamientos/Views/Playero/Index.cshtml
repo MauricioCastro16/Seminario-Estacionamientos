@@ -112,7 +112,7 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="confirmUnlinkModalLabel">Desvincular</h5>
+                    <h5 class="modal-title" id="confirmUnlinkModalLabel">Confirmar Desvinculación</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -124,7 +124,7 @@
                     <form id="confirmUnlinkForm" asp-controller="Playero" asp-action="Delete" method="post">
                         @Html.AntiForgeryToken()
                         <input type="hidden" id="playeroId" name="id" />
-                        <button type="submit" class="btn btn-danger">Confirmar Desvinculación</button>
+                        <button type="submit" class="btn btn-danger">Desvincular</button>
                     </form>
                 </div>
             </div>
