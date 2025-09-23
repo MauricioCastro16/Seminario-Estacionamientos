@@ -82,19 +82,15 @@
                                 <i class="fa-solid fa-link"></i>
                             </a>
 
-                            <form asp-controller="Playero"
-                                asp-action="Delete"
-                                asp-route-id="@p.UsuNU"
-                                method="post"
-                                class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <button type="submit"
-                                        class="btn btn-outline-danger btn-sm"
-                                        title="Desvincular todas las playas"
-                                        onclick="return confirm('¿Estás seguro de que quieres desvincular este playero de todas sus playas?');">
-                                    <i class="fa-solid fa-link-slash"></i>
-                                </button>
-                            </form>
+                            <button type="button" 
+                                    class="btn btn-outline-danger btn-sm"
+                                    title="Desvincular todas las playas"
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#confirmUnlinkModal"
+                                    data-playero-id="@p.UsuNU"
+                                    data-playero-name="@p.UsuNyA">
+                                <i class="fa-solid fa-link-slash"></i>
+                            </button>
 
                         </td>
                     </tr>
@@ -110,6 +106,30 @@
             }
         </tbody>
     </table>
+
+    <!-- Modal de confirmación para desvincular playero -->
+    <div class="modal fade" id="confirmUnlinkModal" tabindex="-1" aria-labelledby="confirmUnlinkModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmUnlinkModalLabel">Desvincular</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que quieres desvincular este playero de todas sus playas?</p>
+                    <p class="mb-0"><strong>Playero:</strong> <span id="playeroName"></span></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form id="confirmUnlinkForm" asp-controller="Playero" asp-action="Delete" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" id="playeroId" name="id" />
+                        <button type="submit" class="btn btn-danger">Confirmar Desvinculación</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -141,3 +161,27 @@
         color: #a71d2a;
     }
 </style>
+
+@section Scripts {
+<script>
+    // Manejar el modal de confirmación para desvincular playero
+    document.addEventListener('DOMContentLoaded', function() {
+        const confirmUnlinkModal = document.getElementById('confirmUnlinkModal');
+        const playeroNameSpan = document.getElementById('playeroName');
+        const playeroIdInput = document.getElementById('playeroId');
+        const confirmUnlinkForm = document.getElementById('confirmUnlinkForm');
+
+        if (confirmUnlinkModal) {
+            confirmUnlinkModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const playeroId = button.getAttribute('data-playero-id');
+                const playeroName = button.getAttribute('data-playero-name');
+
+                // Actualizar el contenido del modal
+                playeroNameSpan.textContent = playeroName;
+                playeroIdInput.value = playeroId;
+            });
+        }
+    });
+</script>
+}
