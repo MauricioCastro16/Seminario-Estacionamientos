@@ -336,19 +336,20 @@
                                     <i class="fa-regular fa-pen-to-square"></i>
                                 </a>
 
-                                <form asp-action="Delete"
-                                      asp-route-plyID="@item.PlyID"
-                                      asp-route-serID="@item.SerID"
-                                      asp-route-clasVehID="@item.ClasVehID"
-                                      asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
-                                      method="post" class="d-inline"
-                                      onsubmit="return confirm('¿Estás seguro de cerrar esta tarifa?');">
-                                    <button type="submit"
-                                            class="btn btn-sm btn-outline-danger"
-                                            title="Suspender tarifa">
-                                        <i class="fa-regular fa-circle-xmark"></i>
-                                    </button>
-                                </form>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        title="Suspender tarifa"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#confirmSuspendModal"
+                                        data-servicio="@grupo.Key"
+                                        data-clase="@item.ClasificacionVehiculo.ClasVehTipo"
+                                        data-monto="@item.TasMonto.ToString("N2")"
+                                        data-plyid="@item.PlyID"
+                                        data-serid="@item.SerID"
+                                        data-clasvehid="@item.ClasVehID"
+                                        data-tasfecini="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")">
+                                    <i class="fa-regular fa-circle-xmark"></i>
+                                </button>
                             }
                             else
                             {
@@ -368,6 +369,38 @@
         }
         </tbody>
     </table>
+
+    <!-- Modal de confirmación para suspender tarifa -->
+    <div class="modal fade" id="confirmSuspendModal" tabindex="-1" aria-labelledby="confirmSuspendModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmSuspendModalLabel">Confirmar Suspensión de Tarifa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de suspender esta tarifa?</p>
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <p class="mb-1"><strong>Servicio:</strong> <span id="tarifaServicio"></span></p>
+                            <p class="mb-1"><strong>Clase Vehículo:</strong> <span id="tarifaClase"></span></p>
+                            <p class="mb-0"><strong>Monto:</strong> $<span id="tarifaMonto"></span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form id="confirmSuspendForm" asp-action="Delete" method="post">
+                        <input type="hidden" id="plyID" name="plyID" />
+                        <input type="hidden" id="serID" name="serID" />
+                        <input type="hidden" id="clasVehID" name="clasVehID" />
+                        <input type="hidden" id="tasFecIni" name="tasFecIni" />
+                        <button type="submit" class="btn btn-danger">Suspender</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @if (ViewBag.PlayaNombre != null)
@@ -442,118 +475,22 @@
 
     const formEl = document.getElementById('searchForm');
 
-
-  // Cambiar filtro desde el dropdown
-  document.querySelectorAll('.dropdown-menu .dropdown-item').forEach(el => {
-    el.addEventListener('click', (e) => {
-      e.preventDefault();
-      document.getElementById('filterBy').value = el.getAttribute('data-value');
-      updateFilterUI();
+    document.querySelectorAll('.dropdown-menu .dropdown-item').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.preventDefault();
+            const value = el.getAttribute('data-value');
+            document.getElementById('filterBy').value = value;
+            document.getElementById('filterBtn').innerHTML =
+                '<i class="fa-solid fa-filter"></i> Filtrar: ' + (mapLbl[value] || 'Todos');
+            formEl.submit();
+        });
     });
-  });
 
-  // Escribir en el input de texto
-  document.getElementById('qInput')?.addEventListener('input', () => {
-    toggleLimpiar();
-    toggleAddButton();
-  });
 
-  // Enter en el input de texto => Buscar
-  document.getElementById('qInput')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      formEl?.submit();
-    }
-  });
-
-  // Cambiar fechas
-  document.getElementById('fechaDesde')?.addEventListener('change', () => {
-    toggleLimpiar();
-    toggleAddButton();
-    // Auto-buscar si hay fecha desde
-    const fechaDesde = document.getElementById('fechaDesde')?.value?.trim() || '';
-    if (fechaDesde.length) {
-      formEl?.submit();
-    }
-  });
-
-  document.getElementById('fechaHasta')?.addEventListener('change', () => {
-    toggleLimpiar();
-    toggleAddButton();
-    // Auto-buscar si hay ambas fechas
-    const fechaDesde = document.getElementById('fechaDesde')?.value?.trim() || '';
-    const fechaHasta = document.getElementById('fechaHasta')?.value?.trim() || '';
-    if (fechaDesde.length && fechaHasta.length) {
-      formEl?.submit();
-    }
-  });
-
-  // Click en "Añadir filtro"
-  document.getElementById('btnAddOne')?.addEventListener('click', () => {
-    const fb   = document.getElementById('filterBy')?.value || 'todos';
-    const form = formEl;
-    if (!form) return;
-
-    let value = '';
-    let listName = '';
-    let value2 = '';
-    let listName2 = '';
-
-    if (fb === 'fechas') {
-      const fD = document.getElementById('fechaDesde')?.value?.trim() || '';
-      const fH = document.getElementById('fechaHasta')?.value?.trim() || '';
-      if (fD) {
-        value = fD;
-        listName = 'FechasDesde';
-        // Solo agregar fecha hasta si está especificada
-        if (fH) {
-          value2 = fH;
-          listName2 = 'FechasHasta';
+    document.getElementById('qInput')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            formEl.submit();
         }
-      }
-    } else if (fb === 'servicio') {
-      value = (document.getElementById('qInput')?.value || '').trim();
-      listName = 'Servicios';
-    } else if (fb === 'clase') {
-      value = (document.getElementById('qInput')?.value || '').trim();
-      listName = 'Clases';
-    } else if (fb === 'monto') {
-      value = (document.getElementById('qInput')?.value || '').trim();
-      listName = 'Montos';
-    } else if (fb === 'todos') {
-      value = (document.getElementById('qInput')?.value || '').trim();
-      listName = 'Todos';
-    }
-
-    if (!value) return;
-
-    const idx = form.querySelectorAll(`input[name^="${listName}["]`).length;
-    const hidden = document.createElement('input');
-    hidden.type = 'hidden';
-    hidden.name = `${listName}[${idx}]`;
-    hidden.value = value;
-    form.appendChild(hidden);
-
-    // Para fechas, también agregar la fecha hasta si está especificada
-    if (fb === 'fechas' && value2 && listName2) {
-      const hidden2 = document.createElement('input');
-      hidden2.type = 'hidden';
-      hidden2.name = `${listName2}[${idx}]`;
-      hidden2.value = value2;
-      form.appendChild(hidden2);
-    }
-
-    if (fb === 'fechas') {
-      document.getElementById('fechaDesde').value = '';
-      document.getElementById('fechaHasta').value = '';
-    } else {
-      document.getElementById('qInput').value = '';
-    }
-
-    form.submit();
-  });
-
-  // Inicialización
-  updateFilterUI();
-  toggleAddButton();
+    });
 </script>
