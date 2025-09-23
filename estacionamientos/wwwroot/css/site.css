@@ -124,3 +124,11 @@ select:invalid:focus::-moz-ui-invalid {
 }
 
 
+/* Fija la primera columna (Servicio) al scrollear */
+.sticky-col {
+    position: sticky;
+    top: 0;             /* 👈 siempre visible al scrollear vertical */
+    left: 0;            /* opcional: fijo al scrollear horizontal */
+    z-index: 2;         /* asegura que quede por encima de otras celdas */
+    background: #f8f9fa; /* fondo consistente (Bootstrap table-light) */
+}

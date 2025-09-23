@@ -6,7 +6,6 @@
         "playa" => "Playa",
         "servicio" => "Servicio",
         "clase" => "Clase Vehículo",
-        "vigencia" => "Vigencia",
         _ => "Todos"
     };
 
@@ -23,22 +22,8 @@
     <form method="get" id="searchForm" class="row g-2 align-items-center">
         <input type="hidden" name="plyID" value="@ViewBag.PlyID" />
 
-        <div class="col-md-5 @(Model.FilterBy?.ToLower() == "vigencia" ? "d-none" : "")" id="qWrapper">
+        <div class="col-md-5" id="qWrapper">
             <input name="Q" id="qInput" value="@Model.Q" class="form-control" placeholder="Buscar..." />
-        </div>
-
-        <div class="col-md-5 @(Model.FilterBy?.ToLower() == "vigencia" ? "" : "d-none")" id="vigWrapper">
-            <select name="selectedOption" id="vigSelect" class="form-select">
-                <option value="">Seleccionar vigencia…</option>
-                <option value="Vigente"
-                        selected="@(Model.SelectedOption != null && Model.SelectedOption.Equals("Vigente", StringComparison.OrdinalIgnoreCase) ? "selected" : null)">
-                    Vigente
-                </option>
-                <option value="No vigente"
-                        selected="@(Model.SelectedOption != null && Model.SelectedOption.Equals("No vigente", StringComparison.OrdinalIgnoreCase) ? "selected" : null)">
-                    No vigente
-                </option>
-            </select>
         </div>
 
         <div class="col-auto">
@@ -53,7 +38,6 @@
                     <li><a class="dropdown-item" href="#" data-value="todos">Todos</a></li>
                     <li><a class="dropdown-item" href="#" data-value="servicio">Servicio</a></li>
                     <li><a class="dropdown-item" href="#" data-value="clase">Clase Vehículo</a></li>
-                    <li><a class="dropdown-item" href="#" data-value="vigencia">Vigencia</a></li>
                 </ul>
             </div>
         </div>
@@ -79,6 +63,14 @@
             title="+ Nueva Tarifa">
         <i class="fa-solid fa-plus"></i> Agregar Tarifa
             </a>
+
+            <a asp-action="Historial" 
+            asp-controller="TarifaServicio" 
+            asp-route-plyID="@ViewBag.PlyID"
+            class="btn btn-outline-secondary ms-2">
+                <i class="fa-solid fa-clock-rotate-left"></i> Historial
+            </a>
+
         </div>
     </form>
 
@@ -88,7 +80,6 @@
             <tr>
                 <th style="width: 25%">Servicio</th>
                 <th style="width: 15%">Clase Vehículo</th>
-                <th style="width: 15%">Vigencia</th>
                 <th style="width: 10%">Desde</th>
                 <th style="width: 10%">Hasta</th>
                 <th style="width: 10%">Monto</th>
@@ -115,24 +106,13 @@
                     <tr class="@(esVigente ? "" : "table-secondary")">
                         @if (first)
                         {
-                            <td rowspan="@rowCount" class="align-middle fw-bold bg-light border-end">
+                            <td rowspan="@rowCount" class="align-top fw-bold bg-light border-end sticky-col">
                                 @grupo.Key
                             </td>
                             first = false;
                         }
 
                         <td>@item.ClasificacionVehiculo.ClasVehTipo</td>
-
-                        <td>
-                            @if (esVigente && item.ServicioProveido?.SerProvHab == true)
-                            {
-                                <span class="badge bg-success">Vigente</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-danger">No vigente</span>
-                            }
-                        </td>
 
                         <td>@item.TasFecIni.ToString("dd/MM/yyyy")</td>
 
@@ -207,7 +187,6 @@
         playa: 'Playa',
         servicio: 'Servicio',
         clase: 'Clase Vehículo',
-        vigencia: 'Vigencia'
     };
 
     const formEl = document.getElementById('searchForm');
@@ -223,9 +202,6 @@
         });
     });
 
-    document.getElementById('vigSelect')?.addEventListener('change', () => {
-        formEl.submit();
-    });
 
     document.getElementById('qInput')?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
