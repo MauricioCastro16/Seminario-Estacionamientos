@@ -74,31 +74,52 @@
     <tbody>
 @foreach (var item in Model)
 {
-        <tr>
-            <td>@item.PlzNum</td>
-            <td>@item.Vehiculo?.Clasificacion?.ClasVehTipo</td>
-            <td>@item.VehPtnt</td>
-            <td>@item.OcufFyhIni.ToLocalTime().ToString("g")</td>
-            <td>
-                @(item.OcufFyhFin?.ToLocalTime().ToString("g") ?? "En curso")
-            </td>
-            <td>
-                @if (item.OcufFyhFin == null)
-                {
-                    <form asp-action="RegistrarEgreso" method="post">
-                        <input type="hidden" name="plyID" value="@item.PlyID" />
-                        <input type="hidden" name="plzNum" value="@item.PlzNum" />
-                        <input type="hidden" name="vehPtnt" value="@item.VehPtnt" />
-                        <button type="submit" class="btn btn-danger btn-sm">Egresar</button>
-                    </form>
-                }
-                else
-                {
-                    <span class="text-success">Finalizado</span>
-                }
-            </td>
-        </tr>
+    <tr>
+        <td>@item.PlzNum</td>
+        <td>@item.Vehiculo?.Clasificacion?.ClasVehTipo</td>
+        <td>@item.VehPtnt</td>
+        <td>@item.OcufFyhIni.ToLocalTime().ToString("g")</td>
+        <td>
+            @(item.OcufFyhFin?.ToLocalTime().ToString("g") ?? "En curso")
+        </td>
+        <td>
+            @if (item.OcufFyhFin == null)
+            {
+                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#confirmModal"
+                        data-plyid="@item.PlyID" data-plznum="@item.PlzNum" data-vehptnt="@item.VehPtnt">
+                    Egresar
+                </button>
+            }
+            else
+            {
+                <span class="text-success">Finalizado</span>
+            }
+        </td>
+    </tr>
 }
+        <!-- Modal de confirmación -->
+        <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="confirmModalLabel">Confirmar Egreso</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        ¿Estás seguro de que deseas registrar el egreso de este vehículo?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <form id="confirmForm" asp-action="RegistrarEgreso" method="post">
+                            <input type="hidden" id="plyID" name="plyID" />
+                            <input type="hidden" id="plzNum" name="plzNum" />
+                            <input type="hidden" id="vehPtnt" name="vehPtnt" />
+                            <button type="submit" class="btn btn-danger">Confirmar Egreso</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
     </tbody>
 </table>
 
