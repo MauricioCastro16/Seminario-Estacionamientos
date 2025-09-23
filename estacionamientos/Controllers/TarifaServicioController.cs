@@ -442,6 +442,8 @@ namespace estacionamientos.Controllers
                 .OrderBy(g => g.ServicioNombre)
                 .ToList();
 
+            ViewData["PlyID"] = plyID;
+            
             return View(grupos);
         }
 
