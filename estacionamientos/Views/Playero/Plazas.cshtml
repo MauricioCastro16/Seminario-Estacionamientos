@@ -3,9 +3,17 @@
     ViewData["Title"] = "Plazas de la Playa";
     var playa = ViewBag.Playa as estacionamientos.Models.PlayaEstacionamiento;
 }
+<div class="card shadow-sm mt-4">
+    <div class="card-body">
+        <h5 class="card-title">
+            <i class="bi bi-geo-alt-fill text-primary"></i>
+            @playa?.PlyNom
+        </h5>
+        <p class="card-text text-muted mb-2">
+            <strong>Dirección:</strong> @playa?.PlyDir (@playa?.PlyProv, @playa?.PlyCiu)
+        </p>
 
-<div class="container py-3">
-    <h2 class="mb-3">Plazas de la Playa</h2>
+        <h6 class="mt-3">Plazas de la playa:</h6>
 
     @if (TempData["Mensaje"] != null)
     {
