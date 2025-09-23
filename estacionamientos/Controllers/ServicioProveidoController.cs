@@ -171,40 +171,61 @@ namespace estacionamientos.Controllers
         [HttpPost]
         public async Task<IActionResult> AsignarServicios(ServiciosViewModel model)
         {
+            // Normalizar selección (puede venir null si no se marca nada)
+            model.ServiciosAsignados ??= new List<int>();
+
             // Traer todos los servicios que ya existen para la playa
             var serviciosExistentes = await _ctx.ServiciosProveidos
                 .Where(sp => sp.PlyID == model.PlayaID)
                 .ToListAsync();
 
-            // Marcar todos como deshabilitados inicialmente
-            // Activar/desactivar según la selección
-            foreach (var sp in serviciosExistentes)
+            var seleccionados = new HashSet<int>(model.ServiciosAsignados);
+
+            // 1) Habilitar seleccionados: si no existe, crear; si existe deshabilitado, habilitar
+            foreach (var serId in seleccionados)
             {
-                bool debeHabilitar = model.ServiciosAsignados.Contains(sp.SerID);
-
-                if (sp.SerProvHab != debeHabilitar)
+                var existente = serviciosExistentes.FirstOrDefault(sp => sp.SerID == serId);
+                if (existente is null)
                 {
-                    sp.SerProvHab = debeHabilitar;
-
-                    // Marcar la entidad como modificada
-                    _ctx.Entry(sp).State = EntityState.Modified;
-
-                    if (!debeHabilitar)
+                    _ctx.ServiciosProveidos.Add(new ServicioProveido
                     {
-                        // Si deshabilita, cierra las tarifas vigentes
-                        var tarifasVigentes = await _ctx.TarifasServicio
-                            .Where(t => t.PlyID == sp.PlyID && t.SerID == sp.SerID && t.TasFecFin == null)
-                            .ToListAsync();
-
-                        foreach (var t in tarifasVigentes)
-                            t.TasFecFin = DateTime.UtcNow;
-
-                        _ctx.TarifasServicio.UpdateRange(tarifasVigentes);  // Asegúrate de que las tarifas también se actualicen
-                    }
+                        PlyID = model.PlayaID,
+                        SerID = serId,
+                        SerProvHab = true
+                    });
+                }
+                else if (!existente.SerProvHab)
+                {
+                    existente.SerProvHab = true;
+                    _ctx.Entry(existente).State = EntityState.Modified;
                 }
             }
 
-            await _ctx.SaveChangesAsync(); // Guardar cambios en la base de datos
+            // 2) Deshabilitar los que no estén seleccionados y hoy estén habilitados
+            var aDeshabilitar = serviciosExistentes
+                .Where(sp => sp.SerProvHab && !seleccionados.Contains(sp.SerID))
+                .ToList();
+
+            foreach (var sp in aDeshabilitar)
+            {
+                sp.SerProvHab = false;
+                _ctx.Entry(sp).State = EntityState.Modified;
+
+                // Cerrar tarifas vigentes
+                var tarifasVigentes = await _ctx.TarifasServicio
+                    .Where(t => t.PlyID == sp.PlyID && t.SerID == sp.SerID && t.TasFecFin == null)
+                    .ToListAsync();
+
+                foreach (var t in tarifasVigentes)
+                {
+                    t.TasFecFin = DateTime.UtcNow;
+                }
+
+                if (tarifasVigentes.Count > 0)
+                    _ctx.TarifasServicio.UpdateRange(tarifasVigentes);
+            }
+
+            await _ctx.SaveChangesAsync();
             return RedirectToAction("Index", "PlayaEstacionamiento");
         }
     }
