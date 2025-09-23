@@ -56,15 +56,31 @@ namespace estacionamientos.Controllers
         // Helper: normaliza DateTime a UTC
         private DateTime ToUtc(DateTime dt) => DateTime.SpecifyKind(dt, DateTimeKind.Utc);
 
+        // Helper: normaliza texto removiendo acentos y convirtiendo a minúsculas
+        private string NormalizeText(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+            
+            return text.ToLowerInvariant()
+                .Replace("á", "a").Replace("é", "e").Replace("í", "i").Replace("ó", "o").Replace("ú", "u")
+                .Replace("à", "a").Replace("è", "e").Replace("ì", "i").Replace("ò", "o").Replace("ù", "u")
+                .Replace("ä", "a").Replace("ë", "e").Replace("ï", "i").Replace("ö", "o").Replace("ü", "u")
+                .Replace("â", "a").Replace("ê", "e").Replace("î", "i").Replace("ô", "o").Replace("û", "u")
+                .Replace("ã", "a").Replace("ẽ", "e").Replace("ĩ", "i").Replace("õ", "o").Replace("ũ", "u")
+                .Replace("ç", "c").Replace("ñ", "n");
+        }
+
         // INDEX
         [Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Index(
             string q,
             string filterBy = "todos",
-            List<string>? Playas = null,
             List<string>? Servicios = null,
             List<string>? Clases = null,
             List<string>? Todos = null,
+            List<string>? Montos = null,
+            List<string>? FechasDesde = null,
+            List<string>? FechasHasta = null,
             string? selectedOption = null,
             string? remove = null,
             int? plyID = null) 
@@ -92,53 +108,95 @@ namespace estacionamientos.Controllers
             if (!string.IsNullOrEmpty(remove))
             {
                 var parts = remove.Split(':');
-                if (parts.Length == 2)
+                if (parts.Length >= 2)
                 {
                     var key = parts[0].ToLower();
                     var val = parts[1];
 
-                    if (key == "playa") Playas?.Remove(val);
                     if (key == "servicio") Servicios?.Remove(val);
                     if (key == "clase") Clases?.Remove(val);
                     if (key == "todos") Todos?.Remove(val);
+                    if (key == "monto") Montos?.Remove(val);
+                    if (key == "fechas" && parts.Length == 3)
+                    {
+                        var fechaDesde = parts[1];
+                        var fechaHasta = parts[2];
+                        FechasDesde?.Remove(fechaDesde);
+                        FechasHasta?.Remove(fechaHasta);
+                    }
                 }
             }
 
             // aplicar búsqueda principal
 
+            // Búsqueda principal
             if (!string.IsNullOrWhiteSpace(q))
             {
-                var qLower = q.ToLower();
+                var qNormalized = NormalizeText(q);
                 tarifas = filterBy switch
                 {
-                    "playa" => tarifas.Where(t => t.ServicioProveido.Playa.PlyNom.ToLower().Contains(qLower)),
-                    "servicio" => tarifas.Where(t => t.ServicioProveido.Servicio.SerNom.ToLower().Contains(qLower)),
-                    "clase" => tarifas.Where(t => t.ClasificacionVehiculo.ClasVehTipo.ToLower().Contains(qLower)),
+                    "servicio" => tarifas.Where(t => NormalizeText(t.ServicioProveido.Servicio.SerNom) == qNormalized),
+                    "clase" => tarifas.Where(t => NormalizeText(t.ClasificacionVehiculo.ClasVehTipo).Contains(qNormalized)),
+                    "monto" => tarifas.Where(t => t.TasMonto.ToString() == q),
                     _ => tarifas.Where(t =>
-                        t.ServicioProveido.Playa.PlyNom.ToLower().Contains(qLower) ||
-                        t.ServicioProveido.Servicio.SerNom.ToLower().Contains(qLower) ||
-                        t.ClasificacionVehiculo.ClasVehTipo.ToLower().Contains(qLower))
+                        NormalizeText(t.ServicioProveido.Servicio.SerNom).Contains(qNormalized) ||
+                        NormalizeText(t.ClasificacionVehiculo.ClasVehTipo).Contains(qNormalized) ||
+                        t.TasMonto.ToString().Contains(q))
                 };
+            }
+
+            // Búsqueda por rango de fechas (cuando filterBy es "fechas")
+            if (filterBy == "fechas" && !string.IsNullOrWhiteSpace(selectedOption))
+            {
+                if (DateTime.TryParse(selectedOption, out var fechaDesde))
+                {
+                    fechaDesde = ToUtc(fechaDesde);
+                    // Solo fecha de inicio: buscar tarifas que empezaron después de esa fecha
+                    tarifas = tarifas.Where(t => t.TasFecIni >= fechaDesde);
+                }
             }
 
 
             // filtros acumulados
-            if (Playas?.Any() ?? false)
-            {
-                var playasLower = Playas.Select(p => p.ToLower()).ToList();
-                tarifas = tarifas.Where(t => playasLower.Contains(t.ServicioProveido.Playa.PlyNom.ToLower()));
-            }
-
             if (Servicios?.Any() ?? false)
             {
-                var serviciosLower = Servicios.Select(s => s.ToLower()).ToList();
-                tarifas = tarifas.Where(t => serviciosLower.Contains(t.ServicioProveido.Servicio.SerNom.ToLower()));
+                var serviciosNormalized = Servicios.Select(s => NormalizeText(s)).ToList();
+                tarifas = tarifas.Where(t => serviciosNormalized.Contains(NormalizeText(t.ServicioProveido.Servicio.SerNom)));
             }
 
             if (Clases?.Any() ?? false)
             {
-                var clasesLower = Clases.Select(c => c.ToLower()).ToList();
-                tarifas = tarifas.Where(t => clasesLower.Contains(t.ClasificacionVehiculo.ClasVehTipo.ToLower()));
+                var clasesNormalized = Clases.Select(c => NormalizeText(c)).ToList();
+                tarifas = tarifas.Where(t => clasesNormalized.Contains(NormalizeText(t.ClasificacionVehiculo.ClasVehTipo)));
+            }
+
+            if (Montos?.Any() ?? false)
+            {
+                var montos = Montos.Select(m => decimal.Parse(m)).ToList();
+                tarifas = tarifas.Where(t => montos.Contains(t.TasMonto));
+            }
+
+            if (FechasDesde?.Any() ?? false)
+            {
+                for (int i = 0; i < FechasDesde.Count; i++)
+                {
+                    if (DateTime.TryParse(FechasDesde[i], out var fechaDesde))
+                    {
+                        fechaDesde = ToUtc(fechaDesde);
+                        
+                        // Si hay fecha hasta correspondiente, usar rango; si no, solo fecha desde
+                        if (FechasHasta != null && i < FechasHasta.Count && DateTime.TryParse(FechasHasta[i], out var fechaHasta))
+                        {
+                            fechaHasta = ToUtc(fechaHasta);
+                            tarifas = tarifas.Where(t => t.TasFecIni >= fechaDesde && t.TasFecIni <= fechaHasta);
+                        }
+                        else
+                        {
+                            // Solo fecha de inicio: buscar tarifas que empezaron después de esa fecha
+                            tarifas = tarifas.Where(t => t.TasFecIni >= fechaDesde);
+                        }
+                    }
+                }
             }
 
             tarifas = tarifas.Where(t =>
@@ -152,15 +210,18 @@ namespace estacionamientos.Controllers
                 .ToListAsync();
 
 
+
             var vm = new TarifasIndexVM
             {
                 Tarifas = lista,
                 Q = q ?? "",
                 FilterBy = string.IsNullOrEmpty(filterBy) ? "todos" : filterBy.ToLower(),
-                Playas = Playas ?? new(),
                 Servicios = Servicios ?? new(),
                 Clases = Clases ?? new(),
                 Todos = Todos ?? new(),
+                Montos = Montos ?? new(),
+                FechasDesde = FechasDesde ?? new(),
+                FechasHasta = FechasHasta ?? new(),
                 SelectedOption = selectedOption
             };
             // Pasamos el plyID a la vista para usarlo en el botón "Nueva Tarifa"
