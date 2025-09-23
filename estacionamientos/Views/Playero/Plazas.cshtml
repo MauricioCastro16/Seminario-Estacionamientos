@@ -1,10 +1,18 @@
 @model IEnumerable<estacionamientos.Models.PlazaEstacionamiento>
 @{
     ViewData["Title"] = "Plazas de la Playa";
+    var playa = ViewBag.Playa as estacionamientos.Models.PlayaEstacionamiento;
 }
 
 <div class="container py-3">
     <h2 class="mb-3">Plazas de la Playa</h2>
+        <h5 class="card-title">
+            <i class="bi bi-geo-alt-fill text-primary"></i>
+            @playa?.PlyNom
+        </h5>
+        <p class="card-text text-muted mb-2">
+            <strong>Dirección:</strong> @playa?.PlyDir (@playa?.PlyProv, @playa?.PlyCiu)
+        </p>
 
     @if (TempData["Mensaje"] != null)
     {
