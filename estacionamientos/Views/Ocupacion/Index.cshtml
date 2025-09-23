@@ -1,234 +1,170 @@
-@model IEnumerable<estacionamientos.Models.Ocupacion>
+@using estacionamientos.ViewModels
+@model List<PlayeroIndexVM>
 
 @{
-    ViewData["Title"] = "Ocupaciones";
-    // Intento obtener PlyID de la primera ocupación (útil para Playero)
-    var plyIdFromModel = Model?.FirstOrDefault()?.PlyID;
+    ViewData["Title"] = "Playeros";
 }
 
-<!-- ========================= -->
-<!-- KPI de Ocupación (arriba) -->
-<!-- ========================= -->
-<div id="occ-root" class="mb-4" data-plyid="@plyIdFromModel">
-    <div id="occ-container" class="card d-none">
-        <div class="card-body">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
-                <div>
-                    <h5 class="mb-1">Nivel de ocupación (Total)</h5>
-                    <div class="small text-muted" id="occ-total-caption">Cargando…</div>
-                </div>
-                <div class="text-end">
-                    <div class="fs-4 fw-bold" id="occ-total-perc">–%</div>
-                    <div class="small text-muted" id="occ-total-count">–/– plazas</div>
-                </div>
+<div class="container">
+    <!-- Encabezado: título a la izquierda, botones a la derecha -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Playeros</h1>
+        <div>
+            <a class="btn btn-primary" asp-controller="Playero" asp-action="Create" title="Agregar playero">
+                <i class="fa-solid fa-plus"></i> Agregar Playero
+            </a>
+            <a class="btn btn-outline-secondary" asp-controller="Playero" asp-action="HistorialAgrupado">
+                <i class="fa-solid fa-clock-rotate-left"></i> Historial agrupado
+            </a>
+        </div>
+    </div>
+
+    <h5 class="text-center mt-3">Mis Playeros</h5>
+
+    <table class="table table-striped align-middle mt-3">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Playas asignadas</th>
+                <th class="text-center">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model is { Count: > 0 })
+            {
+                foreach (var row in Model)
+                {
+                    var p = row.Playero;
+                    <tr>
+                        <td>@p.UsuNyA</td>
+                        <td>
+                            @if (row.Playas.Count == 0)
+                            {
+                                <span class="text-muted">Sin asignaciones</span>
+                            }
+                            else
+                            {
+                                foreach (var playa in row.Playas)
+                                {
+                                    var etiqueta = !string.IsNullOrWhiteSpace(playa.PlyNom)
+                                    ? playa.PlyNom
+                                    : $"{playa.PlyCiu} - {playa.PlyDir}";
+
+                                    <!-- Desasignar (marca histórico) -->
+                                    <form asp-controller="Playero" asp-action="Unassign" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="plyID" value="@playa.PlyID" />
+                                        <input type="hidden" name="plaNU" value="@p.UsuNU" />
+
+                                        <div class="playa-chip">
+                                            @etiqueta
+                                            <button type="submit"
+                                                    class="remove-btn"
+                                                    title="Desasignar"
+                                                    onclick="return confirm('¿Quitar esta asignación?');">
+                                                <i class="fa-regular fa-circle-xmark"></i>
+                                            </button>
+                                        </div>
+                                    </form>
+                                }
+                            }
+                        </td>
+                        <td class="text-center">
+                            <a class="btn btn-outline-secondary btn-sm me-2" asp-controller="Playero" asp-action="Assign"
+                               asp-route-id="@p.UsuNU" title="Vincular a una playa">
+                                <i class="fa-solid fa-link"></i>
+                            </a>
+
+                            <!-- Botón para abrir el modal de confirmación -->
+                            <button type="button" 
+                                    class="btn btn-outline-danger btn-sm"
+                                    title="Desvincular todas las playas"
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#confirmModal"
+                                    data-id="@p.UsuNU">
+                                <i class="fa-solid fa-link-slash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="3" class="text-center text-muted">
+                        No tenés playeros asignados en tus playas.
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal de confirmación para desvincular Playero -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmModalLabel">Confirmar Desvinculación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-
-            <div class="progress" role="progressbar" aria-label="Ocupación total">
-                <div id="occ-total-bar" class="progress-bar" style="width: 0%"></div>
+            <div class="modal-body">
+                ¿Estás seguro de que deseas desvincular este playero de todas sus playas?
             </div>
-
-            <hr class="my-4" />
-
-            <div>
-                <h6 class="mb-3">Ocupación por piso</h6>
-                <div id="occ-per-floor" class="d-grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="confirmForm" asp-action="Delete" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" id="playeroId" name="id" />
+                    <button type="submit" class="btn btn-danger">Confirmar Desvinculación</button>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        @TempData["Success"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        @TempData["Error"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Ocupaciones</h2>
-    <a asp-action="Create" class="btn btn-primary">
-        <i class="fa-solid fa-plus"></i> Ingresar Vehículo
-    </a>
-</div>
-
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Plaza</th>
-            <th>Clasificación</th>
-            <th>Patente</th>
-            <th>Ingreso</th>
-            <th>Egreso</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model)
-{
-        <tr>
-            <td>@item.PlzNum</td>
-            <td>@item.Vehiculo?.Clasificacion?.ClasVehTipo</td>
-            <td>@item.VehPtnt</td>
-            <td>@item.OcufFyhIni.ToLocalTime().ToString("g")</td>
-            <td>
-                @(item.OcufFyhFin?.ToLocalTime().ToString("g") ?? "En curso")
-            </td>
-            <td>
-                @if (item.OcufFyhFin == null)
-                {
-                    <form asp-action="RegistrarEgreso" method="post">
-                        <input type="hidden" name="plyID" value="@item.PlyID" />
-                        <input type="hidden" name="plzNum" value="@item.PlzNum" />
-                        <input type="hidden" name="vehPtnt" value="@item.VehPtnt" />
-                        <button type="submit" class="btn btn-danger btn-sm">Egresar</button>
-                    </form>
-                }
-                else
-                {
-                    <span class="text-success">Finalizado</span>
-                }
-            </td>
-        </tr>
-}
-    </tbody>
-</table>
-
 <style>
-    /* barras por piso */
-    .occ-floor-card {
-        border: 1px solid #e9ecef;
-        border-radius: .75rem;
-        padding: .75rem .9rem;
-        background: #fff;
+    .playa-chip {
+        display: inline-flex;
+        align-items: center;
+        background: #f1f8ff;
+        /* azul muy claro */
+        color: #1b3a68;
+        /* azul Bootstrap */
+        border: 1px solid #0f2647;
+        border-radius: 999px;
+        padding: 0.25rem 0.6rem;
+        font-size: .85rem;
+        margin: 0.15rem;
     }
-    .occ-floor-header {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        margin-bottom: .5rem;
-        gap: .5rem;
+
+    .playa-chip .remove-btn {
+        background: none;
+        border: none;
+        color: #dc3545;
+        /* rojo Bootstrap */
+        margin-left: .4rem;
+        padding: 0;
+        cursor: pointer;
     }
-    .occ-floor-title { font-weight: 600; }
-    .occ-floor-sub { font-size: .85rem; color: #6c757d; }
+
+    .playa-chip .remove-btn:hover {
+        color: #a71d2a;
+    }
 </style>
 
 @section Scripts {
 <script>
-    // Oculta automáticamente los alerts después de 3 segundos
-    setTimeout(() => {
-        document.querySelectorAll('.alert').forEach(alert => {
-            const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
-            bsAlert.close();
-        });
-    }, 3000);
+    // Cuando se abre el modal, asignamos los datos del botón al formulario
+    var confirmModal = document.getElementById('confirmModal');
+    confirmModal.addEventListener('show.bs.modal', function (event) {
+        // Obtener los datos del botón que activó el modal
+        var button = event.relatedTarget; // El botón que activó el modal
+        var playeroId = button.getAttribute('data-id'); // Obtener el ID del playero
 
-    (function () {
-        const root = document.getElementById('occ-root');
-        const plyIdAttr = root?.getAttribute('data-plyid');
-        const plyID = plyIdAttr && !isNaN(Number(plyIdAttr)) ? Number(plyIdAttr) : null;
-
-        const card = document.getElementById('occ-container');
-        const empty = document.getElementById('occ-empty');
-
-        const elPerc = document.getElementById('occ-total-perc');
-        const elCount = document.getElementById('occ-total-count');
-        const elCaption = document.getElementById('occ-total-caption');
-        const elBar = document.getElementById('occ-total-bar');
-        const perFloor = document.getElementById('occ-per-floor');
-
-        if (!plyID) {
-            empty.classList.remove('d-none');
-            return;
-        }
-
-        card.classList.remove('d-none');
-        // Aclaración: se EXCLUYEN inhabilitadas del denominador
-        elCaption.textContent = 'Calculado sobre plazas habilitadas (excluye inhabilitadas).';
-
-        fetch(`/PlazaEstacionamiento/GetPlazasMapa?plyID=${plyID}`)
-            .then(r => r.json())
-            .then(plazas => {
-                if (!Array.isArray(plazas) || plazas.length === 0) {
-                    elCaption.textContent = 'No hay plazas registradas en esta playa.';
-                    elPerc.textContent = '0%';
-                    elCount.textContent = '0/0 plazas';
-                    elBar.style.width = '0%';
-                    return;
-                }
-
-                // ======== TOTAL (solo habilitadas) ========
-                const habilitadas = plazas.filter(p => p.hab);
-                const total = habilitadas.length;
-                const ocupadas = habilitadas.filter(p => p.ocupada).length;
-                const perc = total ? Math.round((ocupadas / total) * 100) : 0;
-
-                elPerc.textContent = `${perc}%`;
-                elCount.textContent = `${ocupadas}/${total} plazas`;
-                elBar.style.width = perc + '%';
-                elBar.setAttribute('aria-valuenow', perc);
-
-                // ======== POR PISO (solo habilitadas) ========
-                // Agrupar por piso (null/undefined => -1 “Sin piso”)
-                const byFloor = new Map();
-                plazas.forEach(p => {
-                    const key = (p.piso ?? -1);
-                    if (!byFloor.has(key)) byFloor.set(key, []);
-                    byFloor.get(key).push(p);
-                });
-
-                perFloor.innerHTML = '';
-                Array.from(byFloor.entries())
-                    .sort((a,b) => a[0] - b[0])
-                    .forEach(([floor, list]) => {
-                        const habList = list.filter(x => x.hab);
-                        const tot = habList.length;
-                        const occ = habList.filter(x => x.ocupada).length;
-                        const prc = tot ? Math.round((occ / tot) * 100) : 0;
-
-                        const wrapper = document.createElement('div');
-                        wrapper.className = 'occ-floor-card';
-
-                        const header = document.createElement('div');
-                        header.className = 'occ-floor-header';
-
-                        const title = document.createElement('div');
-                        title.className = 'occ-floor-title';
-                        title.textContent = (floor === -1) ? 'Sin piso' : `Piso ${floor}`;
-
-                        const right = document.createElement('div');
-                        right.innerHTML = `<span class="fw-semibold">${prc}%</span> <span class="occ-floor-sub">(${occ}/${tot})</span>`;
-
-                        header.appendChild(title);
-                        header.appendChild(right);
-
-                        const progress = document.createElement('div');
-                        progress.className = 'progress';
-                        const bar = document.createElement('div');
-                        bar.className = 'progress-bar';
-                        bar.style.width = prc + '%';
-                        bar.setAttribute('aria-valuenow', prc);
-                        bar.setAttribute('aria-valuemin', '0');
-                        bar.setAttribute('aria-valuemax', '100');
-                        progress.appendChild(bar);
-
-                        wrapper.appendChild(header);
-                        wrapper.appendChild(progress);
-
-                        perFloor.appendChild(wrapper);
-                    });
-            })
-            .catch(() => {
-                elCaption.textContent = 'No se pudo cargar el estado de plazas.';
-            });
-    })();
+        // Llenar el valor del campo oculto en el formulario
+        var form = document.getElementById('confirmForm');
+        form.querySelector('#playeroId').value = playeroId;
+    });
 </script>
 }
