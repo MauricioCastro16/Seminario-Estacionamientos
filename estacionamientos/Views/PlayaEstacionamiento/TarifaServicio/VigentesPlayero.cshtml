@@ -29,9 +29,7 @@
                     <tr>
                         <th style="width: 30%">Servicio</th>
                         <th style="width: 20%">Clase Vehículo</th>
-                        <th style="width: 15%">Desde</th>
                         <th style="width: 10%">Monto</th>
-                        <th style="width: 25%" class="text-end">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -52,34 +50,7 @@
                             }
 
                             <td>@item.ClasificacionVehiculo.ClasVehTipo</td>
-                            <td>@item.TasFecIni.ToString("dd/MM/yyyy")</td>
                             <td>$@item.TasMonto.ToString("N2")</td>
-
-                            <td class="text-end">
-                                <a asp-action="Edit"
-                                   asp-route-plyID="@item.PlyID"
-                                   asp-route-serID="@item.SerID"
-                                   asp-route-clasVehID="@item.ClasVehID"
-                                   asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
-                                   class="btn btn-sm btn-outline-secondary me-1"
-                                   title="Editar">
-                                    <i class="fa-regular fa-pen-to-square"></i>
-                                </a>
-
-                                <form asp-action="Delete"
-                                      asp-route-plyID="@item.PlyID"
-                                      asp-route-serID="@item.SerID"
-                                      asp-route-clasVehID="@item.ClasVehID"
-                                      asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
-                                      method="post" class="d-inline"
-                                      onsubmit="return confirm('¿Estás seguro de cerrar esta tarifa?');">
-                                    <button type="submit"
-                                            class="btn btn-sm btn-outline-danger"
-                                            title="Suspender tarifa">
-                                        <i class="fa-regular fa-circle-xmark"></i>
-                                    </button>
-                                </form>
-                            </td>
                         </tr>
                     }
                 }
