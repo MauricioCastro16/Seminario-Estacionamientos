@@ -1,6 +1,7 @@
 @model IEnumerable<estacionamientos.Models.PlazaEstacionamiento>
 @{
     ViewData["Title"] = "Plazas de la Playa";
+    var playa = ViewBag.Playa as estacionamientos.Models.PlayaEstacionamiento;
 }
 
 <div class="container py-3">

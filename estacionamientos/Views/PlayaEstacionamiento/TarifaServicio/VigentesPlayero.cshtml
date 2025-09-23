@@ -8,9 +8,12 @@
 <div class="card shadow-sm mt-4">
     <div class="card-body">
         <h5 class="card-title">
-            <i class="fa-solid fa-location-dot"></i>
+            <i class="bi bi-geo-alt-fill text-primary"></i>
             @playa?.PlyNom
         </h5>
+        <p class="card-text text-muted mb-2">
+            <strong>Dirección:</strong> @playa?.PlyDir (@playa?.PlyProv, @playa?.PlyCiu)
+        </p>
 
         <h6 class="mt-3">Tarifas vigentes:</h6>
         @if (!Model.Any())
@@ -24,18 +27,32 @@
             <table class="table table-hover mt-2">
                 <thead>
                     <tr>
-                        <th>Servicio</th>
-                        <th>Clasificación Vehículo</th>
-                        <th>Monto</th>
+                        <th style="width: 30%">Servicio</th>
+                        <th style="width: 20%">Clase Vehículo</th>
+                        <th style="width: 10%">Monto</th>
                     </tr>
                 </thead>
                 <tbody>
-                @foreach (var tarifa in Model)
+                @foreach (var grupo in Model.GroupBy(t => t.ServicioProveido.Servicio.SerNom))
                 {
-                    <tr>
-                        <td>@tarifa.ServicioProveido.Servicio.SerNom</td>
-                        <td>@tarifa.ClasificacionVehiculo.ClasVehTipo</td>
-                        <td>$@tarifa.TasMonto</td>                    </tr>
+                    var rowCount = grupo.Count();
+                    var first = true;
+
+                    foreach (var item in grupo)
+                    {
+                        <tr>
+                            @if (first)
+                            {
+                                <td rowspan="@rowCount" class="align-middle fw-bold bg-light border-end">
+                                    @grupo.Key
+                                </td>
+                                first = false;
+                            }
+
+                            <td>@item.ClasificacionVehiculo.ClasVehTipo</td>
+                            <td>$@item.TasMonto.ToString("N2")</td>
+                        </tr>
+                    }
                 }
                 </tbody>
             </table>
