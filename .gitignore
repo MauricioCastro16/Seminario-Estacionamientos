@@ -60,3 +60,6 @@ nunit-*.xml
 .fake
 Migrations/
 **/.DS_Store
+estacionamientos/.DS_Store
+estacionamientos/Views/.DS_Store
+estacionamientos/Views/PlayaEstacionamiento/.DS_Store

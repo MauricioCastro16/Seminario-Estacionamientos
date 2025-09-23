@@ -229,5 +229,4 @@ namespace estacionamientos.Controllers
             return RedirectToAction("Index", "PlayaEstacionamiento");
         }
     }
-
 }
