@@ -31,7 +31,7 @@ namespace estacionamientos.Controllers
         public async Task<IActionResult> Index(int plyID)
         {
             var metodosAceptados = await _ctx.AceptaMetodosPago
-                .Where(a => a.PlyID == plyID)
+                .Where(a => a.PlyID == plyID && a.AmpHab)
                 .AsNoTracking()
                 .Select(a => a.MepID)
                 .ToListAsync();
@@ -79,27 +79,42 @@ namespace estacionamientos.Controllers
         public async Task<IActionResult> Guardar(int plyID, List<int> metodosSeleccionados)
         {
             var aceptadosActuales = await _ctx.AceptaMetodosPago
-                .Where(a => a.PlyID == plyID)
+                .Where(a => a.PlyID == plyID && a.AmpHab)
                 .Select(a => a.MepID)
                 .ToListAsync();
 
-            // Agregar nuevos
+            // Agregar o rehabilitar
             var nuevos = metodosSeleccionados.Except(aceptadosActuales).ToList();
             foreach (var mepID in nuevos)
             {
-                _ctx.AceptaMetodosPago.Add(new AceptaMetodoPago { PlyID = plyID, MepID = mepID });
+                var existente = await _ctx.AceptaMetodosPago
+                    .FirstOrDefaultAsync(a => a.PlyID == plyID && a.MepID == mepID);
+
+                if (existente != null)
+                {
+                    // Ya existe pero estaba deshabilitado → lo reactivamos
+                    existente.AmpHab = true;
+                    _ctx.AceptaMetodosPago.Update(existente);
+                }
+                else
+                {
+                    // No existe → lo agregamos
+                    _ctx.AceptaMetodosPago.Add(new AceptaMetodoPago { PlyID = plyID, MepID = mepID, AmpHab = true });
+                }
             }
 
-            // Eliminar desmarcados
-            var eliminar = aceptadosActuales.Except(metodosSeleccionados).ToList();
-            if (eliminar.Any())
-            {
-                var registrosAEliminar = await _ctx.AceptaMetodosPago
-                    .Where(a => a.PlyID == plyID && eliminar.Contains(a.MepID))
-                    .ToListAsync();
 
-                _ctx.AceptaMetodosPago.RemoveRange(registrosAEliminar);
-            }
+            // Deshabilitar en vez de eliminar
+                    var eliminar = aceptadosActuales.Except(metodosSeleccionados).ToList();
+                    if (eliminar.Any())
+                    {
+                        var registrosADeshabilitar = await _ctx.AceptaMetodosPago
+                            .Where(a => a.PlyID == plyID && eliminar.Contains(a.MepID))
+                            .ToListAsync();
+
+                        foreach (var reg in registrosADeshabilitar)
+                            reg.AmpHab = false;
+                    }
 
             await _ctx.SaveChangesAsync();
 

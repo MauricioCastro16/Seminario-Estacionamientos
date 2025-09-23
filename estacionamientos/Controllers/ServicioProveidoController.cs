@@ -63,8 +63,24 @@ namespace estacionamientos.Controllers
                 return View(model);
             }
 
-            _ctx.ServiciosProveidos.Add(model);
+            var existente = await _ctx.ServiciosProveidos
+                .FirstOrDefaultAsync(sp => sp.PlyID == model.PlyID && sp.SerID == model.SerID);
+
+            if (existente != null)
+            {
+                // Ya existe → lo reactivamos
+                existente.SerProvHab = true;
+                _ctx.ServiciosProveidos.Update(existente);
+            }
+            else
+            {
+                // No existe → lo agregamos
+                model.SerProvHab = true;
+                _ctx.ServiciosProveidos.Add(model);
+            }
+
             await _ctx.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
 

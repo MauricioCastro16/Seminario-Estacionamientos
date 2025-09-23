@@ -420,6 +420,8 @@ namespace estacionamientos.Controllers
 
                 if (playa != null)
                     ViewBag.PlayaNombre = playa.PlyNom;
+                    ViewBag.PlyID = plyID.Value;   // 👈 esto es lo que le faltaba
+
             }
 
             var tarifas = await query.ToListAsync();
