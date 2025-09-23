@@ -177,8 +177,9 @@ namespace estacionamientos.Controllers
                 .Where(sp => sp.PlyID == model.PlayaID)
                 .ToListAsync();
 
-            // Marcar todos como deshabilitados inicialmente
-            // Activar/desactivar según la selección
+            var idsExistentes = serviciosExistentes.Select(sp => sp.SerID).ToHashSet();
+
+            // Actualizar los existentes (habilitar/deshabilitar)
             foreach (var sp in serviciosExistentes)
             {
                 bool debeHabilitar = model.ServiciosAsignados.Contains(sp.SerID);
@@ -189,7 +190,7 @@ namespace estacionamientos.Controllers
 
                     if (!debeHabilitar)
                     {
-                        // Cierro solo si lo estoy deshabilitando ahora
+                        // Si lo deshabilito, cierro las tarifas vigentes
                         var tarifasVigentes = await _ctx.TarifasServicio
                             .Where(t => t.PlyID == sp.PlyID &&
                                         t.SerID == sp.SerID &&
@@ -202,10 +203,23 @@ namespace estacionamientos.Controllers
                 }
             }
 
+            // 👇 Agregar los nuevos seleccionados que no existían
+            var nuevos = model.ServiciosAsignados.Except(idsExistentes).ToList();
+            foreach (var serID in nuevos)
+            {
+                _ctx.ServiciosProveidos.Add(new ServicioProveido
+                {
+                    PlyID = model.PlayaID,
+                    SerID = serID,
+                    SerProvHab = true
+                });
+            }
+
             await _ctx.SaveChangesAsync();
 
             return RedirectToAction("Index", "PlayaEstacionamiento");
         }
+
 
 
 
