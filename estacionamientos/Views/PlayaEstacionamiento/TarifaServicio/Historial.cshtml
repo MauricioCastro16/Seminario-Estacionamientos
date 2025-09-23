@@ -10,6 +10,14 @@
 .period-chip .dot { width:.55rem; height:.55rem; border-radius:50%; background:currentColor; opacity:.8; }
 .period-chip.vigente { --bg:#eaf6ee; --fg:#1f5133; --bd:#cfe9d7; }
 .period-chip.finalizado { --bg:#fdecee; --fg:#7a232d; --bd:#f6c8cd; }
+.centrado-servicio {
+    display: table-cell;
+    text-align: center; /* Centra horizontalmente */
+    vertical-align: middle; /* Centra verticalmente */
+    height: 100%;            /* Asegura que ocupe toda la altura de la celda */
+}
+
+
 </style>
 
 <div class="container">
@@ -32,7 +40,9 @@
             foreach (var r in Model)
             {
                 <tr>
-                    <td class="fw-semibold align-top sticky-col">@r.ServicioNombre</td>
+                    <td>
+                        <div class="centrado-servicio">@r.ServicioNombre</div>
+                    </td>
                     <td>
                         <ul class="period-list">
                             @foreach (var p in r.Periodos)
