@@ -2,7 +2,10 @@
 @{
     ViewData["Title"] = "Editar Dueño";
 }
-<h1>@ViewData["Title"]</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">@ViewData["Title"]</h1>
+    <a asp-action="Index" class="btn btn-secondary">Volver</a>
+</div>
 <hr />
 
 <form asp-action="Edit" method="post">
@@ -43,7 +46,6 @@
 
     <div class="d-flex gap-2">
         <button class="btn btn-primary" type="submit">Guardar</button>
-        <a asp-action="Index" class="btn btn-secondary">Volver</a>
     </div>
 </form>
 

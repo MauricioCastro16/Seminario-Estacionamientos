@@ -23,7 +23,10 @@
 }
 
 <div class="container py-3">
-    <h3 class="mb-3">Detalle de turno</h3>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">Detalle de turno</h3>
+        <a class="btn btn-secondary" href="@backHref">Volver</a>
+    </div>
 
     <dl class="row">
         <dt class="col-sm-3">Playa</dt>
@@ -52,9 +55,4 @@
         <dt class="col-sm-3">Total del turno</dt>
         <dd class="col-sm-9">@((total?.ToString("N2") ?? "-"))</dd>
     </dl>
-
-    <div class="d-flex gap-2">
-        <!-- NUEVO: usa backHref (Home si vino returnUrl, Turno/Index si no) -->
-        <a class="btn btn-secondary" href="@backHref">Volver</a>
-    </div>
 </div>

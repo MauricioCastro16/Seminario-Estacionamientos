@@ -7,10 +7,17 @@
 
 <div class="card shadow-sm mt-4">
     <div class="card-body">
-        <h5 class="card-title">
-            <i class="bi bi-geo-alt-fill text-primary"></i>
-            @playa?.PlyNom
-        </h5>
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <h5 class="card-title">
+                    <i class="bi bi-geo-alt-fill text-primary"></i>
+                    @playa?.PlyNom
+                </h5>
+            </div>
+            <a asp-controller="PlayaEstacionamiento" asp-action="DetailsPlayero" asp-route-id="@playa?.PlyID"
+               class="btn btn-outline-secondary">Volver
+            </a>
+        </div>
         <p class="card-text text-muted mb-2">
             <strong>Dirección:</strong> @playa?.PlyDir (@playa?.PlyProv, @playa?.PlyCiu)
         </p>
@@ -57,9 +64,5 @@
                 </tbody>
             </table>
         }
-
-        <a asp-controller="PlayaEstacionamiento" asp-action="DetailsPlayero" asp-route-id="@playa?.PlyID"
-           class="btn btn-outline-secondary mt-3">Volver
-        </a>
     </div>
 </div>

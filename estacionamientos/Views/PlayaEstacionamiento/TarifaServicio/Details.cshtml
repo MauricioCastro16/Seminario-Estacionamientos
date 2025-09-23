@@ -4,7 +4,12 @@
     ViewData["Title"] = "Detalles de Tarifa";
 }
 
-<h2>Detalles de Tarifa</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Detalles de Tarifa</h2>
+    <a asp-action="Index"
+       asp-route-plyID="@Model.PlyID"
+       class="btn btn-secondary">Volver</a>
+</div>
 
 <dl class="row">
     <dt class="col-sm-3">Playa</dt>
@@ -38,8 +43,4 @@
    asp-route-serID="@Model.SerID"
    asp-route-clasVehID="@Model.ClasVehID"
    asp-route-tasFecIni="@Model.TasFecIni"
-   class="btn btn-primary flex-fill">Editar</a>
-
-<a asp-action="Index"
-   asp-route-plyID="@Model.PlyID"
-   class="btn btn-secondary">Volver</a>
+   class="btn btn-primary">Editar</a>

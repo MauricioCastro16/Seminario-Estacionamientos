@@ -6,8 +6,15 @@
 
 <div class="container" style="max-width: max-content">
     <div class="mb-3">
-        <h1 class="display-6 fw-semibold">@ViewData["Title"]</h1>
-        <h5 class="text-muted">@ViewBag.PlyNom</h5>
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h1 class="display-6 fw-semibold">@ViewData["Title"]</h1>
+                <h5 class="text-muted">@ViewBag.PlyNom</h5>
+            </div>
+            <a asp-controller="PlayaEstacionamiento" asp-action="Index" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Volver
+            </a>
+        </div>
     </div>
 
     @if (TempData["Error"] is string err)
