@@ -367,6 +367,7 @@ namespace estacionamientos.Controllers
 
 
             ViewBag.PlyID = turno.PlyID;
+            ViewBag.Playa = turno.Playa; // pasar datos de la playa a la vista
             return View(plazas);
         }
 
