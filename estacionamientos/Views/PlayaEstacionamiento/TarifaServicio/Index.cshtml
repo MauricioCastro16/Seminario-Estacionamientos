@@ -138,19 +138,20 @@
                                     <i class="fa-regular fa-pen-to-square"></i>
                                 </a>
 
-                                <form asp-action="Delete"
-                                      asp-route-plyID="@item.PlyID"
-                                      asp-route-serID="@item.SerID"
-                                      asp-route-clasVehID="@item.ClasVehID"
-                                      asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
-                                      method="post" class="d-inline"
-                                      onsubmit="return confirm('¿Estás seguro de cerrar esta tarifa?');">
-                                    <button type="submit"
-                                            class="btn btn-sm btn-outline-danger"
-                                            title="Suspender tarifa">
-                                        <i class="fa-regular fa-circle-xmark"></i>
-                                    </button>
-                                </form>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        title="Suspender tarifa"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#confirmSuspendModal"
+                                        data-servicio="@grupo.Key"
+                                        data-clase="@item.ClasificacionVehiculo.ClasVehTipo"
+                                        data-monto="@item.TasMonto.ToString("N2")"
+                                        data-plyid="@item.PlyID"
+                                        data-serid="@item.SerID"
+                                        data-clasvehid="@item.ClasVehID"
+                                        data-tasfecini="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")">
+                                    <i class="fa-regular fa-circle-xmark"></i>
+                                </button>
                             }
                             else
                             {
@@ -170,6 +171,38 @@
         }
         </tbody>
     </table>
+
+    <!-- Modal de confirmación para suspender tarifa -->
+    <div class="modal fade" id="confirmSuspendModal" tabindex="-1" aria-labelledby="confirmSuspendModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmSuspendModalLabel">Confirmar Suspensión de Tarifa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de suspender esta tarifa?</p>
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <p class="mb-1"><strong>Servicio:</strong> <span id="tarifaServicio"></span></p>
+                            <p class="mb-1"><strong>Clase Vehículo:</strong> <span id="tarifaClase"></span></p>
+                            <p class="mb-0"><strong>Monto:</strong> $<span id="tarifaMonto"></span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form id="confirmSuspendForm" asp-action="Delete" method="post">
+                        <input type="hidden" id="plyID" name="plyID" />
+                        <input type="hidden" id="serID" name="serID" />
+                        <input type="hidden" id="clasVehID" name="clasVehID" />
+                        <input type="hidden" id="tasFecIni" name="tasFecIni" />
+                        <button type="submit" class="btn btn-danger">Suspender</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @if (ViewBag.PlayaNombre != null)
@@ -207,6 +240,40 @@
         if (e.key === 'Enter') {
             e.preventDefault();
             formEl.submit();
+        }
+    });
+
+    // Manejar el modal de confirmación para suspender tarifa
+    document.addEventListener('DOMContentLoaded', function() {
+        const confirmSuspendModal = document.getElementById('confirmSuspendModal');
+        const tarifaServicioSpan = document.getElementById('tarifaServicio');
+        const tarifaClaseSpan = document.getElementById('tarifaClase');
+        const tarifaMontoSpan = document.getElementById('tarifaMonto');
+        const plyIDInput = document.getElementById('plyID');
+        const serIDInput = document.getElementById('serID');
+        const clasVehIDInput = document.getElementById('clasVehID');
+        const tasFecIniInput = document.getElementById('tasFecIni');
+
+        if (confirmSuspendModal) {
+            confirmSuspendModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const servicio = button.getAttribute('data-servicio');
+                const clase = button.getAttribute('data-clase');
+                const monto = button.getAttribute('data-monto');
+                const plyID = button.getAttribute('data-plyid');
+                const serID = button.getAttribute('data-serid');
+                const clasVehID = button.getAttribute('data-clasvehid');
+                const tasFecIni = button.getAttribute('data-tasfecini');
+
+                // Actualizar el contenido del modal
+                tarifaServicioSpan.textContent = servicio;
+                tarifaClaseSpan.textContent = clase;
+                tarifaMontoSpan.textContent = monto;
+                plyIDInput.value = plyID;
+                serIDInput.value = serID;
+                clasVehIDInput.value = clasVehID;
+                tasFecIniInput.value = tasFecIni;
+            });
         }
     });
 </script>
