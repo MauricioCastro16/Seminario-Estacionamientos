@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
+using estacionamientos.ViewModels;
 using estacionamientos.Models.ViewModels;
 using System.Linq;
 using System.Security.Claims;
@@ -54,7 +55,7 @@ namespace estacionamientos.Controllers
 
         // Helper: normaliza DateTime a UTC
         private DateTime ToUtc(DateTime dt) => DateTime.SpecifyKind(dt, DateTimeKind.Utc);
-       
+
         // INDEX
         [Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Index(
@@ -63,11 +64,10 @@ namespace estacionamientos.Controllers
             List<string>? Playas = null,
             List<string>? Servicios = null,
             List<string>? Clases = null,
-            List<string>? Vigencias = null,
             List<string>? Todos = null,
             string? selectedOption = null,
             string? remove = null,
-            int? plyID = null)   // 👈 nuevo
+            int? plyID = null) 
         {
             var tarifas = _ctx.TarifasServicio
                 .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Playa)
@@ -100,52 +100,26 @@ namespace estacionamientos.Controllers
                     if (key == "playa") Playas?.Remove(val);
                     if (key == "servicio") Servicios?.Remove(val);
                     if (key == "clase") Clases?.Remove(val);
-                    if (key == "vigencia") Vigencias?.Remove(val);
                     if (key == "todos") Todos?.Remove(val);
                 }
             }
 
-            // 👇 trasladar la opción elegida en el combo de vigencia (normalizamos a lower)
-            if (!string.IsNullOrWhiteSpace(selectedOption) && filterBy == "vigencia")
-            {
-                Vigencias = new List<string> { selectedOption.ToLower() };
-            }
-
             // aplicar búsqueda principal
-              var ahora = DateTime.UtcNow;
 
-                if (filterBy == "vigencia" && !string.IsNullOrWhiteSpace(selectedOption))
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var qLower = q.ToLower();
+                tarifas = filterBy switch
                 {
-                    var vig = selectedOption.ToLower();
-                    tarifas = vig switch
-                    {
-                        "vigente" => tarifas.Where(t =>
-                            (t.TasFecFin == null || t.TasFecFin > DateTime.UtcNow) &&
-                            t.ServicioProveido.SerProvHab
-                        ),
-                        "no vigente" => tarifas.Where(t =>
-                            (t.TasFecFin != null && t.TasFecFin <= DateTime.UtcNow) ||
-                            !t.ServicioProveido.SerProvHab
-                        ),
-                        _ => tarifas
-                    };
-                }
-
-
-                else if (!string.IsNullOrWhiteSpace(q))
-                {
-                    var qLower = q.ToLower();
-                    tarifas = filterBy switch
-                    {
-                        "playa" => tarifas.Where(t => t.ServicioProveido.Playa.PlyNom.ToLower().Contains(qLower)),
-                        "servicio" => tarifas.Where(t => t.ServicioProveido.Servicio.SerNom.ToLower().Contains(qLower)),
-                        "clase" => tarifas.Where(t => t.ClasificacionVehiculo.ClasVehTipo.ToLower().Contains(qLower)),
-                        _ => tarifas.Where(t =>
-                            t.ServicioProveido.Playa.PlyNom.ToLower().Contains(qLower) ||
-                            t.ServicioProveido.Servicio.SerNom.ToLower().Contains(qLower) ||
-                            t.ClasificacionVehiculo.ClasVehTipo.ToLower().Contains(qLower))
-                    };
-                }
+                    "playa" => tarifas.Where(t => t.ServicioProveido.Playa.PlyNom.ToLower().Contains(qLower)),
+                    "servicio" => tarifas.Where(t => t.ServicioProveido.Servicio.SerNom.ToLower().Contains(qLower)),
+                    "clase" => tarifas.Where(t => t.ClasificacionVehiculo.ClasVehTipo.ToLower().Contains(qLower)),
+                    _ => tarifas.Where(t =>
+                        t.ServicioProveido.Playa.PlyNom.ToLower().Contains(qLower) ||
+                        t.ServicioProveido.Servicio.SerNom.ToLower().Contains(qLower) ||
+                        t.ClasificacionVehiculo.ClasVehTipo.ToLower().Contains(qLower))
+                };
+            }
 
 
             // filtros acumulados
@@ -167,13 +141,13 @@ namespace estacionamientos.Controllers
                 tarifas = tarifas.Where(t => clasesLower.Contains(t.ClasificacionVehiculo.ClasVehTipo.ToLower()));
             }
 
+            tarifas = tarifas.Where(t =>
+                (t.TasFecFin == null || t.TasFecFin > DateTime.UtcNow) &&
+                t.ServicioProveido.SerProvHab);
+
             var lista = await tarifas
                 .AsNoTracking()
-                .OrderBy(t => (t.TasFecFin == null || t.TasFecFin > DateTime.UtcNow) && t.ServicioProveido.SerProvHab
-                        ? 0  // Vigente
-                        : 1  // No vigente
-                    )
-                .ThenBy(t => t.ServicioProveido.Servicio.SerNom)
+                .OrderBy(t => t.ServicioProveido.Servicio.SerNom)
                 .ThenBy(t => t.ClasificacionVehiculo.ClasVehTipo)
                 .ToListAsync();
 
@@ -186,15 +160,14 @@ namespace estacionamientos.Controllers
                 Playas = Playas ?? new(),
                 Servicios = Servicios ?? new(),
                 Clases = Clases ?? new(),
-                Vigencias = Vigencias ?? new(),
                 Todos = Todos ?? new(),
                 SelectedOption = selectedOption
             };
-                // Pasamos el plyID a la vista para usarlo en el botón "Nueva Tarifa"
-                ViewBag.PlyID = plyID;
+            // Pasamos el plyID a la vista para usarlo en el botón "Nueva Tarifa"
+            ViewBag.PlyID = plyID;
 
-                return View(vm);
-            }
+            return View(vm);
+        }
 
         // DETAILS
         [Authorize(Roles = "Duenio")]
@@ -407,7 +380,7 @@ namespace estacionamientos.Controllers
         [Authorize(Roles = "Playero")]
         public async Task<IActionResult> VigentesPlayero(int plyId)
         {
-        var ahora = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Utc);
+            var ahora = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Utc);
 
             var playa = await _ctx.Playas
                 .AsNoTracking()
@@ -427,6 +400,56 @@ namespace estacionamientos.Controllers
             ViewBag.Playa = playa;
             return View(tarifas);
         }
+        
+        [Authorize(Roles = "Duenio")]
+        public async Task<IActionResult> Historial(int? plyID = null)
+        {
+            var query = _ctx.TarifasServicio
+                .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                .Include(t => t.ClasificacionVehiculo)
+                .AsNoTracking()
+                .AsQueryable();
+
+            if (plyID.HasValue)
+            {
+                query = query.Where(t => t.PlyID == plyID.Value);
+
+                var playa = await _ctx.Playas
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PlyID == plyID.Value);
+
+                if (playa != null)
+                    ViewBag.PlayaNombre = playa.PlyNom;
+                    ViewBag.PlyID = plyID.Value;   // 👈 esto es lo que le faltaba
+
+            }
+
+            var tarifas = await query.ToListAsync();
+
+            var grupos = tarifas
+                .GroupBy(t => t.ServicioProveido.Servicio.SerNom)
+                .Select(g => new TarifaHistGroupVM
+                {
+                    ServicioNombre = g.Key,
+                    Periodos = g.Select(t => new TarifaPeriodoVM
+                    {
+                        ClaseVehiculo = t.ClasificacionVehiculo.ClasVehTipo,
+                        Monto = t.TasMonto,
+                        FechaInicio = t.TasFecIni,
+                        FechaFin = t.TasFecFin
+                    })
+                    .OrderBy(p => p.ClaseVehiculo)
+                    .ToList()
+                })
+                .OrderBy(g => g.ServicioNombre)
+                .ToList();
+
+            ViewData["PlyID"] = plyID;
+            
+            return View(grupos);
+        }
+
+   
 
     }
 }

@@ -78,11 +78,13 @@ dotnet ef database drop -f
 Remove-Item -Recurse -Force .\Migrations
 dotnet ef migrations add InitialCreate
 dotnet ef database update
+dotnet run
 (**) para Mac/Linux
 dotnet ef database drop -f
 rm -rf ./Migrations
 dotnet ef migrations add InitialCreate
 dotnet ef database update
+dotnet run
 ```
 
 # Capas y su explicación

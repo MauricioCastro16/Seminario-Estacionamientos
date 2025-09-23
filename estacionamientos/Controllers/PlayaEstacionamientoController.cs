@@ -27,7 +27,7 @@ namespace estacionamientos.Controllers
                 .Where(p => _context.AdministraPlayas
                     .Any(ap => ap.PlyID == p.PlyID && ap.DueNU == usuNU));
 
-            vm.ProvinciasCombo = await _context.Playas.AsNoTracking()
+            vm.ProvinciasCombo = await baseQuery
                 .Where(p => !string.IsNullOrEmpty(p.PlyProv))
                 .Select(p => p.PlyProv!)
                 .Distinct()
@@ -222,19 +222,38 @@ namespace estacionamientos.Controllers
         public async Task<IActionResult> Create(PlayaEstacionamiento model)
         {
             if (!ModelState.IsValid) return View(model);
+
+            // Calcular el siguiente PlyID disponible dinámicamente
+            int nextPlyId = Math.Max(1, (await _context.Playas.MaxAsync(p => p.PlyID)) + 1);
+
+            // Verificar que no haya colisión con el valor de PlyID
+            while (await _context.Playas.AnyAsync(p => p.PlyID == nextPlyId))
+            {
+                nextPlyId++;  // Incrementar hasta encontrar un PlyID disponible
+            }
+
+            // Asignar el PlyID calculado al modelo de la playa
+            model.PlyID = nextPlyId;
+
+            // Agregar la nueva playa a la base de datos
             _context.Playas.Add(model);
             await _context.SaveChangesAsync();
+
             // Asociar la playa creada con el dueño actual
             var nameIdentifier = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(nameIdentifier))
                 return Unauthorized();
+
             var usuNU = int.Parse(nameIdentifier);
+
             _context.AdministraPlayas.Add(new AdministraPlaya
             {
                 PlyID = model.PlyID,
                 DueNU = usuNU
             });
+
             await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
 

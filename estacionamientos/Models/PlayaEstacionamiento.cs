@@ -31,8 +31,8 @@ namespace estacionamientos.Models
         [Required(ErrorMessage = ErrorMessages.CampoObligatorio), StringLength(120)]
         public string PlyDir { get; set; } = string.Empty;
 
-        [StringLength(30)]
-        public string? PlyTipoPiso { get; set; } // hormigón, ripio, tierra…
+        [Required(ErrorMessage = ErrorMessages.CampoObligatorio), StringLength(30)]
+        public string PlyTipoPiso { get; set; } = string.Empty; // hormigón, ripio, tierra…
 
         // Promedio de Valoracion.ValNumEst (persistido)
         public decimal PlyValProm { get; set; } // 0..5 por ejemplo
