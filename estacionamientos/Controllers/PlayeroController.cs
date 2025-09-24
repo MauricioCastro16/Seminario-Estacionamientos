@@ -295,7 +295,7 @@ namespace estacionamientos.Controllers
             }
 
             var rel = await _context.Trabajos
-                .FirstOrDefaultAsync(t => t.PlaNU == plaNU && t.PlyID == plyID);
+                .FirstOrDefaultAsync(t => t.PlaNU == plaNU && t.PlyID == plyID && t.FechaFin == null);
             if (rel is null) 
             {
                 System.Diagnostics.Debug.WriteLine("Not found: No se encontró la relación TrabajaEn");
@@ -455,6 +455,8 @@ namespace estacionamientos.Controllers
                 {
                     t.PlaNU,
                     PlayeroNombre = t.Playero.UsuNyA,
+                    PlayeroEmail = t.Playero.UsuEmail,
+                    PlayeroTelefono = t.Playero.UsuNumTel,
                     PlayaNombre = string.IsNullOrWhiteSpace(t.Playa.PlyNom)
                                     ? (t.Playa.PlyCiu + " - " + t.Playa.PlyDir)
                                     : t.Playa.PlyNom,
@@ -465,11 +467,13 @@ namespace estacionamientos.Controllers
                 .ToListAsync();
 
             var data = flat
-                .GroupBy(x => new { x.PlaNU, x.PlayeroNombre })
+                .GroupBy(x => new { x.PlaNU, x.PlayeroNombre, x.PlayeroEmail, x.PlayeroTelefono })
                 .Select(g => new PlayeroHistGroupVM
                 {
                     PlaNU = g.Key.PlaNU,
                     PlayeroNombre = g.Key.PlayeroNombre,
+                    PlayeroEmail = g.Key.PlayeroEmail,
+                    PlayeroTelefono = g.Key.PlayeroTelefono,
                     Periodos = g.OrderByDescending(p => p.Vigente)
                                 .ThenByDescending(p => p.FechaInicio)
                                 .Select(p => new PeriodoVM

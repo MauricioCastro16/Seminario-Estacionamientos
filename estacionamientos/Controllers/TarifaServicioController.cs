@@ -129,30 +129,59 @@ namespace estacionamientos.Controllers
 
             // aplicar búsqueda principal
 
-            // Búsqueda principal
+            // Búsqueda principal - usar EF.Functions para búsquedas que EF puede traducir
             if (!string.IsNullOrWhiteSpace(q))
             {
-                var qNormalized = NormalizeText(q);
                 tarifas = filterBy switch
                 {
-                    "servicio" => tarifas.Where(t => NormalizeText(t.ServicioProveido.Servicio.SerNom) == qNormalized),
-                    "clase" => tarifas.Where(t => NormalizeText(t.ClasificacionVehiculo.ClasVehTipo).Contains(qNormalized)),
-                    "monto" => tarifas.Where(t => t.TasMonto.ToString() == q),
+                    "servicio" => tarifas.Where(t => t.ServicioProveido.Servicio.SerNom.ToLower().Contains(q.ToLower())),
+                    "clase" => tarifas.Where(t => t.ClasificacionVehiculo.ClasVehTipo.ToLower().Contains(q.ToLower())),
+                    "monto" => tarifas.Where(t => t.TasMonto.ToString().Contains(q)),
                     _ => tarifas.Where(t =>
-                        NormalizeText(t.ServicioProveido.Servicio.SerNom).Contains(qNormalized) ||
-                        NormalizeText(t.ClasificacionVehiculo.ClasVehTipo).Contains(qNormalized) ||
+                        t.ServicioProveido.Servicio.SerNom.ToLower().Contains(q.ToLower()) ||
+                        t.ClasificacionVehiculo.ClasVehTipo.ToLower().Contains(q.ToLower()) ||
                         t.TasMonto.ToString().Contains(q))
                 };
             }
 
             // Búsqueda por rango de fechas (cuando filterBy es "fechas")
-            if (filterBy == "fechas" && !string.IsNullOrWhiteSpace(selectedOption))
+            if (filterBy == "fechas")
             {
-                if (DateTime.TryParse(selectedOption, out var fechaDesde))
+                DateTime? fechaDesde = null;
+                DateTime? fechaHasta = null;
+
+                // Parsear fecha desde
+                if (!string.IsNullOrWhiteSpace(selectedOption) && DateTime.TryParse(selectedOption, out var fd))
                 {
-                    fechaDesde = ToUtc(fechaDesde);
-                    // Solo fecha de inicio: buscar tarifas que empezaron después de esa fecha
-                    tarifas = tarifas.Where(t => t.TasFecIni >= fechaDesde);
+                    fechaDesde = ToUtc(fd);
+                }
+
+                // Parsear fecha hasta desde el parámetro FechaHasta
+                if (!string.IsNullOrWhiteSpace(Request.Query["FechaHasta"].FirstOrDefault()) && 
+                    DateTime.TryParse(Request.Query["FechaHasta"].FirstOrDefault(), out var fh))
+                {
+                    fechaHasta = ToUtc(fh);
+                }
+
+                // Aplicar filtros según el rango de fechas
+                if (fechaDesde.HasValue && fechaHasta.HasValue)
+                {
+                    // Rango completo: buscar tarifas que estuvieron activas durante el período del filtro
+                    tarifas = tarifas.Where(t => 
+                        // Tarifa sin fecha fin (vigente): debe empezar dentro del rango del filtro
+                        (t.TasFecFin == null && t.TasFecIni >= fechaDesde.Value && t.TasFecIni <= fechaHasta.Value) ||
+                        // Tarifa con fecha fin: debe estar completamente dentro del rango del filtro
+                        (t.TasFecFin != null && t.TasFecIni >= fechaDesde.Value && t.TasFecFin <= fechaHasta.Value));
+                }
+                else if (fechaDesde.HasValue)
+                {
+                    // Solo fecha desde: buscar tarifas que empezaron después de esa fecha
+                    tarifas = tarifas.Where(t => t.TasFecIni >= fechaDesde.Value);
+                }
+                else if (fechaHasta.HasValue)
+                {
+                    // Solo fecha hasta: buscar tarifas que empezaron antes de esa fecha
+                    tarifas = tarifas.Where(t => t.TasFecIni <= fechaHasta.Value);
                 }
             }
 
@@ -160,20 +189,33 @@ namespace estacionamientos.Controllers
             // filtros acumulados
             if (Servicios?.Any() ?? false)
             {
-                var serviciosNormalized = Servicios.Select(s => NormalizeText(s)).ToList();
-                tarifas = tarifas.Where(t => serviciosNormalized.Contains(NormalizeText(t.ServicioProveido.Servicio.SerNom)));
+                tarifas = tarifas.Where(t => 
+                    Servicios.Any(servicio => 
+                        t.ServicioProveido.Servicio.SerNom.ToLower().Contains(servicio.ToLower())));
             }
 
             if (Clases?.Any() ?? false)
             {
-                var clasesNormalized = Clases.Select(c => NormalizeText(c)).ToList();
-                tarifas = tarifas.Where(t => clasesNormalized.Contains(NormalizeText(t.ClasificacionVehiculo.ClasVehTipo)));
+                tarifas = tarifas.Where(t => 
+                    Clases.Any(clase => 
+                        t.ClasificacionVehiculo.ClasVehTipo.ToLower().Contains(clase.ToLower())));
             }
 
             if (Montos?.Any() ?? false)
             {
                 var montos = Montos.Select(m => decimal.Parse(m)).ToList();
                 tarifas = tarifas.Where(t => montos.Contains(t.TasMonto));
+            }
+
+            if (Todos?.Any() ?? false)
+            {
+                // Para "Todos", buscar en todos los campos (servicio, clase, monto)
+                // Cada término debe coincidir en AL MENOS UN campo (OR entre campos)
+                tarifas = tarifas.Where(t => 
+                    Todos.Any(term => 
+                        t.ServicioProveido.Servicio.SerNom.ToLower().Contains(term.ToLower()) ||
+                        t.ClasificacionVehiculo.ClasVehTipo.ToLower().Contains(term.ToLower()) ||
+                        t.TasMonto.ToString().Contains(term)));
             }
 
             if (FechasDesde?.Any() ?? false)

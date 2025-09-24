@@ -475,6 +475,53 @@
     if (btn) btn.disabled = !canAddCurrent();
   }
 
+  // Manejar el botón "Añadir filtro"
+  document.getElementById('btnAddOne')?.addEventListener('click', function() {
+    const fb = document.getElementById('filterBy')?.value || 'todos';
+    const q = document.getElementById('qInput')?.value?.trim() || '';
+    const fD = document.getElementById('fechaDesde')?.value?.trim() || '';
+    
+    if (fb === 'fechas' && fD.length > 0) {
+      // Para fechas, agregar el rango de fechas como filtro
+      const fH = document.getElementById('fechaHasta')?.value?.trim() || '';
+      if (fH.length > 0) {
+        // Agregar ambas fechas
+        const url = new URL(window.location);
+        url.searchParams.append('FechasDesde', fD);
+        url.searchParams.append('FechasHasta', fH);
+        url.searchParams.delete('SelectedOption');
+        url.searchParams.delete('FechaHasta');
+        url.searchParams.set('FilterBy', 'todos');
+        window.location.href = url.toString();
+      } else {
+        // Solo fecha desde
+        const url = new URL(window.location);
+        url.searchParams.append('FechasDesde', fD);
+        url.searchParams.delete('SelectedOption');
+        url.searchParams.set('FilterBy', 'todos');
+        window.location.href = url.toString();
+      }
+    } else if (q.length > 0) {
+      // Para otros filtros, agregar el valor según el tipo
+      const url = new URL(window.location);
+      
+      if (fb === 'servicio') {
+        url.searchParams.append('Servicios', q);
+      } else if (fb === 'clase') {
+        url.searchParams.append('Clases', q);
+      } else if (fb === 'monto') {
+        url.searchParams.append('Montos', q);
+      } else {
+        // Para "todos", agregar a la lista "Todos" para mantener la búsqueda flexible
+        url.searchParams.append('Todos', q);
+      }
+      
+      url.searchParams.delete('Q');
+      url.searchParams.set('FilterBy', 'todos');
+      window.location.href = url.toString();
+    }
+  });
+
     const formEl = document.getElementById('searchForm');
 
     document.querySelectorAll('.dropdown-menu .dropdown-item').forEach(el => {
@@ -494,5 +541,44 @@
             e.preventDefault();
             formEl.submit();
         }
+    });
+
+    // Event listeners para habilitar/deshabilitar el botón "Añadir filtro"
+    document.getElementById('qInput')?.addEventListener('input', () => {
+        toggleAddButton();
+        toggleLimpiar();
+    });
+
+    document.getElementById('fechaDesde')?.addEventListener('input', () => {
+        toggleAddButton();
+        toggleLimpiar();
+    });
+
+    document.getElementById('fechaHasta')?.addEventListener('input', () => {
+        toggleAddButton();
+        toggleLimpiar();
+    });
+
+    // Manejar el modal de confirmación de suspensión
+    document.getElementById('confirmSuspendModal')?.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget; // Botón que activó el modal
+        const servicio = button.getAttribute('data-servicio');
+        const clase = button.getAttribute('data-clase');
+        const monto = button.getAttribute('data-monto');
+        const plyID = button.getAttribute('data-plyid');
+        const serID = button.getAttribute('data-serid');
+        const clasVehID = button.getAttribute('data-clasvehid');
+        const tasFecIni = button.getAttribute('data-tasfecini');
+
+        // Actualizar el contenido del modal
+        document.getElementById('tarifaServicio').textContent = servicio;
+        document.getElementById('tarifaClase').textContent = clase;
+        document.getElementById('tarifaMonto').textContent = monto;
+
+        // Actualizar los campos ocultos del formulario
+        document.getElementById('plyID').value = plyID;
+        document.getElementById('serID').value = serID;
+        document.getElementById('clasVehID').value = clasVehID;
+        document.getElementById('tasFecIni').value = tasFecIni;
     });
 </script>

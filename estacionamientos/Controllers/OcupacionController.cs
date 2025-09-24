@@ -121,12 +121,16 @@ namespace estacionamientos.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RegistrarEgreso(int plyID, int plzNum, string vehPtnt)
         {
+            // Debug logs
+            System.Diagnostics.Debug.WriteLine($"RegistrarEgreso called: plyID={plyID}, plzNum={plzNum}, vehPtnt={vehPtnt}");
+            
             var ocup = await _ctx.Ocupaciones
                 .FirstOrDefaultAsync(o => o.PlyID == plyID && o.PlzNum == plzNum && o.VehPtnt == vehPtnt && o.OcufFyhFin == null);
 
             if (ocup == null)
             {
-                TempData["Error"] = "No se encontró una ocupación activa para este vehículo.";
+                System.Diagnostics.Debug.WriteLine("No se encontró ocupación activa");
+                TempData["Error"] = $"No se encontró una ocupación activa para este vehículo. Parámetros: plyID={plyID}, plzNum={plzNum}, vehPtnt={vehPtnt}";
                 return RedirectToAction(nameof(Index));
             }
 

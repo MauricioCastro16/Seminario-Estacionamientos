@@ -144,6 +144,21 @@
 
 @section Scripts {
 <script>
+    // Manejar el modal de confirmación
+    document.getElementById('confirmModal')?.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const plyID = button.getAttribute('data-plyid');
+        const plzNum = button.getAttribute('data-plznum');
+        const vehPtnt = button.getAttribute('data-vehptnt');
+        
+        console.log('Modal data:', { plyID, plzNum, vehPtnt });
+        
+        // Actualizar los campos ocultos del formulario
+        document.getElementById('plyID').value = plyID;
+        document.getElementById('plzNum').value = plzNum;
+        document.getElementById('vehPtnt').value = vehPtnt;
+    });
+
     // Oculta automáticamente los alerts después de 3 segundos
     setTimeout(() => {
         document.querySelectorAll('.alert').forEach(alert => {

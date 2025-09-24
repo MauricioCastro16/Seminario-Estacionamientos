@@ -173,8 +173,8 @@ public static class DbInitializer
                     {
                         var start = faker.Date.Between(DateTime.UtcNow.AddDays(-7), DateTime.UtcNow).ToUniversalTime();
                         var fin = start.AddHours(faker.Random.Int(6, 9));
-                        var apertura = faker.Random.Bool(0.7f) ? faker.Random.Decimal(1000, 10000) : (decimal?)null;
-                        var cierre = apertura.HasValue ? apertura.Value + faker.Random.Decimal(-500, 1500) : (decimal?)null;
+                        var apertura = faker.Random.Decimal(0, 10000);
+                        var cierre = apertura + faker.Random.Decimal(-500, 1500);
 
                         turnos.Add(new Turno
                         {
@@ -195,6 +195,8 @@ public static class DbInitializer
                     {
                         var start = faker.Date.Between(periodo.FechaInicio, periodo.FechaFin.Value).ToUniversalTime();
                         var fin = start.AddHours(faker.Random.Int(5, 8));
+                        var apertura = faker.Random.Decimal(0, 10000);
+                        var cierre = apertura + faker.Random.Decimal(-500, 1500);
 
                         turnos.Add(new Turno
                         {
@@ -203,8 +205,8 @@ public static class DbInitializer
                             TurFyhIni = start,
                             TurFyhFin = fin,
                             TrabFyhIni = periodo.FechaInicio,
-                            TurApertCaja = null,
-                            TurCierrCaja = null
+                            TurApertCaja = apertura,
+                            TurCierrCaja = cierre
                         });
                     }
                 }

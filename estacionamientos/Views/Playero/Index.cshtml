@@ -51,21 +51,20 @@
                                     : $"{playa.PlyCiu} - {playa.PlyDir}";
 
                                     <!-- Desasignar (marca histórico) -->
-                                    <form asp-controller="Playero" asp-action="Unassign" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="plyID" value="@playa.PlyID" />
-                                        <input type="hidden" name="plaNU" value="@p.UsuNU" />
-
-                                        <div class="playa-chip">
-                                            @etiqueta
-                                            <button type="submit"
-                                                    class="remove-btn"
-                                                    title="Desasignar"
-                                                    onclick="return confirm('¿Quitar esta asignación?');">
-                                                <i class="fa-regular fa-circle-xmark"></i>
-                                            </button>
-                                        </div>
-                                    </form>
+                                    <div class="playa-chip">
+                                        @etiqueta
+                                        <button type="button"
+                                                class="remove-btn"
+                                                title="Desasignar"
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#confirmUnassignModal"
+                                                data-playero-id="@p.UsuNU"
+                                                data-playero-name="@p.UsuNyA"
+                                                data-playa-id="@playa.PlyID"
+                                                data-playa-name="@etiqueta">
+                                            <i class="fa-regular fa-circle-xmark"></i>
+                                        </button>
+                                    </div>
                                 }
                             }
                         </td>
@@ -107,12 +106,12 @@
         </tbody>
     </table>
 
-    <!-- Modal de confirmación para desvincular playero -->
+    <!-- Modal de confirmación para desvincular playero de todas las playas -->
     <div class="modal fade" id="confirmUnlinkModal" tabindex="-1" aria-labelledby="confirmUnlinkModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="confirmUnlinkModalLabel">Confirmar Desvinculación</h5>
+                    <h5 class="modal-title" id="confirmUnlinkModalLabel">Confirmar Desvinculación Total</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -124,6 +123,36 @@
                     <form id="confirmUnlinkForm" asp-controller="Playero" asp-action="Delete" method="post">
                         @Html.AntiForgeryToken()
                         <input type="hidden" id="playeroId" name="id" />
+                        <button type="submit" class="btn btn-danger">Desvincular</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmación para desvincular playero de una playa específica -->
+    <div class="modal fade" id="confirmUnassignModal" tabindex="-1" aria-labelledby="confirmUnassignModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmUnassignModalLabel">Confirmar Desvinculación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que quieres desvincular este playero de esta playa?</p>
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <p class="mb-1"><strong>Playero:</strong> <span id="unassignPlayeroName"></span></p>
+                            <p class="mb-0"><strong>Playa:</strong> <span id="unassignPlayaName"></span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form id="confirmUnassignForm" asp-controller="Playero" asp-action="Unassign" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" id="unassignPlayeroId" name="plaNU" />
+                        <input type="hidden" id="unassignPlayaId" name="plyID" />
                         <button type="submit" class="btn btn-danger">Desvincular</button>
                     </form>
                 </div>
@@ -166,10 +195,10 @@
 <script>
     // Manejar el modal de confirmación para desvincular playero
     document.addEventListener('DOMContentLoaded', function() {
+        // Modal para desvincular de todas las playas
         const confirmUnlinkModal = document.getElementById('confirmUnlinkModal');
         const playeroNameSpan = document.getElementById('playeroName');
         const playeroIdInput = document.getElementById('playeroId');
-        const confirmUnlinkForm = document.getElementById('confirmUnlinkForm');
 
         if (confirmUnlinkModal) {
             confirmUnlinkModal.addEventListener('show.bs.modal', function (event) {
@@ -180,6 +209,29 @@
                 // Actualizar el contenido del modal
                 playeroNameSpan.textContent = playeroName;
                 playeroIdInput.value = playeroId;
+            });
+        }
+
+        // Modal para desvincular de una playa específica
+        const confirmUnassignModal = document.getElementById('confirmUnassignModal');
+        const unassignPlayeroNameSpan = document.getElementById('unassignPlayeroName');
+        const unassignPlayaNameSpan = document.getElementById('unassignPlayaName');
+        const unassignPlayeroIdInput = document.getElementById('unassignPlayeroId');
+        const unassignPlayaIdInput = document.getElementById('unassignPlayaId');
+
+        if (confirmUnassignModal) {
+            confirmUnassignModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const playeroId = button.getAttribute('data-playero-id');
+                const playeroName = button.getAttribute('data-playero-name');
+                const playaId = button.getAttribute('data-playa-id');
+                const playaName = button.getAttribute('data-playa-name');
+
+                // Actualizar el contenido del modal
+                unassignPlayeroNameSpan.textContent = playeroName;
+                unassignPlayaNameSpan.textContent = playaName;
+                unassignPlayeroIdInput.value = playeroId;
+                unassignPlayaIdInput.value = playaId;
             });
         }
     });

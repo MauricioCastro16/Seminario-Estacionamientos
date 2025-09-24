@@ -68,8 +68,7 @@
                             <th>Email</th> 
                             <th>Nombre de Usuario</th>
                             <th>Teléfono</th> 
-                            <th>CUIT</th> 
-                            <th>Acciones</th> 
+                            <th>CUIT</th>
                             </tr> 
                             </thead> 
                             <tbody> 
@@ -82,21 +81,6 @@
                                     <td>@d.UsuNomUsu</td>
                                     <td>@d.UsuNumTel</td> 
                                     <td>@d.DueCuit</td> 
-                                    <td> 
-                                        
-                                        <a asp-controller="Usuario" asp-action="EditDuenio" asp-route-id="@d.UsuNU" class="btn btn-sm btn-outline-secondary me-1" title="Editar"> 
-                                            <i class="fa-regular fa-pen-to-square"></i>
-                                        </a> 
-                                            
-                                        <a asp-controller="Usuario" asp-action="DetailsDuenio" asp-route-id="@d.UsuNU" class="btn btn-sm btn-outline-primary me-1" title="Detalles"> 
-                                            <i class="fa-solid fa-eye"></i>
-                                        </a> 
-                                                
-                                        <a asp-controller="Usuario" asp-action="DeleteDuenio" asp-route-id="@d.UsuNU" class="btn btn-sm btn-outline-secondary" title="Eliminar"> 
-                                            <i class="fa-regular fa-trash-can"></i>
-                                        </a> 
-
-                                    </td> 
                                 </tr> 
                             } 
                         </tbody> 
