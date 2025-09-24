@@ -72,6 +72,12 @@ namespace estacionamientos.Controllers
                 .AsNoTracking()
                 .ToListAsync();
 
+            // Debug log
+            System.Diagnostics.Debug.WriteLine($"Index loaded {trabajosActivos.Count} active jobs");
+            foreach (var trabajo in trabajosActivos)
+            {
+                System.Diagnostics.Debug.WriteLine($"  - PlaNU: {trabajo.PlaNU}, PlyID: {trabajo.PlyID}, FechaFin: {trabajo.FechaFin}");
+            }
 
             var porPlayero = trabajosActivos
                 .GroupBy(t => t.Playero.UsuNU)
@@ -272,26 +278,52 @@ namespace estacionamientos.Controllers
         [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Unassign(int plaNU, int plyID)
         {
-            var dueId = GetCurrentOwnerId();
+            try
+            {
+                var dueId = GetCurrentOwnerId();
+                
+                // Debug logs
+                System.Diagnostics.Debug.WriteLine($"Unassign called: plaNU={plaNU}, plyID={plyID}, dueId={dueId}");
 
             // Guard: la playa debe ser del dueño
             var esMia = await _context.AdministraPlayas
                 .AnyAsync(a => a.DueNU == dueId && a.PlyID == plyID);
-            if (!esMia) return Forbid();
+            if (!esMia) 
+            {
+                System.Diagnostics.Debug.WriteLine("Forbidden: Playero no administra esta playa");
+                return Forbid();
+            }
 
             var rel = await _context.Trabajos
                 .FirstOrDefaultAsync(t => t.PlaNU == plaNU && t.PlyID == plyID);
-            if (rel is null) return NotFound();
+            if (rel is null) 
+            {
+                System.Diagnostics.Debug.WriteLine("Not found: No se encontró la relación TrabajaEn");
+                return NotFound();
+            }
+
+            System.Diagnostics.Debug.WriteLine($"Found relation: TrabEnActual={rel.TrabEnActual}, FechaFin={rel.FechaFin}");
 
             // Cerrar el período vigente
             rel.TrabEnActual = false;              // compatibilidad
             if (rel.FechaFin == null)
                 rel.FechaFin = DateTime.UtcNow;
 
+            System.Diagnostics.Debug.WriteLine($"After update: TrabEnActual={rel.TrabEnActual}, FechaFin={rel.FechaFin}");
+
             await _context.SaveChangesAsync();
+
+            System.Diagnostics.Debug.WriteLine("Changes saved successfully");
 
             TempData["Msg"] = "Vinculación marcada como histórica.";
             return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in Unassign: {ex.Message}");
+                TempData["Error"] = "Error al desvincular el playero.";
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]

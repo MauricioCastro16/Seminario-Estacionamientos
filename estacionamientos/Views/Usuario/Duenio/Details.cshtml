@@ -13,7 +13,9 @@
     <dt class="col-sm-3">CUIT</dt><dd class="col-sm-9">@Model.DueCuit</dd>
 </dl>
 
-<div class="d-flex gap-2">
-    <a asp-action="Edit" asp-route-id="@Model.UsuNU" class="btn btn-warning">Editar</a>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex gap-2">
+        <a asp-action="Edit" asp-route-id="@Model.UsuNU" class="btn btn-warning">Editar</a>
+    </div>
     <a asp-action="Index" class="btn btn-secondary">Volver</a>
 </div>
