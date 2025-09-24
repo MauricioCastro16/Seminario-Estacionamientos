@@ -59,25 +59,39 @@ namespace estacionamientos.Controllers
         // INDEX: sólo dueños
         // ------------------------------------------------------------
         [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(
+            string q,
+            string filterBy = "todos",
+            List<string>? Nombres = null,
+            List<string>? Playas = null,
+            List<string>? Todos = null,
+            string? remove = null)
         {
             var dueId = GetCurrentOwnerId();
             var misPlyIds = await PlyIdsDelDuenioAsync(dueId);
+
+            // Quitar un filtro
+            if (!string.IsNullOrEmpty(remove))
+            {
+                var parts = remove.Split(':');
+                if (parts.Length >= 2)
+                {
+                    var key = parts[0].ToLower();
+                    var val = parts[1];
+
+                    if (key == "nombre") Nombres?.Remove(val);
+                    if (key == "playa") Playas?.Remove(val);
+                    if (key == "todos") Todos?.Remove(val);
+                }
+            }
 
             // INDEX: solo vínculos vigentes en playas del dueño
             var trabajosActivos = await _context.Trabajos
                 .Include(t => t.Playero)
                 .Include(t => t.Playa)
-                .Where(t => misPlyIds.Contains(t.PlyID) && t.FechaFin == null) // <-- por fecha
+                .Where(t => misPlyIds.Contains(t.PlyID) && t.FechaFin == null)
                 .AsNoTracking()
                 .ToListAsync();
-
-            // Debug log
-            System.Diagnostics.Debug.WriteLine($"Index loaded {trabajosActivos.Count} active jobs");
-            foreach (var trabajo in trabajosActivos)
-            {
-                System.Diagnostics.Debug.WriteLine($"  - PlaNU: {trabajo.PlaNU}, PlyID: {trabajo.PlyID}, FechaFin: {trabajo.FechaFin}");
-            }
 
             var porPlayero = trabajosActivos
                 .GroupBy(t => t.Playero.UsuNU)
@@ -86,10 +100,73 @@ namespace estacionamientos.Controllers
                     Playero = g.First().Playero,
                     Playas = g.Select(x => x.Playa).Distinct().ToList()
                 })
+                .AsQueryable();
+
+            // Aplicar búsqueda principal
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                porPlayero = filterBy switch
+                {
+                    "nombre" => porPlayero.Where(p => p.Playero.UsuNyA.ToLower().Contains(q.ToLower())),
+                    "playa" => porPlayero.Where(p => p.Playas.Any(pl => 
+                        (pl.PlyNom ?? "").ToLower().Contains(q.ToLower()) ||
+                        (pl.PlyCiu + " - " + pl.PlyDir).ToLower().Contains(q.ToLower()))),
+                    _ => porPlayero.Where(p => 
+                        p.Playero.UsuNyA.ToLower().Contains(q.ToLower()) ||
+                        p.Playas.Any(pl => 
+                            (pl.PlyNom ?? "").ToLower().Contains(q.ToLower()) ||
+                            (pl.PlyCiu + " - " + pl.PlyDir).ToLower().Contains(q.ToLower())))
+                };
+            }
+
+            // Filtros acumulados
+            if (Nombres?.Any() ?? false)
+            {
+                porPlayero = porPlayero.Where(p => 
+                    Nombres.Any(nombre => p.Playero.UsuNyA.ToLower().Contains(nombre.ToLower())));
+            }
+
+            if (Playas?.Any() ?? false)
+            {
+                porPlayero = porPlayero.Where(p => 
+                    Playas.Any(playa => p.Playas.Any(pl => 
+                        (pl.PlyNom ?? "").ToLower().Contains(playa.ToLower()) ||
+                        (pl.PlyCiu + " - " + pl.PlyDir).ToLower().Contains(playa.ToLower()))));
+            }
+
+            if (Todos?.Any() ?? false)
+            {
+                porPlayero = porPlayero.Where(p => 
+                    Todos.Any(term => 
+                        p.Playero.UsuNyA.ToLower().Contains(term.ToLower()) ||
+                        p.Playas.Any(pl => 
+                            (pl.PlyNom ?? "").ToLower().Contains(term.ToLower()) ||
+                            (pl.PlyCiu + " - " + pl.PlyDir).ToLower().Contains(term.ToLower()))));
+            }
+
+            var lista = porPlayero
                 .OrderBy(vm => vm.Playero.UsuNyA)
                 .ToList();
 
-            return View(porPlayero);
+            // Obtener playas del dueño para el dropdown
+            var playasDelDuenio = await _context.Playas
+                .Where(p => misPlyIds.Contains(p.PlyID))
+                .Select(p => new { p.PlyID, Nombre = string.IsNullOrWhiteSpace(p.PlyNom) ? $"{p.PlyCiu} - {p.PlyDir}" : p.PlyNom })
+                .ToListAsync();
+
+            var vm = new PlayeroIndexFilterVM
+            {
+                Playeros = lista,
+                Q = q ?? "",
+                FilterBy = string.IsNullOrEmpty(filterBy) ? "todos" : filterBy.ToLower(),
+                Nombres = Nombres ?? new(),
+                Playas = Playas ?? new(),
+                Todos = Todos ?? new()
+            };
+
+            ViewBag.PlayasDelDuenio = playasDelDuenio;
+
+            return View(vm);
         }
 
         // ------------------------------------------------------------

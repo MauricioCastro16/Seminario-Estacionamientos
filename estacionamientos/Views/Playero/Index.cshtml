@@ -1,25 +1,178 @@
 @using estacionamientos.ViewModels
-@model List<PlayeroIndexVM>
+@model PlayeroIndexFilterVM
 
 @{
     ViewData["Title"] = "Playeros";
+
+    string LabelFiltro(string v) => v?.ToLower() switch {
+        "nombre" => "Nombre",
+        "playa" => "Playa",
+        _ => "Todos"
+    };
+
+    bool showAddButton = !string.IsNullOrWhiteSpace(Model.Q) && Model.FilterBy != "playa";
 }
 
 <div class="container">
     <!-- Encabezado: título a la izquierda, botones a la derecha -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mb-0">Playeros</h1>
-        <div>
+    </div>
+
+    <!-- Formulario de búsqueda/filtros -->
+    <form method="get" id="searchForm" class="row g-2 align-items-center mb-3">
+        <!-- Campo de texto -->
+        <div class="col-md-5 @(Model.FilterBy == "playa" ? "d-none" : "")" id="qWrapper">
+            <input name="Q" id="qInput" value="@Model.Q" class="form-control" placeholder="Buscar playeros..." />
+        </div>
+
+        <!-- Dropdown de playas -->
+        <div class="col-md-5 @(Model.FilterBy == "playa" ? "" : "d-none")" id="playaWrapper">
+            <select name="SelectedPlaya" id="playaSelect" class="form-select">
+                <option value="">Seleccionar playa...</option>
+                @if (ViewBag.PlayasDelDuenio != null)
+                {
+                    @foreach (var playa in ViewBag.PlayasDelDuenio)
+                    {
+                        <option value="@playa.Nombre">@playa.Nombre</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <!-- Botón Filtrar -->
+        <div class="col-auto">
+            <div class="btn-group">
+                <input type="hidden" name="FilterBy" id="filterBy" value="@Model.FilterBy" />
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle"
+                        data-bs-toggle="dropdown" aria-expanded="false" id="filterBtn">
+                    <i class="fa-solid fa-filter"></i> Filtrar: @LabelFiltro(Model.FilterBy)
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" data-value="todos">Todos</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="nombre">Nombre</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="playa">Playa</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Buscar + Limpiar -->
+        <div class="col-auto">
+            <button type="submit" class="btn btn-secondary" title="Buscar">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+            <a id="btnLimpiar"
+               class="btn btn-outline-secondary @(Model.HayFiltros ? "" : "d-none")"
+               asp-action="Index"
+               title="Limpiar filtros">
+                <i class="fa-regular fa-circle-xmark"></i>
+            </a>
+        </div>
+
+        <!-- Botón Agregar Playero alineado a la derecha -->
+        <div class="col-auto ms-auto">
             <a class="btn btn-primary" asp-controller="Playero" asp-action="Create" title="Agregar playero">
                 <i class="fa-solid fa-plus"></i> Agregar Playero
             </a>
-            <a class="btn btn-outline-secondary" asp-controller="Playero" asp-action="HistorialAgrupado">
+            <a class="btn btn-outline-secondary ms-2" asp-controller="Playero" asp-action="HistorialAgrupado">
                 <i class="fa-solid fa-clock-rotate-left"></i> Historial
             </a>
         </div>
-    </div>
 
-    <h5 class="text-center mt-3">Mis Playeros</h5>
+        <!-- Botón Añadir filtro -->
+        <div class="w-100"></div>
+        <div class="col-md-5 mt-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnAddOne" disabled>
+                Añadir filtro
+            </button>
+        </div>
+
+        <!-- Inputs ocultos para preservar filtros acumulados -->
+        @for (int i = 0; i < Model.Nombres.Count; i++)
+        {
+            <input type="hidden" name="Nombres[@i]" value="@Model.Nombres[i]" />
+        }
+        @for (int i = 0; i < Model.Playas.Count; i++)
+        {
+            <input type="hidden" name="Playas[@i]" value="@Model.Playas[i]" />
+        }
+        @for (int i = 0; i < Model.Todos.Count; i++)
+        {
+            <input type="hidden" name="Todos[@i]" value="@Model.Todos[i]" />
+        }
+    </form>
+
+    <!-- Badges de filtros acumulados -->
+    @if ((Model.Nombres?.Any() ?? false) || (Model.Playas?.Any() ?? false) || (Model.Todos?.Any() ?? false))
+    {
+        <div class="mb-3 d-flex flex-wrap gap-2">
+            @* TODOS *@
+            @if (Model.Todos != null)
+            {
+                @foreach (var v in Model.Todos)
+                {
+                    <span class="badge rounded-pill text-bg-light border">
+                        @v
+                        <a class="ms-2 text-decoration-none"
+                          asp-action="Index"
+                          asp-route-Q="@Model.Q"
+                          asp-route-FilterBy="@Model.FilterBy"
+                          asp-route-Remove="todos:@v"
+                          asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                          asp-route-Playas="@(string.Join(",", Model.Playas ?? new List<string>()))"
+                          asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                          title="Quitar">
+                            <i class="fa-regular fa-circle-xmark"></i>
+                        </a>
+                    </span>
+                }
+            }
+
+            @* NOMBRES *@
+            @if (Model.Nombres != null)
+            {
+                @foreach (var v in Model.Nombres)
+                {
+                    <span class="badge rounded-pill text-bg-light border">
+                        @v
+                        <a class="ms-2 text-decoration-none"
+                          asp-action="Index"
+                          asp-route-Q="@Model.Q"
+                          asp-route-FilterBy="@Model.FilterBy"
+                          asp-route-Remove="nombre:@v"
+                          asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                          asp-route-Playas="@(string.Join(",", Model.Playas ?? new List<string>()))"
+                          asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                          title="Quitar">
+                            <i class="fa-regular fa-circle-xmark"></i>
+                        </a>
+                    </span>
+                }
+            }
+
+            @* PLAYAS *@
+            @if (Model.Playas != null)
+            {
+                @foreach (var v in Model.Playas)
+                {
+                    <span class="badge rounded-pill text-bg-light border">
+                        @v
+                        <a class="ms-2 text-decoration-none"
+                          asp-action="Index"
+                          asp-route-Q="@Model.Q"
+                          asp-route-FilterBy="@Model.FilterBy"
+                          asp-route-Remove="playa:@v"
+                          asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                          asp-route-Playas="@(string.Join(",", Model.Playas ?? new List<string>()))"
+                          asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                          title="Quitar">
+                            <i class="fa-regular fa-circle-xmark"></i>
+                        </a>
+                    </span>
+                }
+            }
+        </div>
+    }
 
     <table class="table table-striped align-middle mt-3">
         <thead>
@@ -30,9 +183,9 @@
             </tr>
         </thead>
         <tbody>
-            @if (Model is { Count: > 0 })
+            @if (Model.Playeros is { Count: > 0 })
             {
-                foreach (var row in Model)
+                foreach (var row in Model.Playeros)
                 {
                     var p = row.Playero;
                     <tr>
@@ -51,20 +204,20 @@
                                     : $"{playa.PlyCiu} - {playa.PlyDir}";
 
                                     <!-- Desasignar (marca histórico) -->
-                                    <div class="playa-chip">
-                                        @etiqueta
+                                        <div class="playa-chip">
+                                            @etiqueta
                                         <button type="button"
-                                                class="remove-btn"
-                                                title="Desasignar"
+                                                    class="remove-btn"
+                                                    title="Desasignar"
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#confirmUnassignModal"
                                                 data-playero-id="@p.UsuNU"
                                                 data-playero-name="@p.UsuNyA"
                                                 data-playa-id="@playa.PlyID"
                                                 data-playa-name="@etiqueta">
-                                            <i class="fa-regular fa-circle-xmark"></i>
-                                        </button>
-                                    </div>
+                                                <i class="fa-regular fa-circle-xmark"></i>
+                                            </button>
+                                        </div>
                                 }
                             }
                         </td>
@@ -193,6 +346,92 @@
 
 @section Scripts {
 <script>
+    const mapLbl = {todos:'Todos', nombre:'Nombre', playa:'Playa'};
+
+    // Habilita/oculta inputs de búsqueda según el filtro elegido y actualiza la etiqueta
+    function updateFilterUI() {
+        const fb = document.getElementById('filterBy').value;
+        const qW = document.getElementById('qWrapper');
+        const pW = document.getElementById('playaWrapper');
+        const qI = document.getElementById('qInput');
+        const pS = document.getElementById('playaSelect');
+
+        if (fb === 'playa') {
+            qW?.classList.add('d-none');
+            pW?.classList.remove('d-none');
+            if (qI) qI.value = '';
+        } else {
+            pW?.classList.add('d-none');
+            if (pS) pS.value = '';
+            qW?.classList.remove('d-none');
+        }
+
+        document.getElementById('filterBtn').innerHTML =
+            '<i class="fa-solid fa-filter"></i> Filtrar: ' + (mapLbl[fb] || 'Todos');
+
+        toggleLimpiar();
+        toggleAddButton();
+    }
+
+    // Muestra/oculta el botón "Limpiar" según haya algo que limpiar
+    function toggleLimpiar() {
+        const fb = document.getElementById('filterBy')?.value || 'todos';
+        const q = document.getElementById('qInput')?.value?.trim() || '';
+        const pS = document.getElementById('playaSelect')?.value?.trim() || '';
+        const show = (fb && fb !== 'todos') || q.length > 0 || pS.length > 0;
+        const limpiar = document.getElementById('btnLimpiar');
+        if (limpiar) limpiar.classList.toggle('d-none', !show);
+    }
+
+    // ¿Hay algo que se pueda añadir como filtro según el tipo actual?
+    function canAddCurrent() {
+        const fb = document.getElementById('filterBy')?.value || 'todos';
+        const q = document.getElementById('qInput')?.value?.trim() || '';
+        const pS = document.getElementById('playaSelect')?.value?.trim() || '';
+        
+        if (fb === 'playa') {
+            return pS.length > 0;
+        } else {
+            return q.length > 0;
+        }
+    }
+
+    // Habilita/Deshabilita el botón "Añadir filtro"
+    function toggleAddButton() {
+        const btn = document.getElementById('btnAddOne');
+        if (btn) btn.disabled = !canAddCurrent();
+    }
+
+    // Manejar el botón "Añadir filtro"
+    document.getElementById('btnAddOne')?.addEventListener('click', function() {
+        const fb = document.getElementById('filterBy')?.value || 'todos';
+        const q = document.getElementById('qInput')?.value?.trim() || '';
+        const pS = document.getElementById('playaSelect')?.value?.trim() || '';
+        
+        if (fb === 'playa' && pS.length > 0) {
+            // Para playas, agregar la playa seleccionada como filtro
+            const url = new URL(window.location);
+            url.searchParams.append('Playas', pS);
+            url.searchParams.delete('SelectedPlaya');
+            url.searchParams.set('FilterBy', 'todos');
+            window.location.href = url.toString();
+        } else if (q.length > 0) {
+            // Para otros filtros, agregar el valor según el tipo
+            const url = new URL(window.location);
+            
+            if (fb === 'nombre') {
+                url.searchParams.append('Nombres', q);
+            } else {
+                // Para "todos", agregar a la lista "Todos" para mantener la búsqueda flexible
+                url.searchParams.append('Todos', q);
+            }
+            
+            url.searchParams.delete('Q');
+            url.searchParams.set('FilterBy', 'todos');
+            window.location.href = url.toString();
+        }
+    });
+
     // Manejar el modal de confirmación para desvincular playero
     document.addEventListener('DOMContentLoaded', function() {
         // Modal para desvincular de todas las playas
@@ -235,5 +474,40 @@
             });
         }
     });
+
+    // Event listeners para el formulario de filtros
+    const formEl = document.getElementById('searchForm');
+
+    document.querySelectorAll('.dropdown-menu .dropdown-item').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.preventDefault();
+            const value = el.getAttribute('data-value');
+            document.getElementById('filterBy').value = value;
+            document.getElementById('filterBtn').innerHTML =
+                '<i class="fa-solid fa-filter"></i> Filtrar: ' + (mapLbl[value] || 'Todos');
+            formEl.submit();
+        });
+    });
+
+    document.getElementById('qInput')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            formEl.submit();
+        }
+    });
+
+    // Event listeners para habilitar/deshabilitar el botón "Añadir filtro"
+    document.getElementById('qInput')?.addEventListener('input', () => {
+        toggleAddButton();
+        toggleLimpiar();
+    });
+
+    document.getElementById('playaSelect')?.addEventListener('change', () => {
+        toggleAddButton();
+        toggleLimpiar();
+    });
+
+    // Inicializar la UI
+    updateFilterUI();
 </script>
 }
