@@ -90,11 +90,19 @@
     @if (Model.Items.Any())
     {
         <div class="table-responsive">
-            <div class="row mb-2">
-                <div class="col-sm-6 col-md-4 col-lg-3 ms-auto">
-                    <input type="text" id="filtroPagos" class="form-control form-control-sm" placeholder="Filtrar resultados..." />
+            <form id="searchForm" class="row g-2 align-items-center mb-2">
+                <div class="col-sm-6 col-md-5 col-lg-4 ms-auto">
+                    <input type="text" id="qInput" class="form-control" placeholder="Buscar..." />
                 </div>
-            </div>
+                <div class="col-auto">
+                    <button type="button" id="btnBuscar" class="btn btn-secondary" title="Buscar">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </button>
+                    <button type="button" id="btnLimpiarTabla" class="btn btn-outline-secondary d-none" title="Limpiar filtros">
+                        <i class="fa-regular fa-circle-xmark"></i>
+                    </button>
+                </div>
+            </form>
             <table class="table table-striped align-middle">
                 <thead>
                     <tr>
@@ -206,13 +214,17 @@
         );
     })();
 
-    // Filtro tabla pagos (búsqueda simple en cliente)
+    // Filtro estilo estándar (cliente)
     (function () {
-        const input = document.getElementById('filtroPagos');
-        if (!input) return;
+        const input = document.getElementById('qInput');
+        const btnBuscar = document.getElementById('btnBuscar');
+        const btnLimpiar = document.getElementById('btnLimpiarTabla');
+        if (!input || !btnBuscar || !btnLimpiar) return;
+
         const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}+/gu, '');
-        input.addEventListener('input', function () {
-            const q = normalize(this.value);
+
+        function applyFilter() {
+            const q = normalize(input.value);
             const rows = Array.from(document.querySelectorAll('tr.pago-row'));
             rows.forEach(row => {
                 const key = row.getAttribute('data-key');
@@ -222,6 +234,12 @@
                 row.style.display = match ? '' : 'none';
                 if (detail) detail.style.display = match ? '' : 'none';
             });
-        });
+            btnLimpiar.classList.toggle('d-none', !(input.value && input.value.trim().length));
+        }
+
+        btnBuscar.addEventListener('click', (e) => { e.preventDefault(); applyFilter(); });
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyFilter(); } });
+        input.addEventListener('input', () => { btnLimpiar.classList.toggle('d-none', !(input.value && input.value.trim().length)); });
+        btnLimpiar.addEventListener('click', () => { input.value = ''; applyFilter(); });
     })();
 </script>
