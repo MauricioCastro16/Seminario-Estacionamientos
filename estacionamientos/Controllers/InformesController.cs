@@ -254,23 +254,31 @@ namespace estacionamientos.Controllers
 
             var clavesPagos = pagos.Select(p => new { p.PlyID, p.PagNum }).ToList();
 
-            var pagosConOcup = _ctx.Ocupaciones
+            var ocupacionesPorPago = _ctx.Ocupaciones
                 .AsNoTracking()
                 .Where(o => o.PlyID == plyID && o.PagNum != null)
-                .Select(o => new { o.PlyID, o.PagNum })
+                .Select(o => new { o.PlyID, o.PagNum, o.VehPtnt })
                 .ToList()
                 .Where(x => clavesPagos.Any(k => k.PlyID == x.PlyID && k.PagNum == x.PagNum))
-                .Select(x => (x.PlyID, x.PagNum!.Value))
-                .ToHashSet();
+                .GroupBy(x => new { x.PlyID, x.PagNum })
+                .ToDictionary(
+                    g => (g.Key.PlyID, g.Key.PagNum!.Value),
+                    g => new { Count = g.Count(), Vehiculos = g.Select(v => v.VehPtnt).Distinct().ToList() }
+                );
 
-            var pagosConServ = _ctx.ServiciosExtrasRealizados
+            var serviciosPorPago = _ctx.ServiciosExtrasRealizados
                 .AsNoTracking()
                 .Where(s => s.PlyID == plyID && s.PagNum != null)
-                .Select(s => new { s.PlyID, s.PagNum })
+                .Include(s => s.ServicioProveido)
+                .ThenInclude(sp => sp.Servicio)
+                .Select(s => new { s.PlyID, s.PagNum, SerNom = s.ServicioProveido.Servicio.SerNom })
                 .ToList()
                 .Where(x => clavesPagos.Any(k => k.PlyID == x.PlyID && k.PagNum == x.PagNum))
-                .Select(x => (x.PlyID, x.PagNum!.Value))
-                .ToHashSet();
+                .GroupBy(x => new { x.PlyID, x.PagNum })
+                .ToDictionary(
+                    g => (g.Key.PlyID, g.Key.PagNum!.Value),
+                    g => new { Count = g.Count(), Nombres = g.Select(v => v.SerNom).ToList() }
+                );
 
             var mepIds = pagos.Select(p => p.MepID).Distinct().ToList();
             var nombresMetodos = _ctx.AceptaMetodosPago
@@ -287,16 +295,8 @@ namespace estacionamientos.Controllers
                 .Select(p =>
                 {
                     var key = (p.PlyID, p.PagNum);
-                    var tieneOcup = pagosConOcup.Contains(key);
-                    var tieneServ = pagosConServ.Contains(key);
-
-                    string tipo = (tieneOcup, tieneServ) switch
-                    {
-                        (true, true) => "Ambos",
-                        (true, false) => "Ocupación",
-                        (false, true) => "Servicio",
-                        _ => "N/D"
-                    };
+                    var cantOcup = ocupacionesPorPago.TryGetValue(key, out var oc) ? oc.Count : 0;
+                    var cantServ = serviciosPorPago.TryGetValue(key, out var se) ? se.Count : 0;
 
                     return new InformeDetallePlayaItemVM
                     {
@@ -306,7 +306,10 @@ namespace estacionamientos.Controllers
                         Monto = p.PagMonto,
                         Metodo = !string.IsNullOrWhiteSpace(p.Metodo) ? p.Metodo
                                 : (nombresMetodos.TryGetValue(p.MepID, out var nom) ? nom : $"Mep #{p.MepID}"),
-                        Tipo = tipo
+                        OcupacionesCount = cantOcup,
+                        ServiciosExtrasCount = cantServ,
+                        OcupacionesVehiculos = ocupacionesPorPago.TryGetValue(key, out var oc2) ? oc2.Vehiculos : new List<string>(),
+                        ServiciosExtrasNombres = serviciosPorPago.TryGetValue(key, out var se2) ? se2.Nombres : new List<string>()
                     };
                 })
                 .ToList();
@@ -379,7 +382,7 @@ namespace estacionamientos.Controllers
 
                     KpiCard("Ingresos Totales", PdfTheme.Money(vm.Kpis.IngresosTotales));
                     KpiCard("Cantidad de Pagos", vm.Kpis.CantPagos.ToString("N0"));
-                    KpiCard("Ticket Promedio", PdfTheme.Money(vm.Kpis.TicketPromedio));
+                    KpiCard("Ingreso promedio por pago", PdfTheme.Money(vm.Kpis.TicketPromedio));
                 });
 
                 // ===== (2) GRÁFICOS: línea (día) + barras (hora) =====
@@ -493,7 +496,7 @@ namespace estacionamientos.Controllers
                                         h.Cell().Element(Th).Text("Playa");
                                         h.Cell().Element(ThRight).Text("# Pagos");
                                         h.Cell().Element(ThRight).Text("Ingresos");
-                                        h.Cell().Element(ThRight).Text("Ticket Prom.");
+                                        h.Cell().Element(ThRight).Text("Ingreso prom. por pago");
                                     });
 
                                     var zebra = false;

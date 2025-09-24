@@ -19,13 +19,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mb-0">Informes</h1>
         <div class="btn-group">
-            <a class="btn btn-outline-secondary"
-               asp-controller="Informes" asp-action="Index"
-               asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
-               asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")">
-                <i class="fa-solid fa-rotate-right"></i> Actualizar
-            </a>
-
+            <!-- Botón para Descargar el informe en PDF -->
             <a class="btn btn-primary"
                asp-controller="Informes" asp-action="Descargar"
                asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
@@ -34,6 +28,18 @@
             </a>
         </div>
     </div>
+
+    <!-- Filtro de fechas -->
+    <form id="dateRangeForm" method="GET" asp-controller="Informes" asp-action="Index" class="row g-3 mb-4">
+        <div class="col-md-6">
+            <label for="desde" class="form-label">Fecha Desde</label>
+            <input type="date" class="form-control" id="desde" name="desde" value="@Model.Filtros.Desde.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+        </div>
+        <div class="col-md-6">
+            <label for="hasta" class="form-label">Fecha Hasta</label>
+            <input type="date" class="form-control" id="hasta" name="hasta" value="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+        </div>
+    </form>
 
     <!-- KPIs -->
     <div class="row g-3 mb-4">
@@ -56,7 +62,7 @@
         <div class="col-6 col-md-4">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <div class="text-muted small">Ticket Promedio</div>
+                    <div class="text-muted small">Ingreso promedio por pago</div>
                     <div class="h4 m-0">$ @(k.TicketPromedio.ToString("N2"))</div>
                 </div>
             </div>
@@ -138,7 +144,7 @@
                                 <th>Playa</th>
                                 <th class="text-end"># Pagos</th>
                                 <th class="text-end">Ingresos</th>
-                                <th class="text-end">Ticket Prom.</th>
+                                <th class="text-end">Ingreso prom. por pago</th>
                                 <th class="text-center">Acciones</th>  <!-- NUEVA -->
                             </tr>
                         </thead>
@@ -162,7 +168,6 @@
                             </tr>
                         }
                         </tbody>
-    
                     </table>
                 </div>
             }
