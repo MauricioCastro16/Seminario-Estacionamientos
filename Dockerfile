@@ -31,4 +31,8 @@ EXPOSE 8080
 
 COPY --from=build /app/publish ./
 
-ENTRYPOINT ["dotnet", "estacionamientos.dll"]
+# Script de inicio que resetea la BD automáticamente
+COPY --from=build /src/estacionamientos/startup.sh ./
+RUN chmod +x startup.sh
+
+ENTRYPOINT ["./startup.sh"]

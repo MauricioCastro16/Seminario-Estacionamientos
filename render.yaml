@@ -35,6 +35,8 @@ services:
           property: password
       - key: DB_SSLMODE
         value: Require
+      - key: RESET_DATABASE
+        value: "true"
 
   # Base de datos PostgreSQL
   - type: pserv

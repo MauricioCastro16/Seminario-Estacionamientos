@@ -70,12 +70,8 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// (opcional) aplicar migraciones al arrancar
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
-}
+// Las migraciones se manejan automáticamente en el script de startup
+// No necesitamos aplicar migraciones aquí ya que el script startup.sh las maneja
 
 if (!app.Environment.IsDevelopment())
 {
