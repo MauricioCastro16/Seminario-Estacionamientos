@@ -25,6 +25,9 @@ RUN dotnet publish ./estacionamientos/estacionamientos.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 WORKDIR /app
 
+# Instalar psql para el script de reset de BD
+RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*
+
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 8080
@@ -32,7 +35,7 @@ EXPOSE 8080
 COPY --from=build /app/publish ./
 
 # Script de inicio que resetea la BD automáticamente
-COPY --from=build /src/estacionamientos/startup.sh ./
+COPY ./estacionamientos/startup.sh ./
 RUN chmod +x startup.sh
 
 ENTRYPOINT ["./startup.sh"]
