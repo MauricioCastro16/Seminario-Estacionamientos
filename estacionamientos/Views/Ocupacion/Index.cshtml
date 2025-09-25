@@ -68,7 +68,8 @@
             <th>Patente</th>
             <th>Ingreso</th>
             <th>Egreso</th>
-            <th></th>
+            <th>Estado</th>
+            <th>Detalles</th>
         </tr>
     </thead>
     <tbody>
@@ -85,41 +86,30 @@
         <td>
             @if (item.OcufFyhFin == null)
             {
-                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#confirmModal"
-                        data-plyid="@item.PlyID" data-plznum="@item.PlzNum" data-vehptnt="@item.VehPtnt">
-                    Egresar
-                </button>
+                <form asp-action="RegistrarEgreso" method="post" style="display: inline;">
+                    <input type="hidden" name="plyID" value="@item.PlyID" />
+                    <input type="hidden" name="plzNum" value="@item.PlzNum" />
+                    <input type="hidden" name="vehPtnt" value="@item.VehPtnt" />
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        Egresar
+                    </button>
+                </form>
             }
             else
             {
                 <span class="fw-bold text-success">Finalizado</span>
             }
         </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-outline-primary btn-sm" 
+                    data-bs-toggle="modal" data-bs-target="#detallesModal"
+                    onclick="cargarDetalles(@item.PlyID, @item.PlzNum, '@item.VehPtnt', '@item.OcufFyhIni.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")')"
+                    title="Ver detalles">
+                <i class="fa fa-eye"></i>
+            </button>
+        </td>
     </tr>
 }
-        <!-- Modal de confirmación -->
-        <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="confirmModalLabel">Confirmar Egreso</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        ¿Estás seguro de que deseas registrar el egreso de este vehículo?
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <form id="confirmForm" asp-action="RegistrarEgreso" method="post">
-                            <input type="hidden" id="plyID" name="plyID" />
-                            <input type="hidden" id="plzNum" name="plzNum" />
-                            <input type="hidden" id="vehPtnt" name="vehPtnt" />
-                            <button type="submit" class="btn btn-danger">Egresar</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
     </tbody>
 </table>
 
@@ -266,5 +256,172 @@
                 elCaption.textContent = 'No se pudo cargar el estado de plazas.';
             });
     })();
+</script>
+
+<!-- Modal de Detalles -->
+<div class="modal fade" id="detallesModal" tabindex="-1" aria-labelledby="detallesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detallesModalLabel">
+                    <i class="fa fa-eye me-2"></i>
+                    Detalles de Ocupación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="detallesContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function cargarDetalles(plyID, plzNum, vehPtnt, ocufFyhIni) {
+        // Mostrar spinner
+        document.getElementById('detallesContent').innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        `;
+        
+        // Hacer petición AJAX
+        const url = `/Ocupacion/DetallesJson?plyID=${plyID}&plzNum=${plzNum}&vehPtnt=${vehPtnt}&ocufFyhIni=${encodeURIComponent(ocufFyhIni)}`;
+        console.log('Cargando detalles:', url);
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Datos recibidos:', data);
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                mostrarDetalles(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('detallesContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fa fa-exclamation-triangle me-2"></i>
+                        Error al cargar los detalles: ${error.message}
+                        <br><small class="text-muted">URL: ${url}</small>
+                    </div>
+                `;
+            });
+    }
+    
+    function mostrarDetalles(data) {
+        const estado = data.ocufFyhFin ? 'Finalizado' : 'En curso';
+        const estadoClass = data.ocufFyhFin ? 'text-success' : 'text-warning';
+        const fechaFin = data.ocufFyhFin ? new Date(data.ocufFyhFin).toLocaleString() : 'N/A';
+        
+        let tiempoOcupacion = '';
+        if (data.ocufFyhFin) {
+            const inicio = new Date(data.ocufFyhIni);
+            const fin = new Date(data.ocufFyhFin);
+            const diffMs = fin - inicio;
+            const horas = Math.floor(diffMs / (1000 * 60 * 60));
+            const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            tiempoOcupacion = `${horas}h ${minutos}m`;
+        } else {
+            const inicio = new Date(data.ocufFyhIni);
+            const ahora = new Date();
+            const diffMs = ahora - inicio;
+            const horas = Math.floor(diffMs / (1000 * 60 * 60));
+            const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            tiempoOcupacion = `${horas}h ${minutos}m (en curso)`;
+        }
+        
+        let pagoInfo = '';
+        if (data.pago) {
+            pagoInfo = `
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <h6 class="text-primary">Información de Pago</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Número de Pago:</strong></td>
+                                <td>${data.pago.pagNum}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Método de Pago:</strong></td>
+                                <td>${data.pago.metodoPago}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Monto:</strong></td>
+                                <td class="fw-bold text-success">$${data.pago.pagMonto.toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Fecha de Pago:</strong></td>
+                                <td>${new Date(data.pago.pagFyh).toLocaleString()}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+        
+        document.getElementById('detallesContent').innerHTML = `
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <h6 class="text-primary">Información del Vehículo</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Patente:</strong></td>
+                            <td>${data.vehPtnt}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Clasificación:</strong></td>
+                            <td>${data.clasificacionVehiculo}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Playa:</strong></td>
+                            <td>${data.playaNombre}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Plaza:</strong></td>
+                            <td>${data.plzNum}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-primary">Información de Ocupación</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Estado:</strong></td>
+                            <td><span class="fw-bold ${estadoClass}">${estado}</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ingreso:</strong></td>
+                            <td>${new Date(data.ocufFyhIni).toLocaleString()}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Egreso:</strong></td>
+                            <td>${fechaFin}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tiempo Total:</strong></td>
+                            <td class="fw-bold">${tiempoOcupacion}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            ${pagoInfo}
+        `;
+    }
 </script>
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
+using estacionamientos.Models.ViewModels;
 using System.Security.Claims;
 
 namespace estacionamientos.Controllers
@@ -51,6 +52,153 @@ namespace estacionamientos.Controllers
 
         private Task<bool> VehiculoExiste(string pat)
             => _ctx.Vehiculos.AnyAsync(v => v.VehPtnt == pat);
+
+        // ===========================
+        // Lógica de cobro 
+        // ===========================
+        private async Task<CobroEgresoVM> CalcularCobro(int plyID, int plzNum, string vehPtnt, DateTime ocufFyhIni, DateTime ocufFyhFin)
+        {
+            var ocupacion = await _ctx.Ocupaciones
+                .Include(o => o.Vehiculo).ThenInclude(v => v.Clasificacion)
+                .Include(o => o.Plaza).ThenInclude(p => p.Playa)
+                .FirstOrDefaultAsync(o => o.PlyID == plyID && o.PlzNum == plzNum && o.VehPtnt == vehPtnt && o.OcufFyhIni == ocufFyhIni);
+
+            if (ocupacion == null)
+                throw new InvalidOperationException("Ocupación no encontrada");
+
+            var tiempoOcupacion = ocufFyhFin - ocufFyhIni;
+            var horasOcupacion = (int)tiempoOcupacion.TotalHours;
+            var minutosOcupacion = (int)tiempoOcupacion.TotalMinutes;
+
+            // Obtener servicios de estacionamiento disponibles para esta playa y clasificación
+            var serviciosEstacionamiento = await _ctx.ServiciosProveidos
+                .Include(sp => sp.Servicio)
+                .Include(sp => sp.Tarifas.Where(t => t.ClasVehID == ocupacion.Vehiculo.ClasVehID && 
+                                                    t.TasFecIni <= ocufFyhFin && 
+                                                    (t.TasFecFin == null || t.TasFecFin >= ocufFyhIni)))
+                .Where(sp => sp.PlyID == plyID && 
+                           sp.SerProvHab && 
+                           sp.Servicio.SerTipo == "Estacionamiento")
+                .ToListAsync();
+
+            var serviciosAplicables = new List<ServicioCobroVM>();
+            decimal totalCobro = 0;
+
+            // Calcular el costo para cada tipo de servicio y elegir el que mejor se ajuste al tiempo
+            var opcionesServicio = new List<(ServicioCobroVM servicio, decimal costoTotal, int tiempoServicio)>();
+
+            foreach (var servicioProv in serviciosEstacionamiento)
+            {
+                var tarifaVigente = servicioProv.Tarifas
+                    .Where(t => t.ClasVehID == ocupacion.Vehiculo.ClasVehID && 
+                               t.TasFecIni <= ocufFyhFin && 
+                               (t.TasFecFin == null || t.TasFecFin >= ocufFyhIni))
+                    .OrderByDescending(t => t.TasFecIni)
+                    .FirstOrDefault();
+
+                if (tarifaVigente == null) continue;
+
+                int minutosServicio = ObtenerTiempoServicio(servicioProv.Servicio.SerNom);
+                if (minutosServicio > 0)
+                {
+                    int cantidad = (int)Math.Ceiling(tiempoOcupacion.TotalMinutes / minutosServicio);
+                    var subtotal = tarifaVigente.TasMonto * cantidad;
+
+                    opcionesServicio.Add((new ServicioCobroVM
+                    {
+                        SerID = servicioProv.SerID,
+                        SerNom = servicioProv.Servicio.SerNom,
+                        SerTipo = servicioProv.Servicio.SerTipo ?? "",
+                        TarifaVigente = tarifaVigente.TasMonto,
+                        Cantidad = cantidad,
+                        Subtotal = subtotal,
+                        EsEstacionamiento = true
+                    }, subtotal, minutosServicio));
+                }
+
+            }
+
+            // Elegir la opción que mejor se ajuste al tiempo de ocupación
+            if (opcionesServicio.Any())
+            {
+                var tiempoOcupacionMinutos = (int)tiempoOcupacion.TotalMinutes;
+                
+                // Buscar el servicio que mejor se ajuste al tiempo (menor diferencia)
+                var mejorOpcion = opcionesServicio
+                    .OrderBy(x => Math.Abs((x.tiempoServicio * x.servicio.Cantidad) - tiempoOcupacionMinutos))
+                    .First();
+                
+                serviciosAplicables.Add(mejorOpcion.servicio);
+                totalCobro = mejorOpcion.costoTotal;
+            }
+
+
+            // Obtener métodos de pago disponibles para esta playa
+            var metodosPago = await _ctx.AceptaMetodosPago
+                .Include(amp => amp.MetodoPago)
+                .Where(amp => amp.PlyID == plyID && amp.AmpHab)
+                .Select(amp => new MetodoPagoVM
+                {
+                    MepID = amp.MepID,
+                    MepNom = amp.MetodoPago.MepNom,
+                    MepDesc = amp.MetodoPago.MepDesc
+                })
+                .ToListAsync();
+
+            return new CobroEgresoVM
+            {
+                PlyID = plyID,
+                PlzNum = plzNum,
+                VehPtnt = vehPtnt,
+                OcufFyhIni = DateTime.SpecifyKind(ocufFyhIni, DateTimeKind.Utc),
+                OcufFyhFin = DateTime.SpecifyKind(ocufFyhFin, DateTimeKind.Utc),
+                ClasVehID = ocupacion.Vehiculo.ClasVehID,
+                ClasVehTipo = ocupacion.Vehiculo.Clasificacion?.ClasVehTipo ?? "",
+                PlayaNombre = ocupacion.Plaza.Playa.PlyNom,
+                TiempoOcupacion = tiempoOcupacion,
+                HorasOcupacion = horasOcupacion,
+                MinutosOcupacion = minutosOcupacion,
+                ServiciosAplicables = serviciosAplicables,
+                TotalCobro = totalCobro,
+                MetodosPagoDisponibles = metodosPago
+            };
+        }
+
+        private int CalcularCantidadServicio(string nombreServicio, TimeSpan tiempoOcupacion)
+        {
+            return nombreServicio.ToLower() switch
+            {
+                "estacionamiento por 1 hora" => Math.Max(1, (int)Math.Ceiling(tiempoOcupacion.TotalHours)),
+                "estacionamiento por 6 horas" => Math.Max(1, (int)Math.Ceiling(tiempoOcupacion.TotalHours / 6.0)),
+                "estacionamiento por 1 día" => Math.Max(1, (int)Math.Ceiling(tiempoOcupacion.TotalDays)),
+                _ => 0
+            };
+        }
+
+        private int ObtenerTiempoServicio(string nombreServicio)
+        {
+            return nombreServicio.ToLower() switch
+            {
+                "estacionamiento por 1 hora" => 60, // 60 minutos
+                "estacionamiento por 6 horas" => 360, // 360 minutos (6 horas)
+                "estacionamiento por 1 día" => 1440, // 1440 minutos (24 horas)
+                "estacionamiento por 1 semana" => 10080, // 10080 minutos (7 días)
+                "estacionamiento por 1 mes" => 43200, // 43200 minutos (30 días)
+                _ => 0
+            };
+        }
+
+        private DateTime NormalizarFechaUTC(DateTime fecha)
+        {
+            if (fecha.Kind == DateTimeKind.Utc)
+                return fecha;
+            
+            if (fecha.Kind == DateTimeKind.Local)
+                return fecha.ToUniversalTime();
+            
+            // Si es Unspecified, asumir que es UTC
+            return DateTime.SpecifyKind(fecha, DateTimeKind.Utc);
+        }
 
         // ===========================
         // Listado
@@ -106,7 +254,7 @@ namespace estacionamientos.Controllers
                 PlyID = plyID,
                 PlzNum = plzNum,
                 VehPtnt = vehPtnt,
-                OcufFyhIni = DateTime.UtcNow,
+                OcufFyhIni = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc),
                 OcufFyhFin = null
             };
 
@@ -134,30 +282,108 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            await using var tx = await _ctx.Database.BeginTransactionAsync();
+            // Calcular el cobro antes de confirmar el egreso
+            var fechaEgreso = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var cobroVM = await CalcularCobro(plyID, plzNum, vehPtnt, ocup.OcufFyhIni, fechaEgreso);
+            
+            return View("CobroEgreso", cobroVM);
+        }
 
-            ocup.OcufFyhFin = DateTime.UtcNow;
-            await _ctx.SaveChangesAsync();
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ConfirmarEgreso(CobroEgresoVM model)
+        {
+            // Normalizar fechas a UTC
+            model.OcufFyhIni = NormalizarFechaUTC(model.OcufFyhIni);
+            model.OcufFyhFin = NormalizarFechaUTC(model.OcufFyhFin);
 
-            // si no quedan ocupaciones activas en esa plaza, marcarla como libre
-            var sigueOcupada = await _ctx.Ocupaciones.AnyAsync(o =>
-                o.PlyID == plyID && o.PlzNum == plzNum && o.OcufFyhFin == null);
-
-            if (!sigueOcupada)
+            if (!ModelState.IsValid)
             {
-                var plaza = await _ctx.Plazas.FindAsync(plyID, plzNum);
-                if (plaza != null && plaza.PlzOcupada)
-                {
-                    plaza.PlzOcupada = false;
-                    _ctx.Plazas.Update(plaza);
-                    await _ctx.SaveChangesAsync();
-                }
+                // Recargar el modelo con los datos originales
+                var cobroVM = await CalcularCobro(model.PlyID, model.PlzNum, model.VehPtnt, 
+                    model.OcufFyhIni, model.OcufFyhFin);
+                cobroVM.MepID = model.MepID; // Mantener la selección del usuario
+                return View("CobroEgreso", cobroVM);
             }
 
-            await tx.CommitAsync();
+            // Buscar la ocupación activa (sin fecha de fin) en lugar de por fecha exacta
+            var ocup = await _ctx.Ocupaciones
+                .FirstOrDefaultAsync(o => o.PlyID == model.PlyID && o.PlzNum == model.PlzNum && o.VehPtnt == model.VehPtnt && o.OcufFyhFin == null);
 
-            TempData["Success"] = $"Vehículo {vehPtnt} egresó de la plaza {plzNum}.";
-            return RedirectToAction(nameof(Index));
+            if (ocup == null)
+            {
+                TempData["Error"] = "No se encontró la ocupación especificada.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            await using var tx = await _ctx.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Crear el pago primero
+                var proximoNumeroPago = await _ctx.Pagos
+                    .Where(p => p.PlyID == model.PlyID)
+                    .MaxAsync(p => (int?)p.PagNum) + 1 ?? 1;
+
+                var pago = new Pago
+                {
+                    PlyID = model.PlyID,
+                    PagNum = proximoNumeroPago,
+                    MepID = model.MepID,
+                    PagMonto = model.TotalCobro,
+                    PagFyh = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
+                };
+
+                _ctx.Pagos.Add(pago);
+                await _ctx.SaveChangesAsync();
+
+                // Actualizar la ocupación con la fecha de fin y asociar el pago
+                ocup.OcufFyhFin = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+                ocup.PagNum = pago.PagNum;
+                _ctx.Ocupaciones.Update(ocup);
+                await _ctx.SaveChangesAsync();
+
+                // Si no quedan ocupaciones activas en esa plaza, marcarla como libre
+                var sigueOcupada = await _ctx.Ocupaciones.AnyAsync(o =>
+                    o.PlyID == model.PlyID && o.PlzNum == model.PlzNum && o.OcufFyhFin == null);
+
+                if (!sigueOcupada)
+                {
+                    var plaza = await _ctx.Plazas.FindAsync(model.PlyID, model.PlzNum);
+                    if (plaza != null && plaza.PlzOcupada)
+                    {
+                        plaza.PlzOcupada = false;
+                        _ctx.Plazas.Update(plaza);
+                        await _ctx.SaveChangesAsync();
+                    }
+                }
+
+                await tx.CommitAsync();
+
+                // Obtener el nombre del método de pago seleccionado
+                var metodoPago = await _ctx.MetodosPago
+                    .Where(mp => mp.MepID == model.MepID)
+                    .Select(mp => mp.MepNom)
+                    .FirstOrDefaultAsync();
+
+                // Calcular el tiempo real de ocupación
+                var tiempoReal = ocup.OcufFyhFin.Value - ocup.OcufFyhIni;
+                var horasReales = (int)tiempoReal.TotalHours;
+                var minutosReales = (int)tiempoReal.TotalMinutes % 60;
+
+                TempData["Success"] = $"Vehículo {model.VehPtnt} egresó de la plaza {model.PlzNum}. " +
+                                    $"Tiempo de ocupación: {horasReales}h {minutosReales}m. " +
+                                    $"Total cobrado: ${model.TotalCobro:F2}. " +
+                                    $"Método de pago: {metodoPago}. " +
+                                    $"Número de pago: {pago.PagNum}";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                TempData["Error"] = $"Error al procesar el egreso: {ex.Message}";
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // ===========================
@@ -173,6 +399,49 @@ namespace estacionamientos.Controllers
                 .FirstOrDefaultAsync(o => o.PlyID == plyID && o.PlzNum == plzNum && o.VehPtnt == vehPtnt && o.OcufFyhIni == ocufFyhIni);
 
             return item is null ? NotFound() : View(item);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> DetallesJson(int plyID, int plzNum, string vehPtnt, DateTime ocufFyhIni)
+        {
+            // Normalizar la fecha de inicio a UTC
+            var fechaInicioUTC = DateTime.SpecifyKind(ocufFyhIni, DateTimeKind.Utc);
+            
+            // Buscar la ocupación por los parámetros principales, permitiendo pequeñas diferencias de tiempo
+            var ocupacion = await _ctx.Ocupaciones
+                .Include(o => o.Plaza).ThenInclude(p => p.Playa)
+                .Include(o => o.Vehiculo).ThenInclude(v => v.Clasificacion)
+                .Include(o => o.Pago).ThenInclude(p => p.MetodoPago)
+                .AsNoTracking()
+                .Where(o => o.PlyID == plyID && o.PlzNum == plzNum && o.VehPtnt == vehPtnt)
+                .Where(o => Math.Abs((o.OcufFyhIni - fechaInicioUTC).TotalMinutes) < 1) // Diferencia menor a 1 minuto
+                .FirstOrDefaultAsync();
+
+            if (ocupacion == null)
+            {
+                return Json(new { error = "Ocupación no encontrada" });
+            }
+
+            var resultado = new
+            {
+                plyID = ocupacion.PlyID,
+                plzNum = ocupacion.PlzNum,
+                vehPtnt = ocupacion.VehPtnt,
+                ocufFyhIni = ocupacion.OcufFyhIni,
+                ocufFyhFin = ocupacion.OcufFyhFin,
+                clasificacionVehiculo = ocupacion.Vehiculo?.Clasificacion?.ClasVehTipo ?? "No especificada",
+                playaNombre = ocupacion.Plaza?.Playa?.PlyNom ?? "No especificada",
+                pago = (ocupacion.OcufFyhFin != null && ocupacion.Pago != null) 
+                    ? new
+                    {
+                        pagNum = ocupacion.Pago.PagNum,
+                        metodoPago = ocupacion.Pago.MetodoPago?.MepNom ?? "No especificado",
+                        pagMonto = ocupacion.Pago.PagMonto,
+                        pagFyh = ocupacion.Pago.PagFyh
+                    } 
+                    : null
+            };
+            return Json(resultado);
         }
 
         // ===========================
@@ -260,7 +529,7 @@ namespace estacionamientos.Controllers
 
                 return View(new Ocupacion
                 {
-                    OcufFyhIni = DateTime.UtcNow,
+                    OcufFyhIni = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc),
                     PlyID = turno.PlyID
                 });
             }
@@ -272,7 +541,7 @@ namespace estacionamientos.Controllers
                     .ToListAsync(),
                 "ClasVehID", "ClasVehTipo"
             );
-            return View(new Ocupacion { OcufFyhIni = DateTime.UtcNow });
+            return View(new Ocupacion { OcufFyhIni = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc) });
         }
 
         [HttpPost, ValidateAntiForgeryToken]
@@ -389,7 +658,7 @@ namespace estacionamientos.Controllers
             // Guardar ocupación + marcar plaza ocupada (transacción)
             await using var tx = await _ctx.Database.BeginTransactionAsync();
 
-            model.OcufFyhIni = DateTime.UtcNow;
+            model.OcufFyhIni = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             model.OcufFyhFin = null;
             _ctx.Ocupaciones.Add(model);
             await _ctx.SaveChangesAsync();
