@@ -70,70 +70,69 @@ namespace estacionamientos.Controllers
             var horasOcupacion = (int)tiempoOcupacion.TotalHours;
             var minutosOcupacion = (int)tiempoOcupacion.TotalMinutes;
 
-            // Obtener servicios de estacionamiento disponibles para esta playa y clasificación
+            // Servicios de estacionamiento habilitados para esta playa y clasif.
             var serviciosEstacionamiento = await _ctx.ServiciosProveidos
                 .Include(sp => sp.Servicio)
-                .Include(sp => sp.Tarifas.Where(t => t.ClasVehID == ocupacion.Vehiculo.ClasVehID && 
-                                                    t.TasFecIni <= ocufFyhFin && 
+                .Include(sp => sp.Tarifas.Where(t => t.ClasVehID == ocupacion.Vehiculo.ClasVehID &&
+                                                    t.TasFecIni <= ocufFyhFin &&
                                                     (t.TasFecFin == null || t.TasFecFin >= ocufFyhIni)))
-                .Where(sp => sp.PlyID == plyID && 
-                           sp.SerProvHab && 
-                           sp.Servicio.SerTipo == "Estacionamiento")
+                .Where(sp => sp.PlyID == plyID &&
+                            sp.SerProvHab &&
+                            sp.Servicio.SerTipo == "Estacionamiento")
                 .ToListAsync();
 
             var serviciosAplicables = new List<ServicioCobroVM>();
             decimal totalCobro = 0;
 
-            // Calcular el costo para cada tipo de servicio y elegir el que mejor se ajuste al tiempo
-            var opcionesServicio = new List<(ServicioCobroVM servicio, decimal costoTotal, int tiempoServicio)>();
+            var opcionesServicio = new List<(ServicioCobroVM servicio, decimal costoTotal, int minutosCubiertos)>();
 
             foreach (var servicioProv in serviciosEstacionamiento)
             {
                 var tarifaVigente = servicioProv.Tarifas
-                    .Where(t => t.ClasVehID == ocupacion.Vehiculo.ClasVehID && 
-                               t.TasFecIni <= ocufFyhFin && 
-                               (t.TasFecFin == null || t.TasFecFin >= ocufFyhIni))
+                    .Where(t => t.ClasVehID == ocupacion.Vehiculo.ClasVehID &&
+                                t.TasFecIni <= ocufFyhFin &&
+                                (t.TasFecFin == null || t.TasFecFin >= ocufFyhIni))
                     .OrderByDescending(t => t.TasFecIni)
                     .FirstOrDefault();
 
                 if (tarifaVigente == null) continue;
 
-                int minutosServicio = ObtenerTiempoServicio(servicioProv.Servicio.SerNom);
-                if (minutosServicio > 0)
+                var minutosServicio = servicioProv.Servicio.SerDuracionMinutos;
+                if (minutosServicio.HasValue && minutosServicio.Value > 0)
                 {
-                    int cantidad = (int)Math.Ceiling(tiempoOcupacion.TotalMinutes / minutosServicio);
+                    int cantidad = (int)Math.Ceiling(minutosOcupacion / (double)minutosServicio.Value);
                     var subtotal = tarifaVigente.TasMonto * cantidad;
+                    int minutosCubiertos = cantidad * minutosServicio.Value;
 
-                    opcionesServicio.Add((new ServicioCobroVM
-                    {
-                        SerID = servicioProv.SerID,
-                        SerNom = servicioProv.Servicio.SerNom,
-                        SerTipo = servicioProv.Servicio.SerTipo ?? "",
-                        TarifaVigente = tarifaVigente.TasMonto,
-                        Cantidad = cantidad,
-                        Subtotal = subtotal,
-                        EsEstacionamiento = true
-                    }, subtotal, minutosServicio));
+                    opcionesServicio.Add((
+                        new ServicioCobroVM
+                        {
+                            SerID = servicioProv.SerID,
+                            SerNom = servicioProv.Servicio.SerNom,
+                            SerTipo = servicioProv.Servicio.SerTipo ?? "",
+                            TarifaVigente = tarifaVigente.TasMonto,
+                            Cantidad = cantidad,
+                            Subtotal = subtotal,
+                            EsEstacionamiento = true
+                        },
+                        subtotal,
+                        minutosCubiertos
+                    ));
                 }
-
             }
 
-            // Elegir la opción que mejor se ajuste al tiempo de ocupación
+            // Elegir la opción que mejor se ajuste al tiempo (por diferencia en minutos)
             if (opcionesServicio.Any())
             {
-                var tiempoOcupacionMinutos = (int)tiempoOcupacion.TotalMinutes;
-                
-                // Buscar el servicio que mejor se ajuste al tiempo (menor diferencia)
                 var mejorOpcion = opcionesServicio
-                    .OrderBy(x => Math.Abs((x.tiempoServicio * x.servicio.Cantidad) - tiempoOcupacionMinutos))
+                    .OrderBy(x => Math.Abs(x.minutosCubiertos - minutosOcupacion))
                     .First();
-                
+
                 serviciosAplicables.Add(mejorOpcion.servicio);
                 totalCobro = mejorOpcion.costoTotal;
             }
 
-
-            // Obtener métodos de pago disponibles para esta playa
+            // Métodos de pago disponibles
             var metodosPago = await _ctx.AceptaMetodosPago
                 .Include(amp => amp.MetodoPago)
                 .Where(amp => amp.PlyID == plyID && amp.AmpHab)
@@ -161,30 +160,6 @@ namespace estacionamientos.Controllers
                 ServiciosAplicables = serviciosAplicables,
                 TotalCobro = totalCobro,
                 MetodosPagoDisponibles = metodosPago
-            };
-        }
-
-        private int CalcularCantidadServicio(string nombreServicio, TimeSpan tiempoOcupacion)
-        {
-            return nombreServicio.ToLower() switch
-            {
-                "estacionamiento por 1 hora" => Math.Max(1, (int)Math.Ceiling(tiempoOcupacion.TotalHours)),
-                "estacionamiento por 6 horas" => Math.Max(1, (int)Math.Ceiling(tiempoOcupacion.TotalHours / 6.0)),
-                "estacionamiento por 1 día" => Math.Max(1, (int)Math.Ceiling(tiempoOcupacion.TotalDays)),
-                _ => 0
-            };
-        }
-
-        private int ObtenerTiempoServicio(string nombreServicio)
-        {
-            return nombreServicio.ToLower() switch
-            {
-                "estacionamiento por 1 hora" => 60, // 60 minutos
-                "estacionamiento por 6 horas" => 360, // 360 minutos (6 horas)
-                "estacionamiento por 1 día" => 1440, // 1440 minutos (24 horas)
-                "estacionamiento por 1 semana" => 10080, // 10080 minutos (7 días)
-                "estacionamiento por 1 mes" => 43200, // 43200 minutos (30 días)
-                _ => 0
             };
         }
 
@@ -371,11 +346,6 @@ namespace estacionamientos.Controllers
                 var horasReales = (int)tiempoReal.TotalHours;
                 var minutosReales = (int)tiempoReal.TotalMinutes % 60;
 
-                TempData["Success"] = $"Vehículo {model.VehPtnt} egresó de la plaza {model.PlzNum}. " +
-                                    $"Tiempo de ocupación: {horasReales}h {minutosReales}m. " +
-                                    $"Total cobrado: ${model.TotalCobro:F2}. " +
-                                    $"Método de pago: {metodoPago}. " +
-                                    $"Número de pago: {pago.PagNum}";
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
