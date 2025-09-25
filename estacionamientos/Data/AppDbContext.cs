@@ -252,9 +252,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 entity.ToTable("Usuario");
                 entity.HasKey(e => e.UsuNU);
 
-#if NET8_0_OR_GREATER
                 entity.Property(e => e.UsuNU).UseIdentityByDefaultColumn();
-#endif
 
                 entity.Property(e => e.UsuNyA).HasMaxLength(120).IsRequired();
                 entity.Property(e => e.UsuEmail).HasMaxLength(254).IsRequired();

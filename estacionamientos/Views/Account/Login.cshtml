@@ -6,6 +6,15 @@
 <h2>@ViewData["Title"]</h2>
 <hr />
 
+<!-- Para mostrar mensaje de éxito -->
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
 <!-- Para mostrar mensaje en caso de errores -->
 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
@@ -37,6 +46,10 @@
 
     <button type="submit" class="btn btn-primary">Entrar</button>
 </form>
+
+<div class="text-center mt-3">
+    <p class="mb-0">¿No tienes cuenta? <a asp-action="Register" class="text-decoration-none">Regístrate como conductor</a></p>
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

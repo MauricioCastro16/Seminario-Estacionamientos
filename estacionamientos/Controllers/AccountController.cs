@@ -105,6 +105,71 @@ namespace estacionamientos.Controllers
             return RedirectToAction(nameof(Login));
         }
 
+        // GET: /Account/Register
+        [HttpGet]
+        public IActionResult Register()
+        {
+            return View(new RegisterViewModel());
+        }
+
+        // POST: /Account/Register
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Register(RegisterViewModel model)
+        {
+            // Validación adicional del checkbox
+            if (!model.AcceptTerms)
+            {
+                ModelState.AddModelError(nameof(model.AcceptTerms), "Debe aceptar los términos y condiciones.");
+            }
+
+            if (!ModelState.IsValid) return View(model);
+
+            // Verificar si el email ya existe
+            var emailExists = await _ctx.Usuarios.AsNoTracking()
+                .AnyAsync(u => u.UsuEmail == model.UsuEmail);
+            if (emailExists)
+            {
+                ModelState.AddModelError(nameof(model.UsuEmail), "Este correo electrónico ya está registrado.");
+                return View(model);
+            }
+
+            // Verificar si el nombre de usuario ya existe
+            var usernameExists = await _ctx.Usuarios.AsNoTracking()
+                .AnyAsync(u => u.UsuNomUsu == model.UsuNomUsu);
+            if (usernameExists)
+            {
+                ModelState.AddModelError(nameof(model.UsuNomUsu), "Este nombre de usuario ya está en uso.");
+                return View(model);
+            }
+
+            // Calcular el siguiente UsuNU disponible dinámicamente:
+            int nextUsuNu = Math.Max(9, (await _ctx.Usuarios.MaxAsync(u => u.UsuNU)) + 1);
+
+            // Verificar que no haya colisión con el valor de UsuNU
+            while (await _ctx.Usuarios.AnyAsync(u => u.UsuNU == nextUsuNu))
+            {
+                nextUsuNu++;
+            }
+
+            // Crear el conductor con UsuNU calculado
+            var conductor = new Conductor
+            {
+                UsuNU = nextUsuNu,
+                UsuNyA = model.UsuNyA,
+                UsuNomUsu = model.UsuNomUsu,
+                UsuEmail = model.UsuEmail,
+                UsuPswd = model.UsuPswd, // ⚠️ En producción usar hash
+                UsuNumTel = model.UsuNumTel
+            };
+
+            _ctx.Conductores.Add(conductor);
+            await _ctx.SaveChangesAsync();
+
+            // Redirigir al login con mensaje de éxito
+            TempData["SuccessMessage"] = "¡Registro exitoso! Ya puedes iniciar sesión.";
+            return RedirectToAction(nameof(Login));
+        }
+
         // Acceso denegado
         [HttpGet]
         public IActionResult Denied() => View();

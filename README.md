@@ -68,23 +68,37 @@ Remove-Item -Recurse -Force .\Migrations
 rm -rf ./Migrations
 
 (c) Crear migración inicial nueva
-dotnet ef migrations add InitialCreate
+#En Windows
+dotnet ef migrations add "Migration_$(Get-Date -Format 'yyyy-MM-dd_HH-mm')"
+#En Mac/Linux
+dotnet ef migrations add "Migration_$(date '+%Y-%m-%d_%H-%M')"
 
 (d) Aplicarla
 dotnet ef database update
 
-(*) Para pegar en la terminal todo junto
+Podés correr reset-database.ps1 (Windows) o reset-database.sh (Mac/Linux para no copiar el comando)
+
+(*) Para pegar en la terminal todo junto (Windows PowerShell)
 dotnet ef database drop -f
 Remove-Item -Recurse -Force .\Migrations
-dotnet ef migrations add InitialCreate
+dotnet ef migrations add "Migration_$(Get-Date -Format 'yyyy-MM-dd_HH-mm')"
 dotnet ef database update
 dotnet run
+
 (**) para Mac/Linux
 dotnet ef database drop -f
 rm -rf ./Migrations
-dotnet ef migrations add InitialCreate
+dotnet ef migrations add "Migration_$(date '+%Y-%m-%d_%H-%M')"
 dotnet ef database update
 dotnet run
+
+(***) Usando scripts automáticos (Recomendado)
+# Windows PowerShell
+.\reset-database.ps1
+
+# Mac/Linux
+chmod +x reset-database.sh
+./reset-database.sh
 ```
 
 # Capas y su explicación
