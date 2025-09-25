@@ -58,7 +58,6 @@ nunit-*.xml
 **/.env
 
 .fake
-Migrations/
 **/.DS_Store
 estacionamientos/.DS_Store
 estacionamientos/Views/.DS_Store
