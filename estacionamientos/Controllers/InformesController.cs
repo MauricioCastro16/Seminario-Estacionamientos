@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Net.Http;
+using System.Text.Json;
 using System.Linq;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
@@ -25,6 +27,7 @@ namespace estacionamientos.Controllers
 
         private readonly AppDbContext _ctx;
         public InformesController(AppDbContext ctx) => _ctx = ctx;
+        private static readonly HttpClient Http = new HttpClient();
 
         // =====================
         // Helpers fechas (UTC)
@@ -501,36 +504,44 @@ namespace estacionamientos.Controllers
                     KpiCard("Ingreso promedio por pago", PdfTheme.Money(vm.Kpis.TicketPromedio));
                 });
 
-                // ===== (2) GRÁFICOS: línea (día) + barras (hora) =====
-                col.Item().PaddingTop(10).Row(r =>
+                // ===== (2) GRÁFICOS: usar la misma configuración Chart.js vía QuickChart =====
+                byte[]? chartDiaPng = null;
+                byte[]? chartHoraPng = null;
+                try
                 {
-                    // Línea por día
-                    r.RelativeItem().Element(card =>
-                    {
-                        card.Border(1).BorderColor(PdfTheme.Border)
-                            .Padding(PdfTheme.CardPadding).Column(cc =>
-                            {
-                                cc.Item().Text("Ingresos por día (línea)").Bold().FontColor(PdfTheme.Accent);
-                                if (vm.IngresosPorDia.Any())
-                                    cc.Item().Height(260).Element(e => RenderLineChart(e, vm.IngresosPorDia));
-                                else
-                                    cc.Item().Text("Sin datos").FontColor(PdfTheme.Muted);
-                            });
-                    });
+                    if (vm.IngresosPorDia?.Any() == true)
+                        chartDiaPng = BuildQuickChart("line", vm.IngresosPorDia, "Ingresos por día");
+                    if (vm.IngresosPorHora?.Any() == true)
+                        chartHoraPng = BuildQuickChart("bar", vm.IngresosPorHora, "Ingresos por hora");
+                }
+                catch { }
 
-                    // Barras por hora
-                    r.RelativeItem().Element(card =>
-                    {
-                        card.Border(1).BorderColor(PdfTheme.Border)
-                            .Padding(PdfTheme.CardPadding).Column(cc =>
-                            {
-                                cc.Item().Text("Ingresos por hora (barras)").Bold().FontColor(PdfTheme.Accent);
-                                if (vm.IngresosPorHora.Any())
-                                    cc.Item().Height(260).Element(e => RenderBarChart(e, vm.IngresosPorHora));
-                                else
-                                    cc.Item().Text("Sin datos").FontColor(PdfTheme.Muted);
-                            });
-                    });
+                // Línea por día
+                col.Item().PaddingTop(10).Element(card =>
+                {
+                    card.Border(1).BorderColor(PdfTheme.Border)
+                        .Padding(PdfTheme.CardPadding).Column(cc =>
+                        {
+                            cc.Item().Text("Ingresos por día (línea)").Bold().FontColor(PdfTheme.Accent);
+                            if (chartDiaPng is not null)
+                                cc.Item().Image(chartDiaPng).FitWidth();
+                            else
+                                cc.Item().Text("Sin datos").FontColor(PdfTheme.Muted);
+                        });
+                });
+
+                // Barras por hora
+                col.Item().PaddingTop(8).Element(card =>
+                {
+                    card.Border(1).BorderColor(PdfTheme.Border)
+                        .Padding(PdfTheme.CardPadding).Column(cc =>
+                        {
+                            cc.Item().Text("Ingresos por hora (barras)").Bold().FontColor(PdfTheme.Accent);
+                            if (chartHoraPng is not null)
+                                cc.Item().Image(chartHoraPng).FitWidth();
+                            else
+                                cc.Item().Text("Sin datos").FontColor(PdfTheme.Muted);
+                        });
                 });
 
                 // Separador bien fino y con poco margen
@@ -735,8 +746,8 @@ namespace estacionamientos.Controllers
                 return;
             }
 
-            const int W = 600, H = 260;
-            const int padL = 44, padR = 12, padT = 10, padB = 30;
+            const int W = 900, H = 500; // relación ~1.8 para reducir espacio vertical
+            const int padL = 60, padR = 18, padT = 18, padB = 44;
             var plotW = W - padL - padR;
             var plotH = H - padT - padB;
 
@@ -782,6 +793,23 @@ namespace estacionamientos.Controllers
               $"<line x1='{F(padL)}' y1='{F(padT)}' x2='{F(padL)}' y2='{F(padT + plotH)}' stroke='#64748b' stroke-width='1'/>" +
               $"<line x1='{F(padL)}' y1='{F(padT + plotH)}' x2='{F(padL + plotW)}' y2='{F(padT + plotH)}' stroke='#64748b' stroke-width='1'/>";
 
+            // Ticks + labels en Y (0..max)
+            var yLabels = string.Join("", Enumerable.Range(0, 6).Select(i =>
+            {
+                var val = max / 5m * i;
+                var y = padT + plotH - (float)(val / max) * plotH;
+                return $"<text x='{F(padL - 6)}' y='{F(y + 4)}' font-size='10' text-anchor='end' fill='#475569'>{val:0}</text>";
+            }));
+
+            // Labels en X (hasta 8 marcas uniformes)
+            int xTicks = Math.Min(10, n);
+            var xLabels = string.Join("", Enumerable.Range(0, xTicks).Select(i =>
+            {
+                int idx = (int)Math.Round(i * (n - 1) / (double)Math.Max(1, xTicks - 1));
+                var (xx, _) = Pt(idx);
+                return $"<text x='{F(xx)}' y='{F(padT + plotH + 14)}' font-size='10' text-anchor='middle' fill='#475569'>{series[idx].Label}</text>";
+            }));
+
             // puntos (downsample light)
             int k = Math.Max(1, n / 12);
             var dots = string.Join("", Enumerable.Range(0, n).Where(i => i % k == 0 || i == n - 1)
@@ -795,11 +823,13 @@ namespace estacionamientos.Controllers
               $"</g>";
 
             var svg = $@"
-<svg viewBox='0 0 {W} {H}' xmlns='http://www.w3.org/2000/svg'>
+<svg width='{W}' height='{H}' viewBox='0 0 {W} {H}' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'>
   <rect x='0' y='0' width='{W}' height='{H}' fill='white'/>
   {legend}
   {grid}
   {axes}
+  {yLabels}
+  {xLabels}
   <path d='{AreaPath()}' fill='#93C5FD' fill-opacity='0.45' stroke='none'/>
   <path d='{LinePath()}' fill='none' stroke='#3B82F6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/>
   {dots}
@@ -816,8 +846,8 @@ private static void RenderBarChart(IContainer container, List<SeriePuntoVM> seri
         return;
     }
 
-    const int W = 600, H = 260;
-    const int padL = 40, padR = 12, padT = 10, padB = 30;
+    const int W = 900, H = 500;
+    const int padL = 60, padR = 18, padT = 18, padB = 44;
     var plotW = W - padL - padR;
     var plotH = H - padT - padB;
 
@@ -839,6 +869,21 @@ private static void RenderBarChart(IContainer container, List<SeriePuntoVM> seri
       $"<line x1='{F(padL)}' y1='{F(padT)}' x2='{F(padL)}' y2='{F(padT + plotH)}' stroke='#64748b' stroke-width='1'/>" +
       $"<line x1='{F(padL)}' y1='{F(padT + plotH)}' x2='{F(padL + plotW)}' y2='{F(padT + plotH)}' stroke='#64748b' stroke-width='1'/>";
 
+    // Ticks + labels en Y
+    var yLabels = string.Join("", Enumerable.Range(0, 6).Select(i =>
+    {
+        var val = max / 5m * i;
+        var y = padT + plotH - (float)(val / max) * plotH;
+        return $"<text x='{F(padL - 6)}' y='{F(y + 4)}' font-size='10' text-anchor='end' fill='#475569'>{val:0}</text>";
+    }));
+
+    // Labels en X para 24 horas
+    var xLabels = string.Join("", Enumerable.Range(0, n).Select(i =>
+    {
+        var x = padL + i * (barW + gap) + barW / 2f;
+        return $"<text x='{F(x)}' y='{F(padT + plotH + 14)}' font-size='9' text-anchor='middle' fill='#475569'>{series[i].Label}</text>";
+    }));
+
     var bars = string.Join("", series.Select((s, i) =>
     {
         var x = padL + i * (barW + gap);
@@ -855,11 +900,13 @@ private static void RenderBarChart(IContainer container, List<SeriePuntoVM> seri
       $"</g>";
 
     var svg = $@"
-<svg viewBox='0 0 {W} {H}' xmlns='http://www.w3.org/2000/svg'>
+<svg width='{W}' height='{H}' viewBox='0 0 {W} {H}' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'>
   <rect x='0' y='0' width='{W}' height='{H}' fill='white'/>
   {legend}
   {grid}
   {axes}
+  {yLabels}
+  {xLabels}
   {bars}
 </svg>";
     container.Svg(svg);
@@ -898,5 +945,45 @@ private static void RenderBarChart(IContainer container, List<SeriePuntoVM> seri
              .DefaultTextStyle(x => x.FontColor(PdfTheme.Text).FontSize(10));
 
         private static IContainer TdRight(IContainer c, bool zebra) => Td(c, zebra).AlignRight();
+
+        // ===== QuickChart helper =====
+        private static byte[]? BuildQuickChart(string type, List<SeriePuntoVM> series, string title)
+        {
+            try
+            {
+                var labels = series.Select(s => s.Label).ToList();
+                var values = series.Select(s => s.Valor).ToList();
+
+                var cfg = new
+                {
+                    type,
+                    data = new
+                    {
+                        labels,
+                        datasets = new[]
+                        {
+                            new { label = title, data = values }
+                        }
+                    },
+                    options = new
+                    {
+                        responsive = true,
+                        plugins = new { legend = new { position = "top" } },
+                        scales = new
+                        {
+                            y = new { beginAtZero = true }
+                        }
+                    }
+                };
+
+                var url = "https://quickchart.io/chart";
+                var payload = new { width = 900, height = 400, format = "png", backgroundColor = "white", chart = cfg };
+                var json = JsonSerializer.Serialize(payload);
+                var resp = Http.PostAsync(url, new StringContent(json, System.Text.Encoding.UTF8, "application/json")).Result;
+                if (!resp.IsSuccessStatusCode) return null;
+                return resp.Content.ReadAsByteArrayAsync().Result;
+            }
+            catch { return null; }
+        }
     }
 }
