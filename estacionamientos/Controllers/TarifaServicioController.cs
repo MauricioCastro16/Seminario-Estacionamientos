@@ -409,7 +409,15 @@ namespace estacionamientos.Controllers
         {
             tasFecIni = ToUtc(tasFecIni);
 
-            var item = await _ctx.TarifasServicio.FindAsync(plyID, serID, clasVehID, tasFecIni);
+            // Buscar la tarifa vigente actual para esta combinación de playa, servicio y clase de vehículo
+            var item = await _ctx.TarifasServicio
+                .Where(t => t.PlyID == plyID && 
+                           t.SerID == serID && 
+                           t.ClasVehID == clasVehID &&
+                           (t.TasFecFin == null || t.TasFecFin > DateTime.UtcNow))
+                .OrderByDescending(t => t.TasFecIni) // Obtener la más reciente
+                .FirstOrDefaultAsync();
+            
             if (item is null) return NotFound();
 
             await LoadSelects(item.PlyID, item.SerID, item.ClasVehID);
@@ -423,7 +431,8 @@ namespace estacionamientos.Controllers
         {
             tasFecIni = ToUtc(tasFecIni);
 
-            if (plyID != model.PlyID || serID != model.SerID || clasVehID != model.ClasVehID || tasFecIni != ToUtc(model.TasFecIni))
+            // Validar que los IDs coincidan
+            if (plyID != model.PlyID || serID != model.SerID || clasVehID != model.ClasVehID)
                 return BadRequest();
 
             model.TasFecIni = ToUtc(model.TasFecIni);
@@ -440,26 +449,68 @@ namespace estacionamientos.Controllers
                 return View(model);
             }
 
-            if (model.TasFecFin != null)
+            // Obtener la tarifa vigente actual para esta combinación
+            var tarifaVigente = await _ctx.TarifasServicio
+                .Where(t => t.PlyID == plyID && 
+                           t.SerID == serID && 
+                           t.ClasVehID == clasVehID &&
+                           (t.TasFecFin == null || t.TasFecFin > DateTime.UtcNow))
+                .OrderByDescending(t => t.TasFecIni)
+                .FirstOrDefaultAsync();
+
+            if (tarifaVigente == null)
+                return NotFound();
+
+            // Si el monto cambió, cerrar la tarifa actual y crear una nueva
+            if (tarifaVigente.TasMonto != model.TasMonto)
             {
-                bool solapa = await _ctx.TarifasServicio.AnyAsync(t =>
-                    t.PlyID == model.PlyID &&
-                    t.SerID == model.SerID &&
-                    t.ClasVehID == model.ClasVehID &&
-                    t.TasFecIni > model.TasFecIni &&
-                    (t.TasFecFin == null || t.TasFecFin > model.TasFecFin));
+                // Cerrar la tarifa vigente actual
+                tarifaVigente.TasFecFin = ToUtc(DateTime.Now);
+                _ctx.Update(tarifaVigente);
 
-                if (solapa)
+                // Crear nueva tarifa con el monto actualizado
+                var nuevaTarifa = new TarifaServicio
                 {
-                    ModelState.AddModelError("", "Las fechas ingresadas generan solapamiento con otra tarifa.");
-                    await LoadSelects(model.PlyID, model.SerID, model.ClasVehID);
-                    return View(model);
-                }
-            }
+                    PlyID = model.PlyID,
+                    SerID = model.SerID,
+                    ClasVehID = model.ClasVehID,
+                    TasMonto = model.TasMonto,
+                    TasFecIni = ToUtc(DateTime.Now),
+                    TasFecFin = model.TasFecFin // Preservar la fecha de fin de vigencia del formulario
+                };
 
-            _ctx.Entry(model).State = EntityState.Modified;
-            await _ctx.SaveChangesAsync();
-            return RedirectToAction(nameof(Index), new { plyID = model.PlyID });
+                _ctx.TarifasServicio.Add(nuevaTarifa);
+                await _ctx.SaveChangesAsync();
+
+                TempData["Saved"] = true;
+                return RedirectToAction(nameof(Index), new { plyID = model.PlyID });
+            }
+            else
+            {
+                // Si el monto no cambió, solo actualizar la fecha de fin si se proporcionó
+                if (model.TasFecFin != null)
+                {
+                    bool solapa = await _ctx.TarifasServicio.AnyAsync(t =>
+                        t.PlyID == model.PlyID &&
+                        t.SerID == model.SerID &&
+                        t.ClasVehID == model.ClasVehID &&
+                        t.TasFecIni > tarifaVigente.TasFecIni &&
+                        (t.TasFecFin == null || t.TasFecFin > model.TasFecFin));
+
+                    if (solapa)
+                    {
+                        ModelState.AddModelError("", "Las fechas ingresadas generan solapamiento con otra tarifa.");
+                        await LoadSelects(model.PlyID, model.SerID, model.ClasVehID);
+                        return View(model);
+                    }
+                }
+
+                // Actualizar la tarifa vigente con los nuevos datos
+                tarifaVigente.TasFecFin = model.TasFecFin;
+                _ctx.Update(tarifaVigente);
+                await _ctx.SaveChangesAsync();
+                return RedirectToAction(nameof(Index), new { plyID = model.PlyID });
+            }
         }
 
         // DELETE POST
