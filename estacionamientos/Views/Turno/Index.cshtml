@@ -16,22 +16,22 @@
         var tz = TimeZoneInfo.FindSystemTimeZoneById("America/Argentina/Cordoba");
         return TimeZoneInfo.ConvertTimeFromUtc(dt, tz);
     }
-    /*
-    string Fmt(DateTime? dt)
-        => dt.HasValue ? ToCba(dt.Value).ToString("dd/MM/yyyy HH:mm") : "-";
-    */
+    
     decimal? TotalTurno(estacionamientos.Models.Turno t)
-        {
-            if (!t.TurApertCaja.HasValue && !t.TurCierrCaja.HasValue)
-                return null;
+    {
+        if (!t.TurApertCaja.HasValue && !t.TurCierrCaja.HasValue)
+            return null;
 
-            return (t.TurCierrCaja ?? 0) - (t.TurApertCaja ?? 0);
-        }
+        return (t.TurCierrCaja ?? 0) - (t.TurApertCaja ?? 0);
+    }
 }
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
 
 <div class="container py-3">
     <h3 class="mb-3">Gestionar turno</h3>
 
+    @* Mensajes de error/ok *@
     @if (TempData["Error"] is string err && !string.IsNullOrWhiteSpace(err)) {
     <div class="alert alert-danger alert-dismissible fade show"
          role="alert" data-autohide="5000">
@@ -42,14 +42,14 @@
     @if (TempData["Ok"] is string ok && !string.IsNullOrWhiteSpace(ok)) {
     <div class="alert alert-success alert-dismissible fade show"
          role="alert" data-autohide="3000">
-            <i class="fa-regular fa-circle-check"></i>@ok
+             <i class="fa-regular fa-circle-check"></i>@ok
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     }
 
     @if (esPlayero)
     {
-        if (abierto == null)
+        @if (abierto == null)
         {
             <div class="alert alert-secondary d-flex justify-content-between align-items-center">
                 <div><i class="fa-solid fa-circle-exclamation"></i> Sin turno en curso.</div>
@@ -64,7 +64,7 @@
                 <div class="card-body">
                     <h5 class="card-title d-flex align-items-center">
                         <span class="dot-live"></span>
-                            Turno en curso
+                             Turno en curso
                     </h5>
                     <div class="row gy-2">
                         <div class="col-md-4">
@@ -83,7 +83,7 @@
                            asp-route-plyID="@abierto.PlyID"
                            asp-route-plaNU="@abierto.PlaNU"
                            asp-route-turFyhIni="@abierto.TurFyhIni.ToString("o")">
-                            <i class="fa-regular fa-circle-stop"></i> Finalizar turno
+                             <i class="fa-regular fa-circle-stop"></i> Finalizar turno
                         </a>
                         <a class="btn btn-outline-secondary"
                            asp-action="Details"
@@ -99,31 +99,46 @@
 
         <h5 class="mt-4 mb-2">Mis últimos turnos finalizados</h5>
         <div class="table-responsive">
-            <table class="table table-striped table-hover table-sm align-middle">
+            <table id="turnosTablePlayero" class="table table-striped table-hover table-sm align-middle text-center">
             <thead class="table-light">
                 <tr>
-                    <th>Playa</th>
-                    <th>Fecha inicio</th>
-                    <th>Hora inicio</th>
-                    <th>Fecha fin</th>
-                    <th>Hora fin</th>
-                    <th>Total</th>
-                    <th class="text-center">Acción</th>
+                    <th class="text-center">Playa</th>
+                    <th class="text-center">Fecha inicio</th>
+                    <th class="text-center">Hora inicio</th>
+                    <th class="text-center">Fecha fin</th>
+                    <th class="text-center">Hora fin</th>
+                    <th class="text-center">Total</th>
+                    <th class="text-center">Acción</th> @* Última columna (índice 6) *@
                 </tr>
             </thead>
 
                 <tbody>
                 @foreach (var t in Model.Where(x => x.TurFyhFin != null))
                 {
+                    var ini = ToCba(t.TurFyhIni);
+                    var fin = t.TurFyhFin.HasValue ? ToCba(t.TurFyhFin.Value) : (DateTime?)null;
                     <tr>
                         <td>@t.Playa?.PlyNom</td>
-                        <td>@ToCba(t.TurFyhIni).ToString("dd/MM/yyyy")</td>
-                        <td>@ToCba(t.TurFyhIni).ToString("HH:mm")</td>
-                        <td>@(t.TurFyhFin.HasValue ? ToCba(t.TurFyhFin.Value).ToString("dd/MM/yyyy") : "-")</td>
-                        <td>@(t.TurFyhFin.HasValue ? ToCba(t.TurFyhFin.Value).ToString("HH:mm") : "-")</td>
-
-
-                        <td>@(TotalTurno(t)?.ToString("N2") ?? "-")</td>
+                        <td data-order="@ini.ToString("yyyyMMdd")">@ini.ToString("dd/MM/yyyy")</td>
+                        <td data-order="@ini.ToString("HHmm")">@ini.ToString("HH:mm")</td>
+                        <td data-order="@(fin.HasValue ? fin.Value.ToString("yyyyMMdd") : "")">@(fin.HasValue ? fin.Value.ToString("dd/MM/yyyy") : "-")</td>
+                        <td data-order="@(fin.HasValue ? fin.Value.ToString("HHmm") : "")">@(fin.HasValue ? fin.Value.ToString("HH:mm") : "-")</td>
+                        <td data-order="@(TotalTurno(t) ?? 0)">
+                            @{
+                                var total = TotalTurno(t);
+                                if (total.HasValue)
+                                {
+                                    // Aplica 'text-danger fw-bold' si el total es negativo, si no, usa 'fw-bold' (Negro/Predeterminado)
+                                    var totalClass = total.Value < 0 ? "text-danger" : "";
+                                    <span class="@totalClass">@total.Value.ToString("N2")</span>
+                                }
+                                else
+                                {
+                                    // Muestra "-" si no tiene valor (turno no finalizado/datos incompletos)
+                                    @("-")
+                                }
+                            }
+                        </td>
                         <td class="text-center">
                             <a class="btn btn-outline-primary btn-sm me-1"
                             asp-action="Details"
@@ -142,39 +157,35 @@
     }
     else
     {
-        <!-- Otros roles: listado completo -->
-        <div class="d-flex justify-content-end mb-2">
-            <a class="btn btn-primary" asp-action="Create">
-                <i class="fa-regular fa-circle-play"></i> Iniciar turnooo
-            </a>
-        </div>
-
+        <h5 class="mb-2">Listado completo de turnos</h5>
         <div class="table-responsive">
-            <table class="table table-striped table-hover table-sm align-middle">
+            <table id="turnosTableTodos" class="table table-striped table-hover table-sm align-middle text-center">
             <thead class="table-light">
                 <tr>
-                    <th>Playa</th>
-                    <th>Fecha inicio</th>
-                    <th>Hora inicio</th>
-                    <th>Fecha fin</th>
-                    <th>Hora fin</th>
-                    <th>Total</th>
-                    <th class="text-center">Acción</th>
+                    <th class="text-center">Playa</th>
+                    <th class="text-center">Playero (Plaza)</th>
+                    <th class="text-center">Fecha inicio</th>
+                    <th class="text-center">Hora inicio</th>
+                    <th class="text-center">Fecha fin</th>
+                    <th class="text-center">Hora fin</th>
+                    <th class="text-center">Total</th>
+                    <th class="text-center">Acción</th> @* Última columna (índice 7) *@
                 </tr>
             </thead>
                 <tbody>
                 @foreach (var t in Model)
                 {
+                    var ini = ToCba(t.TurFyhIni);
+                    var fin = t.TurFyhFin.HasValue ? ToCba(t.TurFyhFin.Value) : (DateTime?)null;
                     <tr>
                         <td>@t.Playa?.PlyNom</td>
                         <td>@t.Playero?.UsuNyA (@t.PlaNU)</td>
-                        <td>@ToCba(t.TurFyhIni).ToString("dd/MM/yyyy")</td>
-                        <td>@ToCba(t.TurFyhIni).ToString("HH:mm")</td>
-                        <td>@(t.TurFyhFin.HasValue ? ToCba(t.TurFyhFin.Value).ToString("dd/MM/yyyy") : "-")</td>
-                        <td>@(t.TurFyhFin.HasValue ? ToCba(t.TurFyhFin.Value).ToString("HH:mm") : "-")</td>
-
-
-                        <td>@(TotalTurno(t)?.ToString("N2") ?? "-")</td>
+                        <td data-order="@ini.ToString("yyyyMMdd")">@ini.ToString("dd/MM/yyyy")</td>
+                        <td data-order="@ini.ToString("HHmm")">@ini.ToString("HH:mm")</td>
+                        <td data-order="@(fin.HasValue ? fin.Value.ToString("yyyyMMdd") : "")">@(fin.HasValue ? fin.Value.ToString("dd/MM/yyyy") : "-")</td>
+                        <td data-order="@(fin.HasValue ? fin.Value.ToString("HHmm") : "")">@(fin.HasValue ? fin.Value.ToString("HH:mm") : "-")</td>
+                        
+                        <td data-order="@(TotalTurno(t) ?? 0)">@(TotalTurno(t)?.ToString("N2") ?? "-")</td>
 
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
@@ -192,7 +203,6 @@
                                     asp-route-turFyhIni="@t.TurFyhIni.ToString("o")">
                                         <i class="fa-regular fa-pen-to-square"></i> Editar
                                 </a>
-
                             </div>
                         </td>
                     </tr>
@@ -203,5 +213,51 @@
     }
 </div>
 
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
+    <script>
+    $(document).ready(function () {
+        
+        const datatableLanguage = {
+            "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json",
 
+            // Personalización de texto
+            "lengthMenu": "Mostrar _MENU_ turnos por página", 
+
+            // Personalización de paginación
+            "paginate": {
+                "previous": "« Anterior", // Cambiado de 'Previous'
+                "next": "Siguiente »"    // Cambiado de 'Next'
+            },
+        };
+
+        // Tabla Playero
+        $('#turnosTablePlayero').DataTable({
+            "columnDefs": [
+                { "orderable": false, "targets": -1 } 
+            ],
+            // 'lrtip' para ocultar el buscador ('f' fue eliminada)
+            "dom": 'lrtp', 
+            "order": [[3, "desc"]], 
+            "pageLength": 10,
+            "lengthMenu": [5, 10, 25, 50],
+            "language": datatableLanguage 
+        });
+
+        // Tabla todos los turnos
+        $('#turnosTableTodos').DataTable({
+            "columnDefs": [
+                { "orderable": false, "targets": -1 } 
+            ],
+            "dom": 'lrtp', 
+            "order": [[2, "desc"]], 
+            "pageLength": 10,
+            "lengthMenu": [5, 10, 25, 50],
+            "language": datatableLanguage
+        });
+    });
+    </script>
+}
