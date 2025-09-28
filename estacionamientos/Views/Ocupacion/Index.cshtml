@@ -6,6 +6,8 @@
     var plyIdFromModel = Model?.FirstOrDefault()?.PlyID;
 }
 
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+
 <!-- ========================= -->
 <!-- KPI de Ocupación (arriba) -->
 <!-- ========================= -->
@@ -60,56 +62,56 @@
     </a>
 </div>
 
-<table class="table table-striped">
+<table id="ocupacionesTable" class="table table-striped table-hover table-sm align-middle text-center">
     <thead>
         <tr>
-            <th>Plaza</th>
-            <th>Clasificación</th>
-            <th>Patente</th>
-            <th>Ingreso</th>
-            <th>Egreso</th>
-            <th>Estado</th>
-            <th>Detalles</th>
+            <th class="text-center">Plaza</th>
+            <th class="text-center">Clasificación</th>
+            <th class="text-center">Patente</th>
+            <th class="text-center">Ingreso</th>
+            <th class="text-center">Egreso</th>
+            <th class="text-center">Estado</th> 
+            <th class="text-center">Detalles</th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model)
-{
-    <tr>
-        <td>@item.PlzNum</td>
-        <td>@item.Vehiculo?.Clasificacion?.ClasVehTipo</td>
-        <td>@item.VehPtnt</td>
-        <td>@item.OcufFyhIni.ToLocalTime().ToString("g")</td>
-        <td>
-            @(item.OcufFyhFin?.ToLocalTime().ToString("g") ?? "En curso")
-        </td>
-        <td>
-            @if (item.OcufFyhFin == null)
-            {
-                <form asp-action="RegistrarEgreso" method="post" style="display: inline;">
-                    <input type="hidden" name="plyID" value="@item.PlyID" />
-                    <input type="hidden" name="plzNum" value="@item.PlzNum" />
-                    <input type="hidden" name="vehPtnt" value="@item.VehPtnt" />
-                    <button type="submit" class="btn btn-danger btn-sm">
-                        Egresar
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.PlzNum</td>
+                <td>@item.Vehiculo?.Clasificacion?.ClasVehTipo</td>
+                <td>@item.VehPtnt</td>
+                <td data-order="@item.OcufFyhIni.ToString("yyyyMMddHHmmss")">@item.OcufFyhIni.ToLocalTime().ToString("g")</td>
+                <td data-order="@(item.OcufFyhFin.HasValue ? item.OcufFyhFin.Value.ToString("yyyyMMddHHmmss") : "0")">
+                    @(item.OcufFyhFin?.ToLocalTime().ToString("g") ?? "En curso")
+                </td>
+                <td>
+                    @if (item.OcufFyhFin == null)
+                    {
+                        <form asp-action="RegistrarEgreso" method="post" style="display: inline;">
+                            <input type="hidden" name="plyID" value="@item.PlyID" />
+                            <input type="hidden" name="plzNum" value="@item.PlzNum" />
+                            <input type="hidden" name="vehPtnt" value="@item.VehPtnt" />
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                Egresar
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <span class="fw-bold text-success">Finalizado</span>
+                    }
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-outline-primary btn-sm" 
+                            data-bs-toggle="modal" data-bs-target="#detallesModal"
+                            onclick="cargarDetalles(@item.PlyID, @item.PlzNum, '@item.VehPtnt', '@item.OcufFyhIni.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")')"
+                            title="Ver detalles">
+                        <i class="fa fa-eye"></i>
                     </button>
-                </form>
-            }
-            else
-            {
-                <span class="fw-bold text-success">Finalizado</span>
-            }
-        </td>
-        <td class="text-center">
-            <button type="button" class="btn btn-outline-primary btn-sm" 
-                    data-bs-toggle="modal" data-bs-target="#detallesModal"
-                    onclick="cargarDetalles(@item.PlyID, @item.PlzNum, '@item.VehPtnt', '@item.OcufFyhIni.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")')"
-                    title="Ver detalles">
-                <i class="fa fa-eye"></i>
-            </button>
-        </td>
-    </tr>
-}
+                </td>
+            </tr>
+        }
     </tbody>
 </table>
 
@@ -133,291 +135,321 @@
 </style>
 
 @section Scripts {
-<script>
-    // Manejar el modal de confirmación
-    document.getElementById('confirmModal')?.addEventListener('show.bs.modal', function (event) {
-        const button = event.relatedTarget;
-        const plyID = button.getAttribute('data-plyid');
-        const plzNum = button.getAttribute('data-plznum');
-        const vehPtnt = button.getAttribute('data-vehptnt');
-        
-        console.log('Modal data:', { plyID, plzNum, vehPtnt });
-        
-        // Actualizar los campos ocultos del formulario
-        document.getElementById('plyID').value = plyID;
-        document.getElementById('plzNum').value = plzNum;
-        document.getElementById('vehPtnt').value = vehPtnt;
-    });
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
-    // Oculta automáticamente los alerts después de 3 segundos
-    setTimeout(() => {
-        document.querySelectorAll('.alert').forEach(alert => {
-            const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
-            bsAlert.close();
+    <script>
+    $(document).ready(function () {
+        
+        const datatableLanguage = {
+            "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json",
+            
+            "lengthMenu": "Mostrar _MENU_ ocupaciones por página", 
+
+            "paginate": {
+                "previous": "« Anterior", 
+                "next": "Siguiente »"    
+            },
+        };
+
+        // --- INICIALIZACIÓN DE TABLA DE OCUPACIONES (ID: ocupacionesTable) ---
+        $('#ocupacionesTable').DataTable({
+            "columnDefs": [
+                { "orderable": false, "targets": [5, 6] } 
+            ],
+            // Dom: 'lfrtip' (Length, Filter, Table, Info, Paging)
+            "dom": 'lrtp', 
+            "order": [[3, "desc"]], // Ordenar por la columna "Ingreso" (índice 3) descendente
+            "pageLength": 10,
+            "lengthMenu": [5, 10, 25, 50],
+            "pagingType": "simple_numbers", 
+            "language": datatableLanguage 
         });
-    }, 3000);
+        
+        // Modal de confirmación
+        document.getElementById('confirmModal')?.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const plyID = button.getAttribute('data-plyid');
+            const plzNum = button.getAttribute('data-plznum');
+            const vehPtnt = button.getAttribute('data-vehptnt');
+            
+            console.log('Modal data:', { plyID, plzNum, vehPtnt });
+            
+            // Actualizar los campos ocultos del formulario
+            document.getElementById('plyID').value = plyID;
+            document.getElementById('plzNum').value = plzNum;
+            document.getElementById('vehPtnt').value = vehPtnt;
+        });
 
-    (function () {
-        const root = document.getElementById('occ-root');
-        const plyIdAttr = root?.getAttribute('data-plyid');
-        const plyID = plyIdAttr && !isNaN(Number(plyIdAttr)) ? Number(plyIdAttr) : null;
-
-        const card = document.getElementById('occ-container');
-        const empty = document.getElementById('occ-empty');
-
-        const elPerc = document.getElementById('occ-total-perc');
-        const elCount = document.getElementById('occ-total-count');
-        const elCaption = document.getElementById('occ-total-caption');
-        const elBar = document.getElementById('occ-total-bar');
-        const perFloor = document.getElementById('occ-per-floor');
-
-        if (!plyID) {
-            empty.classList.remove('d-none');
-            return;
-        }
-
-        card.classList.remove('d-none');
-        // Aclaración: se EXCLUYEN inhabilitadas del denominador
-        elCaption.textContent = 'Calculado sobre plazas habilitadas (excluye inhabilitadas).';
-
-        fetch(`/PlazaEstacionamiento/GetPlazasMapa?plyID=${plyID}`)
-            .then(r => r.json())
-            .then(plazas => {
-                if (!Array.isArray(plazas) || plazas.length === 0) {
-                    elCaption.textContent = 'No hay plazas registradas en esta playa.';
-                    elPerc.textContent = '0%';
-                    elCount.textContent = '0/0 plazas';
-                    elBar.style.width = '0%';
-                    return;
-                }
-
-                // ======== TOTAL (solo habilitadas) ========
-                const habilitadas = plazas.filter(p => p.hab);
-                const total = habilitadas.length;
-                const ocupadas = habilitadas.filter(p => p.ocupada).length;
-                const perc = total ? Math.round((ocupadas / total) * 100) : 0;
-
-                elPerc.textContent = `${perc}%`;
-                elCount.textContent = `${ocupadas}/${total} plazas`;
-                elBar.style.width = perc + '%';
-                elBar.setAttribute('aria-valuenow', perc);
-
-                // ======== POR PISO (solo habilitadas) ========
-                // Agrupar por piso (null/undefined => -1 “Sin piso”)
-                const byFloor = new Map();
-                plazas.forEach(p => {
-                    const key = (p.piso ?? -1);
-                    if (!byFloor.has(key)) byFloor.set(key, []);
-                    byFloor.get(key).push(p);
-                });
-
-                perFloor.innerHTML = '';
-                Array.from(byFloor.entries())
-                    .sort((a,b) => a[0] - b[0])
-                    .forEach(([floor, list]) => {
-                        const habList = list.filter(x => x.hab);
-                        const tot = habList.length;
-                        const occ = habList.filter(x => x.ocupada).length;
-                        const prc = tot ? Math.round((occ / tot) * 100) : 0;
-
-                        const wrapper = document.createElement('div');
-                        wrapper.className = 'occ-floor-card';
-
-                        const header = document.createElement('div');
-                        header.className = 'occ-floor-header';
-
-                        const title = document.createElement('div');
-                        title.className = 'occ-floor-title';
-                        title.textContent = (floor === -1) ? 'Sin piso' : `Piso ${floor}`;
-
-                        const right = document.createElement('div');
-                        right.innerHTML = `<span class="fw-semibold">${prc}%</span> <span class="occ-floor-sub">(${occ}/${tot})</span>`;
-
-                        header.appendChild(title);
-                        header.appendChild(right);
-
-                        const progress = document.createElement('div');
-                        progress.className = 'progress';
-                        const bar = document.createElement('div');
-                        bar.className = 'progress-bar';
-                        bar.style.width = prc + '%';
-                        bar.setAttribute('aria-valuenow', prc);
-                        bar.setAttribute('aria-valuemin', '0');
-                        bar.setAttribute('aria-valuemax', '100');
-                        progress.appendChild(bar);
-
-                        wrapper.appendChild(header);
-                        wrapper.appendChild(progress);
-
-                        perFloor.appendChild(wrapper);
-                    });
-            })
-            .catch(() => {
-                elCaption.textContent = 'No se pudo cargar el estado de plazas.';
+        // Oculta automáticamente los alerts después de 3 segundos
+        setTimeout(() => {
+            document.querySelectorAll('.alert').forEach(alert => {
+                const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+                bsAlert.close();
             });
-    })();
-</script>
+        }, 3000);
+        
+        // 3. LÓGICA DEL KPI DE OCUPACIÓN (función autoejecutable)
+        (function () {
+            const root = document.getElementById('occ-root');
+            const plyIdAttr = root?.getAttribute('data-plyid');
+            const plyID = plyIdAttr && !isNaN(Number(plyIdAttr)) ? Number(plyIdAttr) : null;
 
-<!-- Modal de Detalles -->
-<div class="modal fade" id="detallesModal" tabindex="-1" aria-labelledby="detallesModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="detallesModalLabel">
-                    <i class="fa fa-eye me-2"></i>
-                    Detalles de Ocupación
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            const card = document.getElementById('occ-container');
+            const empty = document.getElementById('occ-empty');
+
+            const elPerc = document.getElementById('occ-total-perc');
+            const elCount = document.getElementById('occ-total-count');
+            const elCaption = document.getElementById('occ-total-caption');
+            const elBar = document.getElementById('occ-total-bar');
+            const perFloor = document.getElementById('occ-per-floor');
+
+            if (!plyID) {
+                return;
+            }
+
+            card.classList.remove('d-none');
+            elCaption.textContent = 'Calculado sobre plazas habilitadas (excluye inhabilitadas).';
+
+            fetch(`/PlazaEstacionamiento/GetPlazasMapa?plyID=${plyID}`)
+                .then(r => r.json())
+                .then(plazas => {
+                    if (!Array.isArray(plazas) || plazas.length === 0) {
+                        elCaption.textContent = 'No hay plazas registradas en esta playa.';
+                        elPerc.textContent = '0%';
+                        elCount.textContent = '0/0 plazas';
+                        elBar.style.width = '0%';
+                        return;
+                    }
+
+                    // ======== TOTAL (solo habilitadas) ========
+                    const habilitadas = plazas.filter(p => p.hab);
+                    const total = habilitadas.length;
+                    const ocupadas = habilitadas.filter(p => p.ocupada).length;
+                    const perc = total ? Math.round((ocupadas / total) * 100) : 0;
+
+                    elPerc.textContent = `${perc}%`;
+                    elCount.textContent = `${ocupadas}/${total} plazas`;
+                    elBar.style.width = perc + '%';
+                    elBar.setAttribute('aria-valuenow', perc);
+
+                    // ======== POR PISO (solo habilitadas) ========
+                    const byFloor = new Map();
+                    plazas.forEach(p => {
+                        const key = (p.piso ?? -1);
+                        if (!byFloor.has(key)) byFloor.set(key, []);
+                        byFloor.get(key).push(p);
+                    });
+
+                    perFloor.innerHTML = '';
+                    Array.from(byFloor.entries())
+                        .sort((a,b) => a[0] - b[0])
+                        .forEach(([floor, list]) => {
+                            const habList = list.filter(x => x.hab);
+                            const tot = habList.length;
+                            const occ = habList.filter(x => x.ocupada).length;
+                            const prc = tot ? Math.round((occ / tot) * 100) : 0;
+
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'occ-floor-card';
+
+                            const header = document.createElement('div');
+                            header.className = 'occ-floor-header';
+
+                            const title = document.createElement('div');
+                            title.className = 'occ-floor-title';
+                            title.textContent = (floor === -1) ? 'Sin piso' : `Piso ${floor}`;
+
+                            const right = document.createElement('div');
+                            right.innerHTML = `<span class="fw-semibold">${prc}%</span> <span class="occ-floor-sub">(${occ}/${tot})</span>`;
+
+                            header.appendChild(title);
+                            header.appendChild(right);
+
+                            const progress = document.createElement('div');
+                            progress.className = 'progress';
+                            const bar = document.createElement('div');
+                            bar.className = 'progress-bar';
+                            bar.style.width = prc + '%';
+                            bar.setAttribute('aria-valuenow', prc);
+                            bar.setAttribute('aria-valuemin', '0');
+                            bar.setAttribute('aria-valuemax', '100');
+                            progress.appendChild(bar);
+
+                            wrapper.appendChild(header);
+                            wrapper.appendChild(progress);
+
+                            perFloor.appendChild(wrapper);
+                        });
+                })
+                .catch(() => {
+                    elCaption.textContent = 'No se pudo cargar el estado de plazas.';
+                });
+        })();
+        
+    });
+    </script>
+
+    <div class="modal fade" id="detallesModal" tabindex="-1" aria-labelledby="detallesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detallesModalLabel">
+                        <i class="fa fa-eye me-2"></i>
+                        Detalles de Ocupación
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="detallesContent">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
             </div>
-            <div class="modal-body" id="detallesContent">
+        </div>
+    </div>
+
+    <script>
+        function cargarDetalles(plyID, plzNum, vehPtnt, ocufFyhIni) {
+            // Mostrar spinner
+            document.getElementById('detallesContent').innerHTML = `
                 <div class="text-center">
                     <div class="spinner-border" role="status">
                         <span class="visually-hidden">Cargando...</span>
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    function cargarDetalles(plyID, plzNum, vehPtnt, ocufFyhIni) {
-        // Mostrar spinner
-        document.getElementById('detallesContent').innerHTML = `
-            <div class="text-center">
-                <div class="spinner-border" role="status">
-                    <span class="visually-hidden">Cargando...</span>
-                </div>
-            </div>
-        `;
-        
-        // Hacer petición AJAX
-        const url = `/Ocupacion/DetallesJson?plyID=${plyID}&plzNum=${plzNum}&vehPtnt=${vehPtnt}&ocufFyhIni=${encodeURIComponent(ocufFyhIni)}`;
-        console.log('Cargando detalles:', url);
-        
-        fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Datos recibidos:', data);
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                mostrarDetalles(data);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('detallesContent').innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="fa fa-exclamation-triangle me-2"></i>
-                        Error al cargar los detalles: ${error.message}
-                        <br><small class="text-muted">URL: ${url}</small>
-                    </div>
-                `;
-            });
-    }
-    
-    function mostrarDetalles(data) {
-        const estado = data.ocufFyhFin ? 'Finalizado' : 'En curso';
-        const estadoClass = data.ocufFyhFin ? 'text-success' : 'text-warning';
-        const fechaFin = data.ocufFyhFin ? new Date(data.ocufFyhFin).toLocaleString() : 'N/A';
-        
-        let tiempoOcupacion = '';
-        if (data.ocufFyhFin) {
-            const inicio = new Date(data.ocufFyhIni);
-            const fin = new Date(data.ocufFyhFin);
-            const diffMs = fin - inicio;
-            const horas = Math.floor(diffMs / (1000 * 60 * 60));
-            const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-            tiempoOcupacion = `${horas}h ${minutos}m`;
-        } else {
-            const inicio = new Date(data.ocufFyhIni);
-            const ahora = new Date();
-            const diffMs = ahora - inicio;
-            const horas = Math.floor(diffMs / (1000 * 60 * 60));
-            const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-            tiempoOcupacion = `${horas}h ${minutos}m (en curso)`;
+            `;
+            
+            // Hacer petición AJAX
+            const url = `/Ocupacion/DetallesJson?plyID=${plyID}&plzNum=${plzNum}&vehPtnt=${vehPtnt}&ocufFyhIni=${encodeURIComponent(ocufFyhIni)}`;
+            console.log('Cargando detalles:', url);
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Datos recibidos:', data);
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    mostrarDetalles(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('detallesContent').innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fa fa-exclamation-triangle me-2"></i>
+                            Error al cargar los detalles: ${error.message}
+                            <br><small class="text-muted">URL: ${url}</small>
+                        </div>
+                    `;
+                });
         }
         
-        let pagoInfo = '';
-        if (data.pago) {
-            pagoInfo = `
+        function mostrarDetalles(data) {
+            const estado = data.ocufFyhFin ? 'Finalizado' : 'En curso';
+            const estadoClass = data.ocufFyhFin ? 'text-success' : 'text-warning';
+            const fechaFin = data.ocufFyhFin ? new Date(data.ocufFyhFin).toLocaleString() : 'N/A';
+            
+            let tiempoOcupacion = '';
+            if (data.ocufFyhFin) {
+                const inicio = new Date(data.ocufFyhIni);
+                const fin = new Date(data.ocufFyhFin);
+                const diffMs = fin - inicio;
+                const horas = Math.floor(diffMs / (1000 * 60 * 60));
+                const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                tiempoOcupacion = `${horas}h ${minutos}m`;
+            } else {
+                const inicio = new Date(data.ocufFyhIni);
+                const ahora = new Date();
+                const diffMs = ahora - inicio;
+                const horas = Math.floor(diffMs / (1000 * 60 * 60));
+                const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                tiempoOcupacion = `${horas}h ${minutos}m (en curso)`;
+            }
+            
+            let pagoInfo = '';
+            if (data.pago) {
+                pagoInfo = `
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <h6 class="text-primary">Información de Pago</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Número de Pago:</strong></td>
+                                    <td>${data.pago.pagNum}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Método de Pago:</strong></td>
+                                    <td>${data.pago.metodoPago}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Monto:</strong></td>
+                                    <td class="fw-bold text-success">$${data.pago.pagMonto.toFixed(2)}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('detallesContent').innerHTML = `
                 <div class="row mb-3">
-                    <div class="col-12">
-                        <h6 class="text-primary">Información de Pago</h6>
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Información del Vehículo</h6>
                         <table class="table table-sm">
                             <tr>
-                                <td><strong>Número de Pago:</strong></td>
-                                <td>${data.pago.pagNum}</td>
+                                <td><strong>Patente:</strong></td>
+                                <td>${data.vehPtnt}</td>
                             </tr>
                             <tr>
-                                <td><strong>Método de Pago:</strong></td>
-                                <td>${data.pago.metodoPago}</td>
+                                <td><strong>Clasificación:</strong></td>
+                                <td>${data.clasificacionVehiculo}</td>
                             </tr>
                             <tr>
-                                <td><strong>Monto:</strong></td>
-                                <td class="fw-bold text-success">$${data.pago.pagMonto.toFixed(2)}</td>
+                                <td><strong>Playa:</strong></td>
+                                <td>${data.playaNombre}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Plaza:</strong></td>
+                                <td>${data.plzNum}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Información de Ocupación</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Estado:</strong></td>
+                                <td><span class="fw-bold ${estadoClass}">${estado}</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ingreso:</strong></td>
+                                <td>${new Date(data.ocufFyhIni).toLocaleString()}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Egreso:</strong></td>
+                                <td>${fechaFin}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tiempo Total:</strong></td>
+                                <td class="fw-bold">${tiempoOcupacion}</td>
                             </tr>
                         </table>
                     </div>
                 </div>
+                ${pagoInfo}
             `;
         }
-        
-        document.getElementById('detallesContent').innerHTML = `
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <h6 class="text-primary">Información del Vehículo</h6>
-                    <table class="table table-sm">
-                        <tr>
-                            <td><strong>Patente:</strong></td>
-                            <td>${data.vehPtnt}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Clasificación:</strong></td>
-                            <td>${data.clasificacionVehiculo}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Playa:</strong></td>
-                            <td>${data.playaNombre}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Plaza:</strong></td>
-                            <td>${data.plzNum}</td>
-                        </tr>
-                    </table>
-                </div>
-                <div class="col-md-6">
-                    <h6 class="text-primary">Información de Ocupación</h6>
-                    <table class="table table-sm">
-                        <tr>
-                            <td><strong>Estado:</strong></td>
-                            <td><span class="fw-bold ${estadoClass}">${estado}</span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Ingreso:</strong></td>
-                            <td>${new Date(data.ocufFyhIni).toLocaleString()}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Egreso:</strong></td>
-                            <td>${fechaFin}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Tiempo Total:</strong></td>
-                            <td class="fw-bold">${tiempoOcupacion}</td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-            ${pagoInfo}
-        `;
-    }
-</script>
+    </script>
 }

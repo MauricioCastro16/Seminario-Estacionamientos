@@ -5,6 +5,8 @@
     ViewData["Title"] = "Usuarios";
 }
 
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+
 <h1>Usuarios</h1>
 
 <div class="mb-3">
@@ -60,18 +62,18 @@
             } 
             else 
             { 
-                <table class="table table-striped align-middle"> 
+                <table id="dueniosTable" class="table table-striped table-hover table-sm align-middle text-center"> 
                     <thead> 
                         <tr> 
-                            <th>Id</th> 
-                            <th>Nombre y Apellido</th> 
-                            <th>Email</th> 
-                            <th>Nombre de Usuario</th>
-                            <th>Teléfono</th> 
-                            <th>CUIT</th>
-                            </tr> 
-                            </thead> 
-                            <tbody> 
+                            <th class="text-center">Id</th> 
+                            <th class="text-center">Nombre y Apellido</th> 
+                            <th class="text-center">Email</th> 
+                            <th class="text-center">Nombre de Usuario</th>
+                            <th class="text-center">Teléfono</th> 
+                            <th class="text-center">CUIT</th>
+                        </tr> 
+                    </thead> 
+                        <tbody> 
                             @foreach (var d in Model.Duenios) 
                             { 
                                 <tr> 
@@ -84,154 +86,249 @@
                                 </tr> 
                             } 
                         </tbody> 
-                    </table> 
+                </table> 
+            }
+
+        <h3 class="mt-4">Conductores (@Model.Conductores.Count)</h3>
+        @if (!Model.Conductores.Any())
+        {
+            <div class="alert alert-secondary">No hay conductores cargados.</div>
+        }
+        else
+        {
+            <table id="conductoresTable" class="table table-striped table-hover table-sm align-middle text-center">
+                <thead>
+                    <tr>
+                        <th class="text-center">Id</th>
+                        <th class="text-center">Nombre y Apellido</th>
+                        <th class="text-center">Email</th>
+                        <th class="text-center">Nombre de Usuario</th>
+                        <th class="text-center">Teléfono</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var c in Model.Conductores)
+                {
+                    <tr>
+                        <td>@c.UsuNU</td>
+                        <td>@c.UsuNyA</td>
+                        <td>@c.UsuEmail</td>
+                        <td>@c.UsuNomUsu</td>
+                        <td>@c.UsuNumTel</td>
+                        <td>
+                            <a asp-controller="Usuario" asp-action="EditConductor" asp-route-id="@c.UsuNU" 
+                            class="btn btn-sm btn-outline-secondary me-1" title="Editar">
+                            <i class="fa-regular fa-pen-to-square"></i>
+                            </a>
+
+                            <a asp-controller="Usuario" asp-action="DetailsConductor" asp-route-id="@c.UsuNU" 
+                            class="btn btn-sm btn-outline-primary me-1" title="Detalles">
+                            <i class="fa-solid fa-eye"></i>
+                            </a>
+
+                            <a asp-controller="Usuario" asp-action="DeleteConductor" asp-route-id="@c.UsuNU" 
+                            class="btn btn-sm btn-outline-secondary" title="Eliminar">
+                            <i class="fa-regular fa-trash-can"></i>
+                            </a>
+                        </td>
+                    </tr>
                 }
+                </tbody>
+            </table>
+        }
 
-    <h3 class="mt-4">Conductores (@Model.Conductores.Count)</h3>
-    @if (!Model.Conductores.Any())
-    {
-        <div class="alert alert-secondary">No hay conductores cargados.</div>
+        <h3 class="mt-4">Administradores (@Model.Administradores.Count)</h3>
+        @if (!Model.Administradores.Any())
+        {
+            <div class="alert alert-secondary">No hay administradores cargados.</div>
+        }
+        else
+        {
+            <table id="administradoresTable" class="table table-striped table-hover table-sm align-middle text-center">
+                <thead>
+                    <tr>
+                        <th class="text-center">Id</th>
+                        <th class="text-center">Nombre y Apellido</th>
+                        <th class="text-center">Email</th>
+                        <th class="text-center">Nombre de Usuario</th>
+                        <th class="text-center">Teléfono</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var a in Model.Administradores)
+                {
+                    <tr>
+                        <td>@a.UsuNU</td>
+                        <td>@a.UsuNyA</td>
+                        <td>@a.UsuEmail</td>
+                        <td>@a.UsuNomUsu</td>
+                        <td>@a.UsuNumTel</td>
+                        <td>
+                            <a asp-controller="Usuario" asp-action="EditAdministrador" asp-route-id="@a.UsuNU" 
+                            class="btn btn-sm btn-outline-secondary me-1" title="Editar">
+                            <i class="fa-regular fa-pen-to-square"></i>
+                            </a>
+
+                            <a asp-controller="Usuario" asp-action="DetailsAdministrador" asp-route-id="@a.UsuNU" 
+                            class="btn btn-sm btn-outline-primary me-1" title="Detalles">
+                            <i class="fa-solid fa-eye"></i>
+                            </a>
+
+                            <a asp-controller="Usuario" asp-action="DeleteAdministrador" asp-route-id="@a.UsuNU" 
+                            class="btn btn-sm btn-outline-secondary" title="Eliminar">
+                                    <i class="fa-regular fa-trash-can"></i>
+                            </a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+
+        <h3 class="mt-4">Playeros (@Model.Playeros.Count)</h3>
+        @if (!Model.Playeros.Any())
+        {
+            <div class="alert alert-secondary">No hay playeros cargados.</div>
+        }
+        else
+        {
+            <table id="playerosTable" class="table table-striped table-hover table-sm align-middle text-center">
+                <thead>
+                    <tr>
+                        <th class="text-center">Id</th>
+                        <th class="text-center">Nombre y Apellido</th>
+                        <th class="text-center">Email</th>
+                        <th class="text-center">Nombre de Usuario</th>
+                        <th class="text-center">Teléfono</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.Playeros)
+                    {
+                        <tr>
+                            <td>@p.UsuNU</td>
+                            <td>@p.UsuNyA</td>
+                            <td>@p.UsuEmail</td>
+                            <td>@p.UsuNomUsu</td>
+                            <td>@p.UsuNumTel</td>
+                            <td>
+                                <a asp-controller="Usuario" asp-action="EditPlayero" asp-route-id="@p.UsuNU" 
+                                class="btn btn-sm btn-outline-secondary me-1" title="Editar">
+                                        <i class="fa-regular fa-pen-to-square"></i>
+                                </a>
+
+                                <a asp-controller="Usuario" asp-action="DetailsPlayero" asp-route-id="@p.UsuNU" 
+                                class="btn btn-sm btn-outline-primary me-1" title="Detalles">
+                                <i class="fa-solid fa-eye"></i>
+                                </a>
+
+                                <a asp-controller="Usuario" asp-action="DeletePlayero" asp-route-id="@p.UsuNU" 
+                                class="btn btn-sm btn-outline-secondary" title="Eliminar">
+                                        <i class="fa-regular fa-trash-can"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
     }
-    else
-    {
-        <table class="table table-striped align-middle">
-            <thead>
-                <tr>
-                    <th>Id</th>
-                    <th>Nombre y Apellido</th>
-                    <th>Email</th>
-                    <th>Nombre de Usuario</th>
-                    <th>Teléfono</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var c in Model.Conductores)
-            {
-                <tr>
-                    <td>@c.UsuNU</td>
-                    <td>@c.UsuNyA</td>
-                    <td>@c.UsuEmail</td>
-                    <td>@c.UsuNomUsu</td>
-                    <td>@c.UsuNumTel</td>
-                    <td>
-                        <a asp-controller="Usuario" asp-action="EditConductor" asp-route-id="@c.UsuNU" 
-                        class="btn btn-sm btn-outline-secondary me-1" title="Editar">
-                        <i class="fa-regular fa-pen-to-square"></i>
-                        </a>
 
-                        <a asp-controller="Usuario" asp-action="DetailsConductor" asp-route-id="@c.UsuNU" 
-                        class="btn btn-sm btn-outline-primary me-1" title="Detalles">
-                        <i class="fa-solid fa-eye"></i>
-                        </a>
+<style>
+    .dataTables_wrapper .dataTables_length label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    }
 
-                        <a asp-controller="Usuario" asp-action="DeleteConductor" asp-route-id="@c.UsuNU" 
-                        class="btn btn-sm btn-outline-secondary" title="Eliminar">
-                        <i class="fa-regular fa-trash-can"></i>
-                        </a>
-                    </td>
-                </tr>
+    .dataTables_wrapper .dataTables_length select {
+    display: inline-block;
+    min-width: 5rem;
+    }
+
+    .dataTables_wrapper .dataTables_paginate {
+    white-space: nowrap;
+    }
+</style>
+
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        (function () {
+            const datatableLanguage = {
+                url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json",
+                lengthMenu: "Mostrar _MENU_ usuarios",
+                paginate: {
+                    previous: "« Anterior",
+                    next: "Siguiente »"
+                }
+            };
+
+            const domLayout =
+                "<'row mb-3'<'col-12 col-md-6'l>>" +
+                "<'row'<'col-12'tr>>" +
+                "<'row mt-3'<'col-12 col-md-6'i><'col-12 col-md-6 d-flex justify-content-md-end'p>>";
+
+            function initIfExists(selector, orderableLastColumn) {
+                try {
+                    if (!document.querySelector(selector)) return;
+
+                    // evitar inicializar dos veces
+                    if ($.fn.DataTable.isDataTable(selector)) return;
+                    
+                    // Definir columnDefs para la última columna
+                    let columnDefs = [];
+                    if (!orderableLastColumn) {
+                        // Si la última columna NO debe ser ordenable (Acciones)
+                        columnDefs.push({ "orderable": false, "targets": -1 });
+                    }
+
+                    $(selector).DataTable({
+                        dom: domLayout,
+                        order: [[0, "asc"]],
+                        pageLength: 10,
+                        lengthMenu: [5, 10, 25, 50],
+                        pagingType: "simple_numbers",
+                        language: datatableLanguage,
+                        
+                        // CLAVE: Deshabilitar la inyección de clases de iconos de DataTables
+                        "bSortClasses": false,
+                        
+                        // Aplicar la configuración de ordenamiento de la última columna
+                        columnDefs: columnDefs, 
+                        
+                        searching: false,
+                        responsive: true,
+                        info: false,
+                    });
+                } catch (err) {
+                    console.error("Error inicializando DataTable para", selector, err);
+                }
             }
-            </tbody>
-        </table>
-    }
 
-    <h3 class="mt-4">Administradores (@Model.Administradores.Count)</h3>
-    @if (!Model.Administradores.Any())
-    {
-        <div class="alert alert-secondary">No hay administradores cargados.</div>
-    }
-    else
-    {
-        <table class="table table-striped align-middle">
-            <thead>
-                <tr>
-                    <th>Id</th>
-                    <th>Nombre y Apellido</th>
-                    <th>Email</th>
-                    <th>Nombre de Usuario</th>
-                    <th>Teléfono</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var a in Model.Administradores)
-            {
-                <tr>
-                    <td>@a.UsuNU</td>
-                    <td>@a.UsuNyA</td>
-                    <td>@a.UsuEmail</td>
-                    <td>@a.UsuNomUsu</td>
-                    <td>@a.UsuNumTel</td>
-                    <td>
-                        <a asp-controller="Usuario" asp-action="EditAdministrador" asp-route-id="@a.UsuNU" 
-                        class="btn btn-sm btn-outline-secondary me-1" title="Editar">
-                        <i class="fa-regular fa-pen-to-square"></i>
-                        </a>
-
-                        <a asp-controller="Usuario" asp-action="DetailsAdministrador" asp-route-id="@a.UsuNU" 
-                        class="btn btn-sm btn-outline-primary me-1" title="Detalles">
-                        <i class="fa-solid fa-eye"></i>
-                        </a>
-
-                        <a asp-controller="Usuario" asp-action="DeleteAdministrador" asp-route-id="@a.UsuNU" 
-                        class="btn btn-sm btn-outline-secondary" title="Eliminar">
-                                <i class="fa-regular fa-trash-can"></i>
-                        </a>
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    }
-
-    <h3 class="mt-4">Playeros (@Model.Playeros.Count)</h3>
-    @if (!Model.Playeros.Any())
-    {
-        <div class="alert alert-secondary">No hay playeros cargados.</div>
-    }
-    else
-    {
-        <table class="table table-striped align-middle">
-            <thead>
-                <tr>
-                    <th>Id</th>
-                    <th>Nombre y Apellido</th>
-                    <th>Email</th>
-                    <th>Nombre de Usuario</th>
-                    <th>Teléfono</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var p in Model.Playeros)
-            {
-                <tr>
-                    <td>@p.UsuNU</td>
-                    <td>@p.UsuNyA</td>
-                    <td>@p.UsuEmail</td>
-                    <td>@p.UsuNomUsu</td>
-                    <td>@p.UsuNumTel</td>
-                    <td>
-                    <td>
-                        <a asp-controller="Usuario" asp-action="EditPlayero" asp-route-id="@p.UsuNU" 
-                        class="btn btn-sm btn-outline-secondary me-1" title="Editar">
-                                <i class="fa-regular fa-pen-to-square"></i>
-                        </a>
-
-                        <a asp-controller="Usuario" asp-action="DetailsPlayero" asp-route-id="@p.UsuNU" 
-                        class="btn btn-sm btn-outline-primary me-1" title="Detalles">
-                        <i class="fa-solid fa-eye"></i>
-                        </a>
-
-                        <a asp-controller="Usuario" asp-action="DeletePlayero" asp-route-id="@p.UsuNU" 
-                        class="btn btn-sm btn-outline-secondary" title="Eliminar">
-                                <i class="fa-regular fa-trash-can"></i>
-                        </a>
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    }
+            $(document).ready(function () {
+                // Duenios: La última columna (CUIT) SÍ es ordenable (true)
+                initIfExists('#dueniosTable', true); 
+                
+                // Conductores: La última columna (Acciones) NO es ordenable (false)
+                initIfExists('#conductoresTable', false); 
+                
+                // Administradores: La última columna (Acciones) NO es ordenable (false)
+                initIfExists('#administradoresTable', false);
+                
+                // Playeros: La última columna (Acciones) NO es ordenable (false)
+                initIfExists('#playerosTable', false);
+            });
+        })();
+    </script>
 }
+
+columnDefs: [{ "orderable": false, "targets": -1 }],
