@@ -1,11 +1,11 @@
 @model estacionamientos.Models.ViewModels.TarifasIndexVM
 @{
-    ViewData["Title"] = "Tarifas de Servicios";
+    ViewData["Title"] = "Tarifas de servicios";
 
     string LabelFiltro(string v) => v?.ToLower() switch {
         "servicio" => "Servicio",
-        "clase" => "Clase Vehículo",
-        "fechas" => "Rango de Fechas",
+        "clase" => "Clase vehículo",
+        "fechas" => "Rango de fechas",
         "monto" => "Monto",
         _ => "Todos"
     };
@@ -63,8 +63,8 @@
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="#" data-value="todos">Todos</a></li>
                     <li><a class="dropdown-item" href="#" data-value="servicio">Servicio</a></li>
-                    <li><a class="dropdown-item" href="#" data-value="clase">Clase Vehículo</a></li>
-                    <li><a class="dropdown-item" href="#" data-value="fechas">Rango de Fechas</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="clase">Clase vehículo</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="fechas">Rango de fechas</a></li>
                     <li><a class="dropdown-item" href="#" data-value="monto">Monto</a></li>
                 </ul>
             </div>
@@ -90,7 +90,7 @@
             asp-action="Create"
             asp-route-plySel="@ViewBag.PlyID"      
             title="+ Nueva Tarifa">
-        <i class="fa-solid fa-plus"></i> Agregar Tarifa
+        <i class="fa-solid fa-plus"></i> Agregar tarifa
             </a>
 
             <a asp-action="Historial" 
@@ -287,7 +287,7 @@
         <thead>
             <tr>
                 <th style="width: 25%">Servicio</th>
-                <th style="width: 15%">Clase Vehículo</th>
+                <th style="width: 15%">Clase vehículo</th>
                 <th style="width: 10%">Desde</th>
                 <th style="width: 10%">Hasta</th>
                 <th style="width: 10%">Monto</th>
@@ -385,7 +385,7 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="confirmSuspendModalLabel">Confirmar Suspensión de Tarifa</h5>
+                    <h5 class="modal-title" id="confirmSuspendModalLabel">Confirmar suspensión de tarifa</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -415,7 +415,7 @@
 
 
 <script>
-  const mapLbl = {todos:'Todos', servicio:'Servicio', clase:'Clase Vehículo', fechas:'Rango de Fechas', monto:'Monto'};
+  const mapLbl = {todos:'Todos', servicio:'Servicio', clase:'Clase Vehículo', fechas:'Rango de fechas', monto:'Monto'};
 
   // Habilita/oculta inputs de búsqueda según el filtro elegido y actualiza la etiqueta
   function updateFilterUI() {

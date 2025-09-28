@@ -1,7 +1,7 @@
 @model estacionamientos.Models.TarifaServicio
 
 @{
-    ViewData["Title"] = "Cerrar Tarifa";
+    ViewData["Title"] = "Cerrar tarifa";
 }
 
 <h2>Cerrar Tarifa</h2>
@@ -17,7 +17,7 @@
     <dt class="col-sm-3">Servicio</dt>
     <dd class="col-sm-9">@Model.ServicioProveido.Servicio.SerNom</dd>
 
-    <dt class="col-sm-3">Clase Vehículo</dt>
+    <dt class="col-sm-3">Clase vehículo</dt>
     <dd class="col-sm-9">@Model.ClasificacionVehiculo.ClasVehTipo</dd>
 
     <dt class="col-sm-3">Monto</dt>
@@ -30,7 +30,7 @@
     <input type="hidden" asp-for="ClasVehID" />
     <input type="hidden" asp-for="TasFecIni" />
 
-     <button type="submit" class="btn btn-danger">Cerrar Tarifa</button>
+     <button type="submit" class="btn btn-danger">Cerrar tarifa</button>
     <a asp-action="Index"
        asp-route-plyID="@Model.PlyID" 
        class="btn btn-secondary">Cancelar</a>

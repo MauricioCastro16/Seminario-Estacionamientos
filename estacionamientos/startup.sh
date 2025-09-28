@@ -334,11 +334,11 @@ INSERT INTO "Servicio" ("SerID", "SerDesc", "SerNom", "SerTipo") VALUES
 (2, 'Revisión y mantenimiento mecánico del vehículo', 'Mantenimiento de vehículo', 'ServicioExtra'),
 (3, 'Carga de combustible en el vehículo', 'Carga de combustible', 'ServicioExtra'),
 (4, 'Revisión técnica del vehículo para verificar su estado', 'Revisión técnica', 'ServicioExtra'),
-(5, 'Servicio de estacionamiento por 1 hora en playa', 'Estacionamiento por 1 Hora', 'Estacionamiento'),
-(6, 'Servicio de estacionamiento por 6 horas en playa', 'Estacionamiento por 6 Horas', 'Estacionamiento'),
-(7, 'Servicio de estacionamiento por 1 día en playa', 'Estacionamiento por 1 Día', 'Estacionamiento'),
-(8, 'Servicio de estacionamiento por 1 semana en playa', 'Estacionamiento por 1 Semana', 'Estacionamiento'),
-(9, 'Servicio de estacionamiento por 1 mes en playa', 'Estacionamiento por 1 Mes', 'Estacionamiento');
+(5, 'Servicio de estacionamiento por 1 hora en playa', 'Estacionamiento por 1 hora', 'Estacionamiento'),
+(6, 'Servicio de estacionamiento por 6 horas en playa', 'Estacionamiento por 6 horas', 'Estacionamiento'),
+(7, 'Servicio de estacionamiento por 1 día en playa', 'Estacionamiento por 1 día', 'Estacionamiento'),
+(8, 'Servicio de estacionamiento por 1 semana en playa', 'Estacionamiento por 1 semana', 'Estacionamiento'),
+(9, 'Servicio de estacionamiento por 1 mes en playa', 'Estacionamiento por 1 mes', 'Estacionamiento');
 
 INSERT INTO "Usuario" ("UsuNU", "UsuEmail", "UsuNomUsu", "UsuNumTel", "UsuNyA", "UsuPswd") VALUES 
 (1, 'castromauricionicolas@hotmail.com', 'MauriCastro', '1234567890', 'Mauricio Nicolás Castro', '12345678'),

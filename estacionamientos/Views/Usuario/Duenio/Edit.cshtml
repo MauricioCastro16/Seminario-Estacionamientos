@@ -1,6 +1,6 @@
 @model estacionamientos.Models.Duenio
 @{
-    ViewData["Title"] = "Editar Dueño";
+    ViewData["Title"] = "Editar dueño";
 }
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="mb-0">@ViewData["Title"]</h1>
@@ -17,31 +17,31 @@
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
     <div class="mb-3">
-        <label asp-for="UsuNyA" class="form-label"></label>
+        <label asp-for="UsuNyA" class="form-label">Nombre y apellido</label>
         <input asp-for="UsuNyA" class="form-control" />
         <span asp-validation-for="UsuNyA" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
-        <label asp-for="UsuEmail" class="form-label"></label>
+        <label asp-for="UsuEmail" class="form-label">Correo electrónico</label>
         <input asp-for="UsuEmail" class="form-control" />
         <span asp-validation-for="UsuEmail" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
-        <label asp-for="UsuPswd" class="form-label"></label>
+        <label asp-for="UsuPswd" class="form-label">Contraseña</label>
         <input asp-for="UsuPswd" type="password" class="form-control" />
         <span asp-validation-for="UsuPswd" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
-        <label asp-for="UsuNumTel" class="form-label"></label>
+        <label asp-for="UsuNumTel" class="form-label">Teléfono</label>
         <input asp-for="UsuNumTel" class="form-control" />
         <span asp-validation-for="UsuNumTel" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
-        <label asp-for="DueCuit" class="form-label"></label>
+        <label asp-for="DueCuit" class="form-label">CUIT</label>
         <input asp-for="DueCuit" class="form-control" />
         <span asp-validation-for="DueCuit" class="text-danger"></span>
     </div>

@@ -31,7 +31,7 @@
 
         <!-- Campo de texto -->
         <div class="col-md-5 @(Model.FilterBy == "provincia" ? "d-none" : "")" id="qWrapper">
-            <input name="Q" id="qInput" value="@Model.Q" class="form-control" placeholder="Buscar Playas..." />
+            <input name="Q" id="qInput" value="@Model.Q" class="form-control" placeholder="Buscar playas..." />
         </div>
 
         <!-- Select de provincias -->
@@ -82,7 +82,7 @@
             asp-controller="PlayaEstacionamiento"
             asp-action="Create"
             title="Agregar playa">
-        <i class="fa-solid fa-plus"></i> Agregar Playa
+        <i class="fa-solid fa-plus"></i> Agregar playa
             </a>
         </div>
 
@@ -288,7 +288,7 @@
                             asp-action="Index"
                             asp-controller="AceptaMetodoPago"
                             asp-route-plyID="@playa.PlyID"
-                            title="Métodos de Pago">
+                            title="Métodos de pago">
                               <i class="fa-regular fa-credit-card"></i>
                           </a>
                           <a class="btn btn-outline-primary btn-sm"

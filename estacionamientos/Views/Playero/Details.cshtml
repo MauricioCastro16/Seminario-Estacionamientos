@@ -1,12 +1,12 @@
 @model estacionamientos.Models.Playero
 
 @{
-    ViewData["Title"] = "Detalles del Playero";
+    ViewData["Title"] = "Detalles del playero";
 }
 
 <div class="container" style="max-width: 600px;">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">Detalles del Playero</h2>
+        <h2 class="mb-0">Detalles del playero</h2>
         <a asp-action="Index" class="btn btn-secondary">
             <i class="fa-solid fa-arrow-left"></i> Volver
         </a>
@@ -16,7 +16,7 @@
         <dt class="col-sm-3">Nombre</dt>
         <dd class="col-sm-9">@Model.UsuNyA</dd>
 
-        <dt class="col-sm-3">Email</dt>
+        <dt class="col-sm-3">Correo electrónico</dt>
         <dd class="col-sm-9">@Model.UsuEmail</dd>
 
         <dt class="col-sm-3">Teléfono</dt>
