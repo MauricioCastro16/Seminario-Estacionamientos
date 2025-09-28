@@ -262,50 +262,73 @@
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
     <script>
-    (function () {
-        const datatableLanguage = {
-            url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json",
-            lengthMenu: "Mostrar _MENU_ usuarios",
-            paginate: {
-                previous: "« Anterior",
-                next: "Siguiente »"
+        (function () {
+            const datatableLanguage = {
+                url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json",
+                lengthMenu: "Mostrar _MENU_ usuarios",
+                paginate: {
+                    previous: "« Anterior",
+                    next: "Siguiente »"
+                }
+            };
+
+            const domLayout =
+                "<'row mb-3'<'col-12 col-md-6'l>>" +
+                "<'row'<'col-12'tr>>" +
+                "<'row mt-3'<'col-12 col-md-6'i><'col-12 col-md-6 d-flex justify-content-md-end'p>>";
+
+            function initIfExists(selector, orderableLastColumn) {
+                try {
+                    if (!document.querySelector(selector)) return;
+
+                    // evitar inicializar dos veces
+                    if ($.fn.DataTable.isDataTable(selector)) return;
+                    
+                    // Definir columnDefs para la última columna
+                    let columnDefs = [];
+                    if (!orderableLastColumn) {
+                        // Si la última columna NO debe ser ordenable (Acciones)
+                        columnDefs.push({ "orderable": false, "targets": -1 });
+                    }
+
+                    $(selector).DataTable({
+                        dom: domLayout,
+                        order: [[0, "asc"]],
+                        pageLength: 10,
+                        lengthMenu: [5, 10, 25, 50],
+                        pagingType: "simple_numbers",
+                        language: datatableLanguage,
+                        
+                        // CLAVE: Deshabilitar la inyección de clases de iconos de DataTables
+                        "bSortClasses": false,
+                        
+                        // Aplicar la configuración de ordenamiento de la última columna
+                        columnDefs: columnDefs, 
+                        
+                        searching: false,
+                        responsive: true,
+                        info: false,
+                    });
+                } catch (err) {
+                    console.error("Error inicializando DataTable para", selector, err);
+                }
             }
-        };
 
-        const domLayout =
-            "<'row mb-3'<'col-12 col-md-6'l>>" +
-            "<'row'<'col-12'tr>>" +
-            "<'row mt-3'<'col-12 col-md-6'i><'col-12 col-md-6 d-flex justify-content-md-end'p>>";
-
-        function initIfExists(selector) {
-            try {
-                if (!document.querySelector(selector)) return;
-
-                // evitar inicializar dos veces
-                if ($.fn.DataTable.isDataTable(selector)) return;
-
-                $(selector).DataTable({
-                    dom: domLayout,
-                    order: [[0, "asc"]],
-                    pageLength: 10,
-                    lengthMenu: [5, 10, 25, 50],
-                    pagingType: "simple_numbers",
-                    language: datatableLanguage,
-                    searching: false,
-                    responsive: true,
-                    info: false,
-                });
-            } catch (err) {
-                console.error("Error inicializando DataTable para", selector, err);
-            }
-        }
-
-        $(document).ready(function () {
-            initIfExists('#dueniosTable');
-            initIfExists('#conductoresTable');
-            initIfExists('#administradoresTable');
-            initIfExists('#playerosTable');
-        });
-    })();
+            $(document).ready(function () {
+                // Duenios: La última columna (CUIT) SÍ es ordenable (true)
+                initIfExists('#dueniosTable', true); 
+                
+                // Conductores: La última columna (Acciones) NO es ordenable (false)
+                initIfExists('#conductoresTable', false); 
+                
+                // Administradores: La última columna (Acciones) NO es ordenable (false)
+                initIfExists('#administradoresTable', false);
+                
+                // Playeros: La última columna (Acciones) NO es ordenable (false)
+                initIfExists('#playerosTable', false);
+            });
+        })();
     </script>
 }
+
+columnDefs: [{ "orderable": false, "targets": -1 }],
