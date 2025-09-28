@@ -1,18 +1,18 @@
 @model estacionamientos.Models.Duenio
 @{
-    ViewData["Title"] = "Eliminar Dueño";
+    ViewData["Title"] = "Eliminar dueño";
 }
 <h1>@ViewData["Title"]</h1>
 <hr />
 
 <div class="alert alert-danger">
-    ¿Confirmás que querés eliminar este dueño?
+    ¿Desea eliminar el dueño?
 </div>
 
 <dl class="row">
-    <dt class="col-sm-3">Id</dt><dd class="col-sm-9">@Model.UsuNU</dd>
-    <dt class="col-sm-3">Nombre y Apellido</dt><dd class="col-sm-9">@Model.UsuNyA</dd>
-    <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@Model.UsuEmail</dd>
+    <dt class="col-sm-3">II</dt><dd class="col-sm-9">@Model.UsuNU</dd>
+    <dt class="col-sm-3">Nombre y apellido</dt><dd class="col-sm-9">@Model.UsuNyA</dd>
+    <dt class="col-sm-3">Correo electrónico</dt><dd class="col-sm-9">@Model.UsuEmail</dd>
     <dt class="col-sm-3">CUIT</dt><dd class="col-sm-9">@Model.DueCuit</dd>
 </dl>
 

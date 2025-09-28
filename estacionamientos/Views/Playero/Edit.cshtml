@@ -1,30 +1,30 @@
 @model estacionamientos.Models.Playero
 
 @{
-    ViewData["Title"] = "Editar Playero";
+    ViewData["Title"] = "Editar playero";
 }
 
 <div class="container" style="max-width: 600px;">
-    <h2 class="mb-4">Editar Playero</h2>
+    <h2 class="mb-4">Editar playero</h2>
 
     <form asp-action="Edit" method="post">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="UsuNU" />
 
         <div class="mb-3">
-            <label asp-for="UsuNyA" class="form-label"></label>
+            <label asp-for="UsuNyA" class="form-label">Nombre y apellido</label>
             <input asp-for="UsuNyA" class="form-control" />
             <span asp-validation-for="UsuNyA" class="text-danger"></span>
         </div>
 
         <div class="mb-3">
-            <label asp-for="UsuEmail" class="form-label"></label>
+            <label asp-for="UsuEmail" class="form-label">Correo electrónico</label>
             <input asp-for="UsuEmail" class="form-control" />
             <span asp-validation-for="UsuEmail" class="text-danger"></span>
         </div>
 
         <div class="mb-3">
-            <label asp-for="UsuNumTel" class="form-label"></label>
+            <label asp-for="UsuNumTel" class="form-label">Teléfono</label>
             <input asp-for="UsuNumTel" class="form-control" />
             <span asp-validation-for="UsuNumTel" class="text-danger"></span>
         </div>

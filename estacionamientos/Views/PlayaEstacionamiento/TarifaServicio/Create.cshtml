@@ -1,10 +1,10 @@
 @model estacionamientos.Models.TarifaServicio
 @{
-    ViewData["Title"] = "Nueva Tarifa";
+    ViewData["Title"] = "Nueva tarifa";
 }
 
 <div class="container">
-    <h2 class="mb-4">Nueva Tarifa</h2>
+    <h2 class="mb-4">Nueva tarifa</h2>
 
     <form asp-action="Create" method="post" class="card p-4 shadow-sm">
         <div class="mb-3">
@@ -23,7 +23,7 @@
 
 
         <div class="mb-3">
-            <label asp-for="ClasVehID" class="form-label">Clase de Vehículo</label>
+            <label asp-for="ClasVehID" class="form-label">Clase de vehículo</label>
             <select asp-for="ClasVehID" class="form-select" asp-items="ViewBag.ClasVehID"></select>
             <span asp-validation-for="ClasVehID" class="text-danger"></span>
         </div>
@@ -52,7 +52,7 @@
         }
         
         <div class="d-flex w-100 mt-4 gap-2">
-            <button type="submit" class="btn btn-primary flex-fill" id="btnGuardar">Guardar Cambios</button>
+            <button type="submit" class="btn btn-primary flex-fill" id="btnGuardar">Guardar cambios</button>
             <a asp-controller="TarifaServicio"
                asp-action="Index"
                asp-route-plyID="@Model.PlyID"   

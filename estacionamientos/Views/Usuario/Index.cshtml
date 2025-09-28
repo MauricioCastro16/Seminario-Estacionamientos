@@ -47,8 +47,7 @@
 @if (!Model.Duenios.Any() && 
 !Model.Conductores.Any()) 
 { 
-    <div class="alert alert-info">No hay usuarios aún.
-    </div> 
+    <div class="alert alert-info">No hay usuarios aún</div> 
     } 
     else 
     { 
@@ -56,19 +55,17 @@
         </h3> 
         @if (!Model.Duenios.Any()) 
         { 
-            <div class="alert alert-secondary">No hay dueños cargados.
-
-            </div> 
+            <div class="alert alert-secondary">No hay dueños cargados</div> 
             } 
             else 
             { 
                 <table id="dueniosTable" class="table table-striped table-hover table-sm align-middle text-center"> 
                     <thead> 
                         <tr> 
-                            <th class="text-center">Id</th> 
-                            <th class="text-center">Nombre y Apellido</th> 
-                            <th class="text-center">Email</th> 
-                            <th class="text-center">Nombre de Usuario</th>
+                            <th class="text-center">ID</th> 
+                            <th class="text-center">Nombre</th> 
+                            <th class="text-center">Correo electrónico</th> 
+                            <th class="text-center">Nombre de usuario</th>
                             <th class="text-center">Teléfono</th> 
                             <th class="text-center">CUIT</th>
                         </tr> 
@@ -92,17 +89,17 @@
         <h3 class="mt-4">Conductores (@Model.Conductores.Count)</h3>
         @if (!Model.Conductores.Any())
         {
-            <div class="alert alert-secondary">No hay conductores cargados.</div>
+            <div class="alert alert-secondary">No hay conductores cargados</div>
         }
         else
         {
             <table id="conductoresTable" class="table table-striped table-hover table-sm align-middle text-center">
                 <thead>
                     <tr>
-                        <th class="text-center">Id</th>
-                        <th class="text-center">Nombre y Apellido</th>
-                        <th class="text-center">Email</th>
-                        <th class="text-center">Nombre de Usuario</th>
+                        <th class="text-center">ID</th>
+                        <th class="text-center">Nombre</th>
+                        <th class="text-center">Correo electrónico</th>
+                        <th class="text-center">Nombre de usuario</th>
                         <th class="text-center">Teléfono</th>
                         <th class="text-center">Acciones</th>
                     </tr>
@@ -141,17 +138,17 @@
         <h3 class="mt-4">Administradores (@Model.Administradores.Count)</h3>
         @if (!Model.Administradores.Any())
         {
-            <div class="alert alert-secondary">No hay administradores cargados.</div>
+            <div class="alert alert-secondary">No hay administradores cargados</div>
         }
         else
         {
             <table id="administradoresTable" class="table table-striped table-hover table-sm align-middle text-center">
                 <thead>
                     <tr>
-                        <th class="text-center">Id</th>
-                        <th class="text-center">Nombre y Apellido</th>
-                        <th class="text-center">Email</th>
-                        <th class="text-center">Nombre de Usuario</th>
+                        <th class="text-center">ID</th>
+                        <th class="text-center">Nombre</th>
+                        <th class="text-center">Correo electrónico</th>
+                        <th class="text-center">Nombre de usuario</th>
                         <th class="text-center">Teléfono</th>
                         <th class="text-center">Acciones</th>
                     </tr>
@@ -190,17 +187,17 @@
         <h3 class="mt-4">Playeros (@Model.Playeros.Count)</h3>
         @if (!Model.Playeros.Any())
         {
-            <div class="alert alert-secondary">No hay playeros cargados.</div>
+            <div class="alert alert-secondary">No hay playeros cargados</div>
         }
         else
         {
             <table id="playerosTable" class="table table-striped table-hover table-sm align-middle text-center">
                 <thead>
                     <tr>
-                        <th class="text-center">Id</th>
-                        <th class="text-center">Nombre y Apellido</th>
-                        <th class="text-center">Email</th>
-                        <th class="text-center">Nombre de Usuario</th>
+                        <th class="text-center">ID</th>
+                        <th class="text-center">Nombre</th>
+                        <th class="text-center">Correo electrónico</th>
+                        <th class="text-center">Nombre de usuario</th>
                         <th class="text-center">Teléfono</th>
                         <th class="text-center">Acciones</th>
                     </tr>
@@ -330,5 +327,3 @@
         })();
     </script>
 }
-
-columnDefs: [{ "orderable": false, "targets": -1 }],

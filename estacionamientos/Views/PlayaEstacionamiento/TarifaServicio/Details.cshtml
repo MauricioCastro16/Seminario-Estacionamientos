@@ -1,11 +1,11 @@
 @model estacionamientos.Models.TarifaServicio
 
 @{
-    ViewData["Title"] = "Detalles de Tarifa";
+    ViewData["Title"] = "Detalles de tarifa";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Detalles de Tarifa</h2>
+    <h2 class="mb-0">Detalles de tarifa</h2>
     <a asp-action="Index"
        asp-route-plyID="@Model.PlyID"
        class="btn btn-outline-secondary">
@@ -20,7 +20,7 @@
     <dt class="col-sm-3">Servicio</dt>
     <dd class="col-sm-9">@Model.ServicioProveido.Servicio.SerNom</dd>
 
-    <dt class="col-sm-3">Clase Vehículo</dt>
+    <dt class="col-sm-3">Clase vehículo</dt>
     <dd class="col-sm-9">@Model.ClasificacionVehiculo.ClasVehTipo</dd>
 
     <dt class="col-sm-3">Vigencia</dt>

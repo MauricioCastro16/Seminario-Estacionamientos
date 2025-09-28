@@ -39,7 +39,7 @@
 
                 <div class="col-md-6">
                     <h6 class="text-uppercase text-muted fw-bold mb-3">
-                        <i class="fas fa-clock me-1"></i> Tiempo de Ocupación
+                        <i class="fas fa-clock me-1"></i> Tiempo de ocupación
                     </h6>
                     <table class="table table-sm align-middle">
                         <tbody>
@@ -128,7 +128,7 @@
                 <div class="row g-4 mb-4">
                     <div class="col-md-6">
                         <label asp-for="MepID" class="form-label fw-bold">
-                            <i class="fas fa-credit-card me-1"></i> Método de Pago
+                            <i class="fas fa-credit-card me-1"></i> Método de pago
                         </label>
                         <select asp-for="MepID" class="form-select" required>
                             <option value="">Seleccione...</option>
@@ -148,7 +148,7 @@
                     <button type="submit" 
                             class="btn btn-primary px-4" 
                             @(Model.TotalCobro <= 0 ? "disabled" : "")>
-                        <i class="fas fa-check me-1"></i> Confirmar Egreso
+                        <i class="fas fa-check me-1"></i> Confirmar egreso
                     </button>
                 </div>
             </form>

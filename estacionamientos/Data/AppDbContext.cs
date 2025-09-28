@@ -153,7 +153,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             new Servicio
             {
                 SerID = 7,
-                SerNom = "Estacionamiento por 1 Día",
+                SerNom = "Estacionamiento por 1 día",
                 SerTipo = "Estacionamiento",
                 SerDesc = "Servicio de estacionamiento por 1 día en playa",
                 SerDuracionMinutos = 1440

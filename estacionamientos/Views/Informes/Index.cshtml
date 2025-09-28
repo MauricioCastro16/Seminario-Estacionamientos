@@ -32,11 +32,11 @@
     <!-- Filtro de fechas -->
     <form id="dateRangeForm" method="GET" asp-controller="Informes" asp-action="Index" class="row g-3 mb-4">
         <div class="col-md-6">
-            <label for="desde" class="form-label">Fecha Desde</label>
+            <label for="desde" class="form-label">Fecha desde</label>
             <input type="date" class="form-control" id="desde" name="desde" value="@Model.Filtros.Desde.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
         </div>
         <div class="col-md-6">
-            <label for="hasta" class="form-label">Fecha Hasta</label>
+            <label for="hasta" class="form-label">Fecha hasta</label>
             <input type="date" class="form-control" id="hasta" name="hasta" value="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
         </div>
     </form>
@@ -46,7 +46,7 @@
         <div class="col-12 col-md-4">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <div class="text-muted small">Ingresos Totales</div>
+                    <div class="text-muted small">Ingresos totales</div>
                     <div class="h4 m-0">$ @k.IngresosTotales.ToString("N2")</div>
                 </div>
             </div>
@@ -54,7 +54,7 @@
         <div class="col-6 col-md-4">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <div class="text-muted small">Cantidad de Pagos</div>
+                    <div class="text-muted small">Cantidad de pagos</div>
                     <div class="h4 m-0">@k.CantPagos</div>
                 </div>
             </div>
