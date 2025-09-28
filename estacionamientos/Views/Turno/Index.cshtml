@@ -128,8 +128,7 @@
                                 var total = TotalTurno(t);
                                 if (total.HasValue)
                                 {
-                                    // Aplica 'text-danger fw-bold' si el total es negativo, si no, usa 'fw-bold' (Negro/Predeterminado)
-                                    var totalClass = total.Value < 0 ? "text-danger" : "";
+                                    var totalClass = total.Value < 0 ? "text-danger fw-bold" : "";
                                     <span class="@totalClass">@total.Value.ToString("N2")</span>
                                 }
                                 else

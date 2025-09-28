@@ -71,7 +71,7 @@
             <th class="text-center">Ingreso</th>
             <th class="text-center">Egreso</th>
             <th class="text-center">Estado</th> 
-            <th class="text-center">Detalles</th> @* Última columna (índice 6) *@
+            <th class="text-center">Detalles</th>
         </tr>
     </thead>
     <tbody>
@@ -156,7 +156,6 @@
         // --- INICIALIZACIÓN DE TABLA DE OCUPACIONES (ID: ocupacionesTable) ---
         $('#ocupacionesTable').DataTable({
             "columnDefs": [
-                // Columna de Estado (índice 5) y Detalles (índice 6) no son ordenables
                 { "orderable": false, "targets": [5, 6] } 
             ],
             // Dom: 'lfrtip' (Length, Filter, Table, Info, Paging)
