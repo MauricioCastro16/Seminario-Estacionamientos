@@ -179,7 +179,17 @@ namespace estacionamientos.Controllers
         // Listado
         // ===========================
         public async Task<IActionResult> Index()
-        {
+        {   
+            IQueryable<Ocupacion> query = _ctx.Ocupaciones
+                .Include(o => o.Plaza)
+                    .ThenInclude(p => p.Clasificaciones)
+                        .ThenInclude(pc => pc.Clasificacion)
+                .Include(o => o.Plaza).ThenInclude(p => p.Playa)
+                .Include(o => o.Vehiculo).ThenInclude(v => v.Clasificacion)
+                .Include(o => o.Pago)
+                .AsNoTracking();
+
+            // Filtro dinámico según rol
             if (User.IsInRole("Playero"))
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -192,29 +202,17 @@ namespace estacionamientos.Controllers
                 if (turno == null)
                     return View("NoTurno");
 
-                var q = _ctx.Ocupaciones
-                    .Include(o => o.Plaza)
-                        .ThenInclude(p => p.Clasificaciones)
-                            .ThenInclude(pc => pc.Clasificacion)
-                    .Include(o => o.Plaza).ThenInclude(p => p.Playa)
-                    .Include(o => o.Vehiculo).ThenInclude(v => v.Clasificacion)
-                    .Include(o => o.Pago)
-                    .Where(o => o.PlyID == turno.PlyID)
-                    .AsNoTracking();
-
-                return View(await q.ToListAsync());
+                query = query.Where(o => o.PlyID == turno.PlyID);
             }
 
-            var qAll = _ctx.Ocupaciones
-                .Include(o => o.Plaza)
-                    .ThenInclude(p => p.Clasificaciones)
-                        .ThenInclude(pc => pc.Clasificacion)
-                .Include(o => o.Plaza).ThenInclude(p => p.Playa)
-                .Include(o => o.Vehiculo).ThenInclude(v => v.Clasificacion)
-                .Include(o => o.Pago)
-                .AsNoTracking();
+            // Ordenamiento: activos primero, luego por fecha de ingreso descendente
+            query = query
+                .OrderByDescending(o => o.OcufFyhFin == null ? 1 : 0) // activos primero
+                .ThenByDescending(o => o.OcufFyhIni);
 
-            return View(await qAll.ToListAsync());
+            var ocupaciones = await query.ToListAsync();
+
+            return View(ocupaciones);
         }
 
         // ===========================
@@ -697,6 +695,35 @@ namespace estacionamientos.Controllers
             _ctx.Ocupaciones.Remove(item);
             await _ctx.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
+        }
+
+        public async Task<IActionResult> ReubicarVehiculo(int plyID, int plzNum)
+        {
+            var ocupacionActual = await _ctx.Ocupaciones
+                .Where(o => o.PlyID == plyID && o.PlzNum == plzNum)
+                .Include(o => o.Plaza)
+                    .ThenInclude(p => p.Clasificaciones)
+                        .ThenInclude(pc => pc.Clasificacion)
+                .Include(o => o.Plaza)
+                    .ThenInclude(p => p.Playa)
+                .Include(o => o.Vehiculo)
+                    .ThenInclude(v => v.Clasificacion)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(); // <-- Asegurate de usar await
+
+            if (ocupacionActual == null)
+                return NotFound();
+
+            var tipoVehiculo = ocupacionActual?.Vehiculo?.ClasVehID;
+
+            var plazasValidas = await _ctx.PlazasClasificaciones
+                .Where(plz => plz.PlyID == plyID)
+                .Include(plz => plz.Plaza)
+                    .ThenInclude(plz => plz.Ocupaciones.Where(o => o.OcufFyhFin == null))
+                .Include(plz => plz.Clasificacion)
+                .ToListAsync();
+            
+            return View("ReubicarVehiculo", (ocupacionActual, plazasValidas));
         }
     }
 }

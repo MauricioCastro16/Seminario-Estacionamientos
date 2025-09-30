@@ -71,7 +71,7 @@
             <th class="text-center">Ingreso</th>
             <th class="text-center">Egreso</th>
             <th class="text-center">Estado</th> 
-            <th class="text-center">Detalles</th>
+            <th class="text-center">Acciones</th>
         </tr>
     </thead>
     <tbody>
@@ -109,6 +109,24 @@
                             title="Ver detalles">
                         <i class="fa fa-eye"></i>
                     </button>
+
+                    @if (item.OcufFyhFin == null)
+                    {
+                        <form asp-action="ReubicarVehiculo" method="get" class="d-inline">
+                            <input type="hidden" name="plyID" value="@item.PlyID" />
+                            <input type="hidden" name="plzNum" value="@item.PlzNum" />
+                            <button type="submit" class="btn btn-outline-primary btn-sm" title="Reubicar vehículo">
+                                <i class="fa-solid fa-arrows-alt"></i>
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-outline-primary btn-sm" title="Reubicar vehículo" disabled>
+                            <i class="fa-solid fa-arrows-alt"></i>
+                        </button>
+                    }
+                    
                 </td>
             </tr>
         }
@@ -160,7 +178,7 @@
             ],
             // Dom: 'lfrtip' (Length, Filter, Table, Info, Paging)
             "dom": 'lrtp', 
-            "order": [[3, "desc"]], // Ordenar por la columna "Ingreso" (índice 3) descendente
+            "order": [], // Ya viene ordenado desde el controlador
             "pageLength": 10,
             "lengthMenu": [5, 10, 25, 50],
             "pagingType": "simple_numbers", 
