@@ -145,23 +145,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             new Servicio
             {
                 SerID = 7,
-                SerNom = "Estacionamiento por 1 Día",
+                SerNom = "Abono por 1 Día",
                 SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de estacionamiento por 1 día en playa"
+                SerDesc = "Servicio de abono por 1 día en playa"
             },
             new Servicio
             {
                 SerID = 8,
-                SerNom = "Estacionamiento por 1 Semana",
+                SerNom = "Abono por 1 Semana",
                 SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de estacionamiento por 1 semana en playa"
+                SerDesc = "Servicio de abono por 1 semana en playa"
             },
             new Servicio
             {
                 SerID = 9,
-                SerNom = "Estacionamiento por 1 Mes",
+                SerNom = "Abono por 1 Mes",
                 SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de estacionamiento por 1 mes en playa"
+                SerDesc = "Servicio de abono por 1 mes en playa"
             }
             );
 

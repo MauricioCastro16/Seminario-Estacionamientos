@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
+using estacionamientos.ViewModels;
 using estacionamientos.ViewModels.SelectOptions;
 using System.Security.Claims;
+
 
 
 namespace estacionamientos.Controllers
@@ -14,25 +16,13 @@ namespace estacionamientos.Controllers
         private readonly AppDbContext _ctx;
         public AbonoController(AppDbContext ctx) => _ctx = ctx;
 
-        private async Task LoadSelects(int? plySel = null, int? plzSel = null, string? dniSel = null, int? pagSel = null)
+        private async Task LoadSelects(int? plySel = null, int? pagSel = null)
         {
             var playas = await _ctx.Playas.AsNoTracking()
                 .OrderBy(p => p.PlyCiu).ThenBy(p => p.PlyDir)
-                .Select(p => new { p.PlyID, Nombre = p.PlyCiu + " - " + p.PlyDir }).ToListAsync();
+                .Select(p => new { p.PlyID, Nombre = p.PlyCiu + " - " + p.PlyDir })
+                .ToListAsync();
             ViewBag.PlyID = new SelectList(playas, "PlyID", "Nombre", plySel);
-
-            var plazas = plySel is null
-                ? new List<OpcionPlaza>()
-                : await _ctx.Plazas.AsNoTracking()
-                    .Where(p => p.PlyID == plySel)
-                    .OrderBy(p => p.PlzNum)
-                    .Select(p => new OpcionPlaza { PlzNum = p.PlzNum })
-                    .ToListAsync();
-            ViewBag.PlzNum = new SelectList(plazas, "PlzNum", "PlzNum", plzSel);
-
-            var abonados = await _ctx.Abonados.AsNoTracking()
-                .OrderBy(a => a.AboNom).Select(a => new { a.AboDNI, a.AboNom }).ToListAsync();
-            ViewBag.AboDNI = new SelectList(abonados, "AboDNI", "AboNom", dniSel);
 
             var pagos = plySel is null
                 ? new List<OpcionPago>()
@@ -42,6 +32,8 @@ namespace estacionamientos.Controllers
                     .Select(p => new OpcionPago { PagNum = p.PagNum, Texto = p.PagNum + " - " + p.PagFyh.ToString("g") })
                     .ToListAsync();
             ViewBag.PagNum = new SelectList(pagos, "PagNum", "Texto", pagSel);
+
+            // 🔹 Ya no cargamos plazas ni abonados
         }
 
         private Task<bool> PagoExiste(int plyID, int pagNum)
@@ -118,20 +110,40 @@ namespace estacionamientos.Controllers
 
                 await LoadSelects(turno.PlyID);
 
-                return View(new Abono
+                ViewBag.ClasVehID = new SelectList(
+                    await _ctx.ClasificacionesVehiculo
+                        .OrderBy(c => c.ClasVehTipo)  
+                        .ToListAsync(),
+                    "ClasVehID", "ClasVehTipo"       
+                );
+
+
+                return View(new AbonoCreateVM
                 {
+                    PlyID = turno.PlyID,
                     AboFyhIni = DateTime.UtcNow,
-                    PlyID = turno.PlyID
+                    Vehiculos = new List<VehiculoVM>() 
                 });
+
             }
 
             await LoadSelects();
-            return View(new Abono { AboFyhIni = DateTime.UtcNow });
+
+            // 🔹 Cargar clasificaciones también aquí
+            ViewBag.ClasVehID = new SelectList(
+                await _ctx.ClasificacionesVehiculo
+                    .OrderBy(c => c.ClasVehTipo)   // 👈 usar ClasVehTipo
+                    .ToListAsync(),
+                "ClasVehID", "ClasVehTipo"        // 👈 usar ClasVehTipo
+            );
+
+            return View(new AbonoCreateVM { AboFyhIni = DateTime.UtcNow });
         }
 
 
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Abono model)
+        public async Task<IActionResult> Create(AbonoCreateVM model)
+
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -156,11 +168,87 @@ namespace estacionamientos.Controllers
 
             if (!ModelState.IsValid)
             {
-                await LoadSelects(model.PlyID, model.PlzNum, model.AboDNI, model.PagNum);
+                await LoadSelects(model.PlyID, model.PagNum);
                 return View(model);
             }
 
-            _ctx.Abonos.Add(model);
+
+            // 1. Abonado
+            var abonado = await _ctx.Abonados.FindAsync(model.AboDNI);
+            if (abonado == null)
+            {
+                abonado = new Abonado { AboDNI = model.AboDNI, AboNom = model.AboNom };
+                _ctx.Abonados.Add(abonado);
+            }
+
+            // 2. Abono
+            var abono = new Abono
+            {
+                PlyID = model.PlyID,
+                AboFyhIni = model.AboFyhIni,
+                AboFyhFin = model.AboFyhFin,
+                AboDNI = model.AboDNI,
+                PagNum = model.PagNum
+                // 🔹 PlzNum se definirá más adelante según los vehículos y plazas disponibles
+            };
+
+
+            // 3. Vehículos
+            foreach (var v in model.Vehiculos)
+            {
+                var vehiculo = await _ctx.Vehiculos.FindAsync(v.VehPtnt);
+                if (vehiculo == null)
+                {
+                    vehiculo = new Vehiculo
+                    {
+                        VehPtnt = v.VehPtnt,
+                        ClasVehID = v.ClasVehID
+                    };
+
+                    _ctx.Vehiculos.Add(vehiculo);
+                }
+
+                abono.Vehiculos.Add(new VehiculoAbonado
+                {
+                    PlyID = abono.PlyID,
+                    PlzNum = abono.PlzNum,
+                    AboFyhIni = abono.AboFyhIni,
+                    VehPtnt = v.VehPtnt
+                });
+            }
+
+            // 4. Calcular monto (ejemplo muy básico, ajustar con tarifas reales)
+            if (model.AboFyhFin != null)
+{
+            var dias = (model.AboFyhFin.Value - model.AboFyhIni).TotalDays;
+
+            // Determinar el servicio según cantidad de días
+            int? serId = dias switch
+            {
+                <= 1 => 7,   // Servicio "Estacionamiento por 1 Día"
+                <= 7 => 8,   // Servicio "Estacionamiento por 1 Semana"
+                <= 30 => 9,  // Servicio "Estacionamiento por 1 Mes"
+                _ => null
+            };
+
+            if (serId != null)
+            {
+                var tarifa = await _ctx.TarifasServicio
+                    .Where(t => t.PlyID == model.PlyID
+                            && t.SerID == serId
+                            && t.ClasVehID == model.Vehiculos.First().ClasVehID
+                            && (t.TasFecFin == null || t.TasFecFin >= model.AboFyhIni))
+                    .OrderByDescending(t => t.TasFecIni) // usar la más reciente vigente
+                    .FirstOrDefaultAsync();
+
+            }
+            else
+            {
+                abono.AboMonto = 0; // para duraciones fuera de rango
+            }
+        }
+
+            _ctx.Abonos.Add(abono);
             await _ctx.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
@@ -170,7 +258,7 @@ namespace estacionamientos.Controllers
         {
             var item = await _ctx.Abonos.FindAsync(plyID, plzNum, aboFyhIni);
             if (item is null) return NotFound();
-            await LoadSelects(item.PlyID, item.PlzNum, item.AboDNI, item.PagNum);
+            await LoadSelects(item.PlyID, item.PagNum);
             return View(item);
         }
 
@@ -181,12 +269,20 @@ namespace estacionamientos.Controllers
 
             if (!await PagoExiste(model.PlyID, model.PagNum))
                 ModelState.AddModelError(nameof(model.PagNum), "El pago no existe para esa playa.");
-
             if (!ModelState.IsValid)
             {
-                await LoadSelects(model.PlyID, model.PlzNum, model.AboDNI, model.PagNum);
+                await LoadSelects(model.PlyID, model.PagNum);
+
+                ViewBag.ClasVehID = new SelectList(
+                    await _ctx.ClasificacionesVehiculo
+                        .OrderBy(c => c.ClasVehTipo)
+                        .ToListAsync(),
+                    "ClasVehID", "ClasVehTipo"
+                );
+
                 return View(model);
             }
+
 
             _ctx.Entry(model).State = EntityState.Modified;
             await _ctx.SaveChangesAsync();

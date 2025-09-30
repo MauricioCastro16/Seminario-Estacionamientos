@@ -1,4 +1,5 @@
-@model estacionamientos.Models.Abono
+@model estacionamientos.ViewModels.AbonoCreateVM
+
 
 @{
     ViewData["Title"] = "Registrar Abono";
@@ -6,9 +7,8 @@
 
 <div class="container py-1">
     <div class="row justify-content-center">
-        <div class="col-12 col-md-10 col-lg-8">
-            <div class="card shadow-sm border-0 rounded-4">
-                <div class="card-body p-4 p-md-5">
+        <div class="col-12 col-lg-10">
+        
 
                     <div class="text-center mb-3">
                         <h2 class="mb-1">@ViewData["Title"]</h2>
@@ -19,54 +19,110 @@
                     <form asp-action="Create" method="post" class="d-grid gap-3">
                         <div class="row g-3">
 
-                            <!-- Playa -->
-                            <div class="col-12">
-                                <label class="form-label fw-medium">Playa</label>
-                                <input type="text" class="form-control" value="@ViewBag.PlayaNombre" disabled />
-                                <input type="hidden" asp-for="PlyID" value="@Model.PlyID" />
+                            <!-- Columna izquierda: Datos del Abono -->
+                            <div class="col-12 col-md-7">
+                                <div class="card shadow-sm border-0 rounded-4 h-100">
+                                    <div class="card-body p-3">
+                                        <h5 class="fw-semibold mb-3"><i class="bi bi-file-earmark-text me-1"></i> Datos del Abono</h5>
+
+                                        <!-- Playa -->
+                                        <div class="mb-3">
+                                            <label class="form-label fw-medium">Playa</label>
+                                            <input type="text" class="form-control" value="@ViewBag.PlayaNombre" disabled />
+                                            <input type="hidden" asp-for="PlyID" value="@Model.PlyID" />
+                                        </div>
+
+                                        <div class="row">
+
+                                        <!-- Abonado DNI -->
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="AboDNI" class="form-label fw-medium">DNI Abonado</label>
+                                            <input asp-for="AboDNI" class="form-control" placeholder="DNI" />
+                                            <span asp-validation-for="AboDNI" class="text-danger small"></span>
+                                        </div>
+
+                                        <!-- Abonado Nombre -->
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="AboNom" class="form-label fw-medium">Nombre Abonado</label>
+                                            <input asp-for="AboNom" class="form-control" placeholder="Nombre" />
+                                            <span asp-validation-for="AboNom" class="text-danger small"></span>
+                                        </div>
+                                    </div>
+
+
+                                        <div class="row">
+                                        <!-- Fecha inicio -->
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="AboFyhIni" class="form-label fw-medium">Fecha inicio</label>
+                                            <input asp-for="AboFyhIni" type="date" class="form-control" />
+                                            <span asp-validation-for="AboFyhIni" class="text-danger small"></span>
+                                        </div>
+
+                                        <!-- Fecha fin -->
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="AboFyhFin" class="form-label fw-medium">Fecha fin</label>
+                                            <input asp-for="AboFyhFin" type="date" class="form-control" />
+                                            <span asp-validation-for="AboFyhFin" class="text-danger small"></span>
+                                        </div>
+                                    </div>
+
+
+                                        <!-- Pago -->
+                                        <div class="mb-3">
+                                            <label asp-for="PagNum" class="form-label fw-medium">Pago</label>
+                                            <select asp-for="PagNum" asp-items="ViewBag.PagNum" class="form-select">
+                                                <option value="">-- Seleccione pago --</option>
+                                            </select>
+                                            <span asp-validation-for="PagNum" class="text-danger small"></span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <!-- Plaza -->
-                            <div class="col-12 col-md-6">
-                                <label asp-for="PlzNum" class="form-label fw-medium">Plaza</label>
-                                <select asp-for="PlzNum" asp-items="ViewBag.PlzNum" class="form-select">
-                                    <option value="">-- Seleccione plaza --</option>
-                                </select>
-                                <span asp-validation-for="PlzNum" class="text-danger small"></span>
+                            <!-- Columna derecha: Vehículos para el abono -->
+                            <div class="col-12 col-md-5">
+                                <div class="card shadow-sm border-0 rounded-4 h-100">
+                                    <div class="card-body p-3">
+                                        <h5 class="fw-semibold mb-3"><i class="bi bi-car-front-fill me-1"></i> Vehículos para el abono</h5>
+
+                                        <div id="vehiculos-list">
+                                            @if (Model.Vehiculos.Count == 0)
+                                                {
+                                                    <p class="text-muted small">No hay vehículos agregados aún.</p>
+                                                }
+                                                else
+                                                {
+                                                    @for (int i = 0; i < Model.Vehiculos.Count; i++)
+                                                    {
+                                                        <div class="row g-2 mb-2 vehiculo-item">
+                                                            <div class="col-md-6">
+                                                                <input asp-for="Vehiculos[i].VehPtnt" class="form-control" placeholder="Patente" />
+                                                                <span asp-validation-for="Vehiculos[i].VehPtnt" class="text-danger small"></span>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <select asp-for="Vehiculos[i].ClasVehID" asp-items="ViewBag.ClasVehID" class="form-select">
+                                                                    <option value="">-- Clasificación --</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                }
+                                        </div>
+                                        <select id="template-clasificaciones" class="d-none">
+                                            @foreach (var clas in (IEnumerable<SelectListItem>)ViewBag.ClasVehID)
+                                            {
+                                                <option value="@clas.Value">@clas.Text</option>
+                                            }
+                                        </select>
+                                        <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="add-vehiculo">
+                                            <i class="bi bi-plus-lg"></i> Agregar Vehículo
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
-                            <!-- Abonado -->
-                            <div class="col-12 col-md-6">
-                                <label asp-for="AboDNI" class="form-label fw-medium">Abonado</label>
-                                <select asp-for="AboDNI" asp-items="ViewBag.AboDNI" class="form-select">
-                                    <option value="">-- Seleccione abonado --</option>
-                                </select>
-                                <span asp-validation-for="AboDNI" class="text-danger small"></span>
-                            </div>
-
-                            <!-- Pago -->
-                            <div class="col-12 col-md-6">
-                                <label asp-for="PagNum" class="form-label fw-medium">Pago</label>
-                                <select asp-for="PagNum" asp-items="ViewBag.PagNum" class="form-select">
-                                    <option value="">-- Seleccione pago --</option>
-                                </select>
-                                <span asp-validation-for="PagNum" class="text-danger small"></span>
-                            </div>
-
-                            <!-- Fecha inicio -->
-                            <div class="col-12 col-md-6">
-                                <label asp-for="AboFyhIni" class="form-label fw-medium">Fecha inicio</label>
-                                <input asp-for="AboFyhIni" type="date" class="form-control" />
-                                <span asp-validation-for="AboFyhIni" class="text-danger small"></span>
-                            </div>
-
-                            <!-- Fecha fin -->
-                            <div class="col-12 col-md-6">
-                                <label asp-for="AboFyhFin" class="form-label fw-medium">Fecha fin</label>
-                                <input asp-for="AboFyhFin" type="date" class="form-control" />
-                                <span asp-validation-for="AboFyhFin" class="text-danger small"></span>
-                            </div>
                         </div>
+
 
                         <!-- Botones -->
                         <div class="text-center mt-3">
@@ -78,12 +134,36 @@
                     </form>
 
 
-                </div>
-            </div>
+                
+            
         </div>
     </div>
 </div>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        document.getElementById('add-vehiculo').addEventListener('click', function () {
+            const list = document.getElementById('vehiculos-list');
+            const index = list.querySelectorAll('.vehiculo-item').length;
+
+            // 👇 obtenemos las opciones desde el template oculto
+            const template = document.getElementById('template-clasificaciones').innerHTML;
+
+            const row = document.createElement('div');
+            row.classList.add('row', 'g-2', 'mb-2', 'vehiculo-item');
+            row.innerHTML = `
+                <div class="col-md-6">
+                    <input name="Vehiculos[${index}].VehPtnt" class="form-control" placeholder="Patente" />
+                </div>
+                <div class="col-md-6">
+                    <select name="Vehiculos[${index}].ClasVehID" class="form-select">
+                        <option value="">-- Clasificación --</option>
+                        ${template}
+                    </select>
+                </div>`;
+
+            list.appendChild(row);
+        });
+    </script>
 }

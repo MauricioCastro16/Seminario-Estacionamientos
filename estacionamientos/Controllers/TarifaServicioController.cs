@@ -234,6 +234,7 @@ namespace estacionamientos.Controllers
                 if (model.TasFecFin.HasValue)
                     model.TasFecFin = ToUtc(model.TasFecFin.Value);
 
+
                 // 🔴 Validación: monto debe ser > 0
                 if (model.TasMonto <= 0)
                     ModelState.AddModelError("TasMonto", "El monto debe ser mayor a 0.");
@@ -306,7 +307,14 @@ namespace estacionamientos.Controllers
         {
             tasFecIni = ToUtc(tasFecIni);
 
-            var item = await _ctx.TarifasServicio.FindAsync(plyID, serID, clasVehID, tasFecIni);
+            var item = await _ctx.TarifasServicio
+            .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Servicio)
+            .FirstOrDefaultAsync(t =>
+                t.PlyID == plyID &&
+                t.SerID == serID &&
+                t.ClasVehID == clasVehID &&
+                t.TasFecIni == tasFecIni);
+
             if (item is null) return NotFound();
 
             await LoadSelects(item.PlyID, item.SerID, item.ClasVehID);
@@ -353,7 +361,6 @@ namespace estacionamientos.Controllers
                     return View(model);
                 }
             }
-
             _ctx.Entry(model).State = EntityState.Modified;
             await _ctx.SaveChangesAsync();
             return RedirectToAction(nameof(Index), new { plyID = model.PlyID });
