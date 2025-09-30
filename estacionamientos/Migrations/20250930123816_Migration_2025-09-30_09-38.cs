@@ -9,7 +9,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace estacionamientos.Migrations
 {
     /// <inheritdoc />
-    public partial class Migration_20250925_1302 : Migration
+    public partial class Migration_20250930_0938 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

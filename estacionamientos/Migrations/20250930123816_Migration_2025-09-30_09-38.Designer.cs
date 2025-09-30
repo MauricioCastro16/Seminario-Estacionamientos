@@ -12,8 +12,8 @@ using estacionamientos.Data;
 namespace estacionamientos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250925160333_Migration_2025-09-25_13-02")]
-    partial class Migration_20250925_1302
+    [Migration("20250930123816_Migration_2025-09-30_09-38")]
+    partial class Migration_20250930_0938
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
