@@ -12,8 +12,8 @@ using estacionamientos.Data;
 namespace estacionamientos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250930123816_Migration_2025-09-30_09-38")]
-    partial class Migration_20250930_0938
+    [Migration("20250930130547_Migration_2025-09-30_10-05")]
+    partial class Migration_20250930_1005
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -135,26 +135,6 @@ namespace estacionamientos.Migrations
                         .IsUnique();
 
                     b.ToTable("ClasificacionDias", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            ClaDiasID = 1,
-                            ClaDiasDesc = "Lunes a Viernes",
-                            ClaDiasTipo = "Hábil"
-                        },
-                        new
-                        {
-                            ClaDiasID = 2,
-                            ClaDiasDesc = "Sábado y Domingo",
-                            ClaDiasTipo = "Fin de semana"
-                        },
-                        new
-                        {
-                            ClaDiasID = 3,
-                            ClaDiasDesc = "Feriados no laborables",
-                            ClaDiasTipo = "Feriado"
-                        });
                 });
 
             modelBuilder.Entity("estacionamientos.Models.ClasificacionVehiculo", b =>
@@ -180,32 +160,6 @@ namespace estacionamientos.Migrations
                         .IsUnique();
 
                     b.ToTable("ClasificacionVehiculo", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            ClasVehID = 1,
-                            ClasVehDesc = "Vehículo de pasajeros",
-                            ClasVehTipo = "Automóvil"
-                        },
-                        new
-                        {
-                            ClasVehID = 2,
-                            ClasVehDesc = "Vehículo utilitario",
-                            ClasVehTipo = "Camioneta"
-                        },
-                        new
-                        {
-                            ClasVehID = 3,
-                            ClasVehDesc = "Vehículo de carga",
-                            ClasVehTipo = "Camión"
-                        },
-                        new
-                        {
-                            ClasVehID = 4,
-                            ClasVehDesc = "Vehículo de dos ruedas",
-                            ClasVehTipo = "Motocicleta"
-                        });
                 });
 
             modelBuilder.Entity("estacionamientos.Models.Conduce", b =>
@@ -270,32 +224,6 @@ namespace estacionamientos.Migrations
                         .IsUnique();
 
                     b.ToTable("MetodoPago", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            MepID = 1,
-                            MepDesc = "Pago en efectivo",
-                            MepNom = "Efectivo"
-                        },
-                        new
-                        {
-                            MepID = 2,
-                            MepDesc = "Pago con tarjeta de crédito",
-                            MepNom = "Tarjeta de crédito"
-                        },
-                        new
-                        {
-                            MepID = 3,
-                            MepDesc = "Pago con tarjeta de débito",
-                            MepNom = "Tarjeta de débito"
-                        },
-                        new
-                        {
-                            MepID = 4,
-                            MepDesc = "Pago mediante transferencia bancaria",
-                            MepNom = "Transferencia bancaria"
-                        });
                 });
 
             modelBuilder.Entity("estacionamientos.Models.Ocupacion", b =>
@@ -516,71 +444,6 @@ namespace estacionamientos.Migrations
                         .IsUnique();
 
                     b.ToTable("Servicio", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            SerID = 1,
-                            SerDesc = "Lavado exterior e interior del vehículo",
-                            SerNom = "Lavado de vehículo",
-                            SerTipo = "ServicioExtra"
-                        },
-                        new
-                        {
-                            SerID = 2,
-                            SerDesc = "Revisión y mantenimiento mecánico del vehículo",
-                            SerNom = "Mantenimiento de vehículo",
-                            SerTipo = "ServicioExtra"
-                        },
-                        new
-                        {
-                            SerID = 3,
-                            SerDesc = "Carga de combustible en el vehículo",
-                            SerNom = "Carga de combustible",
-                            SerTipo = "ServicioExtra"
-                        },
-                        new
-                        {
-                            SerID = 4,
-                            SerDesc = "Revisión técnica del vehículo para verificar su estado",
-                            SerNom = "Revisión técnica",
-                            SerTipo = "ServicioExtra"
-                        },
-                        new
-                        {
-                            SerID = 5,
-                            SerDesc = "Servicio de estacionamiento por 1 hora en playa",
-                            SerNom = "Estacionamiento por 1 Hora",
-                            SerTipo = "Estacionamiento"
-                        },
-                        new
-                        {
-                            SerID = 6,
-                            SerDesc = "Servicio de estacionamiento por 6 horas en playa",
-                            SerNom = "Estacionamiento por 6 Horas",
-                            SerTipo = "Estacionamiento"
-                        },
-                        new
-                        {
-                            SerID = 7,
-                            SerDesc = "Servicio de estacionamiento por 1 día en playa",
-                            SerNom = "Estacionamiento por 1 Día",
-                            SerTipo = "Estacionamiento"
-                        },
-                        new
-                        {
-                            SerID = 8,
-                            SerDesc = "Servicio de estacionamiento por 1 semana en playa",
-                            SerNom = "Estacionamiento por 1 Semana",
-                            SerTipo = "Estacionamiento"
-                        },
-                        new
-                        {
-                            SerID = 9,
-                            SerDesc = "Servicio de estacionamiento por 1 mes en playa",
-                            SerNom = "Estacionamiento por 1 Mes",
-                            SerTipo = "Estacionamiento"
-                        });
                 });
 
             modelBuilder.Entity("estacionamientos.Models.ServicioExtraRealizado", b =>
@@ -886,80 +749,6 @@ namespace estacionamientos.Migrations
                     b.HasBaseType("estacionamientos.Models.Usuario");
 
                     b.ToTable("Administrador", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            UsuNU = 1,
-                            UsuEmail = "castromauricionicolas@hotmail.com",
-                            UsuNomUsu = "MauriCastro",
-                            UsuNumTel = "1234567890",
-                            UsuNyA = "Mauricio Nicolás Castro",
-                            UsuPswd = "12345678"
-                        },
-                        new
-                        {
-                            UsuNU = 2,
-                            UsuEmail = "brizuelajoelelian@gmail.com",
-                            UsuNomUsu = "YoelBrizuela",
-                            UsuNumTel = "0987654321",
-                            UsuNyA = "Yoel Brizuela Silvestri",
-                            UsuPswd = "12345678"
-                        },
-                        new
-                        {
-                            UsuNU = 3,
-                            UsuEmail = "nadineperaltaruiz@gmail.com",
-                            UsuNomUsu = "NadinePeralta",
-                            UsuNumTel = "1122334455",
-                            UsuNyA = "Nadine Andrea Peralta Ruiz",
-                            UsuPswd = "12345678"
-                        },
-                        new
-                        {
-                            UsuNU = 4,
-                            UsuEmail = "mateobeneyto@gmail.com",
-                            UsuNomUsu = "MateoBeneyto",
-                            UsuNumTel = "5566778899",
-                            UsuNyA = "Mateo Beneyto",
-                            UsuPswd = "12345678"
-                        },
-                        new
-                        {
-                            UsuNU = 5,
-                            UsuEmail = "ivan.nikcevich@hotmail.com",
-                            UsuNomUsu = "IvanNikcevich",
-                            UsuNumTel = "2233445566",
-                            UsuNyA = "Iván Josué Nikcevich",
-                            UsuPswd = "12345678"
-                        },
-                        new
-                        {
-                            UsuNU = 6,
-                            UsuEmail = "adri.nikce30@gmail.com",
-                            UsuNomUsu = "AdrianoNikcevich",
-                            UsuNumTel = "6677889900",
-                            UsuNyA = "Adriano Nikcevich",
-                            UsuPswd = "12345678"
-                        },
-                        new
-                        {
-                            UsuNU = 7,
-                            UsuEmail = "solana.livio1976@gmail.com",
-                            UsuNomUsu = "SolanaLivio",
-                            UsuNumTel = "3344556677",
-                            UsuNyA = "Solana Livio",
-                            UsuPswd = "12345678"
-                        },
-                        new
-                        {
-                            UsuNU = 8,
-                            UsuEmail = "obregon.elias@gmail.com",
-                            UsuNomUsu = "EliasObregon",
-                            UsuNumTel = "7788990011",
-                            UsuNyA = "Elías Obregón",
-                            UsuPswd = "12345678"
-                        });
                 });
 
             modelBuilder.Entity("estacionamientos.Models.Conductor", b =>

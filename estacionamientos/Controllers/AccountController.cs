@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
 using estacionamientos.Models.ViewModels.Auth;
+using BCrypt.Net;
 
 namespace estacionamientos.Controllers
 {
@@ -37,11 +38,8 @@ namespace estacionamientos.Controllers
             var passwordOk = false;
             if (user is not null)
             {
-                // ⚠️ Plano (actual)
-                passwordOk = user.UsuPswd == model.Password;
-
-                // 🔐 Recomendado futuro:
-                // passwordOk = BCrypt.Net.BCrypt.Verify(model.Password, user.UsuPswd);
+                // 🔐 Verificar contraseña hasheada con BCrypt
+                passwordOk = BCrypt.Net.BCrypt.Verify(model.Password, user.UsuPswd);
             }
 
             if (user is null || !passwordOk)
@@ -158,7 +156,7 @@ namespace estacionamientos.Controllers
                 UsuNyA = model.UsuNyA,
                 UsuNomUsu = model.UsuNomUsu,
                 UsuEmail = model.UsuEmail,
-                UsuPswd = model.UsuPswd, // ⚠️ En producción usar hash
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword(model.UsuPswd), // 🔐 Contraseña hasheada
                 UsuNumTel = model.UsuNumTel
             };
 

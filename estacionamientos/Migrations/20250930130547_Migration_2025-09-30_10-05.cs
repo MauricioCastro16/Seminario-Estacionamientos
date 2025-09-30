@@ -4,12 +4,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
-
 namespace estacionamientos.Migrations
 {
     /// <inheritdoc />
-    public partial class Migration_20250930_0938 : Migration
+    public partial class Migration_20250930_1005 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -711,84 +709,6 @@ namespace estacionamientos.Migrations
                         principalTable: "Vehiculo",
                         principalColumn: "VehPtnt",
                         onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.InsertData(
-                table: "ClasificacionDias",
-                columns: new[] { "ClaDiasID", "ClaDiasDesc", "ClaDiasTipo" },
-                values: new object[,]
-                {
-                    { 1, "Lunes a Viernes", "Hábil" },
-                    { 2, "Sábado y Domingo", "Fin de semana" },
-                    { 3, "Feriados no laborables", "Feriado" }
-                });
-
-            migrationBuilder.InsertData(
-                table: "ClasificacionVehiculo",
-                columns: new[] { "ClasVehID", "ClasVehDesc", "ClasVehTipo" },
-                values: new object[,]
-                {
-                    { 1, "Vehículo de pasajeros", "Automóvil" },
-                    { 2, "Vehículo utilitario", "Camioneta" },
-                    { 3, "Vehículo de carga", "Camión" },
-                    { 4, "Vehículo de dos ruedas", "Motocicleta" }
-                });
-
-            migrationBuilder.InsertData(
-                table: "MetodoPago",
-                columns: new[] { "MepID", "MepDesc", "MepNom" },
-                values: new object[,]
-                {
-                    { 1, "Pago en efectivo", "Efectivo" },
-                    { 2, "Pago con tarjeta de crédito", "Tarjeta de crédito" },
-                    { 3, "Pago con tarjeta de débito", "Tarjeta de débito" },
-                    { 4, "Pago mediante transferencia bancaria", "Transferencia bancaria" }
-                });
-
-            migrationBuilder.InsertData(
-                table: "Servicio",
-                columns: new[] { "SerID", "SerDesc", "SerNom", "SerTipo" },
-                values: new object[,]
-                {
-                    { 1, "Lavado exterior e interior del vehículo", "Lavado de vehículo", "ServicioExtra" },
-                    { 2, "Revisión y mantenimiento mecánico del vehículo", "Mantenimiento de vehículo", "ServicioExtra" },
-                    { 3, "Carga de combustible en el vehículo", "Carga de combustible", "ServicioExtra" },
-                    { 4, "Revisión técnica del vehículo para verificar su estado", "Revisión técnica", "ServicioExtra" },
-                    { 5, "Servicio de estacionamiento por 1 hora en playa", "Estacionamiento por 1 Hora", "Estacionamiento" },
-                    { 6, "Servicio de estacionamiento por 6 horas en playa", "Estacionamiento por 6 Horas", "Estacionamiento" },
-                    { 7, "Servicio de estacionamiento por 1 día en playa", "Estacionamiento por 1 Día", "Estacionamiento" },
-                    { 8, "Servicio de estacionamiento por 1 semana en playa", "Estacionamiento por 1 Semana", "Estacionamiento" },
-                    { 9, "Servicio de estacionamiento por 1 mes en playa", "Estacionamiento por 1 Mes", "Estacionamiento" }
-                });
-
-            migrationBuilder.InsertData(
-                table: "Usuario",
-                columns: new[] { "UsuNU", "UsuEmail", "UsuNomUsu", "UsuNumTel", "UsuNyA", "UsuPswd" },
-                values: new object[,]
-                {
-                    { 1, "castromauricionicolas@hotmail.com", "MauriCastro", "1234567890", "Mauricio Nicolás Castro", "12345678" },
-                    { 2, "brizuelajoelelian@gmail.com", "YoelBrizuela", "0987654321", "Yoel Brizuela Silvestri", "12345678" },
-                    { 3, "nadineperaltaruiz@gmail.com", "NadinePeralta", "1122334455", "Nadine Andrea Peralta Ruiz", "12345678" },
-                    { 4, "mateobeneyto@gmail.com", "MateoBeneyto", "5566778899", "Mateo Beneyto", "12345678" },
-                    { 5, "ivan.nikcevich@hotmail.com", "IvanNikcevich", "2233445566", "Iván Josué Nikcevich", "12345678" },
-                    { 6, "adri.nikce30@gmail.com", "AdrianoNikcevich", "6677889900", "Adriano Nikcevich", "12345678" },
-                    { 7, "solana.livio1976@gmail.com", "SolanaLivio", "3344556677", "Solana Livio", "12345678" },
-                    { 8, "obregon.elias@gmail.com", "EliasObregon", "7788990011", "Elías Obregón", "12345678" }
-                });
-
-            migrationBuilder.InsertData(
-                table: "Administrador",
-                column: "UsuNU",
-                values: new object[]
-                {
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8
                 });
 
             migrationBuilder.CreateIndex(
