@@ -34,8 +34,8 @@ EXPOSE 8080
 
 COPY --from=build /app/publish ./
 
-# Script de inicio que resetea la BD automáticamente
-COPY ./estacionamientos/startup.sh ./
-RUN chmod +x startup.sh
+# Script de inicio simplificado
+COPY ./startup-simple.sh ./
+RUN chmod +x startup-simple.sh
 
-ENTRYPOINT ["./startup.sh"]
+ENTRYPOINT ["./startup-simple.sh"]

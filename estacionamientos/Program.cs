@@ -5,7 +5,7 @@ using System.IO;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc.Razor;
 using estacionamientos.Seed;
-using QuestPDF.Infrastructure;  
+// using QuestPDF.Infrastructure;  
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -92,13 +92,16 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-//Populado de la base de datos con datos de prueba
-using (var scope = app.Services.CreateScope())
+//Populado de la base de datos con datos de prueba (solo en desarrollo)
+if (app.Environment.IsDevelopment())
 {
-    var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    DbInitializer.Initialize(ctx);
+    using (var scope = app.Services.CreateScope())
+    {
+        var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        DbInitializer.Initialize(ctx);
+    }
 }
-// using QuestPDF.Infrastructure;
-QuestPDF.Settings.License = LicenseType.Community;
-QuestPDF.Settings.EnableDebugging = true;
+// QuestPDF deshabilitado temporalmente para deploy
+// QuestPDF.Settings.License = LicenseType.Community;
+// QuestPDF.Settings.EnableDebugging = true;
 app.Run();
