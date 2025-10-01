@@ -54,24 +54,22 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Test de conexión
+// Test de conexión y migraciones automáticas
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     try
     {
-        db.Database.OpenConnection();
-        Console.WriteLine("✅ Conexión a PostgreSQL exitosa");
-        db.Database.CloseConnection();
+        Console.WriteLine("🔧 Aplicando migraciones automáticamente...");
+        db.Database.Migrate();
+        Console.WriteLine("✅ Migraciones aplicadas exitosamente");
     }
     catch (Exception ex)
     {
-        Console.WriteLine("❌ Error conectando a PostgreSQL: " + ex.Message);
+        Console.WriteLine("❌ Error aplicando migraciones: " + ex.Message);
+        // Continuar sin migraciones si fallan
     }
 }
-
-// Las migraciones se manejan automáticamente en el script de startup
-// No necesitamos aplicar migraciones aquí ya que el script startup.sh las maneja
 
 if (!app.Environment.IsDevelopment())
 {

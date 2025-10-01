@@ -3,14 +3,14 @@ services:
   - type: web
     name: estacionamientos-web
     env: docker
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./Dockerfile.simple
     dockerContext: .
     plan: free
     buildCommand: ""
     startCommand: ""
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
-        value: Production
+        value: Development
       - key: ASPNETCORE_URLS
         value: http://0.0.0.0:8080
       - key: DB_HOST

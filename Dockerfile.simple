@@ -1,0 +1,38 @@
+# syntax=docker/dockerfile:1
+
+# Valor por defecto del build-arg (para cuando no lo pasás desde el build)
+ARG CONFIGURATION=Release
+
+# ============ Build ============
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# REDECLARAR el ARG dentro del stage para que tenga valor aquí
+ARG CONFIGURATION=Release
+
+# Copiamos primero el csproj para cachear el restore
+COPY ./estacionamientos/estacionamientos.csproj ./estacionamientos/estacionamientos.csproj
+RUN dotnet restore ./estacionamientos/estacionamientos.csproj
+
+# Copiamos el resto del código y publicamos
+COPY ./estacionamientos/ ./estacionamientos/
+RUN dotnet publish ./estacionamientos/estacionamientos.csproj \
+    --configuration "$CONFIGURATION" \
+    --output /app/publish \
+    --no-restore
+
+# ============ Runtime ============
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+WORKDIR /app
+
+# Instalar psql para el script de reset de BD
+RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*
+
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080
+ENV ASPNETCORE_ENVIRONMENT=Development
+EXPOSE 8080
+
+COPY --from=build /app/publish ./
+
+# Ejecutar directamente la aplicación sin script de startup
+ENTRYPOINT ["dotnet", "estacionamientos.dll"]
