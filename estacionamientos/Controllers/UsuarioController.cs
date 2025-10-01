@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
 using estacionamientos.Models.ViewModels;
+using BCrypt.Net;
 // using Microsoft.AspNetCore.Authorization;
 
 namespace estacionamientos.Controllers
@@ -138,8 +139,8 @@ namespace estacionamientos.Controllers
             {
                 UsuNyA = vm.UsuNyA,
                 UsuEmail = vm.UsuEmail,
-                // ⚠️ En producción, guardar HASH en lugar de texto plano
-                UsuPswd = vm.UsuPswd,
+                // 🔐 Contraseña hasheada con BCrypt
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword(vm.UsuPswd),
                 UsuNumTel = vm.UsuNumTel,
                 DueCuit = vm.DueCuit
             };
@@ -235,7 +236,7 @@ namespace estacionamientos.Controllers
             {
                 UsuNyA = vm.UsuNyA,
                 UsuEmail = vm.UsuEmail,
-                UsuPswd = vm.UsuPswd,   // ⚠️ en prod: usar hash
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword(vm.UsuPswd), // 🔐 Contraseña hasheada
                 UsuNumTel = vm.UsuNumTel
             };
 
@@ -325,7 +326,7 @@ namespace estacionamientos.Controllers
             {
                 UsuNyA = vm.UsuNyA,
                 UsuEmail = vm.UsuEmail,
-                UsuPswd = vm.UsuPswd,
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword(vm.UsuPswd), // 🔐 Contraseña hasheada
                 UsuNumTel = vm.UsuNumTel
             };
 
@@ -408,7 +409,7 @@ namespace estacionamientos.Controllers
             {
                 UsuNyA = vm.UsuNyA,
                 UsuEmail = vm.UsuEmail,
-                UsuPswd = vm.UsuPswd,
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword(vm.UsuPswd), // 🔐 Contraseña hasheada
                 UsuNumTel = vm.UsuNumTel
             };
 

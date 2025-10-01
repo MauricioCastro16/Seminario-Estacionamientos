@@ -51,12 +51,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
                 entity.HasIndex(c => c.ClasVehTipo).IsUnique();
             });
-        modelBuilder.Entity<ClasificacionVehiculo>().HasData(
-            new ClasificacionVehiculo { ClasVehID = 1, ClasVehTipo = "Automóvil", ClasVehDesc = "Vehículo de pasajeros" },
-            new ClasificacionVehiculo { ClasVehID = 2, ClasVehTipo = "Camioneta", ClasVehDesc = "Vehículo utilitario" },
-            new ClasificacionVehiculo { ClasVehID = 3, ClasVehTipo = "Camión", ClasVehDesc = "Vehículo de carga" },
-            new ClasificacionVehiculo { ClasVehID = 4, ClasVehTipo = "Motocicleta", ClasVehDesc = "Vehículo de dos ruedas" }
-        );
 
         modelBuilder.Entity<ClasificacionDias>(e =>
             {
@@ -68,12 +62,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 // (Opcional) único por nombre/tipo
                 e.HasIndex(c => c.ClaDiasTipo).IsUnique();
             });
-        modelBuilder.Entity<ClasificacionDias>().HasData(
-            new ClasificacionDias { ClaDiasID = 1, ClaDiasTipo = "Hábil", ClaDiasDesc = "Lunes a Viernes" },
-            new ClasificacionDias { ClaDiasID = 2, ClaDiasTipo = "Fin de semana", ClaDiasDesc = "Sábado y Domingo" },
-            new ClasificacionDias { ClaDiasID = 3, ClaDiasTipo = "Feriado", ClaDiasDesc = "Feriados no laborables" }
-
-        );
 
         modelBuilder.Entity<MetodoPago>(e =>
             {
@@ -83,12 +71,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 e.Property(m => m.MepDesc).HasMaxLength(200);
                 e.HasIndex(m => m.MepNom).IsUnique();
             });
-        modelBuilder.Entity<MetodoPago>().HasData(
-            new MetodoPago { MepID = 1, MepNom = "Efectivo", MepDesc = "Pago en efectivo" },
-            new MetodoPago { MepID = 2, MepNom = "Tarjeta de crédito", MepDesc = "Pago con tarjeta de crédito" },
-            new MetodoPago { MepID = 3, MepNom = "Tarjeta de débito", MepDesc = "Pago con tarjeta de débito" },
-            new MetodoPago { MepID = 4, MepNom = "Transferencia bancaria", MepDesc = "Pago mediante transferencia bancaria" }
-        );
 
         modelBuilder.Entity<Servicio>(e =>
             {
@@ -100,161 +82,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 e.Property(s => s.SerDuracionMinutos); // para facilitar calculo de tarifas
                 e.HasIndex(s => s.SerNom).IsUnique(); // opcional
             });
-        modelBuilder.Entity<Servicio>().HasData(
-            new Servicio
-            {
-                SerID = 1,
-                SerNom = "Lavado de vehículo",
-                SerTipo = "ServicioExtra",
-                SerDesc = "Lavado exterior e interior del vehículo",
-                SerDuracionMinutos = null
-
-            },
-            new Servicio
-            {
-                SerID = 2,
-                SerNom = "Mantenimiento de vehículo",
-                SerTipo = "ServicioExtra",
-                SerDesc = "Revisión y mantenimiento mecánico del vehículo",
-                SerDuracionMinutos = null
-            },
-            new Servicio
-            {
-                SerID = 3,
-                SerNom = "Carga de combustible",
-                SerTipo = "ServicioExtra",
-                SerDesc = "Carga de combustible en el vehículo",
-                SerDuracionMinutos = null
-            },
-            new Servicio
-            {
-                SerID = 4,
-                SerNom = "Revisión técnica",
-                SerTipo = "ServicioExtra",
-                SerDesc = "Revisión técnica del vehículo para verificar su estado",
-                SerDuracionMinutos = null
-            },
-            new Servicio
-            {
-                SerID = 5,
-                SerNom = "Estacionamiento por 1 Hora",
-                SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de estacionamiento por 1 hora en playa",
-                SerDuracionMinutos = 60
-            },
-            new Servicio
-            {
-                SerID = 6,
-                SerNom = "Estacionamiento por 6 Horas",
-                SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de estacionamiento por 6 horas en playa",
-                SerDuracionMinutos = 360
-            },
-            new Servicio
-            {
-                SerID = 7,
-                SerNom = "Estacionamiento por 1 día",
-                SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de estacionamiento por 1 día en playa",
-                SerDuracionMinutos = 1440
-            },
-            new Servicio
-            {
-                SerID = 8,
-                SerNom = "Estacionamiento por 1 Semana",
-                SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de estacionamiento por 1 semana en playa",
-                SerDuracionMinutos = 10080
-            },
-            new Servicio
-            {
-                SerID = 9,
-                SerNom = "Estacionamiento por 1 Mes",
-                SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de estacionamiento por 1 mes en playa",
-                SerDuracionMinutos = 43200
-            }
-            );
 
         modelBuilder.Entity<Administrador>(e =>
         {
             e.ToTable("Administrador");
             e.HasBaseType<Usuario>();
         });
-        modelBuilder.Entity<Administrador>().HasData(
-            new Administrador
-            {
-                UsuNU = 1,
-                UsuNyA = "Mauricio Nicolás Castro",
-                UsuEmail = "castromauricionicolas@hotmail.com",
-                UsuPswd = "12345678",
-                UsuNumTel = "1234567890",
-                UsuNomUsu = "MauriCastro"
-            },
-            new Administrador
-            {
-                UsuNU = 2,
-                UsuNyA = "Yoel Brizuela Silvestri",
-                UsuEmail = "brizuelajoelelian@gmail.com",
-                UsuPswd = "12345678",
-                UsuNumTel = "0987654321",
-                UsuNomUsu = "YoelBrizuela"
-            },
-            new Administrador
-            {
-                UsuNU = 3,
-                UsuNyA = "Nadine Andrea Peralta Ruiz",
-                UsuEmail = "nadineperaltaruiz@gmail.com",
-                UsuPswd = "12345678",
-                UsuNumTel = "1122334455",
-                UsuNomUsu = "NadinePeralta"
-            },
-            new Administrador
-            {
-                UsuNU = 4,
-                UsuNyA = "Mateo Beneyto",
-                UsuEmail = "mateobeneyto@gmail.com",
-                UsuPswd = "12345678",
-                UsuNumTel = "5566778899",
-                UsuNomUsu = "MateoBeneyto"
-            },
-            new Administrador
-            {
-                UsuNU = 5,
-                UsuNyA = "Iván Josué Nikcevich",
-                UsuEmail = "ivan.nikcevich@hotmail.com",
-                UsuPswd = "12345678",
-                UsuNumTel = "2233445566",
-                UsuNomUsu = "IvanNikcevich"
-            },
-            new Administrador
-            {
-                UsuNU = 6,
-                UsuNyA = "Adriano Nikcevich",
-                UsuEmail = "adri.nikce30@gmail.com",
-                UsuPswd = "12345678",
-                UsuNumTel = "6677889900",
-                UsuNomUsu = "AdrianoNikcevich"
-            },
-            new Administrador
-            {
-                UsuNU = 7,
-                UsuNyA = "Solana Livio",
-                UsuEmail = "solana.livio1976@gmail.com",
-                UsuPswd = "12345678",
-                UsuNumTel = "3344556677",
-                UsuNomUsu = "SolanaLivio"
-            },
-            new Administrador
-            {
-                UsuNU = 8,
-                UsuNyA = "Elías Obregón",
-                UsuEmail = "obregon.elias@gmail.com",
-                UsuPswd = "12345678",
-                UsuNumTel = "7788990011",
-                UsuNomUsu = "EliasObregon"
-            }
-        );
 
         //Tablas dinámicas
 

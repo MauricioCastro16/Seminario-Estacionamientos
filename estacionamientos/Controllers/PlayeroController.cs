@@ -5,6 +5,7 @@ using System.Security.Claims;
 using estacionamientos.Data;
 using estacionamientos.Models;
 using estacionamientos.ViewModels;
+using BCrypt.Net;
 
 namespace estacionamientos.Controllers
 {

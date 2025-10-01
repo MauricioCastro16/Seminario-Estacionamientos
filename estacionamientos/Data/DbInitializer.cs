@@ -2,6 +2,7 @@ using Bogus;
 using estacionamientos.Data;
 using estacionamientos.Models;
 using Microsoft.EntityFrameworkCore;
+using BCrypt.Net;
 
 namespace estacionamientos.Seed;
 
@@ -11,14 +12,199 @@ public static class DbInitializer
     {
         context.Database.EnsureCreated();
 
-        // Idempotencia: si ya sembramos dueños, salgo
-        if (context.Duenios.Any())
+        // Idempotencia: si ya sembramos datos básicos, salgo
+        if (context.ClasificacionesVehiculo.Any() && context.Servicios.Any())
             return;
 
         var faker = new Faker("es");
 
         // =========================
-        // 1) Dueños (5)
+        // 1) Datos básicos de inicialización
+        // =========================
+        
+        // ClasificacionVehiculo
+        var clasificacionesVehiculo = new List<ClasificacionVehiculo>
+        {
+            new ClasificacionVehiculo { ClasVehID = 1, ClasVehTipo = "Automóvil", ClasVehDesc = "Vehículo de pasajeros" },
+            new ClasificacionVehiculo { ClasVehID = 2, ClasVehTipo = "Camioneta", ClasVehDesc = "Vehículo utilitario" },
+            new ClasificacionVehiculo { ClasVehID = 3, ClasVehTipo = "Camión", ClasVehDesc = "Vehículo de carga" },
+            new ClasificacionVehiculo { ClasVehID = 4, ClasVehTipo = "Motocicleta", ClasVehDesc = "Vehículo de dos ruedas" }
+        };
+        context.ClasificacionesVehiculo.AddRange(clasificacionesVehiculo);
+        context.SaveChanges();
+
+        // ClasificacionDias
+        var clasificacionesDias = new List<ClasificacionDias>
+        {
+            new ClasificacionDias { ClaDiasID = 1, ClaDiasTipo = "Hábil", ClaDiasDesc = "Lunes a Viernes" },
+            new ClasificacionDias { ClaDiasID = 2, ClaDiasTipo = "Fin de semana", ClaDiasDesc = "Sábado y Domingo" },
+            new ClasificacionDias { ClaDiasID = 3, ClaDiasTipo = "Feriado", ClaDiasDesc = "Feriados no laborables" }
+        };
+        context.ClasificacionesDias.AddRange(clasificacionesDias);
+        context.SaveChanges();
+
+        // MetodoPago
+        var metodosPago = new List<MetodoPago>
+        {
+            new MetodoPago { MepID = 1, MepNom = "Efectivo", MepDesc = "Pago en efectivo" },
+            new MetodoPago { MepID = 2, MepNom = "Tarjeta de crédito", MepDesc = "Pago con tarjeta de crédito" },
+            new MetodoPago { MepID = 3, MepNom = "Tarjeta de débito", MepDesc = "Pago con tarjeta de débito" },
+            new MetodoPago { MepID = 4, MepNom = "Transferencia bancaria", MepDesc = "Pago mediante transferencia bancaria" }
+        };
+        context.MetodosPago.AddRange(metodosPago);
+        context.SaveChanges();
+
+        // Servicio
+        var servicios = new List<Servicio>
+        {
+            new Servicio
+            {
+                SerID = 1,
+                SerNom = "Lavado de vehículo",
+                SerTipo = "ServicioExtra",
+                SerDesc = "Lavado exterior e interior del vehículo"
+            },
+            new Servicio
+            {
+                SerID = 2,
+                SerNom = "Mantenimiento de vehículo",
+                SerTipo = "ServicioExtra",
+                SerDesc = "Revisión y mantenimiento mecánico del vehículo"
+            },
+            new Servicio
+            {
+                SerID = 3,
+                SerNom = "Carga de combustible",
+                SerTipo = "ServicioExtra",
+                SerDesc = "Carga de combustible en el vehículo"
+            },
+            new Servicio
+            {
+                SerID = 4,
+                SerNom = "Revisión técnica",
+                SerTipo = "ServicioExtra",
+                SerDesc = "Revisión técnica del vehículo para verificar su estado"
+            },
+            new Servicio
+            {
+                SerID = 5,
+                SerNom = "Estacionamiento por 1 Hora",
+                SerTipo = "Estacionamiento",
+                SerDesc = "Servicio de estacionamiento por 1 hora en playa"
+            },
+            new Servicio
+            {
+                SerID = 6,
+                SerNom = "Estacionamiento por 6 Horas",
+                SerTipo = "Estacionamiento",
+                SerDesc = "Servicio de estacionamiento por 6 horas en playa"
+            },
+            new Servicio
+            {
+                SerID = 7,
+                SerNom = "Estacionamiento por 1 Día",
+                SerTipo = "Estacionamiento",
+                SerDesc = "Servicio de estacionamiento por 1 día en playa"
+            },
+            new Servicio
+            {
+                SerID = 8,
+                SerNom = "Estacionamiento por 1 Semana",
+                SerTipo = "Estacionamiento",
+                SerDesc = "Servicio de estacionamiento por 1 semana en playa"
+            },
+            new Servicio
+            {
+                SerID = 9,
+                SerNom = "Estacionamiento por 1 Mes",
+                SerTipo = "Estacionamiento",
+                SerDesc = "Servicio de estacionamiento por 1 mes en playa"
+            }
+        };
+        context.Servicios.AddRange(servicios);
+        context.SaveChanges();
+
+        // Administrador
+        var administradores = new List<Administrador>
+        {
+            new Administrador
+            {
+                UsuNU = 1,
+                UsuNyA = "Mauricio Nicolás Castro",
+                UsuEmail = "castromauricionicolas@hotmail.com",
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword("12345678"),
+                UsuNumTel = "1234567890",
+                UsuNomUsu = "MauriCastro"
+            },
+            new Administrador
+            {
+                UsuNU = 2,
+                UsuNyA = "Yoel Brizuela Silvestri",
+                UsuEmail = "brizuelajoelelian@gmail.com",
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword("12345678"),
+                UsuNumTel = "0987654321",
+                UsuNomUsu = "YoelBrizuela"
+            },
+            new Administrador
+            {
+                UsuNU = 3,
+                UsuNyA = "Nadine Andrea Peralta Ruiz",
+                UsuEmail = "nadineperaltaruiz@gmail.com",
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword("12345678"),
+                UsuNumTel = "1122334455",
+                UsuNomUsu = "NadinePeralta"
+            },
+            new Administrador
+            {
+                UsuNU = 4,
+                UsuNyA = "Mateo Beneyto",
+                UsuEmail = "mateobeneyto@gmail.com",
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword("12345678"),
+                UsuNumTel = "5566778899",
+                UsuNomUsu = "MateoBeneyto"
+            },
+            new Administrador
+            {
+                UsuNU = 5,
+                UsuNyA = "Iván Josué Nikcevich",
+                UsuEmail = "ivan.nikcevich@hotmail.com",
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword("12345678"),
+                UsuNumTel = "2233445566",
+                UsuNomUsu = "IvanNikcevich"
+            },
+            new Administrador
+            {
+                UsuNU = 6,
+                UsuNyA = "Adriano Nikcevich",
+                UsuEmail = "adri.nikce30@gmail.com",
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword("12345678"),
+                UsuNumTel = "6677889900",
+                UsuNomUsu = "AdrianoNikcevich"
+            },
+            new Administrador
+            {
+                UsuNU = 7,
+                UsuNyA = "Solana Livio",
+                UsuEmail = "solana.livio1976@gmail.com",
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword("12345678"),
+                UsuNumTel = "3344556677",
+                UsuNomUsu = "SolanaLivio"
+            },
+            new Administrador
+            {
+                UsuNU = 8,
+                UsuNyA = "Elías Obregón",
+                UsuEmail = "obregon.elias@gmail.com",
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword("12345678"),
+                UsuNumTel = "7788990011",
+                UsuNomUsu = "EliasObregon"
+            }
+        };
+        context.Administradores.AddRange(administradores);
+        context.SaveChanges();
+
+        // =========================
+        // 2) Dueños (5)
         // =========================
         int nextUsuNu = Math.Max(9, (context.Usuarios.Any() ? context.Usuarios.Max(u => u.UsuNU) + 1 : 9));
         var duenios = new List<Duenio>();
@@ -32,7 +218,7 @@ public static class DbInitializer
                 UsuNU = nextUsuNu++,
                 UsuNyA = faker.Name.FullName(),
                 UsuEmail = correo,
-                UsuPswd = "12345678",
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword("12345678"),
                 UsuNumTel = faker.Phone.PhoneNumber("##########"),
                 UsuNomUsu = faker.Internet.UserName(), // Nombre de usuario
                 DueCuit = faker.Random.ReplaceNumbers("###########")
@@ -98,7 +284,7 @@ public static class DbInitializer
                     UsuNU = nextUsuNu++,
                     UsuNyA = faker.Name.FullName(),
                     UsuEmail = correo,
-                    UsuPswd = "12345678",
+                    UsuPswd = BCrypt.Net.BCrypt.HashPassword("12345678"),
                     UsuNumTel = faker.Phone.PhoneNumber("##########"),
                     UsuNomUsu = faker.Internet.UserName(), // Nombre de usuario
                 });
@@ -223,9 +409,9 @@ public static class DbInitializer
         // =========================
         // 6) ServiciosProveidos por playa
         // =========================
-        var servicios = context.Servicios.AsNoTracking().ToList(); // SerID, SerNom, SerTipo
-        var serviciosEst = servicios.Where(s => (s.SerTipo ?? "").Equals("Estacionamiento", StringComparison.OrdinalIgnoreCase)).ToList();
-        var serviciosExtra = servicios.Where(s => (s.SerTipo ?? "").Equals("ServicioExtra", StringComparison.OrdinalIgnoreCase)).ToList();
+        var serviciosDisponibles = context.Servicios.AsNoTracking().ToList(); // SerID, SerNom, SerTipo
+        var serviciosEst = serviciosDisponibles.Where(s => (s.SerTipo ?? "").Equals("Estacionamiento", StringComparison.OrdinalIgnoreCase)).ToList();
+        var serviciosExtra = serviciosDisponibles.Where(s => (s.SerTipo ?? "").Equals("ServicioExtra", StringComparison.OrdinalIgnoreCase)).ToList();
 
         var serviciosProveidos = new List<ServicioProveido>();
 
@@ -276,7 +462,7 @@ public static class DbInitializer
 
         foreach (var sp in serviciosProveidos)
         {
-            var servicio = servicios.First(s => s.SerID == sp.SerID);
+            var servicio = serviciosDisponibles.First(s => s.SerID == sp.SerID);
             bool esEst = (servicio.SerTipo ?? "").Equals("Estacionamiento", StringComparison.OrdinalIgnoreCase);
 
             foreach (var clasId in clasifIds)
@@ -470,7 +656,7 @@ public static class DbInitializer
                 UsuNU = nextUsuNu++, // ID incremental
                 UsuNyA = faker.Name.FullName(),
                 UsuEmail = correo,
-                UsuPswd = "12345678",
+                UsuPswd = BCrypt.Net.BCrypt.HashPassword("12345678"),
                 UsuNumTel = faker.Phone.PhoneNumber("##########"),
                 UsuNomUsu = faker.Internet.UserName(), // Nombre de usuario
                 // Las colecciones las dejamos vacías por ahora, pero puedes agregarlas si lo necesitas
@@ -628,7 +814,7 @@ public static class DbInitializer
         foreach (var playa in playas)
         {
             // Obtener los métodos de pago disponibles para esta playa
-            var metodosPago = context.AceptaMetodosPago
+            var metodosPagoDisponibles = context.AceptaMetodosPago
                 .Where(ap => ap.PlyID == playa.PlyID)  // Métodos aceptados por la playa
                 .ToList();
 
@@ -638,7 +824,7 @@ public static class DbInitializer
             for (int i = 0; i < cantidadPagos; i++)
             {
                 // Seleccionar un método de pago aleatorio de los aceptados por la playa
-                var metodoPago = faker.PickRandom(metodosPago);
+                var metodoPago = faker.PickRandom(metodosPagoDisponibles);
 
                 // Crear un nuevo pago
                 var pago = new Pago
