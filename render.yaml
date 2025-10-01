@@ -10,7 +10,7 @@ services:
     startCommand: ""
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
-        value: Development
+        value: Production
       - key: ASPNETCORE_URLS
         value: http://0.0.0.0:8080
       - key: DB_HOST

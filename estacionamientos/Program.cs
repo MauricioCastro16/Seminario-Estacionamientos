@@ -54,19 +54,27 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Test de conexión y migraciones automáticas
+// Reset completo de base de datos en cada inicio
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     try
     {
-        Console.WriteLine("🔧 Aplicando migraciones automáticamente...");
+        Console.WriteLine("🗑️  Eliminando base de datos existente...");
+        db.Database.EnsureDeleted();
+        Console.WriteLine("✅ Base de datos eliminada");
+        
+        Console.WriteLine("🔧 Creando base de datos nueva...");
+        db.Database.EnsureCreated();
+        Console.WriteLine("✅ Base de datos creada");
+        
+        Console.WriteLine("📊 Aplicando migraciones...");
         db.Database.Migrate();
         Console.WriteLine("✅ Migraciones aplicadas exitosamente");
     }
     catch (Exception ex)
     {
-        Console.WriteLine("❌ Error aplicando migraciones: " + ex.Message);
+        Console.WriteLine("❌ Error con base de datos: " + ex.Message);
         // Continuar sin migraciones si fallan
     }
 }
@@ -90,14 +98,13 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-//Populado de la base de datos con datos de prueba (solo en desarrollo)
-if (app.Environment.IsDevelopment())
+//Populado de la base de datos con datos de prueba (siempre)
+using (var scope = app.Services.CreateScope())
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        DbInitializer.Initialize(ctx);
-    }
+    var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    Console.WriteLine("🌱 Poblando base de datos con datos iniciales...");
+    DbInitializer.Initialize(ctx);
+    Console.WriteLine("✅ Base de datos poblada exitosamente");
 }
 // QuestPDF deshabilitado temporalmente para deploy
 // QuestPDF.Settings.License = LicenseType.Community;
