@@ -36,7 +36,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Estacionamientos</title>
+    <title>NetParking - Sistema de Estacionamientos</title>
     <link rel="icon" type="image/x-icon" href="~/favicon-2.ico" />
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
@@ -47,150 +47,365 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@@ttskch/select2-bootstrap-5-theme@1.6.2/dist/select2-bootstrap-5-theme.min.css" />
     <link rel="stylesheet" href="~/css/custom.css" asp-append-version="true" />
-
-
+    <link rel="stylesheet" href="~/css/layout.css" asp-append-version="true" />
 </head>
 
 <body>
-<header>
-    <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-        <div class="container-fluid">
-            <a class="navbar-brand d-flex align-items-center fw-bold fs-4" 
-               asp-area="" asp-controller="Home" asp-action="Index">
-                <i class="bi bi-cone-striped text-warning me-2"></i> NetParking
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
-                    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay d-lg-none"></div>
+
+    <!-- Mobile Sidebar -->
+    <nav id="mobileSidebar" class="mobile-sidebar d-lg-none">
+        <div class="sidebar-header">
+            <div class="sidebar-brand">
+                <i class="bi bi-cone-striped text-warning me-2"></i>
+                <span class="fw-bold">NetParking</span>
+            </div>
+            <button id="closeSidebar" class="btn-close-sidebar" type="button">
+                <i class="bi bi-x-lg"></i>
             </button>
+        </div>
+        
+        <div class="sidebar-content">
+            @if (User.Identity?.IsAuthenticated ?? false)
+            {
+                <!-- User Info -->
+                <div class="sidebar-user-info">
+                    <div class="user-avatar">
+                        <i class="bi bi-person-circle"></i>
+                    </div>
+                    <div class="user-details">
+                        <div class="user-name">@User.Identity.Name</div>
+                        <div class="user-role">
+                            @if (rol == "Duenio")
+                            {
+                                <text>Dueño</text>
+                            }
+                            else
+                            {
+                                <text>@rol</text>
+                            }
+                        </div>
+                    </div>
+                </div>
 
-            <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                <!-- Navegación izquierda -->
-                <ul class="navbar-nav me-auto">
+                <!-- Active Playground Badge -->
+                @if (!string.IsNullOrEmpty(playaActiva) && plyID != null)
+                {
+                    <div class="sidebar-playground-badge">
+                        <a asp-controller="PlayaEstacionamiento" asp-action="DetailsPlayero" asp-route-id="@plyID"
+                           class="playground-link">
+                            <i class="fa-solid fa-location-dot"></i>
+                            <span>Estás en: @playaActiva</span>
+                        </a>
+                    </div>
+                }
 
+                <!-- Navigation Menu -->
+                <ul class="sidebar-nav">
                     @if (User.IsInRole("Playero"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Ocupacion" asp-action="Index">Ingreso/Egreso</a>
+                            <a class="nav-link" asp-controller="Ocupacion" asp-action="Index">
+                                <i class="bi bi-car-front"></i>
+                                <span>Ingreso/Egreso</span>
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Turno" asp-action="Index">Mis turnos</a>
+                            <a class="nav-link" asp-controller="Turno" asp-action="Index">
+                                <i class="bi bi-clock"></i>
+                                <span>Mis turnos</span>
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Abono" asp-action="Index">Abonos</a>
+                            <a class="nav-link" asp-controller="Abono" asp-action="Index">
+                                <i class="bi bi-credit-card"></i>
+                                <span>Abonos</span>
+                            </a>
                         </li>
                     }
 
                     @if (User.IsInRole("Administrador"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Usuario" asp-action="Index">Usuarios</a>
+                            <a class="nav-link" asp-area="" asp-controller="Usuario" asp-action="Index">
+                                <i class="bi bi-people"></i>
+                                <span>Usuarios</span>
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Schema" asp-action="Index">Schema</a>
+                            <a class="nav-link" asp-area="" asp-controller="Schema" asp-action="Index">
+                                <i class="bi bi-database"></i>
+                                <span>Schema</span>
+                            </a>
                         </li>
                     }
                     
                     @if (User.IsInRole("Duenio"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="PlayaEstacionamiento" asp-action="Index">Playas</a>
+                            <a class="nav-link" asp-area="" asp-controller="PlayaEstacionamiento" asp-action="Index">
+                                <i class="bi bi-geo-alt"></i>
+                                <span>Playas</span>
+                            </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Playero" asp-action="Index">Playeros</a>
+                            <a class="nav-link" asp-area="" asp-controller="Playero" asp-action="Index">
+                                <i class="bi bi-person-badge"></i>
+                                <span>Playeros</span>
+                            </a>
                         </li>
-                        
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Informes" asp-action="Index">Informes</a>
+                            <a class="nav-link" asp-area="" asp-controller="Informes" asp-action="Index">
+                                <i class="bi bi-graph-up"></i>
+                                <span>Informes</span>
+                            </a>
                         </li>
                     }
-
                 </ul>
 
-                <!-- Navegación derecha -->
-                <ul class="navbar-nav ms-auto align-items-center">
-                    @if (User.Identity?.IsAuthenticated ?? false)
-                    {
-                        @* Badge de playa activa si corresponde *@
-                        @if (!string.IsNullOrEmpty(playaActiva) && plyID != null)
+                <!-- Logout Button -->
+                <div class="sidebar-footer">
+                    <button class="btn-logout" onclick="document.getElementById('logoutForm').submit();">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span>Cerrar sesión</span>
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="sidebar-login">
+                    <a class="btn-login" asp-area="" asp-controller="Account" asp-action="Login">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        <span>Iniciar Sesión</span>
+                    </a>
+                </div>
+            }
+        </div>
+    </nav>
+
+    <!-- Main Header -->
+    <header class="main-header">
+        <nav class="navbar navbar-expand-lg navbar-light">
+            <div class="container-fluid">
+                <!-- Mobile Menu Button -->
+                <button id="openSidebar" class="btn-mobile-menu d-lg-none" type="button">
+                    <i class="bi bi-list"></i>
+                </button>
+
+                <!-- Brand -->
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <i class="bi bi-cone-striped text-warning me-2"></i>
+                    <span class="fw-bold">NetParking</span>
+                </a>
+
+                <!-- Desktop Navigation -->
+                <div class="navbar-collapse d-none d-lg-flex">
+                    <ul class="navbar-nav me-auto">
+                        @if (User.IsInRole("Playero"))
                         {
-                            <li class="nav-item me-3">
-                                <a asp-controller="PlayaEstacionamiento" asp-action="DetailsPlayero" asp-route-id="@plyID"
-                                class="badge bg-primary text-decoration-none d-flex align-items-center gap-1">
-                                    <i class="fa-solid fa-location-dot"></i>
-                                    Estás en: @playaActiva
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Ocupacion" asp-action="Index">
+                                    <i class="bi bi-car-front me-1"></i>Ingreso/Egreso
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Turno" asp-action="Index">
+                                    <i class="bi bi-clock me-1"></i>Mis turnos
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Abono" asp-action="Index">
+                                    <i class="bi bi-credit-card me-1"></i>Abonos
                                 </a>
                             </li>
                         }
 
+                        @if (User.IsInRole("Administrador"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Usuario" asp-action="Index">
+                                    <i class="bi bi-people me-1"></i>Usuarios
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Schema" asp-action="Index">
+                                    <i class="bi bi-database me-1"></i>Schema
+                                </a>
+                            </li>
+                        }
+                        
+                        @if (User.IsInRole("Duenio"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="PlayaEstacionamiento" asp-action="Index">
+                                    <i class="bi bi-geo-alt me-1"></i>Playas
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Playero" asp-action="Index">
+                                    <i class="bi bi-person-badge me-1"></i>Playeros
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Informes" asp-action="Index">
+                                    <i class="bi bi-graph-up me-1"></i>Informes
+                                </a>
+                            </li>
+                        }
+                    </ul>
 
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-dark" href="#" id="userMenu" role="button"
-                                data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
-
-                                @if (rol == "Duenio")
-                                {
-                                    <text>Dueño: </text>
-                                }
-                                else
-                                {
-                                    <text>@rol: </text>
-                                }
-                                @User.Identity!.Name
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
-                                <li><hr class="dropdown-divider" /></li>
-                                <li>
-                                    <a class="dropdown-item text-dark" href="#"
-                                    onclick="document.getElementById('logoutForm').submit(); return false;">
-                                        Cerrar sesión
+                    <!-- Right Side -->
+                    <ul class="navbar-nav ms-auto align-items-center">
+                        @if (User.Identity?.IsAuthenticated ?? false)
+                        {
+                            <!-- Active Playground Badge -->
+                            @if (!string.IsNullOrEmpty(playaActiva) && plyID != null)
+                            {
+                                <li class="nav-item me-3">
+                                    <a asp-controller="PlayaEstacionamiento" asp-action="DetailsPlayero" asp-route-id="@plyID"
+                                       class="playground-badge">
+                                        <i class="fa-solid fa-location-dot"></i>
+                                        <span>Estás en: @playaActiva</span>
                                     </a>
                                 </li>
-                            </ul>
-                        </li>
+                            }
 
-                        <!-- Form oculto de logout -->
-                        <form id="logoutForm" asp-controller="Account" asp-action="Logout" method="post" class="d-none">
-                            @Html.AntiForgeryToken()
-                        </form>
-                    }
-                    else
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="Login">Iniciar Sesión</a>
-                        </li>
-                    }
-                </ul>
+                            <!-- User Menu -->
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle user-menu" href="#" id="userMenu" role="button"
+                                   data-bs-toggle="dropdown" aria-expanded="false">
+                                    <div class="user-info">
+                                        <div class="user-avatar-small">
+                                            <i class="bi bi-person-circle"></i>
+                                        </div>
+                                        <div class="user-text">
+                                            <div class="user-name">@User.Identity.Name</div>
+                                            <div class="user-role">
+                                                @if (rol == "Duenio")
+                                                {
+                                                    <text>Dueño</text>
+                                                }
+                                                else
+                                                {
+                                                    <text>@rol</text>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                                    <li>
+                                        <a class="dropdown-item" href="#"
+                                           onclick="document.getElementById('logoutForm').submit(); return false;">
+                                            <i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link btn-login-desktop" asp-area="" asp-controller="Account" asp-action="Login">
+                                    <i class="bi bi-box-arrow-in-right me-1"></i>Iniciar Sesión
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid">
+            @RenderBody()
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="container-fluid">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <span>&copy; 2025 NetParking</span>
+                </div>
+                <div class="footer-right">
+                    <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                </div>
             </div>
         </div>
-    </nav>
-</header>
+    </footer>
 
-<div class="container">
-    <main role="main" class="pb-3">
-        @RenderBody()
-    </main>
-</div>
+    <!-- Hidden Logout Form -->
+    <form id="logoutForm" asp-controller="Account" asp-action="Logout" method="post" class="d-none">
+        @Html.AntiForgeryToken()
+    </form>
 
-<footer class="border-top footer text-muted">
-    <div class="container">
-        &copy; 2025 - NetParking - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-    </div>
-</footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-<script src="~/lib/jquery/dist/jquery.min.js"></script>
-<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Mobile Sidebar JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const openSidebarBtn = document.getElementById('openSidebar');
+            const closeSidebarBtn = document.getElementById('closeSidebar');
+            const sidebar = document.getElementById('mobileSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
 
+            function openSidebar() {
+                sidebar.classList.add('active');
+                overlay.classList.add('active');
+                document.body.classList.add('sidebar-open');
+            }
 
+            function closeSidebar() {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+                document.body.classList.remove('sidebar-open');
+            }
 
-<script src="~/js/site.js" asp-append-version="true"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+            // Event listeners
+            if (openSidebarBtn) {
+                openSidebarBtn.addEventListener('click', openSidebar);
+            }
+            
+            if (closeSidebarBtn) {
+                closeSidebarBtn.addEventListener('click', closeSidebar);
+            }
+            
+            if (overlay) {
+                overlay.addEventListener('click', closeSidebar);
+            }
 
-@await RenderSectionAsync("Scripts", required: false)
-@RenderSection("AceptaMetodoPagoScript", required: false)
+            // Close sidebar when clicking on nav links
+            const navLinks = sidebar.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', closeSidebar);
+            });
 
+            // Close sidebar on escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && sidebar.classList.contains('active')) {
+                    closeSidebar();
+                }
+            });
 
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 992) {
+                    closeSidebar();
+                }
+            });
+        });
+    </script>
 
+    @await RenderSectionAsync("Scripts", required: false)
+    @RenderSection("AceptaMetodoPagoScript", required: false)
 </body>
 </html>

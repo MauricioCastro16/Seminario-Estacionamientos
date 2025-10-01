@@ -1,6 +1,10 @@
-﻿/* Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
+﻿/* Legacy layout styles - now handled by layout.css */
+/* This file is kept for compatibility but styles are moved to layout.css */
+
+/* Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
 for details on configuring this project to bundle and minify static web assets. */
 
+/* Legacy styles preserved for backward compatibility */
 a.navbar-brand {
   white-space: normal;
   text-align: center;
@@ -39,11 +43,11 @@ button.accept-policy {
   line-height: inherit;
 }
 
+/* Footer positioning updated for new layout */
 .footer {
-  position: absolute;
-  bottom: 0;
+  position: relative;
+  bottom: auto;
   width: 100%;
   white-space: nowrap;
   line-height: 60px;
-  
 }
