@@ -426,6 +426,9 @@ namespace estacionamientos.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<int?>("SerDuracionMinutos")
+                        .HasColumnType("integer");
+
                     b.Property<string>("SerNom")
                         .IsRequired()
                         .HasMaxLength(80)

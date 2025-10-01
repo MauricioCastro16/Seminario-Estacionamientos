@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace estacionamientos.Migrations
 {
     /// <inheritdoc />
-    public partial class Migration_20250930_1005 : Migration
+    public partial class Migration_20251001_1903 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -85,7 +85,8 @@ namespace estacionamientos.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     SerNom = table.Column<string>(type: "character varying(80)", maxLength: 80, nullable: false),
                     SerTipo = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: true),
-                    SerDesc = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true)
+                    SerDesc = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    SerDuracionMinutos = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {

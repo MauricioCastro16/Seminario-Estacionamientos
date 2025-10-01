@@ -12,8 +12,8 @@ using estacionamientos.Data;
 namespace estacionamientos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250930130547_Migration_2025-09-30_10-05")]
-    partial class Migration_20250930_1005
+    [Migration("20251001220326_Migration_2025-10-01_19-03")]
+    partial class Migration_20251001_1903
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -428,6 +428,9 @@ namespace estacionamientos.Migrations
                     b.Property<string>("SerDesc")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("SerDuracionMinutos")
+                        .HasColumnType("integer");
 
                     b.Property<string>("SerNom")
                         .IsRequired()
