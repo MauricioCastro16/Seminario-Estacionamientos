@@ -146,12 +146,21 @@ body.sidebar-open {
     justify-content: center;
     color: white;
     font-size: 1.2rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.user-avatar-small svg {
+    display: block;
+    margin: 0 auto;
+    color: white;
 }
 
 .user-text {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    justify-content: center;
 }
 
 .user-name {
@@ -243,6 +252,7 @@ body.sidebar-open {
     box-shadow: var(--shadow-lg);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .mobile-sidebar.active {
@@ -257,6 +267,10 @@ body.sidebar-open {
     align-items: center;
     justify-content: space-between;
     background: white;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 .sidebar-brand {
@@ -300,6 +314,7 @@ body.sidebar-open {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    min-height: 0;
 }
 
 /* ===== SIDEBAR USER INFO ===== */
@@ -324,6 +339,13 @@ body.sidebar-open {
     justify-content: center;
     font-size: 1.5rem;
     backdrop-filter: blur(10px);
+    line-height: 1;
+}
+
+.user-avatar svg {
+    display: block;
+    margin: 0 auto;
+    color: white;
 }
 
 .user-details {
@@ -339,6 +361,7 @@ body.sidebar-open {
 .user-details .user-role {
     font-size: 0.875rem;
     opacity: 0.9;
+    color: white;
 }
 
 /* ===== SIDEBAR PLAYGROUND BADGE ===== */
@@ -418,6 +441,11 @@ body.sidebar-open {
     margin-top: auto;
     padding-top: 1rem;
     border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+    background: white;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
 }
 
 .btn-logout {
