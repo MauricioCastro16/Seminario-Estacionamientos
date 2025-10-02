@@ -1,11 +1,29 @@
 @model IEnumerable<estacionamientos.Models.PlazaEstacionamiento>
 @{
-    ViewData["Title"] = "Plazas de la Playa";
+    ViewData["Title"] = "Plazas de la playa";
     var playa = ViewBag.Playa as estacionamientos.Models.PlayaEstacionamiento;
 }
+<div class="card shadow-sm mt-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <h5 class="card-title">
+                    <i class="bi bi-geo-alt-fill text-primary"></i>
+                    @playa?.PlyNom
+                </h5>
+            </div>
+            <a asp-controller="PlayaEstacionamiento" 
+                asp-action="DetailsPlayero" 
+                asp-route-id="@ViewBag.PlyID"
+                class="btn btn-outline-secondary">
+                    <i class="fa-solid fa-arrow-left"></i> Volver
+            </a>
+        </div>
+        <p class="card-text text-muted mb-2">
+            <strong>Dirección:</strong> @playa?.PlyDir (@playa?.PlyProv, @playa?.PlyCiu)
+        </p>
 
-<div class="container py-3">
-    <h2 class="mb-3">Plazas de la Playa</h2>
+        <h6 class="mt-3">Plazas de la playa:</h6>
 
     @if (TempData["Mensaje"] != null)
     {
@@ -59,11 +77,11 @@
                 <td class="text-center">
                     @if (plaza.PlzOcupada)
                     {
-                        <span class="badge bg-danger">Ocupada</span>
+                        <span class="fw-bold text-danger">Ocupada</span>
                     }
                     else
                     {
-                        <span class="badge bg-success">Libre</span>
+                        <span class="fw-bold text-success">Libre</span>
                     }
                 </td>
                 <td class="text-center">
@@ -86,14 +104,6 @@
 
         </table>
     }
-
-    <!-- Botón Volver -->
-    <a asp-controller="PlayaEstacionamiento" 
-        asp-action="DetailsPlayero" 
-        asp-route-id="@ViewBag.PlyID"
-        class="btn btn-outline-secondary mt-3">
-            <i class="fa-solid fa-arrow-left"></i> Volver
-    </a>
 
 </div>
 

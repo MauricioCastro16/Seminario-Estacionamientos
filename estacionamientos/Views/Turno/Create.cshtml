@@ -18,7 +18,7 @@
         <div class="mb-3">
             <label class="form-label">Playa</label>
             <select asp-for="PlyID" class="form-select" asp-items="ViewBag.PlyID">
-                <option value="">-- Seleccionar Playa --</option>
+                <option value="">-- Seleccionar playa --</option>
             </select>
             <span asp-validation-for="PlyID" class="text-danger"></span>
         </div>
@@ -67,13 +67,11 @@
                 <div class="form-text">Se completa al cerrar el turno.</div>
                 <span asp-validation-for="TurCierrCaja" class="text-danger"></span>
             </div>
-
-
         </div>
 
         <div class="d-flex gap-2">
-        <button class="btn btn-primary" type="submit">Guardar</button>
-        <a class="btn btn-secondary" asp-action="Index" asp-controller="Home">Cancelar</a>
-    </div>
+            <button class="btn btn-primary" type="submit">Guardar</button>
+            <a class="btn btn-secondary" asp-action="Index" asp-controller="Home">Cancelar</a>
+        </div>
     </form>
 </div>

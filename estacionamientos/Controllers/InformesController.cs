@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Net.Http;
+using System.Text.Json;
 using System.Linq;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
@@ -25,6 +27,7 @@ namespace estacionamientos.Controllers
 
         private readonly AppDbContext _ctx;
         public InformesController(AppDbContext ctx) => _ctx = ctx;
+        private static readonly HttpClient Http = new HttpClient();
 
         // =====================
         // Helpers fechas (UTC)
@@ -215,8 +218,118 @@ namespace estacionamientos.Controllers
             if (System.IO.File.Exists(logoPath))
                 logo = System.IO.File.ReadAllBytes(logoPath);
 
-            var pdfBytes = BuildInformePdf(vm, logo);
-            return File(pdfBytes, "application/pdf", $"informe_{DateTime.Now:yyyyMMdd_HHmm}.pdf");
+            // Marca de agua (favicon) -> convertir a PNG por compatibilidad
+            byte[]? watermark = null;
+            var watermarkPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "favicon-2.ico");
+            if (System.IO.File.Exists(watermarkPath))
+            {
+                try
+                {
+                    using var fs = System.IO.File.OpenRead(watermarkPath);
+                    using var codec = SkiaSharp.SKCodec.Create(fs);
+                    using var bmp = SkiaSharp.SKBitmap.Decode(codec);
+                    if (bmp != null)
+                    {
+                        using var img = SkiaSharp.SKImage.FromBitmap(bmp);
+                        using var data = img.Encode(SkiaSharp.SKEncodedImageFormat.Png, 90);
+                        watermark = data?.ToArray();
+                    }
+                }
+                catch { /* si falla, watermark queda null */ }
+            }
+
+            // Dueño
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var duenioNombre = _ctx.Duenios.AsNoTracking()
+                .Where(d => d.UsuNU.ToString() == userIdStr)
+                .Select(d => d.UsuNyA)
+                .FirstOrDefault() ?? "";
+
+            // Nombre de playa (si una sola) y detalle de pagos (opcional)
+            string playaNombre = "Todas";
+            List<InformeDetallePlayaItemVM>? detalleItems = null;
+            if (playasIds != null && playasIds.Count == 1)
+            {
+                var plyId = playasIds[0];
+                playaNombre = _ctx.Playas
+                    .AsNoTracking()
+                    .Where(pl => pl.PlyID == plyId)
+                    .Select(pl => string.IsNullOrWhiteSpace(pl.PlyNom) ? (pl.PlyCiu + " - " + pl.PlyDir) : pl.PlyNom)
+                    .FirstOrDefault() ?? $"Playa #{plyId}";
+
+                // Calcular detalle de pagos para esa playa y período
+                var todayLocal = DateTime.Now;
+                var desdeUtc = DayStartUtc((desde ?? todayLocal.AddDays(-30)));
+                var hastaUtc = DayEndUtc((hasta ?? todayLocal));
+
+                var pagos = _ctx.Pagos
+                    .AsNoTracking()
+                    .Include(p => p.MetodoPago)
+                    .Where(p => p.PlyID == plyId && p.PagFyh >= desdeUtc && p.PagFyh <= hastaUtc)
+                    .Select(p => new { p.PlyID, p.PagNum, p.PagFyh, p.PagMonto, p.MepID, Metodo = p.MetodoPago.MepNom })
+                    .ToList();
+
+                var clavesPagos = pagos.Select(p => new { p.PlyID, p.PagNum }).ToList();
+
+                var ocupacionesPorPago = _ctx.Ocupaciones
+                    .AsNoTracking()
+                    .Where(o => o.PlyID == plyId && o.PagNum != null)
+                    .Select(o => new { o.PlyID, o.PagNum })
+                    .ToList()
+                    .Where(x => clavesPagos.Any(k => k.PlyID == x.PlyID && k.PagNum == x.PagNum))
+                    .GroupBy(x => new { x.PlyID, x.PagNum })
+                    .ToDictionary(
+                        g => (g.Key.PlyID, g.Key.PagNum!.Value),
+                        g => g.Count()
+                    );
+
+                var serviciosPorPago = _ctx.ServiciosExtrasRealizados
+                    .AsNoTracking()
+                    .Where(s => s.PlyID == plyId && s.PagNum != null)
+                    .Include(s => s.ServicioProveido)
+                    .ThenInclude(sp => sp.Servicio)
+                    .Select(s => new { s.PlyID, s.PagNum, SerNom = s.ServicioProveido.Servicio.SerNom })
+                    .ToList()
+                    .Where(x => clavesPagos.Any(k => k.PlyID == x.PlyID && k.PagNum == x.PagNum))
+                    .GroupBy(x => new { x.PlyID, x.PagNum })
+                    .ToDictionary(
+                        g => (g.Key.PlyID, g.Key.PagNum!.Value),
+                        g => g.Select(v => v.SerNom).ToList()
+                    );
+
+                var mepIds = pagos.Select(p => p.MepID).Distinct().ToList();
+                var nombresMetodos = _ctx.AceptaMetodosPago
+                    .AsNoTracking()
+                    .Include(a => a.MetodoPago)
+                    .Where(a => mepIds.Contains(a.MepID) && a.MetodoPago != null)
+                    .GroupBy(a => new { a.MepID, a.MetodoPago!.MepNom })
+                    .Select(g => new { g.Key.MepID, Nombre = g.Key.MepNom })
+                    .ToList()
+                    .ToDictionary(x => x.MepID, x => x.Nombre);
+
+                detalleItems = pagos
+                    .OrderByDescending(p => p.PagFyh)
+                    .Select(p => new InformeDetallePlayaItemVM
+                    {
+                        PlyID = p.PlyID,
+                        PagNum = p.PagNum,
+                        FechaUtc = p.PagFyh,
+                        Monto = p.PagMonto,
+                        Metodo = !string.IsNullOrWhiteSpace(p.Metodo) ? p.Metodo
+                                : (nombresMetodos.TryGetValue(p.MepID, out var nom) ? nom : $"Mep #{p.MepID}"),
+                        OcupacionesCount = ocupacionesPorPago.TryGetValue((p.PlyID, p.PagNum), out var oc) ? oc : 0,
+                        ServiciosExtrasCount = serviciosPorPago.TryGetValue((p.PlyID, p.PagNum), out var se) ? se.Count : 0,
+                        ServiciosExtrasNombres = serviciosPorPago.TryGetValue((p.PlyID, p.PagNum), out var se2) ? se2 : new List<string>()
+                    })
+                    .ToList();
+            }
+
+            var pdfBytes = BuildInformePdf(vm, logo, watermark, duenioNombre, playaNombre, detalleItems);
+
+            // Nombre de archivo: incluir playa sin espacios
+            var playaSlug = new string((playaNombre ?? "").Where(ch => !char.IsWhiteSpace(ch)).ToArray());
+            var fileName = $"informe_{playaSlug}_{DateTime.Now:yyyyMMdd_HHmm}.pdf";
+            return File(pdfBytes, "application/pdf", fileName);
         }
 
         // =======================
@@ -254,23 +367,31 @@ namespace estacionamientos.Controllers
 
             var clavesPagos = pagos.Select(p => new { p.PlyID, p.PagNum }).ToList();
 
-            var pagosConOcup = _ctx.Ocupaciones
+            var ocupacionesPorPago = _ctx.Ocupaciones
                 .AsNoTracking()
                 .Where(o => o.PlyID == plyID && o.PagNum != null)
-                .Select(o => new { o.PlyID, o.PagNum })
+                .Select(o => new { o.PlyID, o.PagNum, o.VehPtnt })
                 .ToList()
                 .Where(x => clavesPagos.Any(k => k.PlyID == x.PlyID && k.PagNum == x.PagNum))
-                .Select(x => (x.PlyID, x.PagNum!.Value))
-                .ToHashSet();
+                .GroupBy(x => new { x.PlyID, x.PagNum })
+                .ToDictionary(
+                    g => (g.Key.PlyID, g.Key.PagNum!.Value),
+                    g => new { Count = g.Count(), Vehiculos = g.Select(v => v.VehPtnt).Distinct().ToList() }
+                );
 
-            var pagosConServ = _ctx.ServiciosExtrasRealizados
+            var serviciosPorPago = _ctx.ServiciosExtrasRealizados
                 .AsNoTracking()
                 .Where(s => s.PlyID == plyID && s.PagNum != null)
-                .Select(s => new { s.PlyID, s.PagNum })
+                .Include(s => s.ServicioProveido)
+                .ThenInclude(sp => sp.Servicio)
+                .Select(s => new { s.PlyID, s.PagNum, SerNom = s.ServicioProveido.Servicio.SerNom })
                 .ToList()
                 .Where(x => clavesPagos.Any(k => k.PlyID == x.PlyID && k.PagNum == x.PagNum))
-                .Select(x => (x.PlyID, x.PagNum!.Value))
-                .ToHashSet();
+                .GroupBy(x => new { x.PlyID, x.PagNum })
+                .ToDictionary(
+                    g => (g.Key.PlyID, g.Key.PagNum!.Value),
+                    g => new { Count = g.Count(), Nombres = g.Select(v => v.SerNom).ToList() }
+                );
 
             var mepIds = pagos.Select(p => p.MepID).Distinct().ToList();
             var nombresMetodos = _ctx.AceptaMetodosPago
@@ -287,16 +408,8 @@ namespace estacionamientos.Controllers
                 .Select(p =>
                 {
                     var key = (p.PlyID, p.PagNum);
-                    var tieneOcup = pagosConOcup.Contains(key);
-                    var tieneServ = pagosConServ.Contains(key);
-
-                    string tipo = (tieneOcup, tieneServ) switch
-                    {
-                        (true, true) => "Ambos",
-                        (true, false) => "Ocupación",
-                        (false, true) => "Servicio",
-                        _ => "N/D"
-                    };
+                    var cantOcup = ocupacionesPorPago.TryGetValue(key, out var oc) ? oc.Count : 0;
+                    var cantServ = serviciosPorPago.TryGetValue(key, out var se) ? se.Count : 0;
 
                     return new InformeDetallePlayaItemVM
                     {
@@ -306,7 +419,10 @@ namespace estacionamientos.Controllers
                         Monto = p.PagMonto,
                         Metodo = !string.IsNullOrWhiteSpace(p.Metodo) ? p.Metodo
                                 : (nombresMetodos.TryGetValue(p.MepID, out var nom) ? nom : $"Mep #{p.MepID}"),
-                        Tipo = tipo
+                        OcupacionesCount = cantOcup,
+                        ServiciosExtrasCount = cantServ,
+                        OcupacionesVehiculos = ocupacionesPorPago.TryGetValue(key, out var oc2) ? oc2.Vehiculos : new List<string>(),
+                        ServiciosExtrasNombres = serviciosPorPago.TryGetValue(key, out var se2) ? se2.Nombres : new List<string>()
                     };
                 })
                 .ToList();
@@ -332,7 +448,7 @@ namespace estacionamientos.Controllers
         // PDF Builder (KPIs arriba, luego gráficos, luego mix y desglose)
         // =======================
 
-      private static byte[] BuildInformePdf(InformeDuenioVM vm, byte[]? logoBytes)
+      private static byte[] BuildInformePdf(InformeDuenioVM vm, byte[]? logoBytes, byte[]? watermarkBytes, string duenioNombre, string playaNombre, List<InformeDetallePlayaItemVM>? detalleItems)
 {
     return Document.Create(container =>
     {
@@ -349,6 +465,12 @@ namespace estacionamientos.Controllers
                         .FontSize(20).SemiBold().FontColor(PdfTheme.PrimaryDark);
                     col.Item().Text($"Período: {vm.Filtros.Desde:dd/MM/yyyy} — {vm.Filtros.Hasta:dd/MM/yyyy}")
                         .FontSize(10).FontColor(PdfTheme.Muted);
+                    if (!string.IsNullOrWhiteSpace(duenioNombre))
+                        col.Item().Text($"Dueño: {duenioNombre}")
+                            .FontSize(10).FontColor(PdfTheme.Text);
+                    if (!string.IsNullOrWhiteSpace(playaNombre))
+                        col.Item().Text($"Playa: {playaNombre}")
+                            .FontSize(10).FontColor(PdfTheme.Text);
                 });
 
                 row.ConstantItem(80).AlignRight().AlignMiddle().Element(e =>
@@ -379,50 +501,58 @@ namespace estacionamientos.Controllers
 
                     KpiCard("Ingresos Totales", PdfTheme.Money(vm.Kpis.IngresosTotales));
                     KpiCard("Cantidad de Pagos", vm.Kpis.CantPagos.ToString("N0"));
-                    KpiCard("Ticket Promedio", PdfTheme.Money(vm.Kpis.TicketPromedio));
+                    KpiCard("Ingreso promedio por pago", PdfTheme.Money(vm.Kpis.TicketPromedio));
                 });
 
-                // ===== (2) GRÁFICOS: línea (día) + barras (hora) =====
-                col.Item().PaddingTop(10).Row(r =>
+                // ===== (2) GRÁFICOS: usar la misma configuración Chart.js vía QuickChart =====
+                byte[]? chartDiaPng = null;
+                byte[]? chartHoraPng = null;
+                try
                 {
-                    // Línea por día
-                    r.RelativeItem().Element(card =>
-                    {
-                        card.Border(1).BorderColor(PdfTheme.Border)
-                            .Padding(PdfTheme.CardPadding).Column(cc =>
-                            {
-                                cc.Item().Text("Ingresos por día (línea)").Bold().FontColor(PdfTheme.Accent);
-                                if (vm.IngresosPorDia.Any())
-                                    cc.Item().Height(260).Element(e => RenderLineChart(e, vm.IngresosPorDia));
-                                else
-                                    cc.Item().Text("Sin datos").FontColor(PdfTheme.Muted);
-                            });
-                    });
+                    if (vm.IngresosPorDia?.Any() == true)
+                        chartDiaPng = BuildQuickChart("line", vm.IngresosPorDia, "Ingresos por día");
+                    if (vm.IngresosPorHora?.Any() == true)
+                        chartHoraPng = BuildQuickChart("bar", vm.IngresosPorHora, "Ingresos por hora");
+                }
+                catch { }
 
-                    // Barras por hora
-                    r.RelativeItem().Element(card =>
-                    {
-                        card.Border(1).BorderColor(PdfTheme.Border)
-                            .Padding(PdfTheme.CardPadding).Column(cc =>
-                            {
-                                cc.Item().Text("Ingresos por hora (barras)").Bold().FontColor(PdfTheme.Accent);
-                                if (vm.IngresosPorHora.Any())
-                                    cc.Item().Height(260).Element(e => RenderBarChart(e, vm.IngresosPorHora));
-                                else
-                                    cc.Item().Text("Sin datos").FontColor(PdfTheme.Muted);
-                            });
-                    });
+                // Línea por día
+                col.Item().PaddingTop(10).Element(card =>
+                {
+                    card.Border(1).BorderColor(PdfTheme.Border)
+                        .Padding(PdfTheme.CardPadding).Column(cc =>
+                        {
+                            cc.Item().Text("Ingresos por día (línea)").Bold().FontColor(PdfTheme.Accent);
+                            if (chartDiaPng is not null)
+                                cc.Item().Image(chartDiaPng).FitWidth();
+                            else
+                                cc.Item().Text("Sin datos").FontColor(PdfTheme.Muted);
+                        });
+                });
+
+                // Barras por hora
+                col.Item().PaddingTop(8).Element(card =>
+                {
+                    card.Border(1).BorderColor(PdfTheme.Border)
+                        .Padding(PdfTheme.CardPadding).Column(cc =>
+                        {
+                            cc.Item().Text("Ingresos por hora (barras)").Bold().FontColor(PdfTheme.Accent);
+                            if (chartHoraPng is not null)
+                                cc.Item().Image(chartHoraPng).FitWidth();
+                            else
+                                cc.Item().Text("Sin datos").FontColor(PdfTheme.Muted);
+                        });
                 });
 
                 // Separador bien fino y con poco margen
                 col.Item().PaddingTop(8).Element(e => e.BorderBottom(0.5f).BorderColor(PdfTheme.Border));
 
-                // ===== (3) MIX POR MÉTODO =====
+                // ===== (3) MÉTODOS DE PAGO =====
                 col.Item().PaddingTop(10).Element(section =>
                 {
                     section.Column(c =>
                     {
-                        c.Item().Text("Mix por Método de Pago")
+                        c.Item().Text("Métodos de pago")
                             .FontSize(12).Bold().FontColor(PdfTheme.PrimaryDark);
 
                         if (vm.Kpis.MixMetodos?.Any() == true)
@@ -493,7 +623,7 @@ namespace estacionamientos.Controllers
                                         h.Cell().Element(Th).Text("Playa");
                                         h.Cell().Element(ThRight).Text("# Pagos");
                                         h.Cell().Element(ThRight).Text("Ingresos");
-                                        h.Cell().Element(ThRight).Text("Ticket Prom.");
+                                        h.Cell().Element(ThRight).Text("Ingreso prom. por pago");
                                     });
 
                                     var zebra = false;
@@ -514,6 +644,61 @@ namespace estacionamientos.Controllers
                         }
                     });
                 });
+                // ===== (5) DETALLE DE PAGOS (solo si hay una playa seleccionada) =====
+                if (detalleItems != null && detalleItems.Any())
+                {
+                    col.Item().PaddingTop(14).Element(section =>
+                    {
+                        section.Column(c =>
+                        {
+                            c.Item().Text("Detalle de pagos")
+                                .FontSize(12).Bold().FontColor(PdfTheme.PrimaryDark);
+
+                            c.Item().PaddingTop(6).Element(t =>
+                            {
+                                t.Table(table =>
+                                {
+                                    table.ColumnsDefinition(cols =>
+                                    {
+                                        cols.RelativeColumn(2);   // # Pago
+                                        cols.RelativeColumn(3);   // Fecha
+                                        cols.RelativeColumn(3);   // Monto
+                                        cols.RelativeColumn(4);   // Método
+                                    });
+
+                                    table.Header(h =>
+                                    {
+                                        h.Cell().Element(Th).Text("# Pago");
+                                        h.Cell().Element(Th).Text("Fecha");
+                                        h.Cell().Element(ThRight).Text("Monto");
+                                        h.Cell().Element(Th).Text("Método");
+                                    });
+
+                                    foreach (var x in detalleItems)
+                                    {
+                                        table.Cell().Element(r => Td(r, false)).Text(x.PagNum.ToString());
+                                        table.Cell().Element(r => Td(r, false)).Text(x.FechaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
+                                        table.Cell().Element(r => TdRight(r, false)).Text(PdfTheme.Money(x.Monto));
+                                        table.Cell().Element(r => Td(r, false)).Text(x.Metodo);
+
+                                        // Subfila descriptiva
+                                        var desc = new List<string>();
+                                        if (x.OcupacionesCount > 0)
+                                            desc.Add($"Incluye {x.OcupacionesCount} {(x.OcupacionesCount == 1 ? "ocupación" : "ocupaciones")}");
+                                        if (x.ServiciosExtrasNombres?.Any() == true)
+                                            desc.Add("Servicios extra: " + string.Join(", ", x.ServiciosExtrasNombres));
+
+                                        if (desc.Count > 0)
+                                        {
+                                            table.Cell().ColumnSpan(4).Element(r => Td(r, false)).Text(string.Join(". ", desc) + ".");
+                                        }
+                                    }
+                                });
+                            });
+                        });
+                    });
+                }
+                
             });
 
             // ===== Footer =====
@@ -529,6 +714,23 @@ namespace estacionamientos.Controllers
                         t.TotalPages();
                     });
                 });
+
+            // ===== Marca de agua (inferior izquierda) =====
+            if (watermarkBytes is not null)
+            {
+                page.Background().Element(bg =>
+                {
+                    bg.AlignLeft().AlignBottom().Padding(24).Row(r =>
+                    {
+                        r.ConstantItem(40).Image(watermarkBytes).FitHeight();
+                        r.RelativeItem().PaddingLeft(8).AlignLeft().AlignBottom().Text(t =>
+                        {
+                            t.Span("NetParking").FontSize(20).SemiBold().FontColor(Colors.Grey.Lighten1);
+                        });
+                    });
+                });
+            }
+
         });
     }).GeneratePdf();
 }
@@ -544,8 +746,8 @@ namespace estacionamientos.Controllers
                 return;
             }
 
-            const int W = 600, H = 260;
-            const int padL = 44, padR = 12, padT = 10, padB = 30;
+            const int W = 900, H = 500; // relación ~1.8 para reducir espacio vertical
+            const int padL = 60, padR = 18, padT = 18, padB = 44;
             var plotW = W - padL - padR;
             var plotH = H - padT - padB;
 
@@ -591,6 +793,23 @@ namespace estacionamientos.Controllers
               $"<line x1='{F(padL)}' y1='{F(padT)}' x2='{F(padL)}' y2='{F(padT + plotH)}' stroke='#64748b' stroke-width='1'/>" +
               $"<line x1='{F(padL)}' y1='{F(padT + plotH)}' x2='{F(padL + plotW)}' y2='{F(padT + plotH)}' stroke='#64748b' stroke-width='1'/>";
 
+            // Ticks + labels en Y (0..max)
+            var yLabels = string.Join("", Enumerable.Range(0, 6).Select(i =>
+            {
+                var val = max / 5m * i;
+                var y = padT + plotH - (float)(val / max) * plotH;
+                return $"<text x='{F(padL - 6)}' y='{F(y + 4)}' font-size='10' text-anchor='end' fill='#475569'>{val:0}</text>";
+            }));
+
+            // Labels en X (hasta 8 marcas uniformes)
+            int xTicks = Math.Min(10, n);
+            var xLabels = string.Join("", Enumerable.Range(0, xTicks).Select(i =>
+            {
+                int idx = (int)Math.Round(i * (n - 1) / (double)Math.Max(1, xTicks - 1));
+                var (xx, _) = Pt(idx);
+                return $"<text x='{F(xx)}' y='{F(padT + plotH + 14)}' font-size='10' text-anchor='middle' fill='#475569'>{series[idx].Label}</text>";
+            }));
+
             // puntos (downsample light)
             int k = Math.Max(1, n / 12);
             var dots = string.Join("", Enumerable.Range(0, n).Where(i => i % k == 0 || i == n - 1)
@@ -604,11 +823,13 @@ namespace estacionamientos.Controllers
               $"</g>";
 
             var svg = $@"
-<svg viewBox='0 0 {W} {H}' xmlns='http://www.w3.org/2000/svg'>
+<svg width='{W}' height='{H}' viewBox='0 0 {W} {H}' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'>
   <rect x='0' y='0' width='{W}' height='{H}' fill='white'/>
   {legend}
   {grid}
   {axes}
+  {yLabels}
+  {xLabels}
   <path d='{AreaPath()}' fill='#93C5FD' fill-opacity='0.45' stroke='none'/>
   <path d='{LinePath()}' fill='none' stroke='#3B82F6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/>
   {dots}
@@ -625,8 +846,8 @@ private static void RenderBarChart(IContainer container, List<SeriePuntoVM> seri
         return;
     }
 
-    const int W = 600, H = 260;
-    const int padL = 40, padR = 12, padT = 10, padB = 30;
+    const int W = 900, H = 500;
+    const int padL = 60, padR = 18, padT = 18, padB = 44;
     var plotW = W - padL - padR;
     var plotH = H - padT - padB;
 
@@ -648,6 +869,21 @@ private static void RenderBarChart(IContainer container, List<SeriePuntoVM> seri
       $"<line x1='{F(padL)}' y1='{F(padT)}' x2='{F(padL)}' y2='{F(padT + plotH)}' stroke='#64748b' stroke-width='1'/>" +
       $"<line x1='{F(padL)}' y1='{F(padT + plotH)}' x2='{F(padL + plotW)}' y2='{F(padT + plotH)}' stroke='#64748b' stroke-width='1'/>";
 
+    // Ticks + labels en Y
+    var yLabels = string.Join("", Enumerable.Range(0, 6).Select(i =>
+    {
+        var val = max / 5m * i;
+        var y = padT + plotH - (float)(val / max) * plotH;
+        return $"<text x='{F(padL - 6)}' y='{F(y + 4)}' font-size='10' text-anchor='end' fill='#475569'>{val:0}</text>";
+    }));
+
+    // Labels en X para 24 horas
+    var xLabels = string.Join("", Enumerable.Range(0, n).Select(i =>
+    {
+        var x = padL + i * (barW + gap) + barW / 2f;
+        return $"<text x='{F(x)}' y='{F(padT + plotH + 14)}' font-size='9' text-anchor='middle' fill='#475569'>{series[i].Label}</text>";
+    }));
+
     var bars = string.Join("", series.Select((s, i) =>
     {
         var x = padL + i * (barW + gap);
@@ -664,11 +900,13 @@ private static void RenderBarChart(IContainer container, List<SeriePuntoVM> seri
       $"</g>";
 
     var svg = $@"
-<svg viewBox='0 0 {W} {H}' xmlns='http://www.w3.org/2000/svg'>
+<svg width='{W}' height='{H}' viewBox='0 0 {W} {H}' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'>
   <rect x='0' y='0' width='{W}' height='{H}' fill='white'/>
   {legend}
   {grid}
   {axes}
+  {yLabels}
+  {xLabels}
   {bars}
 </svg>";
     container.Svg(svg);
@@ -707,5 +945,45 @@ private static void RenderBarChart(IContainer container, List<SeriePuntoVM> seri
              .DefaultTextStyle(x => x.FontColor(PdfTheme.Text).FontSize(10));
 
         private static IContainer TdRight(IContainer c, bool zebra) => Td(c, zebra).AlignRight();
+
+        // ===== QuickChart helper =====
+        private static byte[]? BuildQuickChart(string type, List<SeriePuntoVM> series, string title)
+        {
+            try
+            {
+                var labels = series.Select(s => s.Label).ToList();
+                var values = series.Select(s => s.Valor).ToList();
+
+                var cfg = new
+                {
+                    type,
+                    data = new
+                    {
+                        labels,
+                        datasets = new[]
+                        {
+                            new { label = title, data = values }
+                        }
+                    },
+                    options = new
+                    {
+                        responsive = true,
+                        plugins = new { legend = new { position = "top" } },
+                        scales = new
+                        {
+                            y = new { beginAtZero = true }
+                        }
+                    }
+                };
+
+                var url = "https://quickchart.io/chart";
+                var payload = new { width = 900, height = 400, format = "png", backgroundColor = "white", chart = cfg };
+                var json = JsonSerializer.Serialize(payload);
+                var resp = Http.PostAsync(url, new StringContent(json, System.Text.Encoding.UTF8, "application/json")).Result;
+                if (!resp.IsSuccessStatusCode) return null;
+                return resp.Content.ReadAsByteArrayAsync().Result;
+            }
+            catch { return null; }
+        }
     }
 }

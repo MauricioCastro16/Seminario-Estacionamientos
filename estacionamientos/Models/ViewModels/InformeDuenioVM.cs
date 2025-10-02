@@ -69,7 +69,10 @@ namespace estacionamientos.ViewModels
         public DateTime FechaUtc { get; set; }
         public decimal Monto { get; set; }
         public string Metodo { get; set; } = "";
-        public string Tipo { get; set; } = "N/D"; // Ocupación | Servicio | Ambos | N/D (hasta conectar tablas)
+        public int OcupacionesCount { get; set; }
+        public int ServiciosExtrasCount { get; set; }
+        public List<string> OcupacionesVehiculos { get; set; } = new();
+        public List<string> ServiciosExtrasNombres { get; set; } = new();
     }
 
     public class InformeDetallePlayaVM
@@ -81,5 +84,9 @@ namespace estacionamientos.ViewModels
 
         public int CantPagos => Items.Count;
         public decimal Total => Items.Sum(x => x.Monto);
+    // Agregar propiedades para los gráficos
+        public List<SeriePuntoVM> IngresosPorDia { get; set; } = new();   // etiqueta = "dd/MM"
+        public List<SeriePuntoVM> IngresosPorHora { get; set; } = new();  // etiqueta = "00-23"
+        
     }
 }

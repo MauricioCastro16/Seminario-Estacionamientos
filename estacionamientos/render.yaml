@@ -1,0 +1,45 @@
+services:
+  # Servicio web (tu aplicación ASP.NET Core)
+  - type: web
+    name: estacionamientos-web
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    buildCommand: ""
+    startCommand: ""
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:8080
+      - key: DB_HOST
+        fromDatabase:
+          name: estacionamientos-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: estacionamientos-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: estacionamientos-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: estacionamientos-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: estacionamientos-db
+          property: password
+      - key: DB_SSLMODE
+        value: Require
+
+  # Base de datos PostgreSQL
+  - type: pserv
+    name: estacionamientos-db
+    plan: free
+    databaseName: estacionamientos_db
+    user: estacionamientos_user
+

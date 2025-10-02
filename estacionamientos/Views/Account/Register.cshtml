@@ -1,0 +1,303 @@
+@model estacionamientos.Models.ViewModels.Auth.RegisterViewModel
+@{
+    ViewData["Title"] = "Registro";
+}
+
+<div class="d-flex align-items-center justify-content-center p-3" style="min-height: calc(100vh - 80px); padding-top: 100px;">
+    <div class="w-100" style="max-width: 450px;">
+        <div class="card border-0 rounded-3" style="box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <div class="card-body p-4">
+                        <!-- Header -->
+                        <div class="text-center mb-4">
+                            <div class="mb-2">
+                                <i class="fas fa-user-plus text-primary" style="font-size: 2.2rem;"></i>
+                            </div>
+                            <h2 class="fw-bold text-dark mb-1" style="font-size: 1.5rem;">@ViewData["Title"]</h2>
+                            <p class="text-muted small mb-0" style="font-size: 0.8rem;">Crea tu cuenta y encuentra los mejores estacionamientos</p>
+                        </div>
+
+                        <!-- Mensaje de éxito -->
+                @if (TempData["SuccessMessage"] != null)
+                {
+                            <div class="alert alert-success alert-dismissible fade show rounded-2 mb-3" role="alert" style="font-size: 0.875rem;">
+                                <i class="fas fa-check-circle me-2"></i>
+                        @TempData["SuccessMessage"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                }
+
+                        <!-- Mensajes de error -->
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-2 mb-3" style="font-size: 0.875rem;"></div>
+
+                        <!-- Formulario -->
+                <form asp-action="Register" method="post">
+                    @Html.AntiForgeryToken()
+
+                            <!-- Nombre completo -->
+                    <div class="mb-3">
+                                <label asp-for="UsuNyA" class="form-label fw-semibold text-dark" style="font-size: 0.9rem;">
+                                    <i class="fas fa-user me-1 text-muted"></i>Nombre completo
+                                </label>
+                                <input asp-for="UsuNyA" class="form-control rounded-2 border-2" 
+                                       placeholder="Ej: Juan Pérez" style="font-size: 0.9rem;" />
+                                <span asp-validation-for="UsuNyA" class="text-danger small"></span>
+                    </div>
+
+                            <!-- Nombre de usuario -->
+                    <div class="mb-3">
+                                <label asp-for="UsuNomUsu" class="form-label fw-semibold text-dark" style="font-size: 0.9rem;">
+                                    <i class="fas fa-at me-1 text-muted"></i>Nombre de usuario
+                                </label>
+                                <input asp-for="UsuNomUsu" class="form-control rounded-2 border-2" 
+                                       placeholder="Ej: juanperez" style="font-size: 0.9rem;" />
+                                <span asp-validation-for="UsuNomUsu" class="text-danger small"></span>
+                    </div>
+
+                            <!-- Email -->
+                    <div class="mb-3">
+                                <label asp-for="UsuEmail" class="form-label fw-semibold text-dark" style="font-size: 0.9rem;">
+                                    <i class="fas fa-envelope me-1 text-muted"></i>Correo electrónico
+                                </label>
+                                <input asp-for="UsuEmail" class="form-control rounded-2 border-2" 
+                                       type="email" placeholder="Ej: juan@email.com" style="font-size: 0.9rem;" />
+                                <span asp-validation-for="UsuEmail" class="text-danger small"></span>
+                    </div>
+
+                            <!-- Contraseña -->
+                    <div class="mb-3">
+                                <label asp-for="UsuPswd" class="form-label fw-semibold text-dark" style="font-size: 0.9rem;">
+                                    <i class="fas fa-lock me-1 text-muted"></i>Contraseña
+                                </label>
+                        <div class="input-group">
+                                    <input asp-for="UsuPswd" class="form-control rounded-2 border-2" 
+                                           type="password" id="passwordInput" placeholder="Mínimo 8 caracteres" style="font-size: 0.9rem;" />
+                                    <button type="button" class="btn btn-outline-secondary border-2 rounded-end-2" id="togglePassword">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                                <span asp-validation-for="UsuPswd" class="text-danger small"></span>
+                    </div>
+
+                            <!-- Confirmar contraseña -->
+                    <div class="mb-3">
+                                <label asp-for="ConfirmPassword" class="form-label fw-semibold text-dark" style="font-size: 0.9rem;">
+                                    <i class="fas fa-lock me-1 text-muted"></i>Confirmar contraseña
+                                </label>
+                        <div class="input-group">
+                                    <input asp-for="ConfirmPassword" class="form-control rounded-2 border-2" 
+                                           type="password" id="confirmPasswordInput" placeholder="Repite tu contraseña" style="font-size: 0.9rem;" />
+                                    <button type="button" class="btn btn-outline-secondary border-2 rounded-end-2" id="toggleConfirmPassword">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                                <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                    </div>
+
+                            <!-- Teléfono -->
+                    <div class="mb-3">
+                                <label asp-for="UsuNumTel" class="form-label fw-semibold text-dark" style="font-size: 0.9rem;">
+                                    <i class="fas fa-phone me-1 text-muted"></i>Teléfono
+                                </label>
+                                <input asp-for="UsuNumTel" class="form-control rounded-2 border-2" 
+                                       type="tel" placeholder="Ej: +54 9 11 1234-5678" style="font-size: 0.9rem;" />
+                                <span asp-validation-for="UsuNumTel" class="text-danger small"></span>
+                    </div>
+
+                            <!-- Términos y condiciones -->
+                    <div class="form-check mb-3">
+                        <input asp-for="AcceptTerms" class="form-check-input" type="checkbox" />
+                                <label asp-for="AcceptTerms" class="form-check-label text-muted" style="font-size: 0.8rem;">
+                                    Acepto los <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal" 
+                                                  class="text-primary text-decoration-none fw-semibold">Términos y condiciones</a>
+                        </label>
+                                <span asp-validation-for="AcceptTerms" class="text-danger small d-block"></span>
+                    </div>
+
+                            <!-- Botones -->
+                            <div class="d-grid gap-2 mb-4">
+                                <button type="submit" class="btn btn-primary rounded-2 fw-semibold py-2" style="font-size: 0.9rem;">
+                                    <i class="fas fa-user-plus me-2"></i>Registrarse
+                                </button>
+                                <a asp-action="Login" class="btn btn-outline-secondary rounded-2 py-1" style="font-size: 0.875rem;">
+                                    <i class="fas fa-sign-in-alt me-2"></i>¿Ya tienes cuenta? Iniciar sesión
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+    </div>
+</div>
+
+<!-- Modal de términos y condiciones -->
+<div class="modal fade" id="termsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-lg">
+        <div class="modal-content rounded-4">
+            <div class="modal-header bg-primary text-white rounded-top-4">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-file-contract me-2"></i>Términos y condiciones
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-4">
+                    <h6 class="fw-bold text-primary mb-3">
+                        <i class="fas fa-user-tie me-2"></i>1. Registro como conductor
+                    </h6>
+                    <p class="text-muted">Al registrarte como conductor, aceptas utilizar el sistema de estacionamientos de manera responsable y cumplir con todas las normativas establecidas.</p>
+            </div>
+                
+                <div class="mb-4">
+                    <h6 class="fw-bold text-primary mb-3">
+                        <i class="fas fa-tasks me-2"></i>2. Responsabilidades
+                    </h6>
+                    <p class="text-muted mb-2">Como conductor, eres responsable de:</p>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            Proporcionar información veraz y actualizada
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            Respetar las tarifas y horarios de los estacionamientos
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            Mantener la seguridad de tu cuenta
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            Cumplir con las normas de tránsito
+                        </li>
+                </ul>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="fw-bold text-primary mb-3">
+                        <i class="fas fa-shield-alt me-2"></i>3. Privacidad y seguridad
+                    </h6>
+                    <p class="text-muted">Tu información personal será protegida según nuestras políticas de privacidad. Nos comprometemos a mantener la confidencialidad de tus datos.</p>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="fw-bold text-primary mb-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>4. Limitaciones
+                    </h6>
+                    <p class="text-muted">El servicio se proporciona "tal como está". No nos hacemos responsables por interrupciones del servicio o pérdida de datos.</p>
+                </div>
+            </div>
+            <div class="modal-footer bg-light rounded-bottom-4">
+                <button type="button" class="btn btn-primary rounded-3 px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-check me-2"></i>Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+        // Toggle para mostrar/ocultar contraseña
+        const togglePassword = document.querySelector("#togglePassword");
+        const passwordInput = document.querySelector("#passwordInput");
+            const passwordIcon = togglePassword?.querySelector("i");
+
+            if (togglePassword && passwordIcon) {
+                togglePassword.addEventListener("click", function (e) {
+                    e.preventDefault();
+            const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+            passwordInput.setAttribute("type", type);
+            passwordIcon.classList.toggle("fa-eye");
+            passwordIcon.classList.toggle("fa-eye-slash");
+                    
+                    // Focus en el input después del toggle
+                    passwordInput.focus();
+        });
+            }
+
+        // Toggle para mostrar/ocultar confirmación de contraseña
+        const toggleConfirmPassword = document.querySelector("#toggleConfirmPassword");
+        const confirmPasswordInput = document.querySelector("#confirmPasswordInput");
+            const confirmPasswordIcon = toggleConfirmPassword?.querySelector("i");
+
+            if (toggleConfirmPassword && confirmPasswordIcon) {
+                toggleConfirmPassword.addEventListener("click", function (e) {
+                    e.preventDefault();
+            const type = confirmPasswordInput.getAttribute("type") === "password" ? "text" : "password";
+            confirmPasswordInput.setAttribute("type", type);
+            confirmPasswordIcon.classList.toggle("fa-eye");
+            confirmPasswordIcon.classList.toggle("fa-eye-slash");
+                    
+                    // Focus en el input después del toggle
+                    confirmPasswordInput.focus();
+        });
+            }
+
+        // Validación en tiempo real de contraseñas
+        const password = document.querySelector("#passwordInput");
+        const confirmPassword = document.querySelector("#confirmPasswordInput");
+
+        function validatePasswords() {
+                if (confirmPassword && password) {
+            if (confirmPassword.value && password.value !== confirmPassword.value) {
+                confirmPassword.setCustomValidity("Las contraseñas no coinciden");
+                        confirmPassword.classList.add('is-invalid');
+            } else {
+                confirmPassword.setCustomValidity("");
+                        confirmPassword.classList.remove('is-invalid');
+                    }
+            }
+        }
+
+            if (password) password.addEventListener("input", validatePasswords);
+            if (confirmPassword) confirmPassword.addEventListener("input", validatePasswords);
+
+        // Validación del checkbox de términos
+        const acceptTermsCheckbox = document.querySelector('input[name="AcceptTerms"]');
+        const form = document.querySelector('form');
+        
+            if (form && acceptTermsCheckbox) {
+        form.addEventListener('submit', function(e) {
+            if (!acceptTermsCheckbox.checked) {
+                e.preventDefault();
+                acceptTermsCheckbox.setCustomValidity('Debe aceptar los términos y condiciones');
+                acceptTermsCheckbox.reportValidity();
+                        
+                        // Scroll al checkbox si está fuera de vista
+                        acceptTermsCheckbox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                acceptTermsCheckbox.setCustomValidity('');
+            }
+        });
+
+        // Limpiar validación cuando se marca el checkbox
+        acceptTermsCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                this.setCustomValidity('');
+            }
+                });
+            }
+
+            // Mejorar UX en mobile - auto-focus en primer campo
+            const firstInput = document.querySelector('input[type="text"], input[type="email"]');
+            if (firstInput && window.innerWidth <= 768) {
+                // Delay para evitar conflictos con otros scripts
+                setTimeout(() => {
+                    firstInput.focus();
+                }, 500);
+            }
+
+            // Mejorar navegación entre campos en mobile
+            const inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], input[type="tel"]');
+            inputs.forEach((input, index) => {
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && index < inputs.length - 1) {
+                        e.preventDefault();
+                        inputs[index + 1].focus();
+                    }
+                });
+            });
+        });
+    </script>
+}

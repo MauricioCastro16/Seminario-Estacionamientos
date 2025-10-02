@@ -8,7 +8,9 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="mb-0">Playa: @Model.PlyNom</h3>
         <div class="d-flex gap-2">
-            <a class="btn btn-secondary" asp-controller="PlayaEstacionamiento" asp-action="Index">Volver</a>
+            <a class="btn btn-secondary" asp-controller="PlayaEstacionamiento" asp-action="Index">
+                <i class="fa-solid fa-arrow-left"></i> Volver
+            </a>
             <a class="btn btn-primary" asp-controller="PlayaEstacionamiento" asp-action="Edit" asp-route-id="@Model.PlyID">Editar</a>
         </div>
     </div>

@@ -1,0 +1,161 @@
+@model estacionamientos.Models.ViewModels.CobroEgresoVM
+
+@{
+    ViewData["Title"] = "Cobro de Egreso";
+}
+
+<div class="container my-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                <i class="fas fa-car me-2"></i> Egreso - Vehículo @Model.VehPtnt
+            </h4>
+        </div>
+
+        <div class="card-body">
+            <!-- Información del vehículo y ocupación -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <h6 class="text-uppercase text-muted fw-bold mb-3">
+                        <i class="fas fa-info-circle me-1"></i> Información
+                    </h6>
+                    <table class="table table-sm align-middle">
+                        <tbody>
+                            <tr>
+                                <th>Clasificación:</th>
+                                <td>@Model.ClasVehTipo</td>
+                            </tr>
+                            <tr>
+                                <th>Playa:</th>
+                                <td>@Model.PlayaNombre</td>
+                            </tr>
+                            <tr>
+                                <th>Plaza:</th>
+                                <td>@Model.PlzNum</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="col-md-6">
+                    <h6 class="text-uppercase text-muted fw-bold mb-3">
+                        <i class="fas fa-clock me-1"></i> Tiempo de ocupación
+                    </h6>
+                    <table class="table table-sm align-middle">
+                        <tbody>
+                            <tr>
+                                <th class="w-40">Ingreso:</th>
+                                <td>@Model.OcufFyhIni.ToString("dd/MM/yyyy HH:mm")</td>
+                            </tr>
+                            <tr>
+                                <th>Egreso:</th>
+                                <td>@Model.OcufFyhFin.ToString("dd/MM/yyyy HH:mm")</td>
+                            </tr>
+                            <tr>
+                                <th>Duración:</th>
+                                <td>
+                                        @Model.HorasOcupacion h @(Model.MinutosOcupacion % 60) min
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Cálculo de tarifas -->
+            <div class="mb-4">
+                <h6 class="text-uppercase text-muted fw-bold mb-3">
+                    <i class="fas fa-receipt me-1"></i> Cálculo de Tarifas
+                </h6>
+
+                @if (Model.ServiciosAplicables.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Servicio</th>
+                                    <th class="text-end">Tarifa</th>
+                                    <th class="text-center">Cantidad</th>
+                                    <th class="text-end">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var servicio in Model.ServiciosAplicables)
+                                {
+                                    <tr>
+                                        <td>
+                                            @servicio.SerNom
+                                        </td>
+                                        <td class="text-end">$@servicio.TarifaVigente.ToString("F2")</td>
+                                        <td class="text-center">
+                                            <span class="badge bg-secondary">@servicio.Cantidad</span>
+                                        </td>
+                                        <td class="text-end fw-bold">$@servicio.Subtotal.ToString("F2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <th colspan="3" class="text-end">TOTAL A COBRAR:</th>
+                                    <th class="text-end text-success fs-5">
+                                        $@Model.TotalCobro.ToString("F2")
+                                    </th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        No se encontraron tarifas aplicables.
+                    </div>
+                }
+            </div>
+
+            <!-- Formulario de pago -->
+            <form asp-action="ConfirmarEgreso" method="post">
+                @Html.HiddenFor(m => m.PlyID)
+                @Html.HiddenFor(m => m.PlzNum)
+                @Html.HiddenFor(m => m.VehPtnt)
+                @Html.HiddenFor(m => m.OcufFyhIni)
+                @Html.HiddenFor(m => m.OcufFyhFin)
+                @Html.HiddenFor(m => m.TotalCobro)
+
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <label asp-for="MepID" class="form-label fw-bold">
+                            <i class="fas fa-credit-card me-1"></i> Método de pago
+                        </label>
+                        <select asp-for="MepID" class="form-select" required>
+                            <option value="">Seleccione...</option>
+                            @foreach (var metodo in Model.MetodosPagoDisponibles)
+                            {
+                                <option value="@metodo.MepID">@metodo.MepNom</option>
+                            }
+                        </select>
+                        <span asp-validation-for="MepID" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Cancelar
+                    </a>
+                    <button type="submit" 
+                            class="btn btn-primary px-4" 
+                            @(Model.TotalCobro <= 0 ? "disabled" : "")>
+                        <i class="fas fa-check me-1"></i> Confirmar egreso
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

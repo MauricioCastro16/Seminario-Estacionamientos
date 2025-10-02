@@ -2,32 +2,54 @@
 
 @{
     ViewData["Title"] = "Pagos de " + Model.PlayaNombre;
+
+    // Crear las series directamente
+    var labelsDia = Model.Items.Select(x => x.FechaUtc.ToString("dd/MM")).Distinct().ToList();
+    var valoresDia = Model.Items.GroupBy(x => x.FechaUtc.Date)
+                                .Select(g => g.Sum(x => x.Monto))
+                                .ToList();
+
+    var labelsHora = Enumerable.Range(0, 24).Select(h => h.ToString("00")).ToList();
+    var valoresHora = Enumerable.Range(0, 24).Select(h => Model.Items.Where(x => x.FechaUtc.Hour == h).Sum(x => x.Monto)).ToList();
 }
 
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Pagos — @Model.PlayaNombre</h2>
-        <div class="btn-group">
+        <div>
+            <h1 class="display-6 fw-semibold">Pagos</h1>
+            <h5 class="text-muted">@Model.PlayaNombre</h5>
+        </div>
+        <div>
             <a class="btn btn-outline-secondary"
-               asp-controller="Informes" asp-action="Index"
-               asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
-               asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")">
-                ← Volver
+                asp-controller="Informes" asp-action="Index"
+                asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
+                asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")">
+                <i class="fa-solid fa-arrow-left"></i> Volver
             </a>
-            <a class="btn btn-primary"
-               asp-controller="Informes" asp-action="Descargar"
-               asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
-               asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")"
-               asp-route-playasIds="@Model.PlyID">
+            <a class="btn btn-outline-primary"
+                asp-controller="Informes" asp-action="Descargar"
+                asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
+                asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")"
+                asp-route-playasIds="@Model.PlyID">
                 <i class="fa-solid fa-file-pdf"></i> Descargar PDF
             </a>
         </div>
     </div>
 
-    <div class="mb-3 text-muted">
-        Período: @Model.Filtros.Desde.ToString("dd/MM/yyyy") — @Model.Filtros.Hasta.ToString("dd/MM/yyyy")
-    </div>
+    <!-- Filtro de fechas -->
+    <form id="dateRangeForm" method="GET" asp-controller="Informes" asp-action="DetallePlaya" class="row g-3 mb-4">
+        <input type="hidden" name="plyID" value="@Model.PlyID" />
+        <div class="col-md-6">
+            <label for="desde" class="form-label">Fecha desde</label>
+            <input type="date" class="form-control" id="desde" name="desde" value="@Model.Filtros.Desde.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+        </div>
+        <div class="col-md-6">
+            <label for="hasta" class="form-label">Fecha hasta</label>
+            <input type="date" class="form-control" id="hasta" name="hasta" value="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+        </div>
+    </form>
 
+    <!-- KPIs -->
     <div class="row g-3 mb-3">
         <div class="col-6 col-md-3">
             <div class="card shadow-sm"><div class="card-body">
@@ -43,9 +65,47 @@
         </div>
     </div>
 
+    <!-- Gráficos -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Ingresos por día</h5>
+                    <div class="chart-container">
+                        <canvas id="chartDia"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Ingresos por hora</h5>
+                    <div class="chart-container">
+                        <canvas id="chartHora"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtro + Pagos -->
     @if (Model.Items.Any())
     {
         <div class="table-responsive">
+            <form id="searchForm" class="row g-2 align-items-center mb-2">
+                <div class="col-sm-6 col-md-5 col-lg-4 ms-auto">
+                    <input type="text" id="qInput" class="form-control" placeholder="Buscar..." />
+                </div>
+                <div class="col-auto">
+                    <button type="button" id="btnBuscar" class="btn btn-secondary" title="Buscar">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </button>
+                    <button type="button" id="btnLimpiarTabla" class="btn btn-outline-secondary d-none" title="Limpiar filtros">
+                        <i class="fa-regular fa-circle-xmark"></i>
+                    </button>
+                </div>
+            </form>
             <table class="table table-striped align-middle">
                 <thead>
                     <tr>
@@ -53,19 +113,34 @@
                         <th>Fecha</th>
                         <th class="text-end">Monto</th>
                         <th>Método</th>
-                        <th>Tipo</th>
                     </tr>
                 </thead>
                 <tbody>
                 @foreach (var x in Model.Items)
                 {
-                    <tr>
+                    <tr class="pago-row" data-key="@x.PagNum">
                         <td>@x.PagNum</td>
                         <td>@x.FechaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                         <td class="text-end">$ @x.Monto.ToString("N2")</td>
                         <td>@x.Metodo</td>
-                        <td>@x.Tipo</td>
                     </tr>
+                    @if (x.OcupacionesCount > 0 || x.ServiciosExtrasCount > 0)
+                    {
+                        <tr class="table-light pago-detail" data-key="@x.PagNum">
+                            <td colspan="4">
+                                <div class="py-2 px-2">
+                                    @if (x.OcupacionesCount > 0)
+                                    {
+                                        <div class="text-muted">Incluye @x.OcupacionesCount @(x.OcupacionesCount == 1 ? "ocupación" : "ocupaciones").</div>
+                                    }
+                                    @if (x.ServiciosExtrasNombres?.Any() == true)
+                                    {
+                                        <div class="text-muted">Servicios extra: @string.Join(", ", x.ServiciosExtrasNombres).</div>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
                 }
                 </tbody>
             </table>
@@ -76,3 +151,98 @@
         <div class="text-muted">No hay pagos en el período.</div>
     }
 </div>
+
+<style>
+  .chart-container {
+    position: relative;
+    height: 280px;      /* ajustá a gusto: ej. clamp(220px, 30vh, 360px) */
+    width: 100%;
+  }
+  .chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    (function () {
+        const labelsDia = @Html.Raw(Json.Serialize(labelsDia));
+        const valoresDia = @Html.Raw(Json.Serialize(valoresDia));
+        const labelsHora = @Html.Raw(Json.Serialize(labelsHora));
+        const valoresHora = @Html.Raw(Json.Serialize(valoresHora));
+
+        // Evitar duplicados en hot reload o navegaciones parciales:
+        window._charts ??= {};
+        if (window._charts.chartDia) window._charts.chartDia.destroy();
+        if (window._charts.chartHora) window._charts.chartHora.destroy();
+
+        const optCommon = {
+            responsive: true,
+            maintainAspectRatio: false, // usa la altura del contenedor
+            scales: { y: { beginAtZero: true } }
+        };
+
+        window._charts.chartDia = new Chart(
+            document.getElementById('chartDia').getContext('2d'),
+            {
+                type: 'line',
+                data: {
+                    labels: labelsDia,
+                    datasets: [{
+                        label: 'Ingresos ($)',
+                        data: valoresDia,
+                        fill: false,
+                        tension: 0.3
+                    }]
+                },
+                options: optCommon
+            }
+        );
+
+        window._charts.chartHora = new Chart(
+            document.getElementById('chartHora').getContext('2d'),
+            {
+                type: 'bar',
+                data: {
+                    labels: labelsHora,
+                    datasets: [{
+                        label: 'Ingresos ($)',
+                        data: valoresHora
+                    }]
+                },
+                options: optCommon
+            }
+        );
+    })();
+
+    // Filtro estilo estándar (cliente)
+    (function () {
+        const input = document.getElementById('qInput');
+        const btnBuscar = document.getElementById('btnBuscar');
+        const btnLimpiar = document.getElementById('btnLimpiarTabla');
+        if (!input || !btnBuscar || !btnLimpiar) return;
+
+        const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}+/gu, '');
+
+        function applyFilter() {
+            const q = normalize(input.value);
+            const rows = Array.from(document.querySelectorAll('tr.pago-row'));
+            rows.forEach(row => {
+                const key = row.getAttribute('data-key');
+                const detail = document.querySelector(`tr.pago-detail[data-key="${key}"]`);
+                const text = normalize(row.textContent + (detail ? (' ' + detail.textContent) : ''));
+                const match = q === '' || text.includes(q);
+                row.style.display = match ? '' : 'none';
+                if (detail) detail.style.display = match ? '' : 'none';
+            });
+            btnLimpiar.classList.toggle('d-none', !(input.value && input.value.trim().length));
+        }
+
+        btnBuscar.addEventListener('click', (e) => { e.preventDefault(); applyFilter(); });
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyFilter(); } });
+        input.addEventListener('input', () => { btnLimpiar.classList.toggle('d-none', !(input.value && input.value.trim().length)); });
+        btnLimpiar.addEventListener('click', () => { input.value = ''; applyFilter(); });
+    })();
+</script>

@@ -1,31 +1,58 @@
 @model estacionamientos.Models.ViewModels.TarifasIndexVM
 @{
-    ViewData["Title"] = "Tarifas de Servicios";
+    ViewData["Title"] = "Tarifas de servicios";
 
     string LabelFiltro(string v) => v?.ToLower() switch {
-        "playa" => "Playa",
         "servicio" => "Servicio",
-        "clase" => "Clase Vehículo",
+        "clase" => "Clase vehículo",
+        "fechas" => "Rango de fechas",
+        "monto" => "Monto",
         _ => "Todos"
     };
 
-    bool hayFiltros = (Model.FilterBy?.ToLower() ?? "todos") != "todos"
-                      || !string.IsNullOrWhiteSpace(Model.Q);
+    bool showAddButton = (!string.IsNullOrWhiteSpace(Model.Q) && Model.FilterBy != "fechas") ||
+                         (Model.FilterBy == "fechas" && !string.IsNullOrWhiteSpace(Model.SelectedOption));
 }
 <div class="container">
     <!-- Título -->
     <div class="mb-3">
-        <h1 class="display-6 fw-semibold">@ViewData["Title"]</h1>
-        <h5 class="text-muted">@ViewBag.PlayaNombre</h5>
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h1 class="display-6 fw-semibold">@ViewData["Title"]</h1>
+                <h5 class="text-muted">@ViewBag.PlayaNombre</h5>
+            </div>
+            @if (ViewBag.PlayaNombre != null)
+            {
+                <a asp-controller="PlayaEstacionamiento" asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="fa-solid fa-arrow-left"></i> Volver
+                </a>
+            }
+        </div>
     </div>
     <!-- Formulario de búsqueda/filtros -->
     <form method="get" id="searchForm" class="row g-2 align-items-center">
         <input type="hidden" name="plyID" value="@ViewBag.PlyID" />
 
-        <div class="col-md-5" id="qWrapper">
-            <input name="Q" id="qInput" value="@Model.Q" class="form-control" placeholder="Buscar..." />
+        <!-- Campo de texto -->
+        <div class="col-md-5 @(Model.FilterBy == "fechas" ? "d-none" : "")" id="qWrapper">
+            <input name="Q" id="qInput" value="@Model.Q" class="form-control" placeholder="Buscar tarifas..." />
         </div>
 
+        <!-- Rango de fechas -->
+        <div class="col-md-5 @(Model.FilterBy == "fechas" ? "" : "d-none")" id="fechasWrapper">
+            <div class="row g-2">
+                <div class="col-6">
+                    <input name="SelectedOption" id="fechaDesde" type="date" class="form-control" 
+                           value="@Model.SelectedOption" placeholder="Desde..." />
+                </div>
+                <div class="col-6">
+                    <input name="FechaHasta" id="fechaHasta" type="date" class="form-control" 
+                           placeholder="Hasta..." />
+                </div>
+            </div>
+        </div>
+
+        <!-- Botón Filtrar -->
         <div class="col-auto">
             <div class="btn-group">
                 <input type="hidden" name="FilterBy" id="filterBy" value="@Model.FilterBy" />
@@ -33,21 +60,23 @@
                         data-bs-toggle="dropdown" aria-expanded="false" id="filterBtn">
                     <i class="fa-solid fa-filter"></i> Filtrar: @LabelFiltro(Model.FilterBy)
                 </button>
-
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="#" data-value="todos">Todos</a></li>
                     <li><a class="dropdown-item" href="#" data-value="servicio">Servicio</a></li>
-                    <li><a class="dropdown-item" href="#" data-value="clase">Clase Vehículo</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="clase">Clase vehículo</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="fechas">Rango de fechas</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="monto">Monto</a></li>
                 </ul>
             </div>
         </div>
 
+        <!-- Buscar + Limpiar -->
         <div class="col-auto">
             <button type="submit" class="btn btn-secondary" title="Buscar">
                 <i class="fa-solid fa-magnifying-glass"></i>
             </button>
             <a id="btnLimpiar"
-               class="btn btn-outline-secondary"
+               class="btn btn-outline-secondary @(Model.HayFiltros ? "" : "d-none")"
                asp-action="Index"
                asp-route-plyID="@ViewBag.PlyID"
                title="Limpiar filtros">
@@ -55,13 +84,13 @@
             </a>
         </div>
 
-        <!-- Botón Agregar Playa alineado a la derecha -->
+        <!-- Botón Agregar Tarifa alineado a la derecha -->
         <div class="col-auto ms-auto">
             <a class="btn btn-primary"
             asp-action="Create"
             asp-route-plySel="@ViewBag.PlyID"      
             title="+ Nueva Tarifa">
-        <i class="fa-solid fa-plus"></i> Agregar Tarifa
+        <i class="fa-solid fa-plus"></i> Agregar tarifa
             </a>
 
             <a asp-action="Historial" 
@@ -70,16 +99,195 @@
             class="btn btn-outline-secondary ms-2">
                 <i class="fa-solid fa-clock-rotate-left"></i> Historial
             </a>
-
         </div>
+
+        <!-- Botón Añadir filtro SIEMPRE (habilitado por JS) -->
+        <div class="w-100"></div>
+        <div class="col-md-5 mt-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnAddOne" disabled>
+                Añadir filtro
+            </button>
+        </div>
+
+        <!-- Inputs ocultos para preservar filtros acumulados -->
+        @for (int i = 0; i < Model.Servicios.Count; i++)
+        {
+            <input type="hidden" name="Servicios[@i]" value="@Model.Servicios[i]" />
+        }
+        @for (int i = 0; i < Model.Clases.Count; i++)
+        {
+            <input type="hidden" name="Clases[@i]" value="@Model.Clases[i]" />
+        }
+        @for (int i = 0; i < Model.Todos.Count; i++)
+        {
+            <input type="hidden" name="Todos[@i]" value="@Model.Todos[i]" />
+        }
+        @for (int i = 0; i < Model.Montos.Count; i++)
+        {
+            <input type="hidden" name="Montos[@i]" value="@Model.Montos[i]" />
+        }
+        @for (int i = 0; i < Model.FechasDesde.Count; i++)
+        {
+            <input type="hidden" name="FechasDesde[@i]" value="@Model.FechasDesde[i]" />
+        }
+        @for (int i = 0; i < Model.FechasHasta.Count; i++)
+        {
+            <input type="hidden" name="FechasHasta[@i]" value="@Model.FechasHasta[i]" />
+        }
     </form>
+
+@if ((Model.Servicios?.Any() ?? false) ||
+     (Model.Clases?.Any() ?? false) ||
+     (Model.Todos?.Any() ?? false) ||
+     (Model.Montos?.Any() ?? false) ||
+     (Model.FechasDesde?.Any() ?? false) ||
+     (Model.FechasHasta?.Any() ?? false))
+{
+    <div class="mt-2 d-flex flex-wrap gap-2">
+
+        @* TODOS *@
+        @if (Model.Todos != null)
+        {
+          @foreach (var v in Model.Todos)
+          {
+              <span class="badge rounded-pill text-bg-light border">
+                  @v
+                  <a class="ms-2 text-decoration-none"
+                    asp-action="Index"
+                    asp-route-Q="@Model.Q"
+                    asp-route-FilterBy="@Model.FilterBy"
+                    asp-route-SelectedOption="@Model.SelectedOption"
+                    asp-route-Remove="todos:@v"
+                    asp-route-PlyID="@ViewBag.PlyID"
+                    asp-route-Servicios="@(string.Join(",", Model.Servicios ?? new List<string>()))"
+                    asp-route-Clases="@(string.Join(",", Model.Clases ?? new List<string>()))"
+                    asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                    asp-route-Montos="@(string.Join(",", Model.Montos ?? new List<string>()))"
+                    asp-route-FechasDesde="@(string.Join(",", Model.FechasDesde ?? new List<string>()))"
+                    asp-route-FechasHasta="@(string.Join(",", Model.FechasHasta ?? new List<string>()))"
+                    title="Quitar">
+                      <i class="fa-regular fa-circle-xmark"></i>
+                  </a>
+              </span>
+          }
+        }
+
+        @* SERVICIOS *@
+        @if (Model.Servicios != null)
+        {
+          @foreach (var v in Model.Servicios)
+          {
+              <span class="badge rounded-pill text-bg-light border">
+                  @v
+                  <a class="ms-2 text-decoration-none"
+                    asp-action="Index"
+                    asp-route-Q="@Model.Q"
+                    asp-route-FilterBy="@Model.FilterBy"
+                    asp-route-SelectedOption="@Model.SelectedOption"
+                    asp-route-Remove="servicio:@v"
+                    asp-route-PlyID="@ViewBag.PlyID"
+                    asp-route-Servicios="@(string.Join(",", Model.Servicios ?? new List<string>()))"
+                    asp-route-Clases="@(string.Join(",", Model.Clases ?? new List<string>()))"
+                    asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                    asp-route-Montos="@(string.Join(",", Model.Montos ?? new List<string>()))"
+                    asp-route-FechasDesde="@(string.Join(",", Model.FechasDesde ?? new List<string>()))"
+                    asp-route-FechasHasta="@(string.Join(",", Model.FechasHasta ?? new List<string>()))"
+                    title="Quitar">
+                      <i class="fa-regular fa-circle-xmark"></i>
+                  </a>
+              </span>
+          }
+        }
+
+        @* CLASES *@
+        @if (Model.Clases != null)
+        {
+          @foreach (var v in Model.Clases)
+          {
+              <span class="badge rounded-pill text-bg-light border">
+                  @v
+                  <a class="ms-2 text-decoration-none"
+                    asp-action="Index"
+                    asp-route-Q="@Model.Q"
+                    asp-route-FilterBy="@Model.FilterBy"
+                    asp-route-SelectedOption="@Model.SelectedOption"
+                    asp-route-Remove="clase:@v"
+                    asp-route-PlyID="@ViewBag.PlyID"
+                    asp-route-Servicios="@(string.Join(",", Model.Servicios ?? new List<string>()))"
+                    asp-route-Clases="@(string.Join(",", Model.Clases ?? new List<string>()))"
+                    asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                    asp-route-Montos="@(string.Join(",", Model.Montos ?? new List<string>()))"
+                    asp-route-FechasDesde="@(string.Join(",", Model.FechasDesde ?? new List<string>()))"
+                    asp-route-FechasHasta="@(string.Join(",", Model.FechasHasta ?? new List<string>()))"
+                    title="Quitar">
+                      <i class="fa-regular fa-circle-xmark"></i>
+                  </a>
+              </span>
+          }
+        }
+
+        @* MONTOS *@
+        @if (Model.Montos != null)
+        {
+          @foreach (var v in Model.Montos)
+          {
+              <span class="badge rounded-pill text-bg-light border">
+                  $@v
+                  <a class="ms-2 text-decoration-none"
+                    asp-action="Index"
+                    asp-route-Q="@Model.Q"
+                    asp-route-FilterBy="@Model.FilterBy"
+                    asp-route-SelectedOption="@Model.SelectedOption"
+                    asp-route-Remove="monto:@v"
+                    asp-route-PlyID="@ViewBag.PlyID"
+                    asp-route-Servicios="@(string.Join(",", Model.Servicios ?? new List<string>()))"
+                    asp-route-Clases="@(string.Join(",", Model.Clases ?? new List<string>()))"
+                    asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                    asp-route-Montos="@(string.Join(",", Model.Montos ?? new List<string>()))"
+                    asp-route-FechasDesde="@(string.Join(",", Model.FechasDesde ?? new List<string>()))"
+                    asp-route-FechasHasta="@(string.Join(",", Model.FechasHasta ?? new List<string>()))"
+                    title="Quitar">
+                      <i class="fa-regular fa-circle-xmark"></i>
+                  </a>
+              </span>
+          }
+        }
+
+        @* FECHAS *@
+        @if (Model.FechasDesde != null && Model.FechasHasta != null)
+        {
+          @for (int i = 0; i < Model.FechasDesde!.Count && i < Model.FechasHasta!.Count; i++)
+          {
+              <span class="badge rounded-pill text-bg-light border">
+                  @Model.FechasDesde[i] - @Model.FechasHasta[i]
+                  <a class="ms-2 text-decoration-none"
+                    asp-action="Index"
+                    asp-route-Q="@Model.Q"
+                    asp-route-FilterBy="@Model.FilterBy"
+                    asp-route-SelectedOption="@Model.SelectedOption"
+                    asp-route-Remove="fechas:@Model.FechasDesde[i]:@Model.FechasHasta[i]"
+                    asp-route-PlyID="@ViewBag.PlyID"
+                    asp-route-Servicios="@(string.Join(",", Model.Servicios ?? new List<string>()))"
+                    asp-route-Clases="@(string.Join(",", Model.Clases ?? new List<string>()))"
+                    asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                    asp-route-Montos="@(string.Join(",", Model.Montos ?? new List<string>()))"
+                    asp-route-FechasDesde="@(string.Join(",", Model.FechasDesde ?? new List<string>()))"
+                    asp-route-FechasHasta="@(string.Join(",", Model.FechasHasta ?? new List<string>()))"
+                    title="Quitar">
+                      <i class="fa-regular fa-circle-xmark"></i>
+                  </a>
+              </span>
+          }
+        }
+    </div>
+}
 
     <!-- Tabla -->
     <table class="table table-hover align-middle">
         <thead>
             <tr>
                 <th style="width: 25%">Servicio</th>
-                <th style="width: 15%">Clase Vehículo</th>
+                <th style="width: 15%">Clase vehículo</th>
                 <th style="width: 10%">Desde</th>
                 <th style="width: 10%">Hasta</th>
                 <th style="width: 10%">Monto</th>
@@ -138,19 +346,20 @@
                                     <i class="fa-regular fa-pen-to-square"></i>
                                 </a>
 
-                                <form asp-action="Delete"
-                                      asp-route-plyID="@item.PlyID"
-                                      asp-route-serID="@item.SerID"
-                                      asp-route-clasVehID="@item.ClasVehID"
-                                      asp-route-tasFecIni="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")"
-                                      method="post" class="d-inline"
-                                      onsubmit="return confirm('¿Estás seguro de cerrar esta tarifa?');">
-                                    <button type="submit"
-                                            class="btn btn-sm btn-outline-danger"
-                                            title="Suspender tarifa">
-                                        <i class="fa-regular fa-circle-xmark"></i>
-                                    </button>
-                                </form>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        title="Suspender tarifa"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#confirmSuspendModal"
+                                        data-servicio="@grupo.Key"
+                                        data-clase="@item.ClasificacionVehiculo.ClasVehTipo"
+                                        data-monto="@item.TasMonto.ToString("N2")"
+                                        data-plyid="@item.PlyID"
+                                        data-serid="@item.SerID"
+                                        data-clasvehid="@item.ClasVehID"
+                                        data-tasfecini="@item.TasFecIni.ToString("yyyy-MM-ddTHH:mm:ss")">
+                                    <i class="fa-regular fa-circle-xmark"></i>
+                                </button>
                             }
                             else
                             {
@@ -170,24 +379,148 @@
         }
         </tbody>
     </table>
+
+    <!-- Modal de confirmación para suspender tarifa -->
+    <div class="modal fade" id="confirmSuspendModal" tabindex="-1" aria-labelledby="confirmSuspendModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmSuspendModalLabel">Confirmar suspensión de tarifa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de suspender esta tarifa?</p>
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <p class="mb-1"><strong>Servicio:</strong> <span id="tarifaServicio"></span></p>
+                            <p class="mb-1"><strong>Clase Vehículo:</strong> <span id="tarifaClase"></span></p>
+                            <p class="mb-0"><strong>Monto:</strong> $<span id="tarifaMonto"></span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form id="confirmSuspendForm" asp-action="Delete" method="post">
+                        <input type="hidden" id="plyID" name="plyID" />
+                        <input type="hidden" id="serID" name="serID" />
+                        <input type="hidden" id="clasVehID" name="clasVehID" />
+                        <input type="hidden" id="tasFecIni" name="tasFecIni" />
+                        <button type="submit" class="btn btn-danger">Suspender</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-@if (ViewBag.PlayaNombre != null)
-{
-    <div class="mt-3">
-        <a asp-controller="PlayaEstacionamiento" asp-action="Index" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-arrow-left"></i> Volver
-        </a>
-    </div>
-}
 
 <script>
-    const mapLbl = {
-        todos: 'Todos',
-        playa: 'Playa',
-        servicio: 'Servicio',
-        clase: 'Clase Vehículo',
-    };
+  const mapLbl = {todos:'Todos', servicio:'Servicio', clase:'Clase Vehículo', fechas:'Rango de fechas', monto:'Monto'};
+
+  // Habilita/oculta inputs de búsqueda según el filtro elegido y actualiza la etiqueta
+  function updateFilterUI() {
+    const fb = document.getElementById('filterBy').value;
+    const qW = document.getElementById('qWrapper');
+    const fW = document.getElementById('fechasWrapper');
+    const qI = document.getElementById('qInput');
+    const fD = document.getElementById('fechaDesde');
+    const fH = document.getElementById('fechaHasta');
+
+    if (fb === 'fechas') {
+      qW?.classList.add('d-none');
+      fW?.classList.remove('d-none');
+      if (qI) qI.value = '';
+    } else {
+      fW?.classList.add('d-none');
+      if (fD) fD.value = '';
+      if (fH) fH.value = '';
+      qW?.classList.remove('d-none');
+    }
+
+    document.getElementById('filterBtn').innerHTML =
+      '<i class="fa-solid fa-filter"></i> Filtrar: ' + (mapLbl[fb] || 'Todos');
+
+    toggleLimpiar();
+    toggleAddButton(); // << clave: actualizar el estado del botón al cambiar de filtro
+  }
+
+  // Muestra/oculta el botón "Limpiar" según haya algo que limpiar
+  function toggleLimpiar() {
+    const fb = document.getElementById('filterBy')?.value || 'todos';
+    const q  = document.getElementById('qInput')?.value?.trim() || '';
+    const fD = document.getElementById('fechaDesde')?.value?.trim() || '';
+    const fH = document.getElementById('fechaHasta')?.value?.trim() || '';
+    const show = (fb && fb !== 'todos') || q.length > 0 || fD.length > 0 || fH.length > 0;
+    const limpiar = document.getElementById('btnLimpiar');
+    if (limpiar) limpiar.classList.toggle('d-none', !show);
+  }
+
+  // ¿Hay algo que se pueda añadir como filtro según el tipo actual?
+  function canAddCurrent() {
+    const fb = document.getElementById('filterBy')?.value || 'todos';
+    const q  = document.getElementById('qInput')?.value?.trim() || '';
+    const fD = document.getElementById('fechaDesde')?.value?.trim() || '';
+    const fH = document.getElementById('fechaHasta')?.value?.trim() || '';
+    
+    if (fb === 'fechas') {
+      return fD.length > 0; // Solo necesita fecha desde
+    } else {
+      return q.length > 0;
+    }
+  }
+
+  // Habilita/Deshabilita el botón "Añadir filtro"
+  function toggleAddButton() {
+    const btn = document.getElementById('btnAddOne');
+    if (btn) btn.disabled = !canAddCurrent();
+  }
+
+  // Manejar el botón "Añadir filtro"
+  document.getElementById('btnAddOne')?.addEventListener('click', function() {
+    const fb = document.getElementById('filterBy')?.value || 'todos';
+    const q = document.getElementById('qInput')?.value?.trim() || '';
+    const fD = document.getElementById('fechaDesde')?.value?.trim() || '';
+    
+    if (fb === 'fechas' && fD.length > 0) {
+      // Para fechas, agregar el rango de fechas como filtro
+      const fH = document.getElementById('fechaHasta')?.value?.trim() || '';
+      if (fH.length > 0) {
+        // Agregar ambas fechas
+        const url = new URL(window.location);
+        url.searchParams.append('FechasDesde', fD);
+        url.searchParams.append('FechasHasta', fH);
+        url.searchParams.delete('SelectedOption');
+        url.searchParams.delete('FechaHasta');
+        url.searchParams.set('FilterBy', 'todos');
+        window.location.href = url.toString();
+      } else {
+        // Solo fecha desde
+        const url = new URL(window.location);
+        url.searchParams.append('FechasDesde', fD);
+        url.searchParams.delete('SelectedOption');
+        url.searchParams.set('FilterBy', 'todos');
+        window.location.href = url.toString();
+      }
+    } else if (q.length > 0) {
+      // Para otros filtros, agregar el valor según el tipo
+      const url = new URL(window.location);
+      
+      if (fb === 'servicio') {
+        url.searchParams.append('Servicios', q);
+      } else if (fb === 'clase') {
+        url.searchParams.append('Clases', q);
+      } else if (fb === 'monto') {
+        url.searchParams.append('Montos', q);
+      } else {
+        // Para "todos", agregar a la lista "Todos" para mantener la búsqueda flexible
+        url.searchParams.append('Todos', q);
+      }
+      
+      url.searchParams.delete('Q');
+      url.searchParams.set('FilterBy', 'todos');
+      window.location.href = url.toString();
+    }
+  });
 
     const formEl = document.getElementById('searchForm');
 
@@ -208,5 +541,44 @@
             e.preventDefault();
             formEl.submit();
         }
+    });
+
+    // Event listeners para habilitar/deshabilitar el botón "Añadir filtro"
+    document.getElementById('qInput')?.addEventListener('input', () => {
+        toggleAddButton();
+        toggleLimpiar();
+    });
+
+    document.getElementById('fechaDesde')?.addEventListener('input', () => {
+        toggleAddButton();
+        toggleLimpiar();
+    });
+
+    document.getElementById('fechaHasta')?.addEventListener('input', () => {
+        toggleAddButton();
+        toggleLimpiar();
+    });
+
+    // Manejar el modal de confirmación de suspensión
+    document.getElementById('confirmSuspendModal')?.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget; // Botón que activó el modal
+        const servicio = button.getAttribute('data-servicio');
+        const clase = button.getAttribute('data-clase');
+        const monto = button.getAttribute('data-monto');
+        const plyID = button.getAttribute('data-plyid');
+        const serID = button.getAttribute('data-serid');
+        const clasVehID = button.getAttribute('data-clasvehid');
+        const tasFecIni = button.getAttribute('data-tasfecini');
+
+        // Actualizar el contenido del modal
+        document.getElementById('tarifaServicio').textContent = servicio;
+        document.getElementById('tarifaClase').textContent = clase;
+        document.getElementById('tarifaMonto').textContent = monto;
+
+        // Actualizar los campos ocultos del formulario
+        document.getElementById('plyID').value = plyID;
+        document.getElementById('serID').value = serID;
+        document.getElementById('clasVehID').value = clasVehID;
+        document.getElementById('tasFecIni').value = tasFecIni;
     });
 </script>

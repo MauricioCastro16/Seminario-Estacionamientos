@@ -1,38 +1,193 @@
 @using estacionamientos.ViewModels
-@model List<PlayeroIndexVM>
+@model PlayeroIndexFilterVM
 
 @{
     ViewData["Title"] = "Playeros";
+
+    string LabelFiltro(string v) => v?.ToLower() switch {
+        "nombre" => "Nombre",
+        "playa" => "Playa",
+        _ => "Todos"
+    };
+
+    bool showAddButton = !string.IsNullOrWhiteSpace(Model.Q) && Model.FilterBy != "playa";
 }
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
 
 <div class="container">
     <!-- Encabezado: título a la izquierda, botones a la derecha -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mb-0">Playeros</h1>
-        <div>
-            <a class="btn btn-primary" asp-controller="Playero" asp-action="Create" title="Agregar playero">
-                <i class="fa-solid fa-plus"></i> Agregar Playero
+    </div>
+
+    <!-- Formulario de búsqueda/filtros -->
+    <form method="get" id="searchForm" class="row g-2 align-items-center mb-3">
+        <!-- Campo de texto -->
+        <div class="col-md-5 @(Model.FilterBy == "playa" ? "d-none" : "")" id="qWrapper">
+            <input name="Q" id="qInput" value="@Model.Q" class="form-control" placeholder="Buscar playeros..." />
+        </div>
+
+        <!-- Dropdown de playas -->
+        <div class="col-md-5 @(Model.FilterBy == "playa" ? "" : "d-none")" id="playaWrapper">
+            <select name="SelectedPlaya" id="playaSelect" class="form-select">
+                <option value="">Seleccionar playa...</option>
+                @if (ViewBag.PlayasDelDuenio != null)
+                {
+                    @foreach (var playa in ViewBag.PlayasDelDuenio)
+                    {
+                        <option value="@playa.Nombre">@playa.Nombre</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <!-- Botón Filtrar -->
+        <div class="col-auto">
+            <div class="btn-group">
+                <input type="hidden" name="FilterBy" id="filterBy" value="@Model.FilterBy" />
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle"
+                        data-bs-toggle="dropdown" aria-expanded="false" id="filterBtn">
+                    <i class="fa-solid fa-filter"></i> Filtrar: @LabelFiltro(Model.FilterBy)
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" data-value="todos">Todos</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="nombre">Nombre</a></li>
+                    <li><a class="dropdown-item" href="#" data-value="playa">Playa</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Buscar + Limpiar -->
+        <div class="col-auto">
+            <button type="submit" class="btn btn-secondary" title="Buscar">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+            <a id="btnLimpiar"
+               class="btn btn-outline-secondary @(Model.HayFiltros ? "" : "d-none")"
+               asp-action="Index"
+               title="Limpiar filtros">
+                <i class="fa-regular fa-circle-xmark"></i>
             </a>
-            <a class="btn btn-outline-secondary" asp-controller="Playero" asp-action="HistorialAgrupado">
+        </div>
+
+        <!-- Botón Agregar Playero alineado a la derecha -->
+        <div class="col-auto ms-auto">
+            <a class="btn btn-primary" asp-controller="Playero" asp-action="Create" title="Agregar playero">
+                <i class="fa-solid fa-plus"></i> Agregar playero
+            </a>
+            <a class="btn btn-outline-secondary ms-2" asp-controller="Playero" asp-action="HistorialAgrupado">
                 <i class="fa-solid fa-clock-rotate-left"></i> Historial
             </a>
         </div>
-    </div>
 
-    <h5 class="text-center mt-3">Mis Playeros</h5>
+        <!-- Botón Añadir filtro -->
+        <div class="w-100"></div>
+        <div class="col-md-5 mt-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnAddOne" disabled>
+                Añadir filtro
+            </button>
+        </div>
 
-    <table class="table table-striped align-middle mt-3">
+        <!-- Inputs ocultos para preservar filtros acumulados -->
+        @for (int i = 0; i < Model.Nombres.Count; i++)
+        {
+            <input type="hidden" name="Nombres[@i]" value="@Model.Nombres[i]" />
+        }
+        @for (int i = 0; i < Model.Playas.Count; i++)
+        {
+            <input type="hidden" name="Playas[@i]" value="@Model.Playas[i]" />
+        }
+        @for (int i = 0; i < Model.Todos.Count; i++)
+        {
+            <input type="hidden" name="Todos[@i]" value="@Model.Todos[i]" />
+        }
+    </form>
+
+    <!-- Badges de filtros acumulados -->
+    @if ((Model.Nombres?.Any() ?? false) || (Model.Playas?.Any() ?? false) || (Model.Todos?.Any() ?? false))
+    {
+        <div class="mb-3 d-flex flex-wrap gap-2">
+            @* TODOS *@
+            @if (Model.Todos != null)
+            {
+                @foreach (var v in Model.Todos)
+                {
+                    <span class="badge rounded-pill text-bg-light border">
+                        @v
+                        <a class="ms-2 text-decoration-none"
+                          asp-action="Index"
+                          asp-route-Q="@Model.Q"
+                          asp-route-FilterBy="@Model.FilterBy"
+                          asp-route-Remove="todos:@v"
+                          asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                          asp-route-Playas="@(string.Join(",", Model.Playas ?? new List<string>()))"
+                          asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                          title="Quitar">
+                            <i class="fa-regular fa-circle-xmark"></i>
+                        </a>
+                    </span>
+                }
+            }
+
+            @* NOMBRES *@
+            @if (Model.Nombres != null)
+            {
+                @foreach (var v in Model.Nombres)
+                {
+                    <span class="badge rounded-pill text-bg-light border">
+                        @v
+                        <a class="ms-2 text-decoration-none"
+                          asp-action="Index"
+                          asp-route-Q="@Model.Q"
+                          asp-route-FilterBy="@Model.FilterBy"
+                          asp-route-Remove="nombre:@v"
+                          asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                          asp-route-Playas="@(string.Join(",", Model.Playas ?? new List<string>()))"
+                          asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                          title="Quitar">
+                            <i class="fa-regular fa-circle-xmark"></i>
+                        </a>
+                    </span>
+                }
+            }
+
+            @* PLAYAS *@
+            @if (Model.Playas != null)
+            {
+                @foreach (var v in Model.Playas)
+                {
+                    <span class="badge rounded-pill text-bg-light border">
+                        @v
+                        <a class="ms-2 text-decoration-none"
+                          asp-action="Index"
+                          asp-route-Q="@Model.Q"
+                          asp-route-FilterBy="@Model.FilterBy"
+                          asp-route-Remove="playa:@v"
+                          asp-route-Nombres="@(string.Join(",", Model.Nombres ?? new List<string>()))"
+                          asp-route-Playas="@(string.Join(",", Model.Playas ?? new List<string>()))"
+                          asp-route-Todos="@(string.Join(",", Model.Todos ?? new List<string>()))"
+                          title="Quitar">
+                            <i class="fa-regular fa-circle-xmark"></i>
+                        </a>
+                    </span>
+                }
+            }
+        </div>
+    }
+
+    <table id="playerosTable" class="table table-striped table-hover table-sm align-middle text-center mt-3">
         <thead>
             <tr>
-                <th>Nombre</th>
-                <th>Playas asignadas</th>
+                <th class="text-center">Nombre</th>
+                <th class="text-center">Playas asignadas</th>
                 <th class="text-center">Acciones</th>
             </tr>
         </thead>
         <tbody>
-            @if (Model is { Count: > 0 })
+            @if (Model.Playeros is { Count: > 0 })
             {
-                foreach (var row in Model)
+                foreach (var row in Model.Playeros)
                 {
                     var p = row.Playero;
                     <tr>
@@ -51,21 +206,20 @@
                                     : $"{playa.PlyCiu} - {playa.PlyDir}";
 
                                     <!-- Desasignar (marca histórico) -->
-                                    <form asp-controller="Playero" asp-action="Unassign" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="plyID" value="@playa.PlyID" />
-                                        <input type="hidden" name="plaNU" value="@p.UsuNU" />
-
                                         <div class="playa-chip">
                                             @etiqueta
-                                            <button type="submit"
+                                        <button type="button"
                                                     class="remove-btn"
                                                     title="Desasignar"
-                                                    onclick="return confirm('¿Quitar esta asignación?');">
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#confirmUnassignModal"
+                                                data-playero-id="@p.UsuNU"
+                                                data-playero-name="@p.UsuNyA"
+                                                data-playa-id="@playa.PlyID"
+                                                data-playa-name="@etiqueta">
                                                 <i class="fa-regular fa-circle-xmark"></i>
                                             </button>
                                         </div>
-                                    </form>
                                 }
                             }
                         </td>
@@ -82,19 +236,15 @@
                                 <i class="fa-solid fa-link"></i>
                             </a>
 
-                            <form asp-controller="Playero"
-                                asp-action="Delete"
-                                asp-route-id="@p.UsuNU"
-                                method="post"
-                                class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <button type="submit"
-                                        class="btn btn-outline-danger btn-sm"
-                                        title="Desvincular todas las playas"
-                                        onclick="return confirm('¿Estás seguro de que quieres desvincular este playero de todas sus playas?');">
-                                    <i class="fa-solid fa-link-slash"></i>
-                                </button>
-                            </form>
+                            <button type="button" 
+                                    class="btn btn-outline-danger btn-sm"
+                                    title="Desvincular todas las playas"
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#confirmUnlinkModal"
+                                    data-playero-id="@p.UsuNU"
+                                    data-playero-name="@p.UsuNyA">
+                                <i class="fa-solid fa-link-slash"></i>
+                            </button>
 
                         </td>
                     </tr>
@@ -110,6 +260,60 @@
             }
         </tbody>
     </table>
+
+    <!-- Modal de confirmación para desvincular playero de todas las playas -->
+    <div class="modal fade" id="confirmUnlinkModal" tabindex="-1" aria-labelledby="confirmUnlinkModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmUnlinkModalLabel">Confirmar desvinculación total</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que quieres desvincular este playero de todas sus playas?</p>
+                    <p class="mb-0"><strong>Playero:</strong> <span id="playeroName"></span></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form id="confirmUnlinkForm" asp-controller="Playero" asp-action="Delete" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" id="playeroId" name="id" />
+                        <button type="submit" class="btn btn-danger">Desvincular</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmación para desvincular playero de una playa específica -->
+    <div class="modal fade" id="confirmUnassignModal" tabindex="-1" aria-labelledby="confirmUnassignModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmUnassignModalLabel">Confirmar desvinculación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que quieres desvincular este playero de esta playa?</p>
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <p class="mb-1"><strong>Playero:</strong> <span id="unassignPlayeroName"></span></p>
+                            <p class="mb-0"><strong>Playa:</strong> <span id="unassignPlayaName"></span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form id="confirmUnassignForm" asp-controller="Playero" asp-action="Unassign" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" id="unassignPlayeroId" name="plaNU" />
+                        <input type="hidden" id="unassignPlayaId" name="plyID" />
+                        <button type="submit" class="btn btn-danger">Desvincular</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -141,3 +345,221 @@
         color: #a71d2a;
     }
 </style>
+
+@section Scripts {
+    <script>
+        const mapLbl = {todos:'Todos', nombre:'Nombre', playa:'Playa'};
+
+        // Habilita/oculta inputs de búsqueda según el filtro elegido y actualiza la etiqueta
+        function updateFilterUI() {
+            const fb = document.getElementById('filterBy').value;
+            const qW = document.getElementById('qWrapper');
+            const pW = document.getElementById('playaWrapper');
+            const qI = document.getElementById('qInput');
+            const pS = document.getElementById('playaSelect');
+
+            if (fb === 'playa') {
+                qW?.classList.add('d-none');
+                pW?.classList.remove('d-none');
+                if (qI) qI.value = '';
+            } else {
+                pW?.classList.add('d-none');
+                if (pS) pS.value = '';
+                qW?.classList.remove('d-none');
+            }
+
+            document.getElementById('filterBtn').innerHTML =
+                '<i class="fa-solid fa-filter"></i> Filtrar: ' + (mapLbl[fb] || 'Todos');
+
+            toggleLimpiar();
+            toggleAddButton();
+        }
+
+        // Muestra/oculta el botón "Limpiar" según haya algo que limpiar
+        function toggleLimpiar() {
+            const fb = document.getElementById('filterBy')?.value || 'todos';
+            const q = document.getElementById('qInput')?.value?.trim() || '';
+            const pS = document.getElementById('playaSelect')?.value?.trim() || '';
+            const show = (fb && fb !== 'todos') || q.length > 0 || pS.length > 0;
+            const limpiar = document.getElementById('btnLimpiar');
+            if (limpiar) limpiar.classList.toggle('d-none', !show);
+        }
+
+        // ¿Hay algo que se pueda añadir como filtro según el tipo actual?
+        function canAddCurrent() {
+            const fb = document.getElementById('filterBy')?.value || 'todos';
+            const q = document.getElementById('qInput')?.value?.trim() || '';
+            const pS = document.getElementById('playaSelect')?.value?.trim() || '';
+            
+            if (fb === 'playa') {
+                return pS.length > 0;
+            } else {
+                return q.length > 0;
+            }
+        }
+
+        // Habilita/Deshabilita el botón "Añadir filtro"
+        function toggleAddButton() {
+            const btn = document.getElementById('btnAddOne');
+            if (btn) btn.disabled = !canAddCurrent();
+        }
+
+        // Manejar el botón "Añadir filtro"
+        document.getElementById('btnAddOne')?.addEventListener('click', function() {
+            const fb = document.getElementById('filterBy')?.value || 'todos';
+            const q = document.getElementById('qInput')?.value?.trim() || '';
+            const pS = document.getElementById('playaSelect')?.value?.trim() || '';
+            
+            if (fb === 'playa' && pS.length > 0) {
+                // Para playas, agregar la playa seleccionada como filtro
+                const url = new URL(window.location);
+                url.searchParams.append('Playas', pS);
+                url.searchParams.delete('SelectedPlaya');
+                url.searchParams.set('FilterBy', 'todos');
+                window.location.href = url.toString();
+            } else if (q.length > 0) {
+                // Para otros filtros, agregar el valor según el tipo
+                const url = new URL(window.location);
+                
+                if (fb === 'nombre') {
+                    url.searchParams.append('Nombres', q);
+                } else {
+                    // Para "todos", agregar a la lista "Todos" para mantener la búsqueda flexible
+                    url.searchParams.append('Todos', q);
+                }
+                
+                url.searchParams.delete('Q');
+                url.searchParams.set('FilterBy', 'todos');
+                window.location.href = url.toString();
+            }
+        });
+
+        // Manejar el modal de confirmación para desvincular playero
+        document.addEventListener('DOMContentLoaded', function() {
+            // Modal para desvincular de todas las playas
+            const confirmUnlinkModal = document.getElementById('confirmUnlinkModal');
+            const playeroNameSpan = document.getElementById('playeroName');
+            const playeroIdInput = document.getElementById('playeroId');
+
+            if (confirmUnlinkModal) {
+                confirmUnlinkModal.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    const playeroId = button.getAttribute('data-playero-id');
+                    const playeroName = button.getAttribute('data-playero-name');
+
+                    // Actualizar el contenido del modal
+                    playeroNameSpan.textContent = playeroName;
+                    playeroIdInput.value = playeroId;
+                });
+            }
+
+            // Modal para desvincular de una playa específica
+            const confirmUnassignModal = document.getElementById('confirmUnassignModal');
+            const unassignPlayeroNameSpan = document.getElementById('unassignPlayeroName');
+            const unassignPlayaNameSpan = document.getElementById('unassignPlayaName');
+            const unassignPlayeroIdInput = document.getElementById('unassignPlayeroId');
+            const unassignPlayaIdInput = document.getElementById('unassignPlayaId');
+
+            if (confirmUnassignModal) {
+                confirmUnassignModal.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    const playeroId = button.getAttribute('data-playero-id');
+                    const playeroName = button.getAttribute('data-playero-name');
+                    const playaId = button.getAttribute('data-playa-id');
+                    const playaName = button.getAttribute('data-playa-name');
+
+                    // Actualizar el contenido del modal
+                    unassignPlayeroNameSpan.textContent = playeroName;
+                    unassignPlayaNameSpan.textContent = playaName;
+                    unassignPlayeroIdInput.value = playeroId;
+                    unassignPlayaIdInput.value = playaId;
+                });
+            }
+        });
+
+        // Event listeners para el formulario de filtros
+        const formEl = document.getElementById('searchForm');
+
+        document.querySelectorAll('.dropdown-menu .dropdown-item').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                const value = el.getAttribute('data-value');
+                document.getElementById('filterBy').value = value;
+                document.getElementById('filterBtn').innerHTML =
+                    '<i class="fa-solid fa-filter"></i> Filtrar: ' + (mapLbl[value] || 'Todos');
+                formEl.submit();
+            });
+        });
+
+        document.getElementById('qInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                formEl.submit();
+            }
+        });
+
+        // Event listeners para habilitar/deshabilitar el botón "Añadir filtro"
+        document.getElementById('qInput')?.addEventListener('input', () => {
+            toggleAddButton();
+            toggleLimpiar();
+        });
+
+        document.getElementById('playaSelect')?.addEventListener('change', () => {
+            toggleAddButton();
+            toggleLimpiar();
+        });
+
+        // Inicializar la UI
+        updateFilterUI();
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+    (function () {
+        const datatableLanguage = {
+            url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json",
+            lengthMenu: "Mostrar _MENU_ playeros",
+            paginate: {
+                previous: "« Anterior",
+                next: "Siguiente »"
+            }
+        };
+
+        const domLayout =
+            "<'row mb-3'<'col-12 col-md-6'l>>" +
+            "<'row'<'col-12'tr>>" +
+            "<'row mt-3'<'col-12 col-md-6'i><'col-12 col-md-6 d-flex justify-content-md-end'p>>";
+
+        function initIfExists(selector) {
+            try {
+                if (!document.querySelector(selector)) return;
+
+                // evitar inicializar dos veces
+                if ($.fn.DataTable.isDataTable(selector)) return;
+
+                $(selector).DataTable({
+                    dom: domLayout,
+                    order: [[0, "asc"]],
+                    pageLength: 10,
+                    lengthMenu: [5, 10, 25, 50],
+                    pagingType: "simple_numbers",
+                    language: datatableLanguage,
+                    columnDefs: [{ "orderable": false, "targets": -1 }],
+                    searching: false,
+                    responsive: true,
+                    info: false,
+                });
+            } catch (err) {
+                console.error("Error inicializando DataTable para", selector, err);
+            }
+        }
+
+        $(document).ready(function () {
+            initIfExists('#playerosTable');
+        });
+    })();
+    </script>
+}

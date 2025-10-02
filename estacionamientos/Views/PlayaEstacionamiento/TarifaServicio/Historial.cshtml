@@ -1,6 +1,6 @@
 @model List<estacionamientos.ViewModels.TarifaHistGroupVM>
 @{
-    ViewData["Title"] = "Historial de Tarifas";
+    ViewData["Title"] = "Historial de tarifas";
 }
 
 <style>
@@ -48,7 +48,7 @@
                     </td>
                     <td>
                         <ul class="period-list">
-                            @foreach (var p in r.Periodos)
+                            @foreach (var p in r.Periodos.OrderByDescending(x => x.Vigente).ThenByDescending(x => x.FechaInicio))
                             {
                                 var clase = p.Vigente ? "vigente" : "finalizado";
                                 var ini = p.FechaInicio?.ToString("dd/MM/yyyy") ?? "—";

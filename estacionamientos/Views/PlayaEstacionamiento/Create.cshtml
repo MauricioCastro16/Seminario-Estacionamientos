@@ -5,7 +5,7 @@
 }
 
 <div class="container py-4" style="max-width: 760px">
-    <h2 class="text-center mb-4">Registrar playa de estacionamiento</h2>
+    <h2 class="text-center mb-4">Registrar playa</h2>
 
     <form asp-action="Create" method="post" class="needs-validation" novalidate id="formCreate">
         @Html.AntiForgeryToken()
@@ -18,30 +18,32 @@
             <span asp-validation-for="PlyNom" class="text-danger"></span>
         </div>
 
-        <!-- Provincia (solo lectura; la define el mapa) -->
+        <!-- Provincia (editable) -->
         <div class="mb-3">
             <label asp-for="PlyProv" class="form-label">Provincia</label>
-            <input asp-for="PlyProv" class="form-control" id="provinciaInput" readonly required 
+            <input asp-for="PlyProv" class="form-control" id="provinciaInput" required 
                                placeholder="Cargando..."/>
             <input type="hidden" asp-for="PlyProvId" id="provIdHidden" />
             <span asp-validation-for="PlyProv" class="text-danger"></span>
         </div>
 
-        <!-- Ciudad/Localidad (solo lectura; la define el mapa) -->
+        <!-- Ciudad/Localidad (editable) -->
         <div class="mb-3">
             <label asp-for="PlyCiu" class="form-label">Ciudad / Localidad</label>
-            <input asp-for="PlyCiu" class="form-control" id="ciudadInput" readonly required 
+            <input asp-for="PlyCiu" class="form-control" id="ciudadInput" required 
                                placeholder="Cargando..."/>
             <input type="hidden" asp-for="PlyCiuId" id="ciuIdHidden" />
             <span asp-validation-for="PlyCiu" class="text-danger"></span>
         </div>
 
         <!-- Dirección (EDITABLE: NO modifica el mapa) -->
-        <div class="mb-3">
+        <div class="mb-3" style="position: relative;">
             <label asp-for="PlyDir" class="form-label">Dirección</label>
             <input asp-for="PlyDir" class="form-control" id="direccionInput" autocomplete="off" required
                    placeholder="Cargando..." />
             <span asp-validation-for="PlyDir" class="text-danger"></span>
+            <!-- Sugerencias de direcciones -->
+            <div id="addrSuggestions" class="list-group" style="position:absolute; top:100%; left:0; right:0; z-index:1000; max-height: 240px; overflow:auto; display:none;"></div>
         </div>
 
         <!-- Mapa -->
@@ -52,15 +54,14 @@
             <div class="form-text">Hacé clic en el mapa o arrastrá el marcador para elegir la ubicación.</div>
         </div>
 
-        <!-- Tipo de piso -->
+        <!-- Tipo de piso (requerido) -->
         <div class="mb-3">
-            <label class="form-label">Tipo de piso <span class="text-muted">(opcional)</span></label>
-            <input type="hidden" asp-for="PlyTipoPiso" id="pisoHidden" />
-            <select class="form-select mb-2" id="pisoSelect" data-val="false">
-                <option value="" selected>-- Selecciona una opción --</option>
-                <option>Asfalto</option>
-                <option>Ripio</option>
-                <option>Tierra</option>
+            <label asp-for="PlyTipoPiso" class="form-label">Tipo de piso</label>
+            <select asp-for="PlyTipoPiso" class="form-select mb-2" id="pisoSelect" required>
+                <option value="">-- Selecciona una opción --</option>
+                <option value="Asfalto">Asfalto</option>
+                <option value="Ripio">Ripio</option>
+                <option value="Tierra">Tierra</option>
             </select>
             <span asp-validation-for="PlyTipoPiso" class="text-danger"></span>
         </div>
@@ -122,6 +123,9 @@
         let marker = L.marker([FALLBACK.lat, FALLBACK.lon], { draggable: true }).addTo(map);
 
         // --- Reverse geocoding (mapa -> provincia/ciudad IDs + dirección) ---
+        let isEditingProv = false;
+        let isEditingCity = false;
+
         const reverseFromMap = debounce(async (lat, lon) => {
             // 1) Provincia / Municipio / Departamento con georef (con IDs)
             try {
@@ -132,12 +136,12 @@
                 const muni = d?.ubicacion?.municipio || {};
                 const dept = d?.ubicacion?.departamento || {};
 
-                provinciaInput.value = prov.nombre || "";
+                if (!isEditingProv) provinciaInput.value = prov.nombre || "";
                 provIdHidden.value   = prov.id     || "";
 
                 const cityName = muni.nombre || dept.nombre || "";
                 const cityId   = muni.id     || dept.id     || "";
-                ciudadInput.value = cityName;
+                if (!isEditingCity) ciudadInput.value = cityName;
                 ciuIdHidden.value = cityId;
             } catch { /* noop */ }
 
@@ -158,7 +162,6 @@
                 if (suburb) parts.push(suburb);
                 const built = parts.join(", ");
                 if (built) {
-                    // Solo si el usuario NO está editando en ese instante
                     if (!direccionInput.matches(':focus')) direccionInput.value = built;
                 } else if (j.display_name) {
                     if (!direccionInput.matches(':focus')) direccionInput.value = j.display_name.split(",").slice(0, 3).join(", ").trim();
@@ -209,14 +212,132 @@
         });
 
         const pisoSelect = $("pisoSelect");
-        const pisoInput  = $("pisoInput");
-        const pisoHidden = $("pisoHidden");
-
-        // Eliminar el código que maneja la opción "Otro"
+        // Validación básica extra por si el navegador no aplica required
         pisoSelect.addEventListener("change", () => {
-            // Ya no es necesario mostrar el input para escribir otro tipo de piso
-            // Solo lo que está en el select
-            pisoHidden.value = pisoSelect.value || "";
+            if (!pisoSelect.value) pisoSelect.setCustomValidity("Seleccioná un tipo de piso");
+            else pisoSelect.setCustomValidity("");
+        });
+
+        // ========= FORWARD GEOCODING: dirección -> mapa =========
+        const addrSuggestions = $("addrSuggestions");
+        let suggIndex = -1; // para navegación con teclado
+        let lastSuggestions = [];
+
+        function hideSuggestions() {
+            addrSuggestions.style.display = "none";
+            addrSuggestions.innerHTML = "";
+            suggIndex = -1;
+            lastSuggestions = [];
+        }
+
+        function renderSuggestions(items) {
+            addrSuggestions.innerHTML = "";
+            items.forEach((it, idx) => {
+                const el = document.createElement("button");
+                el.type = "button";
+                el.className = "list-group-item list-group-item-action" + (idx === suggIndex ? " active" : "");
+                el.textContent = it.label;
+                el.addEventListener("click", () => applySuggestion(idx));
+                addrSuggestions.appendChild(el);
+            });
+            addrSuggestions.style.display = items.length ? "block" : "none";
+        }
+
+        function applySuggestion(index) {
+            const it = lastSuggestions[index];
+            if (!it) return;
+            direccionInput.value = it.label;
+            hideSuggestions();
+            initPosition(it.lat, it.lon, 17);
+            reverseFromMap(it.lat, it.lon);
+        }
+
+        const forwardFromAddress = debounce(async () => {
+            const addr = (direccionInput.value || "").trim();
+            if (addr.length < 5) return; // evitar consultas demasiado cortas
+
+            // Dar contexto (ciudad/provincia) si ya están presentes
+            const ctxCity = (ciudadInput.value || "").trim();
+            const ctxProv = (provinciaInput.value || "").trim();
+            const q = [addr, ctxCity, ctxProv].filter(Boolean).join(", ");
+
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&addressdetails=1&q=${encodeURIComponent(q)}`;
+                const res = await fetch(url, { headers: { "Accept-Language": "es" } });
+                const arr = await res.json();
+                if (!Array.isArray(arr) || arr.length === 0) { hideSuggestions(); return; }
+                lastSuggestions = arr.map(it => ({
+                    label: it.display_name,
+                    lat: parseFloat(it.lat),
+                    lon: parseFloat(it.lon)
+                })).filter(it => Number.isFinite(it.lat) && Number.isFinite(it.lon));
+                suggIndex = -1;
+                renderSuggestions(lastSuggestions);
+            } catch {
+                hideSuggestions();
+            }
+        }, 800);
+
+        direccionInput.addEventListener("input", forwardFromAddress);
+        direccionInput.addEventListener("blur", forwardFromAddress);
+
+        // Cambio de provincia/ciudad: buscar con prioridad en esa zona
+        const forwardFromRegion = debounce(async () => {
+            const addr = (direccionInput.value || "").trim();
+            const ctxCity = (ciudadInput.value || "").trim();
+            const ctxProv = (provinciaInput.value || "").trim();
+            const q = [addr, ctxCity, ctxProv].filter(Boolean).join(", ");
+            if (!q) return;
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(q)}`;
+                const res = await fetch(url, { headers: { "Accept-Language": "es" } });
+                const arr = await res.json();
+                if (!Array.isArray(arr) || arr.length === 0) return;
+                const best = arr[0];
+                const lat = parseFloat(best.lat);
+                const lon = parseFloat(best.lon);
+                if (Number.isFinite(lat) && Number.isFinite(lon)) {
+                    initPosition(lat, lon, 12);
+                    reverseFromMap(lat, lon);
+                }
+            } catch { /* noop */ }
+        }, 700);
+
+        provinciaInput.addEventListener('focus', () => { isEditingProv = true; });
+        provinciaInput.addEventListener('blur',  () => { isEditingProv = false; forwardFromRegion(); });
+        provinciaInput.addEventListener('input', () => { isEditingProv = true; });
+
+        ciudadInput.addEventListener('focus', () => { isEditingCity = true; });
+        ciudadInput.addEventListener('blur',  () => { isEditingCity = false; forwardFromRegion(); });
+        ciudadInput.addEventListener('input', () => { isEditingCity = true; });
+
+        // Navegación por teclado en sugerencias
+        direccionInput.addEventListener("keydown", (ev) => {
+            if (addrSuggestions.style.display !== "block") return;
+            const max = lastSuggestions.length - 1;
+            if (ev.key === "ArrowDown") {
+                ev.preventDefault();
+                suggIndex = Math.min(max, suggIndex + 1);
+                renderSuggestions(lastSuggestions);
+            } else if (ev.key === "ArrowUp") {
+                ev.preventDefault();
+                suggIndex = Math.max(0, suggIndex - 1);
+                renderSuggestions(lastSuggestions);
+            } else if (ev.key === "Enter") {
+                if (suggIndex >= 0) {
+                    ev.preventDefault();
+                    applySuggestion(suggIndex);
+                }
+            } else if (ev.key === "Escape") {
+                hideSuggestions();
+            }
+        });
+
+        // Cerrar al hacer clic fuera
+        document.addEventListener("click", (e) => {
+            if (!addrSuggestions.contains(e.target) && e.target !== direccionInput) {
+                hideSuggestions();
+            }
         });
 
     </script>

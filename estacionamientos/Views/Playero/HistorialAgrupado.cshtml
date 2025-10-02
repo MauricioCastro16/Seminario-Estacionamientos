@@ -1,6 +1,6 @@
 @model List<estacionamientos.ViewModels.PlayeroHistGroupVM>
 @{
-    ViewData["Title"] = "Historial por Playero";
+    ViewData["Title"] = "Historial por playero";
 }
 
 <style>
@@ -50,13 +50,16 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="mb-0">@ViewData["Title"]</h2>
-        <a asp-action="Index" class="btn btn-outline-secondary">Volver</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left"></i> Volver
+        </a>
     </div>
 
     <table class="table table-striped align-middle">
         <thead class="table-light">
             <tr>
-                <th style="width: 30%;">Playero</th>
+                <th style="width: 25%;">Playero</th>
+                <th style="width: 25%;">Datos de domunicación</th>
                 <th>Períodos</th>
             </tr>
         </thead>
@@ -67,6 +70,18 @@
             {
                 <tr>
                     <td class="fw-semibold">@r.PlayeroNombre</td>
+                    <td>
+                        <div class="d-flex flex-column">
+                            <div class="mb-1">
+                                <i class="fa-solid fa-envelope text-muted me-2"></i>
+                                <a href="mailto:@r.PlayeroEmail" class="text-decoration-none">@r.PlayeroEmail</a>
+                            </div>
+                            <div>
+                                <i class="fa-solid fa-phone text-muted me-2"></i>
+                                <a href="tel:@r.PlayeroTelefono" class="text-decoration-none">@r.PlayeroTelefono</a>
+                            </div>
+                        </div>
+                    </td>
                     <td>
                         <ul class="period-list">
                             @foreach (var p in r.Periodos)
@@ -91,7 +106,7 @@
         else
         {
             <tr>
-                <td colspan="2" class="text-center text-muted">Sin historial.</td>
+                <td colspan="3" class="text-center text-muted">Sin historial.</td>
             </tr>
         }
         </tbody>

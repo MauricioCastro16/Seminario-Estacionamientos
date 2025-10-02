@@ -4,6 +4,8 @@ namespace estacionamientos.ViewModels
     {
         public int PlaNU { get; set; }
         public string PlayeroNombre { get; set; } = "";
+        public string PlayeroEmail { get; set; } = "";
+        public string PlayeroTelefono { get; set; } = "";
         public List<PeriodoVM> Periodos { get; set; } = new();
     }
 

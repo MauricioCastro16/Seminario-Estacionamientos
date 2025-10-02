@@ -97,73 +97,83 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 e.Property(s => s.SerNom).HasMaxLength(80).IsRequired();
                 e.Property(s => s.SerTipo).HasMaxLength(40);
                 e.Property(s => s.SerDesc).HasMaxLength(200);
+                e.Property(s => s.SerDuracionMinutos); // para facilitar calculo de tarifas
                 e.HasIndex(s => s.SerNom).IsUnique(); // opcional
             });
         modelBuilder.Entity<Servicio>().HasData(
-            new Servicio
-            {
-                SerID = 1,
-                SerNom = "Lavado de vehículo",
-                SerTipo = "ServicioExtra",
-                SerDesc = "Lavado exterior e interior del vehículo"
-            },
-            new Servicio
-            {
-                SerID = 2,
-                SerNom = "Mantenimiento de vehículo",
-                SerTipo = "ServicioExtra",
-                SerDesc = "Revisión y mantenimiento mecánico del vehículo"
-            },
-            new Servicio
-            {
-                SerID = 3,
-                SerNom = "Carga de combustible",
-                SerTipo = "ServicioExtra",
-                SerDesc = "Carga de combustible en el vehículo"
-            },
-            new Servicio
-            {
-                SerID = 4,
-                SerNom = "Revisión técnica",
-                SerTipo = "ServicioExtra",
-                SerDesc = "Revisión técnica del vehículo para verificar su estado"
-            },
-            new Servicio
-            {
-                SerID = 5,
-                SerNom = "Estacionamiento por 1 Hora",
-                SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de estacionamiento por 1 hora en playa"
-            },
-            new Servicio
-            {
-                SerID = 6,
-                SerNom = "Estacionamiento por 6 Horas",
-                SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de estacionamiento por 6 horas en playa"
-            },
-            new Servicio
-            {
-                SerID = 7,
-                SerNom = "Abono por 1 Día",
-                SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de abono por 1 día en playa"
-            },
-            new Servicio
-            {
-                SerID = 8,
-                SerNom = "Abono por 1 Semana",
-                SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de abono por 1 semana en playa"
-            },
-            new Servicio
-            {
-                SerID = 9,
-                SerNom = "Abono por 1 Mes",
-                SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de abono por 1 mes en playa"
-            }
-            );
+        new Servicio
+        {
+            SerID = 1,
+            SerNom = "Lavado de vehículo",
+            SerTipo = "ServicioExtra",
+            SerDesc = "Lavado exterior e interior del vehículo",
+            SerDuracionMinutos = null
+        },
+        new Servicio
+        {
+            SerID = 2,
+            SerNom = "Mantenimiento de vehículo",
+            SerTipo = "ServicioExtra",
+            SerDesc = "Revisión y mantenimiento mecánico del vehículo",
+            SerDuracionMinutos = null
+        },
+        new Servicio
+        {
+            SerID = 3,
+            SerNom = "Carga de combustible",
+            SerTipo = "ServicioExtra",
+            SerDesc = "Carga de combustible en el vehículo",
+            SerDuracionMinutos = null
+        },
+        new Servicio
+        {
+            SerID = 4,
+            SerNom = "Revisión técnica",
+            SerTipo = "ServicioExtra",
+            SerDesc = "Revisión técnica del vehículo para verificar su estado",
+            SerDuracionMinutos = null
+        },
+        new Servicio
+        {
+            SerID = 5,
+            SerNom = "Estacionamiento por 1 Hora",
+            SerTipo = "Estacionamiento",
+            SerDesc = "Servicio de estacionamiento por 1 hora en playa",
+            SerDuracionMinutos = 60
+        },
+        new Servicio
+        {
+            SerID = 6,
+            SerNom = "Estacionamiento por 6 Horas",
+            SerTipo = "Estacionamiento",
+            SerDesc = "Servicio de estacionamiento por 6 horas en playa",
+            SerDuracionMinutos = 360
+        },
+        new Servicio
+        {
+            SerID = 7,
+            SerNom = "Abono por 1 Día",
+            SerTipo = "Estacionamiento",
+            SerDesc = "Servicio de abono por 1 día en playa",
+            SerDuracionMinutos = 1440
+        },
+        new Servicio
+        {
+            SerID = 8,
+            SerNom = "Abono por 1 Semana",
+            SerTipo = "Estacionamiento",
+            SerDesc = "Servicio de abono por 1 semana en playa",
+            SerDuracionMinutos = 10080
+        },
+        new Servicio
+        {
+            SerID = 9,
+            SerNom = "Abono por 1 Mes",
+            SerTipo = "Estacionamiento",
+            SerDesc = "Servicio de abono por 1 mes en playa",
+            SerDuracionMinutos = 43200
+        }
+    );
 
         modelBuilder.Entity<Administrador>(e =>
         {
@@ -252,9 +262,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 entity.ToTable("Usuario");
                 entity.HasKey(e => e.UsuNU);
 
-#if NET8_0_OR_GREATER
                 entity.Property(e => e.UsuNU).UseIdentityByDefaultColumn();
-#endif
 
                 entity.Property(e => e.UsuNyA).HasMaxLength(120).IsRequired();
                 entity.Property(e => e.UsuEmail).HasMaxLength(254).IsRequired();

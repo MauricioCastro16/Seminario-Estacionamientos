@@ -16,6 +16,8 @@ namespace estacionamientos.Models
         [StringLength(200)]
         public string? SerDesc { get; set; }
 
+        public int? SerDuracionMinutos { get; set; }
+
         public ICollection<ServicioProveido> Proveidos { get; set; } = new List<ServicioProveido>();
     }
 }

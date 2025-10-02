@@ -3,55 +3,142 @@
     ViewData["Title"] = "Iniciar sesión";
 }
 
-<h2>@ViewData["Title"]</h2>
-<hr />
+<div class="d-flex align-items-center justify-content-center p-3" style="min-height: calc(100vh - 80px); padding-top: 100px;">
+    <div class="w-100" style="max-width: 400px;">
+        <div class="card border-0 rounded-3" style="box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <div class="card-body p-4">
+                        <!-- Header -->
+                        <div class="text-center mb-4">
+                            <div class="mb-2">
+                                <i class="fas fa-car text-primary" style="font-size: 2.2rem;"></i>
+                            </div>
+                            <h2 class="fw-bold text-dark mb-0" style="font-size: 1.5rem;">@ViewData["Title"]</h2>
+                        </div>
 
-<!-- Para mostrar mensaje en caso de errores -->
-<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                        <!-- Mensaje de éxito -->
+                        @if (TempData["SuccessMessage"] != null)
+                        {
+                            <div class="alert alert-success alert-dismissible fade show rounded-2 mb-3" role="alert" style="font-size: 0.875rem;">
+                                <i class="fas fa-check-circle me-2"></i>
+                                @TempData["SuccessMessage"]
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        }
 
-<form asp-action="Login" method="post">
-    @Html.AntiForgeryToken()
-    <input type="hidden" asp-for="ReturnUrl" />
+                        <!-- Mensajes de error -->
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-2 mb-3" style="font-size: 0.875rem;"></div>
 
-    <div class="mb-3">
-        <label asp-for="EmailOrUsername" class="form-label"></label>
-        <input asp-for="EmailOrUsername" class="form-control" />
-        <span asp-validation-for="EmailOrUsername" class="text-danger"></span>
+                        <!-- Formulario -->
+                        <form asp-action="Login" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" asp-for="ReturnUrl" />
+
+                            <div class="mb-3">
+                                <label asp-for="EmailOrUsername" class="form-label fw-semibold text-dark" style="font-size: 0.9rem;">
+                                    <i class="fas fa-user me-1 text-muted"></i>Usuario o correo
+                                </label>
+                                <input asp-for="EmailOrUsername" class="form-control rounded-2 border-2" 
+                                       placeholder="Ingresa tu usuario o correo" style="font-size: 0.9rem;" />
+                                <span asp-validation-for="EmailOrUsername" class="text-danger small"></span>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Password" class="form-label fw-semibold text-dark" style="font-size: 0.9rem;">
+                                    <i class="fas fa-lock me-1 text-muted"></i>Contraseña
+                                </label>
+                                <div class="input-group">
+                                    <input asp-for="Password" class="form-control rounded-2 border-2" 
+                                           type="password" id="passwordInput" placeholder="Ingresa tu contraseña" style="font-size: 0.9rem;" />
+                                    <button type="button" class="btn btn-outline-secondary border-2 rounded-end-2" id="togglePassword">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
+                                <span asp-validation-for="Password" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-check mb-4">
+                                <input asp-for="RememberMe" class="form-check-input" type="checkbox" />
+                                <label asp-for="RememberMe" class="form-check-label text-muted" style="font-size: 0.875rem;">
+                                    Recordarme
+                                </label>
+                            </div>
+
+                            <div class="d-grid mb-4">
+                                <button type="submit" class="btn btn-primary rounded-2 fw-semibold py-2" style="font-size: 0.9rem;">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Entrar
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Footer -->
+                        <div class="text-center">
+                            <p class="text-muted mb-2" style="font-size: 0.875rem;">¿No tienes cuenta?</p>
+                            <a asp-action="Register" class="btn btn-outline-primary rounded-2 px-3 py-1" style="font-size: 0.875rem;">
+                                <i class="fas fa-user-plus me-1"></i>Regístrate
+                            </a>
+                        </div>
+                    </div>
+                </div>
     </div>
-
-    <div class="mb-3">
-        <label asp-for="Password" class="form-label"></label>
-        <div class="input-group">
-            <input asp-for="Password" class="form-control" type="password" id="passwordInput" />
-            <button type="button" class="btn btn-outline-secondary" id="togglePassword">
-                <i class="fa-solid fa-eye"></i>
-            </button>
-        </div>
-        <span asp-validation-for="Password" class="text-danger"></span>
-    </div>
-
-    <div class="form-check mb-3">
-        <input asp-for="RememberMe" class="form-check-input" />
-        <label asp-for="RememberMe" class="form-check-label"></label>
-    </div>
-
-    <button type="submit" class="btn btn-primary">Entrar</button>
-</form>
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        const togglePassword = document.querySelector("#togglePassword");
-        const passwordInput = document.querySelector("#passwordInput");
-        const icon = togglePassword.querySelector("i");
+        document.addEventListener('DOMContentLoaded', function() {
+            const togglePassword = document.querySelector("#togglePassword");
+            const passwordInput = document.querySelector("#passwordInput");
+            const icon = togglePassword?.querySelector("i");
 
-        togglePassword.addEventListener("click", function () {
-            const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
-            passwordInput.setAttribute("type", type);
+            if (togglePassword && icon) {
+                togglePassword.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+                    passwordInput.setAttribute("type", type);
 
-            // Cambiar icono
-            icon.classList.toggle("fa-eye");
-            icon.classList.toggle("fa-eye-slash");
+                    // Cambiar icono
+                    icon.classList.toggle("fa-eye");
+                    icon.classList.toggle("fa-eye-slash");
+                    
+                    // Focus en el input después del toggle
+                    passwordInput.focus();
+                });
+            }
+
+            // Mejorar UX en mobile - auto-focus en primer campo
+            const firstInput = document.querySelector('input[type="text"], input[type="email"]');
+            if (firstInput && window.innerWidth <= 768) {
+                // Delay para evitar conflictos con otros scripts
+                setTimeout(() => {
+                    firstInput.focus();
+                }, 500);
+            }
+
+            // Mejorar navegación entre campos en mobile
+            const inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"]');
+            inputs.forEach((input, index) => {
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && index < inputs.length - 1) {
+                        e.preventDefault();
+                        inputs[index + 1].focus();
+                    } else if (e.key === 'Enter' && index === inputs.length - 1) {
+                        // Si es el último campo, enviar el formulario
+                        const form = document.querySelector('form');
+                        if (form) {
+                            form.submit();
+                        }
+                    }
+                });
+            });
+
+            // Mejorar accesibilidad - labels clickeables
+            const labels = document.querySelectorAll('label');
+            labels.forEach(label => {
+                const input = label.querySelector('input');
+                if (input) {
+                    label.style.cursor = 'pointer';
+                }
+            });
         });
     </script>
 }

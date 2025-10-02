@@ -2,19 +2,19 @@
 
 
 @{
-    ViewData["Title"] = "Asignar Playero a Playa";
+    ViewData["Title"] = "Asignar playero a playa";
 }
 
 
 <div class="container" style="max-width: 600px;">
-    <h2 class="mb-4">Asignar Playero a Playa</h2>
+    <h2 class="mb-4">Asignar playero a playa</h2>
 
     <form asp-action="Create" method="post">
         @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
         <div class="mb-3">
-            <label asp-for="Playero.UsuNyA" class="form-label">Nombre y Apellido</label>
+            <label asp-for="Playero.UsuNyA" class="form-label">Nombre y apellido</label>
             <input asp-for="Playero.UsuNyA" class="form-control" />
             <span asp-validation-for="Playero.UsuNyA" ></span>
         </div>
@@ -26,7 +26,7 @@
         </div>
 
         <div class="mb-3">
-            <label asp-for="Playero.UsuNomUsu" class="form-label">Nombre de Usuario</label>
+            <label asp-for="Playero.UsuNomUsu" class="form-label">Nombre de usuario</label>
             <input asp-for="Playero.UsuNomUsu" class="form-control" />
             <span asp-validation-for="Playero.UsuNomUsu" ></span>
         </div>
@@ -39,7 +39,7 @@
         </div>
 
         <div class="mb-3">
-            <label asp-for="Playero.UsuNumTel" class="form-label">Número de teléfono</label>
+            <label asp-for="Playero.UsuNumTel" class="form-label">Teléfono</label>
             <input asp-for="Playero.UsuNumTel" class="form-control" />
             <span asp-validation-for="Playero.UsuNumTel" ></span>
         </div>

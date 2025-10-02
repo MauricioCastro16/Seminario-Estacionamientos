@@ -1,16 +1,24 @@
 @model IEnumerable<estacionamientos.Models.TarifaServicio>
 
 @{
-    ViewData["Title"] = "Tarifas Vigentes";
+    ViewData["Title"] = "Tarifas vigentes";
     var playa = ViewBag.Playa as estacionamientos.Models.PlayaEstacionamiento;
 }
 
 <div class="card shadow-sm mt-4">
     <div class="card-body">
-        <h5 class="card-title">
-            <i class="bi bi-geo-alt-fill text-primary"></i>
-            @playa?.PlyNom
-        </h5>
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <h5 class="card-title">
+                    <i class="bi bi-geo-alt-fill text-primary"></i>
+                    @playa?.PlyNom
+                </h5>
+            </div>
+            <a asp-controller="PlayaEstacionamiento" asp-action="DetailsPlayero" asp-route-id="@playa?.PlyID"
+               class="btn btn-outline-secondary">
+               <i class="fa-solid fa-arrow-left"></i> Volver
+            </a>
+        </div>
         <p class="card-text text-muted mb-2">
             <strong>Dirección:</strong> @playa?.PlyDir (@playa?.PlyProv, @playa?.PlyCiu)
         </p>
@@ -28,7 +36,7 @@
                 <thead>
                     <tr>
                         <th style="width: 30%">Servicio</th>
-                        <th style="width: 20%">Clase Vehículo</th>
+                        <th style="width: 20%">Clase vehículo</th>
                         <th style="width: 10%">Monto</th>
                     </tr>
                 </thead>
@@ -57,9 +65,8 @@
                 </tbody>
             </table>
         }
-
         <a asp-controller="PlayaEstacionamiento" asp-action="DetailsPlayero" asp-route-id="@playa?.PlyID"
-           class="btn btn-outline-secondary mt-3">Volver
-        </a>
+            class="btn btn-outline-secondary mt-3">
+           <i class="bi bi-arrow-left"></i> Volver        </a>
     </div>
 </div>
