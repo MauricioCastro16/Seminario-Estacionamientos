@@ -2,17 +2,15 @@
 @{
     ViewData["Title"] = "Cerrar turno";
     var esPlayero = User.IsInRole("Playero");
-    var nowLocal = ViewBag.NowLocal as DateTime? ?? DateTime.Now;
+    DateTime nowLocal = ViewBag.NowLocal != null ? (DateTime)ViewBag.NowLocal : DateTime.Now;
+    decimal esperado = ViewBag.EfectivoEsperado != null ? (decimal)ViewBag.EfectivoEsperado : 0m;
 }
 
 <div class="container py-3" style="max-width: 720px">
     <h3 class="mb-3">Cerrar turno</h3>
 
-    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
-
     <form asp-action="Edit" method="post">
         @Html.AntiForgeryToken()
-        @* Claves *@
         <input type="hidden" asp-for="PlyID" />
         <input type="hidden" asp-for="PlaNU" />
         <input type="hidden" asp-for="TurFyhIni" />
@@ -40,12 +38,19 @@
             <div class="col-md-6 mb-3">
                 <label class="form-label">Apertura de caja</label>
                 <input class="form-control" value="@((Model.TurApertCaja ?? 0m).ToString("N2"))" disabled />
-                <span asp-validation-for="TurApertCaja" class="text-danger"></span>
             </div>
             <div class="col-md-6 mb-3">
                 <label class="form-label">Cierre de caja</label>
-                <input asp-for="TurCierrCaja" class="form-control" type="number" step="0.01" min="0" inputmode="decimal" required/>
-                <span asp-validation-for="TurCierrCaja" class="text-danger"></span>
+                <input asp-for="TurCierrCaja" id="TurCierrCaja" class="form-control" type="number" step="0.01" min="0" inputmode="decimal" required />
+                
+                <div class="mt-2">
+                    <small class="text-muted">Esperado (sistema): 
+                        <span id="esperadoTexto">@esperado.ToString("N2")</span>
+                    </small><br />
+                    <small class="text-muted">Diferencia: 
+                        <span id="diferencia">0,00</span>
+                    </small>
+                </div>
             </div>
         </div>
 
@@ -55,3 +60,31 @@
         </div>
     </form>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const inputCierre = document.getElementById("TurCierrCaja");
+            const esperado = parseFloat(document.getElementById("esperadoTexto").innerText.replace(/\./g, "").replace(",", ".")) || 0;
+            const diferenciaSpan = document.getElementById("diferencia");
+
+            function actualizarDiferencia() {
+                const declarado = parseFloat(inputCierre.value) || 0;
+                const dif = declarado - esperado;
+
+                diferenciaSpan.innerText = dif.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+
+                if (dif === 0) {
+                    diferenciaSpan.style.color = "gray";
+                } else if (dif > 0) {
+                    diferenciaSpan.style.color = "green";
+                } else {
+                    diferenciaSpan.style.color = "red";
+                }
+            }
+
+            inputCierre.addEventListener("input", actualizarDiferencia);
+            actualizarDiferencia();
+        });
+    </script>
+}

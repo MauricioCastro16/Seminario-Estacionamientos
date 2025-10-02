@@ -56,12 +56,17 @@ namespace estacionamientos.Controllers
         // ===========================
         // Lógica de cobro 
         // ===========================
-        private async Task<CobroEgresoVM> CalcularCobro(int plyID, int plzNum, string vehPtnt, DateTime ocufFyhIni, DateTime ocufFyhFin)
+        private async Task<CobroEgresoVM> CalcularCobro(
+            int plyID, int plzNum, string vehPtnt, DateTime ocufFyhIni, DateTime ocufFyhFin)
         {
             var ocupacion = await _ctx.Ocupaciones
                 .Include(o => o.Vehiculo).ThenInclude(v => v.Clasificacion)
                 .Include(o => o.Plaza).ThenInclude(p => p.Playa)
-                .FirstOrDefaultAsync(o => o.PlyID == plyID && o.PlzNum == plzNum && o.VehPtnt == vehPtnt && o.OcufFyhIni == ocufFyhIni);
+                .FirstOrDefaultAsync(o =>
+                    o.PlyID == plyID &&
+                    o.PlzNum == plzNum &&
+                    o.VehPtnt == vehPtnt &&
+                    o.OcufFyhIni == ocufFyhIni);
 
             if (ocupacion == null)
                 throw new InvalidOperationException("Ocupación no encontrada");
@@ -70,69 +75,136 @@ namespace estacionamientos.Controllers
             var horasOcupacion = (int)tiempoOcupacion.TotalHours;
             var minutosOcupacion = (int)tiempoOcupacion.TotalMinutes;
 
-            // Servicios de estacionamiento habilitados para esta playa y clasif.
-            var serviciosEstacionamiento = await _ctx.ServiciosProveidos
+            // Traer servicios de tipo Estacionamiento habilitados
+            var servicios = await _ctx.ServiciosProveidos
                 .Include(sp => sp.Servicio)
-                .Include(sp => sp.Tarifas.Where(t => t.ClasVehID == ocupacion.Vehiculo.ClasVehID &&
-                                                    t.TasFecIni <= ocufFyhFin &&
-                                                    (t.TasFecFin == null || t.TasFecFin >= ocufFyhIni)))
+                .Include(sp => sp.Tarifas.Where(t =>
+                    t.ClasVehID == ocupacion.Vehiculo.ClasVehID &&
+                    t.TasFecIni <= ocufFyhFin &&
+                    (t.TasFecFin == null || t.TasFecFin >= ocufFyhIni)))
                 .Where(sp => sp.PlyID == plyID &&
                             sp.SerProvHab &&
                             sp.Servicio.SerTipo == "Estacionamiento")
                 .ToListAsync();
 
-            var serviciosAplicables = new List<ServicioCobroVM>();
-            decimal totalCobro = 0;
-
-            var opcionesServicio = new List<(ServicioCobroVM servicio, decimal costoTotal, int minutosCubiertos)>();
-
-            foreach (var servicioProv in serviciosEstacionamiento)
+            // Cargar tarifas vigentes
+            var tarifas = new List<(ServicioProveido sp, decimal monto, int minutos)>();
+            foreach (var sp in servicios)
             {
-                var tarifaVigente = servicioProv.Tarifas
+                var tarifa = sp.Tarifas
                     .Where(t => t.ClasVehID == ocupacion.Vehiculo.ClasVehID &&
                                 t.TasFecIni <= ocufFyhFin &&
                                 (t.TasFecFin == null || t.TasFecFin >= ocufFyhIni))
                     .OrderByDescending(t => t.TasFecIni)
                     .FirstOrDefault();
 
-                if (tarifaVigente == null) continue;
-
-                var minutosServicio = servicioProv.Servicio.SerDuracionMinutos;
-                if (minutosServicio.HasValue && minutosServicio.Value > 0)
+                if (tarifa != null && sp.Servicio.SerDuracionMinutos.HasValue)
                 {
-                    int cantidad = (int)Math.Ceiling(minutosOcupacion / (double)minutosServicio.Value);
-                    var subtotal = tarifaVigente.TasMonto * cantidad;
-                    int minutosCubiertos = cantidad * minutosServicio.Value;
-
-                    opcionesServicio.Add((
-                        new ServicioCobroVM
-                        {
-                            SerID = servicioProv.SerID,
-                            SerNom = servicioProv.Servicio.SerNom,
-                            SerTipo = servicioProv.Servicio.SerTipo ?? "",
-                            TarifaVigente = tarifaVigente.TasMonto,
-                            Cantidad = cantidad,
-                            Subtotal = subtotal,
-                            EsEstacionamiento = true
-                        },
-                        subtotal,
-                        minutosCubiertos
-                    ));
+                    tarifas.Add((sp, tarifa.TasMonto, sp.Servicio.SerDuracionMinutos.Value));
                 }
             }
 
-            // Elegir la opción que mejor se ajuste al tiempo (por diferencia en minutos)
-            if (opcionesServicio.Any())
-            {
-                var mejorOpcion = opcionesServicio
-                    .OrderBy(x => Math.Abs(x.minutosCubiertos - minutosOcupacion))
-                    .First();
+            // Buscar referencias a fracción (30min) y hora (60min)
+            var fraccion = tarifas.FirstOrDefault(t => t.minutos == 30);
+            var hora = tarifas.FirstOrDefault(t => t.minutos == 60);
 
-                serviciosAplicables.Add(mejorOpcion.servicio);
-                totalCobro = mejorOpcion.costoTotal;
+            var serviciosAplicables = new List<ServicioCobroVM>();
+            decimal totalCobro = 0;
+
+            // ======================
+            // Reglas especiales cortas
+            // ======================
+            if (minutosOcupacion <= 30 && fraccion.sp != null)
+            {
+                serviciosAplicables.Add(new ServicioCobroVM
+                {
+                    SerID = fraccion.sp.SerID,
+                    SerNom = fraccion.sp.Servicio.SerNom,
+                    TarifaVigente = fraccion.monto,
+                    Cantidad = 1,
+                    Subtotal = fraccion.monto,
+                    EsEstacionamiento = true
+                });
+                totalCobro = fraccion.monto;
+            }
+            else if (minutosOcupacion <= 60 && hora.sp != null)
+            {
+                serviciosAplicables.Add(new ServicioCobroVM
+                {
+                    SerID = hora.sp.SerID,
+                    SerNom = hora.sp.Servicio.SerNom,
+                    TarifaVigente = hora.monto,
+                    Cantidad = 1,
+                    Subtotal = hora.monto,
+                    EsEstacionamiento = true
+                });
+                totalCobro = hora.monto;
+            }
+            else
+            {
+                // ======================
+                // Algoritmo greedy para el resto
+                // ======================
+                var tarifasLargas = tarifas
+                    .Where(t => t.minutos > 60) // ignorar fracción y hora
+                    .OrderByDescending(t => t.minutos)
+                    .ToList();
+
+                int minutosRestantes = minutosOcupacion;
+
+                foreach (var (sp, monto, duracion) in tarifasLargas)
+                {
+                    int cantidad = minutosRestantes / duracion;
+                    if (cantidad > 0)
+                    {
+                        serviciosAplicables.Add(new ServicioCobroVM
+                        {
+                            SerID = sp.SerID,
+                            SerNom = sp.Servicio.SerNom,
+                            TarifaVigente = monto,
+                            Cantidad = cantidad,
+                            Subtotal = monto * cantidad,
+                            EsEstacionamiento = true
+                        });
+                        totalCobro += monto * cantidad;
+                        minutosRestantes -= cantidad * duracion;
+                    }
+                }
+
+                // Resolver sobrante con horas o fracción
+                if (minutosRestantes > 0)
+                {
+                    if (minutosRestantes <= 30 && fraccion.sp != null)
+                    {
+                        serviciosAplicables.Add(new ServicioCobroVM
+                        {
+                            SerID = fraccion.sp.SerID,
+                            SerNom = fraccion.sp.Servicio.SerNom,
+                            TarifaVigente = fraccion.monto,
+                            Cantidad = 1,
+                            Subtotal = fraccion.monto,
+                            EsEstacionamiento = true
+                        });
+                        totalCobro += fraccion.monto;
+                    }
+                    else if (hora.sp != null)
+                    {
+                        int cantHoras = (int)Math.Ceiling(minutosRestantes / 60.0);
+                        serviciosAplicables.Add(new ServicioCobroVM
+                        {
+                            SerID = hora.sp.SerID,
+                            SerNom = hora.sp.Servicio.SerNom,
+                            TarifaVigente = hora.monto,
+                            Cantidad = cantHoras,
+                            Subtotal = hora.monto * cantHoras,
+                            EsEstacionamiento = true
+                        });
+                        totalCobro += hora.monto * cantHoras;
+                    }
+                }
             }
 
-            // Métodos de pago disponibles
+            // Métodos de pago
             var metodosPago = await _ctx.AceptaMetodosPago
                 .Include(amp => amp.MetodoPago)
                 .Where(amp => amp.PlyID == plyID && amp.AmpHab)
@@ -162,6 +234,7 @@ namespace estacionamientos.Controllers
                 MetodosPagoDisponibles = metodosPago
             };
         }
+
 
         private DateTime NormalizarFechaUTC(DateTime fecha)
         {
@@ -299,10 +372,14 @@ namespace estacionamientos.Controllers
                 var proximoNumeroPago = await _ctx.Pagos
                     .Where(p => p.PlyID == model.PlyID)
                     .MaxAsync(p => (int?)p.PagNum) + 1 ?? 1;
+                
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int plaNU = int.Parse(userId);
 
                 var pago = new Pago
                 {
                     PlyID = model.PlyID,
+                    PlaNU = plaNU, 
                     PagNum = proximoNumeroPago,
                     MepID = model.MepID,
                     PagMonto = model.TotalCobro,
