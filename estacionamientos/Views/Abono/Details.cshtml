@@ -1,0 +1,207 @@
+@model estacionamientos.Models.Abono
+
+@{
+    ViewData["Title"] = "Detalles del Abono";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1">@ViewData["Title"]</h2>
+                    <p class="text-secondary small">Plaza @Model.PlzNum - @Model.Abonado.AboNom</p>
+                </div>
+                <div>
+                    <a asp-action="Index" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Volver al listado
+                    </a>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                
+                <!-- Información del Abono -->
+                <div class="col-12 col-md-6">
+                    <div class="card shadow border-0 rounded-4 h-100">
+                        <div class="card-body p-4">
+                            <h5 class="fw-semibold mb-3">
+                                <i class="bi bi-file-earmark-text me-2 text-primary"></i>Información del Abono
+                            </h5>
+                            
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label fw-medium text-muted">Plaza</label>
+                                    <div class="fw-bold">Plaza @Model.PlzNum</div>
+                                </div>
+                                
+                                <div class="col-6">
+                                    <label class="form-label fw-medium text-muted">Fecha Inicio</label>
+                                    <div class="fw-bold">@Model.AboFyhIni.ToString("dd/MM/yyyy")</div>
+                                </div>
+                                
+                                <div class="col-6">
+                                    <label class="form-label fw-medium text-muted">Fecha Fin</label>
+                                    <div class="fw-bold">@(Model.AboFyhFin?.ToString("dd/MM/yyyy") ?? "No definida")</div>
+                                </div>
+                                
+                                <div class="col-6">
+                                    <label class="form-label fw-medium text-muted">Monto Total</label>
+                                    <div class="fw-bold text-success fs-5">@Model.AboMonto.ToString("C")</div>
+                                </div>
+                                
+                                <div class="col-6">
+                                    <label class="form-label fw-medium text-muted">Estado</label>
+                                    <div>
+                                        @{
+                                            var estadoPago = "Pagado";
+                                            var badgeClass = "bg-success";
+                                            
+                                            if (Model.AboFyhFin.HasValue && Model.AboFyhFin.Value < DateTime.UtcNow)
+                                            {
+                                                estadoPago = "Completado";
+                                                badgeClass = "bg-secondary";
+                                            }
+                                            else if (Model.AboFyhIni <= DateTime.UtcNow && (!Model.AboFyhFin.HasValue || Model.AboFyhFin.Value >= DateTime.UtcNow))
+                                            {
+                                                estadoPago = "Activo";
+                                                badgeClass = "bg-primary";
+                                            }
+                                            else if (Model.AboFyhIni > DateTime.UtcNow)
+                                            {
+                                                estadoPago = "Programado";
+                                                badgeClass = "bg-info";
+                                            }
+                                        }
+                                        <span class="badge @badgeClass fs-6">@estadoPago</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información del Abonado -->
+                <div class="col-12 col-md-6">
+                    <div class="card shadow border-0 rounded-4 h-100">
+                        <div class="card-body p-4">
+                            <h5 class="fw-semibold mb-3">
+                                <i class="bi bi-person me-2 text-primary"></i>Información del Abonado
+                            </h5>
+                            
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label fw-medium text-muted">Nombre</label>
+                                    <div class="fw-bold">@Model.Abonado.AboNom</div>
+                                </div>
+                                
+                                <div class="col-12">
+                                    <label class="form-label fw-medium text-muted">DNI</label>
+                                    <div class="fw-bold">@Model.Abonado.AboDNI</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vehículos Asociados -->
+                <div class="col-12">
+                    <div class="card shadow border-0 rounded-4">
+                        <div class="card-body p-4">
+                            <h5 class="fw-semibold mb-3">
+                                <i class="bi bi-car-front me-2 text-primary"></i>Vehículos Asociados
+                            </h5>
+                            
+                            @if (Model.Vehiculos.Any())
+                            {
+                                <div class="row g-3">
+                                    @foreach (var vehiculo in Model.Vehiculos)
+                                    {
+                                        <div class="col-12 col-md-6 col-lg-4">
+                                            <div class="border rounded-3 p-3 bg-light">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="bi bi-car-front-fill text-primary me-2 fs-4"></i>
+                                                    <div>
+                                                        <div class="fw-bold">@vehiculo.VehPtnt</div>
+                                                        <small class="text-muted">@(vehiculo.Vehiculo?.Clasificacion?.ClasVehTipo ?? "Sin clasificación")</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center text-muted py-4">
+                                    <i class="bi bi-car-front fs-1 d-block mb-2"></i>
+                                    <p>No hay vehículos asociados a este abono</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información de Pago -->
+                <div class="col-12">
+                    <div class="card shadow border-0 rounded-4">
+                        <div class="card-body p-4">
+                            <h5 class="fw-semibold mb-3">
+                                <i class="bi bi-credit-card me-2 text-primary"></i>Información de Pago
+                            </h5>
+                            
+                            <div class="row g-3">
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label fw-medium text-muted">Método de Pago</label>
+                                    <div class="fw-bold">@Model.Pago.MetodoPago.MepNom</div>
+                                </div>
+                                
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label fw-medium text-muted">Fecha de Pago</label>
+                                    <div class="fw-bold">@Model.Pago.PagFyh.ToString("dd/MM/yyyy HH:mm")</div>
+                                </div>
+                                
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label fw-medium text-muted">Número de Pago</label>
+                                    <div class="fw-bold">#@Model.PagNum</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Períodos de Pago (Futuro) -->
+                <div class="col-12">
+                    <div class="card shadow border-0 rounded-4">
+                        <div class="card-body p-4">
+                            <h5 class="fw-semibold mb-3">
+                                <i class="bi bi-calendar-check me-2 text-primary"></i>Períodos de Pago
+                            </h5>
+                            
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Funcionalidad en desarrollo:</strong> Aquí se mostrarán los períodos individuales del abono con su estado de pago (pagado/pendiente).
+                            </div>
+                            
+                            <!-- Placeholder para futura implementación -->
+                            <div class="row g-2">
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <div class="border rounded-3 p-3">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="fw-medium">Período 1</span>
+                                            <span class="badge bg-success">Pagado</span>
+                                        </div>
+                                        <small class="text-muted">@Model.AboFyhIni.ToString("dd/MM/yyyy")</small>
+                                    </div>
+                                </div>
+                                <!-- Más períodos se agregarán dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
