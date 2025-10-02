@@ -114,13 +114,78 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> Details(int plyID, int plaNU, DateTime turFyhIni)
         {
-            var item = await _ctx.Turnos
-                .Include(t => t.Playero)
+            // Usuario actual
+            var currentPlaNU = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
+            
+            // DEBUG: Log para entender qué está pasando
+            System.Diagnostics.Debug.WriteLine($"Details - Usuario logueado: {currentPlaNU}, plaNU parámetro: {plaNU}, Es playero: {User.IsInRole("Playero")}");
+
+            // Si es playero, SOLO puede ver sus propios turnos
+            if (User.IsInRole("Playero"))
+            {
+                if (plaNU != currentPlaNU)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ACCESO DENEGADO - Playero {currentPlaNU} intentó ver turno de playero {plaNU}");
+                    TempData["Error"] = "No tienes permiso para ver este turno.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+
+            // Cargar turno con sus relaciones
+            var turno = await _ctx.Turnos
                 .Include(t => t.Playa)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.PlyID == plyID && t.PlaNU == plaNU && t.TurFyhIni == turFyhIni);
+                .FirstOrDefaultAsync(t => t.PlyID == plyID 
+                                    && t.PlaNU == plaNU 
+                                    && t.TurFyhIni == turFyhIni);
 
-            return item is null ? NotFound() : View(item);
+            if (turno is null) return NotFound();
+
+            // Doble verificación: si es playero, asegurar que el turno sea suyo
+            if (User.IsInRole("Playero") && turno.PlaNU != currentPlaNU)
+            {
+                return Forbid();
+            }
+
+            // 🔑 Cargar el playero del turno (no el logueado)
+            var playero = await _ctx.Playeros
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.UsuNU == turno.PlaNU);
+
+            if (playero != null)
+            {
+                turno.Playero = playero;
+            }
+            
+            // Obtener desglose de pagos por método de pago durante ESE turno específico
+            var desglosePagos = await _ctx.Pagos
+                .Include(p => p.MetodoPago)
+                .Where(p => p.PlyID == plyID 
+                        && p.PlaNU == plaNU 
+                        && p.PagFyh >= turno.TurFyhIni 
+                        && (turno.TurFyhFin == null || p.PagFyh <= turno.TurFyhFin))
+                .AsNoTracking()
+                .ToListAsync();
+
+            var agrupados = desglosePagos
+                .GroupBy(p => new { p.MepID, MetodoPago = p.MetodoPago?.MepNom ?? "Desconocido" })
+                .Select(g => new
+                {
+                    MetodoPago = g.Key.MetodoPago,
+                    CantidadPagos = g.Count(),
+                    MontoTotal = g.Sum(p => p.PagMonto)
+                })
+                .OrderByDescending(x => x.MontoTotal)
+                .ToList();
+
+            var totalPagos = agrupados.Sum(x => x.MontoTotal);
+            var cantidadTotalPagos = agrupados.Sum(x => x.CantidadPagos);
+
+            ViewBag.DesglosePagos = agrupados;
+            ViewBag.TotalPagos = totalPagos;
+            ViewBag.CantidadTotalPagos = cantidadTotalPagos;
+
+            return View(turno);
         }
 
         // --- CAMBIO mínimo: aceptar returnUrl y guardarlo en ViewBag ---

@@ -20,41 +20,248 @@
     }
 
     string Fmt(DateTime? dt) => dt.HasValue ? ToCba(dt.Value).ToString("dd/MM/yyyy HH:mm") : "-";
+    
+    var desglosePagos = ViewBag.DesglosePagos as IEnumerable<dynamic> ?? new List<dynamic>();
+    decimal totalPagos = ViewBag.TotalPagos ?? 0m;
+    int cantidadTotalPagos = ViewBag.CantidadTotalPagos ?? 0;
+    
+    decimal? diferenciaCaja = (Model.TurApertCaja.HasValue && Model.TurCierrCaja.HasValue)
+        ? Model.TurCierrCaja.Value - Model.TurApertCaja.Value
+        : (decimal?)null;
+        
+    TimeSpan? duracionTurno = Model.TurFyhFin.HasValue 
+        ? Model.TurFyhFin.Value - Model.TurFyhIni 
+        : (TimeSpan?)null;
 }
 
-<div class="container py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0">Detalle de turno</h3>
-        <a class="btn btn-outline-secondary" href="@backHref">
-            <i class="fa-solid fa-arrow-left"></i> Volver
-        </a>
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-clock text-secondary me-2"></i>
+                        Detalle de Turno
+                    </h2>
+                    <p class="text-muted mb-0">
+                        <i class="fas fa-map-marker-alt me-1"></i>
+                        @Model.Playa?.PlyNom - @Model.Playa?.PlyCiu, @Model.Playa?.PlyDir
+                    </p>
+                </div>
+                <a class="btn btn-outline-secondary" href="@backHref">
+                    <i class="fas fa-arrow-left me-1"></i> Volver
+                </a>
+            </div>
+        </div>
     </div>
 
-    <dl class="row">
-        <dt class="col-sm-3">Playa</dt>
-        <dd class="col-sm-9">@Model.Playa?.PlyCiu @Model.Playa?.PlyDir</dd>
+    <!-- Cards de resumen -->
+    <div class="row mb-4">
+        <!-- Card Información General -->
+        <div class="col-lg-6 mb-3">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Información General
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-user text-muted me-2"></i>
+                                <strong>Playero:</strong>
+                            </div>
+                            <p class="ms-4 mb-0">@Model.Playero?.UsuNyA</p>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-calendar text-muted me-2"></i>
+                                <strong>Inicio:</strong>
+                            </div>
+                            <p class="ms-4 mb-0">@Fmt(Model.TurFyhIni)</p>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-calendar-check text-muted me-2"></i>
+                                <strong>Fin:</strong>
+                            </div>
+                            <p class="ms-4 mb-0">
+                                @if (Model.TurFyhFin.HasValue)
+                                {
+                                    @Fmt(Model.TurFyhFin)
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning">En curso</span>
+                                }
+                            </p>
+                        </div>
+                        <div class="col-6">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-hourglass-half text-muted me-2"></i>
+                                <strong>Duración:</strong>
+                            </div>
+                            <p class="ms-4 mb-0">
+                                @if (duracionTurno.HasValue)
+                                {
+                                    var horas = (int)duracionTurno.Value.TotalHours;
+                                    var minutos = duracionTurno.Value.Minutes;
+                                    <span>@horas h @minutos min</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <dt class="col-sm-3">Playero</dt>
-        <dd class="col-sm-9">@Model.Playero?.UsuNyA</dd>
+                <!-- Card Resumen Financiero -->
+        <div class="col-lg-6 mb-3">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-dollar-sign me-2"></i>
+                        Resumen Financiero
+                    </h5>
+                </div>
+                <div class="card-body d-flex">
+                    <div class="row w-100 text-center align-items-center">
+                        <div class="col-4">
+                            <div class="h4 mb-1 text">
+                                $@((Model.TurApertCaja ?? 0m).ToString("N2"))
+                            </div>
+                            <small class="text-muted">Apertura de Caja</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h4 mb-1 text">
+                                $@((Model.TurCierrCaja?.ToString("N2") ?? "-"))
+                            </div>
+                            <small class="text-muted">Cierre de Caja</small>
+                        </div>
+                        <div class="col-4">
+                            @if (diferenciaCaja.HasValue)
+                            {
+                                var colorClass = diferenciaCaja.Value == 0 ? "text-muted" 
+                                    : (diferenciaCaja.Value > 0 ? "text-success" : "text-danger");
+                                <div class="h4 mb-1 @colorClass">
+                                    $@diferenciaCaja.Value.ToString("N2")
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="h4 mb-1 text-muted">-</div>
+                            }
+                            <small class="text-muted">Diferencia</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <dt class="col-sm-3">Inicio</dt>
-        <dd class="col-sm-9">@Fmt(Model.TurFyhIni)</dd>
 
-        <dt class="col-sm-3">Fin</dt>
-        <dd class="col-sm-9">@Fmt(Model.TurFyhFin)</dd>
 
-        <dt class="col-sm-3">Apertura de caja</dt>
-        <dd class="col-sm-9">@((Model.TurApertCaja?.ToString("N2") ?? "-"))</dd>
+    <!-- Desglose de Pagos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Desglose de Pagos por Método
+                    </h5>
+                    <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#desglosePagos" aria-expanded="false">
+                        <i class="fas fa-eye me-1"></i>
+                    </button>
+                </div>
+                
+                <div class="collapse" id="desglosePagos">
+                    <div class="card-body">
+                        @if (desglosePagos.Any())
+                        {
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="alert alert-light mb-0">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>Total de transacciones:</strong> @cantidadTotalPagos pagos
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="alert alert-light mb-0">
+                                        <i class="fas fa-coins me-2"></i>
+                                        <strong>Monto total:</strong> $@totalPagos.ToString("N2")
+                                    </div>
+                                </div>
+                            </div>
 
-        <dt class="col-sm-3">Cierre de caja</dt>
-        <dd class="col-sm-9">@((Model.TurCierrCaja?.ToString("N2") ?? "-"))</dd>
-
-        @{
-            decimal? total = (Model.TurApertCaja.HasValue && Model.TurCierrCaja.HasValue)
-                ? Model.TurCierrCaja.Value - Model.TurApertCaja.Value
-                : (decimal?)null;
-        }
-        <dt class="col-sm-3">Total del turno</dt>
-        <dd class="col-sm-9">@((total?.ToString("N2") ?? "-"))</dd>
-    </dl>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th><i class></i>Método de Pago</th>
+                                            <th class="text-center"><i class></i>Cantidad</th>
+                                            <th class="text-end"><i class></i>Monto Total</th>
+                                            <th class="text-center"><i class></i>Porcentaje</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in desglosePagos)
+                                        {
+                                            var porcentaje = totalPagos > 0 ? (item.MontoTotal / totalPagos * 100) : 0;
+                                            var iconClass = item.MetodoPago.ToString().ToLower() switch
+                                            {
+                                                var x when x.Contains("efectivo") => "fas fa-money-bill-wave text-secondary",
+                                                var x when x.Contains("crédito") => "fas fa-credit-card text-secondary",
+                                                var x when x.Contains("débito") => "fas fa-credit-card text-secondary",
+                                                var x when x.Contains("transfer") => "fas fa-university text-secondary",
+                                                _ => "fas fa-wallet text-secondary"
+                                            };
+                                            
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="@iconClass me-2 fs-5"></i>
+                                                        <span class="fw-semibold">@item.MetodoPago</span>
+                                                    </div>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-secondary px-2 py-1" style="font-size: 0.75rem;">
+                                                        @item.CantidadPagos
+                                                    </span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span class="fw-bold text-success">$@item.MontoTotal.ToString("N2")</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="progress" style="height: 15px;">
+                                                        <div class="progress-bar bg-primary" role="progressbar" style="width: @porcentaje.ToString("F1")%">
+                                                            @porcentaje.ToString("F1")%
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-5">
+                                <i class="fas fa-receipt text-muted" style="font-size: 3rem;"></i>
+                                <h5 class="text-muted mt-3">No hay pagos registrados</h5>
+                                <p class="text-muted">No se encontraron transacciones para este turno.</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
