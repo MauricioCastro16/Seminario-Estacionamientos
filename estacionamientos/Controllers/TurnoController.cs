@@ -250,7 +250,26 @@ namespace estacionamientos.Controllers
                 await LoadSelects(item.PlaNU, item.PlyID);
 
             ViewBag.NowLocal = DateTime.Now;
-            ViewBag.EfectivoEsperado = 0;
+            
+            // 🔹 Calcular efectivo esperado para mostrar en la vista
+            if (User.IsInRole("Playero"))
+            {
+                var esperado = await _ctx.Pagos
+                    .Include(p => p.MetodoPago)
+                    .Where(p => p.PlyID == item.PlyID
+                            && p.PlaNU == item.PlaNU
+                            && p.PagFyh >= item.TurFyhIni
+                            && (item.TurFyhFin == null || p.PagFyh <= item.TurFyhFin)
+                            && p.MetodoPago.MepNom == "Efectivo")
+                    .SumAsync(p => (decimal?)p.PagMonto) ?? 0m;
+
+                ViewBag.EfectivoEsperado = esperado;
+            }
+            else
+            {
+                ViewBag.EfectivoEsperado = 0;
+            }
+            
             return View(item);
         }
 
@@ -296,24 +315,11 @@ namespace estacionamientos.Controllers
                 db.TurFyhFin = DateTime.UtcNow;
                 db.TurCierrCaja = parsedCierre;
 
-                // 🔹 Calcular efectivo esperado
-                var esperado = await _ctx.Pagos
-                    .Include(p => p.MetodoPago)
-                    .Where(p => p.PlyID == db.PlyID
-                            && p.PlaNU == db.PlaNU
-                            && p.PagFyh >= db.TurFyhIni
-                            && p.PagFyh <= db.TurFyhFin
-                            && p.MepID == 1) //efectivo
-                    .SumAsync(p => (decimal?)p.PagMonto) ?? 0m;
-
-                ViewBag.EfectivoEsperado = esperado;
-                ViewBag.NowLocal = DateTime.Now;
- 
-
                 _ctx.Update(db);
                 await _ctx.SaveChangesAsync();
-                ViewBag.NowLocal = DateTime.Now;
-                return View(db);
+                
+                TempData["Ok"] = "Turno cerrado correctamente.";
+                return RedirectToAction(nameof(Index));
             }
             else
             {

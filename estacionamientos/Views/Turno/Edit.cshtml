@@ -41,14 +41,14 @@
             </div>
             <div class="col-md-6 mb-3">
                 <label class="form-label">Cierre de caja</label>
-                <input asp-for="TurCierrCaja" id="TurCierrCaja" class="form-control" type="number" step="0.01" min="0" inputmode="decimal" required />
+                <input asp-for="TurCierrCaja" id="TurCierrCaja" class="form-control" type="number" step="0.01" min="0" inputmode="decimal" value="0" required />
                 
                 <div class="mt-2">
                     <small class="text-muted">Esperado (sistema): 
                         <span id="esperadoTexto">@esperado.ToString("N2")</span>
                     </small><br />
                     <small class="text-muted">Diferencia: 
-                        <span id="diferencia">0,00</span>
+                        <span id="diferencia">0.00</span>
                     </small>
                 </div>
             </div>
@@ -65,26 +65,49 @@
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const inputCierre = document.getElementById("TurCierrCaja");
-            const esperado = parseFloat(document.getElementById("esperadoTexto").innerText.replace(/\./g, "").replace(",", ".")) || 0;
+            // Parsear correctamente el formato: detectar si usa punto o coma como decimal
+            const esperadoText = document.getElementById("esperadoTexto").innerText;
+            console.log("Texto esperado:", esperadoText);
+            
+            let esperado = 0;
+            // Si el último punto/coma está seguido de exactamente 2 dígitos, es el separador decimal
+            const ultimoPunto = esperadoText.lastIndexOf('.');
+            const ultimaComa = esperadoText.lastIndexOf(',');
+            
+            if (ultimoPunto > ultimaComa && ultimoPunto === esperadoText.length - 3) {
+                // Formato: 46,026.61 (punto como decimal)
+                esperado = parseFloat(esperadoText.replace(/,/g, ""));
+            } else if (ultimaComa > ultimoPunto && ultimaComa === esperadoText.length - 3) {
+                // Formato: 46.026,61 (coma como decimal)
+                esperado = parseFloat(esperadoText.replace(/\./g, "").replace(",", "."));
+            } else {
+                // Sin decimales o formato ambiguo
+                esperado = parseFloat(esperadoText.replace(/[,.]/g, ""));
+            }
+            
+            console.log("Valor esperado parseado:", esperado);
             const diferenciaSpan = document.getElementById("diferencia");
 
             function actualizarDiferencia() {
                 const declarado = parseFloat(inputCierre.value) || 0;
-                const dif = declarado - esperado;
+                const dif = esperado - declarado;
 
                 diferenciaSpan.innerText = dif.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
 
                 if (dif === 0) {
                     diferenciaSpan.style.color = "gray";
                 } else if (dif > 0) {
-                    diferenciaSpan.style.color = "green";
-                } else {
                     diferenciaSpan.style.color = "red";
+                } else {
+                    diferenciaSpan.style.color = "green";
                 }
             }
 
+            // Inicializar mostrando el valor esperado como diferencia inicial
+            diferenciaSpan.innerText = esperado.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+            diferenciaSpan.style.color = esperado === 0 ? "gray" : "red";
+
             inputCierre.addEventListener("input", actualizarDiferencia);
-            actualizarDiferencia();
         });
     </script>
 }
