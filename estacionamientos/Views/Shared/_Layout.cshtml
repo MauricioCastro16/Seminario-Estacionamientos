@@ -7,6 +7,13 @@
     var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
     int? plyID = null;               // acá vamos a guardar el ID
     string? playaActiva = null;      // acá el nombre
+    
+    // Detectar si estamos en páginas de autenticación
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var isAuthPage = currentController?.Equals("Account", StringComparison.OrdinalIgnoreCase) == true && 
+                     (currentAction?.Equals("Login", StringComparison.OrdinalIgnoreCase) == true || 
+                      currentAction?.Equals("Register", StringComparison.OrdinalIgnoreCase) == true);
 
     if (userId != null && User.IsInRole("Playero"))
     {
@@ -50,7 +57,7 @@
     <link rel="stylesheet" href="~/css/layout.css" asp-append-version="true" />
 </head>
 
-<body>
+<body class="@(isAuthPage ? "auth-page" : "")">
     <!-- Mobile Sidebar Overlay -->
     <div id="sidebarOverlay" class="sidebar-overlay d-lg-none"></div>
 
@@ -165,18 +172,10 @@
                         </li>
                     }
                 </ul>
-
-                <!-- Logout Button -->
-                <div class="sidebar-footer">
-                    <button class="btn-logout" onclick="document.getElementById('logoutForm').submit();">
-                        <i class="bi bi-box-arrow-right"></i>
-                        <span>Cerrar sesión</span>
-                    </button>
-                </div>
             }
-            else
+            else if (!isAuthPage)
             {
-                <div class="sidebar-login">
+                <div class="sidebar-login-content">
                     <a class="btn-login" asp-area="" asp-controller="Account" asp-action="Login">
                         <i class="bi bi-box-arrow-in-right"></i>
                         <span>Iniciar Sesión</span>
@@ -184,6 +183,26 @@
                 </div>
             }
         </div>
+        
+        <!-- Footer siempre fuera del contenido scrolleable -->
+        @if (User.Identity?.IsAuthenticated ?? false)
+        {
+            <div class="sidebar-footer">
+                <button class="btn-logout" onclick="document.getElementById('logoutForm').submit();">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Cerrar sesión</span>
+                </button>
+            </div>
+        }
+        else if (!isAuthPage)
+        {
+            <div class="sidebar-login">
+                <a class="btn-login" asp-area="" asp-controller="Account" asp-action="Login">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    <span>Iniciar Sesión</span>
+                </a>
+            </div>
+        }
     </nav>
 
     <!-- Main Header -->
@@ -191,9 +210,12 @@
         <nav class="navbar navbar-expand-lg navbar-light">
             <div class="container-fluid">
                 <!-- Mobile Menu Button -->
-                <button id="openSidebar" class="btn-mobile-menu d-lg-none" type="button">
-                    <i class="bi bi-list"></i>
-                </button>
+                @if (!isAuthPage)
+                {
+                    <button id="openSidebar" class="btn-mobile-menu d-lg-none" type="button">
+                        <i class="bi bi-list"></i>
+                    </button>
+                }
 
                 <!-- Brand -->
                 <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
@@ -308,7 +330,7 @@
                                 </ul>
                             </li>
                         }
-                        else
+                        else if (!isAuthPage)
                         {
                             <li class="nav-item">
                                 <a class="nav-link btn-login-desktop" asp-area="" asp-controller="Account" asp-action="Login">
@@ -357,21 +379,59 @@
     <!-- Mobile Sidebar JavaScript -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Deshabilitar funcionalidad de sidebar en páginas de autenticación
+            const isAuthPage = @Json.Serialize(isAuthPage);
+            if (isAuthPage) {
+                return; // No inicializar funcionalidad de sidebar
+            }
+            
             const openSidebarBtn = document.getElementById('openSidebar');
             const closeSidebarBtn = document.getElementById('closeSidebar');
             const sidebar = document.getElementById('mobileSidebar');
             const overlay = document.getElementById('sidebarOverlay');
 
             function openSidebar() {
+                // Limpiar cualquier timeout pendiente
+                if (window.sidebarCloseTimeout) {
+                    clearTimeout(window.sidebarCloseTimeout);
+                    window.sidebarCloseTimeout = null;
+                }
+                
+                // Remover clases de cierre inmediatamente
+                sidebar.classList.remove('closing');
+                overlay.classList.remove('closing');
+                
+                // Forzar un reflow para asegurar que las clases se aplicaron
+                sidebar.offsetHeight;
+                overlay.offsetHeight;
+                
+                // Agregar clases activas
                 sidebar.classList.add('active');
                 overlay.classList.add('active');
                 document.body.classList.add('sidebar-open');
             }
 
             function closeSidebar() {
+                // Limpiar cualquier timeout pendiente
+                if (window.sidebarCloseTimeout) {
+                    clearTimeout(window.sidebarCloseTimeout);
+                }
+                
+                // Primero remover la clase active para iniciar la transición CSS
                 sidebar.classList.remove('active');
                 overlay.classList.remove('active');
-                document.body.classList.remove('sidebar-open');
+                
+                // Agregar clases de animación de cierre
+                sidebar.classList.add('closing');
+                overlay.classList.add('closing');
+                
+                // Después de la animación, limpiar todo
+                window.sidebarCloseTimeout = setTimeout(() => {
+                    sidebar.classList.remove('closing');
+                    overlay.classList.remove('closing');
+                    document.body.classList.remove('sidebar-open');
+                    window.sidebarCloseTimeout = null;
+                }, 300); // Duración de la animación de cierre (más rápida que la apertura)
             }
 
             // Event listeners
