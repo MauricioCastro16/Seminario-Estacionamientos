@@ -12,6 +12,8 @@ namespace estacionamientos.Models
 
         public DateTime? AboFyhFin { get; set; }
 
+        public decimal AboMonto { get; set; }
+
         // FK requeridas
         [Required]
         [StringLength(15)]

@@ -4,39 +4,208 @@
     ViewData["Title"] = "Abonos";
 }
 
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Abonados</h2>
-    <a asp-action="Create" class="btn btn-primary">+ Agregar abono</a>
+    <h2 class="mb-0">Abonos</h2>
+    <a asp-action="Create" class="btn btn-primary">
+        <i class="fa-solid fa-plus"></i> Agregar abono
+    </a>
 </div>
 
-<table class="table table-striped">
+<table id="abonosTable" class="table table-striped table-hover table-sm align-middle text-center">
     <thead>
         <tr>
-            <th>Playa</th>
-            <th>Plaza</th>
-            <th>Abonado</th>
-            <th>Inicio</th>
-            <th>Fin</th>
-            <th>Pago</th>
-            <th></th>
+            <th class="text-center">Plaza</th>
+            <th class="text-center">Abonado</th>
+            <th class="text-center">Fecha inicio</th>
+            <th class="text-center">Fecha fin</th>
+            <th class="text-center">Estado de pago</th>
+            <th class="text-center">Monto</th>
+            <th class="text-center">Vehículos</th>
+            <th class="text-center">Acciones</th>
         </tr>
     </thead>
     <tbody>
     @foreach (var item in Model)
     {
         <tr>
-            <td>@item.Plaza.Playa.PlyCiu - @item.Plaza.Playa.PlyDir</td>
-            <td>@item.PlzNum</td>
-            <td>@item.Abonado.AboNom</td>
-            <td>@item.AboFyhIni.ToShortDateString()</td>
-            <td>@item.AboFyhFin?.ToShortDateString()</td>
-            <td>@item.Pago.PagNum</td>
             <td>
-                <a asp-action="Details" asp-route-plyID="@item.PlyID" asp-route-plzNum="@item.PlzNum" asp-route-aboFyhIni="@item.AboFyhIni">Detalles</a> |
-                <a asp-action="Edit" asp-route-plyID="@item.PlyID" asp-route-plzNum="@item.PlzNum" asp-route-aboFyhIni="@item.AboFyhIni">Editar</a> |
-                <a asp-action="Delete" asp-route-plyID="@item.PlyID" asp-route-plzNum="@item.PlzNum" asp-route-aboFyhIni="@item.AboFyhIni">Eliminar</a>
+                <span class="fw-medium">@item.PlzNum</span>
+            </td>
+            <td>
+                <div class="fw-medium">@item.Abonado.AboNom</div>
+                <small class="text-muted">@item.Abonado.AboDNI</small>
+            </td>
+            <td>@item.AboFyhIni.ToString("dd/MM/yyyy")</td>
+            <td>@item.AboFyhFin?.ToString("dd/MM/yyyy")</td>
+            <td>
+                @{
+                    // Determinar estado de pago basado en fechas y monto
+                    var estadoPago = "Pagado"; // Por defecto, si existe el abono es porque se pagó
+                    var badgeClass = "bg-success";
+                    
+                    // Si la fecha de fin ya pasó, mostrar como completado
+                    if (item.AboFyhFin.HasValue && item.AboFyhFin.Value < DateTime.UtcNow)
+                    {
+                        estadoPago = "Completado";
+                        badgeClass = "bg-secondary";
+                    }
+                    // Si está en vigencia
+                    else if (item.AboFyhIni <= DateTime.UtcNow && (!item.AboFyhFin.HasValue || item.AboFyhFin.Value >= DateTime.UtcNow))
+                    {
+                        estadoPago = "Activo";
+                        badgeClass = "bg-primary";
+                    }
+                    // Si aún no ha comenzado
+                    else if (item.AboFyhIni > DateTime.UtcNow)
+                    {
+                        estadoPago = "Programado";
+                        badgeClass = "bg-info";
+                    }
+                }
+                <span class="badge @badgeClass">@estadoPago</span>
+            </td>
+            <td>
+                <span class="fw-medium">@item.AboMonto.ToString("C")</span>
+            </td>
+            <td>
+                @{
+                    var clasificacion = item.Vehiculos.FirstOrDefault()?.Vehiculo?.Clasificacion?.ClasVehTipo ?? "Sin clasificación";
+                    var patentes = item.Vehiculos.Select(v => v.VehPtnt).ToList();
+                }
+                <a href="#" class="text-decoration-none position-relative border border-secondary rounded px-2 py-1 d-inline-block" data-bs-toggle="modal" data-bs-target="#vehiculosModal" 
+                   data-clasificacion="@clasificacion" data-patentes="@string.Join(",", patentes)" data-plaza="@item.PlzNum">
+                    <span class="fw-medium">@clasificacion</span>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
+                        @patentes.Count
+                    </span>
+                </a>
+            </td>
+            <td class="text-center">
+                <a asp-action="Details" asp-route-plyID="@item.PlyID" asp-route-plzNum="@item.PlzNum" asp-route-aboFyhIni="@item.AboFyhIni" 
+                   class="btn btn-outline-primary btn-sm" title="Ver detalles">
+                    <i class="fa fa-eye"></i>
+                </a>
+                <a asp-action="Edit" asp-route-plyID="@item.PlyID" asp-route-plzNum="@item.PlzNum" asp-route-aboFyhIni="@item.AboFyhIni" 
+                   class="btn btn-outline-secondary btn-sm" title="Editar">
+                    <i class="fa fa-pencil"></i>
+                </a>
+                <a asp-action="Delete" asp-route-plyID="@item.PlyID" asp-route-plzNum="@item.PlzNum" asp-route-aboFyhIni="@item.AboFyhIni" 
+                   class="btn btn-outline-danger btn-sm" title="Eliminar">
+                    <i class="fa fa-trash"></i>
+                </a>
             </td>
         </tr>
     }
     </tbody>
 </table>
+
+<!-- Modal para mostrar vehículos -->
+<div class="modal fade" id="vehiculosModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="vehiculosModalTitle">
+                    <i class="fa-solid fa-eye me-2"></i>Vehículos asociados
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Clasificación:</label>
+                    <div id="modalClasificacion" class="fw-medium"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Plaza:</label>
+                    <div id="modalPlaza" class="fw-medium"></div>
+                </div>
+                <div>
+                    <label class="form-label fw-medium">Patentes:</label>
+                    <div id="modalPatentes" class="list-group"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+    $(document).ready(function () {
+        
+        const datatableLanguage = {
+            "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json",
+            "lengthMenu": "Mostrar _MENU_ abonos por página", 
+            "paginate": {
+                "previous": "« Anterior", 
+                "next": "Siguiente »"    
+            },
+        };
+
+        // Inicialización de DataTable
+        $('#abonosTable').DataTable({
+            "columnDefs": [
+                { "orderable": false, "targets": [6, 7] } // Vehículos y Acciones no ordenables
+            ],
+            "dom": 'lrtp', 
+            "order": [[2, "desc"]], // Ordenar por fecha inicio descendente
+            "pageLength": 10,
+            "lengthMenu": [5, 10, 25, 50],
+            "pagingType": "simple_numbers", 
+            "language": datatableLanguage 
+        });
+
+        // Modal de vehículos
+        const modal = document.getElementById('vehiculosModal');
+        const modalTitle = document.getElementById('vehiculosModalTitle');
+        const modalClasificacion = document.getElementById('modalClasificacion');
+        const modalPlaza = document.getElementById('modalPlaza');
+        const modalPatentes = document.getElementById('modalPatentes');
+
+        modal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const clasificacion = button.getAttribute('data-clasificacion');
+            const patentes = button.getAttribute('data-patentes').split(',');
+            const plaza = button.getAttribute('data-plaza');
+
+            // Función para obtener el plural correcto
+            function getPlural(clasificacion) {
+                const plurales = {
+                    'Automóvil': 'Automóviles',
+                    'Motocicleta': 'Motocicletas', 
+                    'Camioneta': 'Camionetas',
+                    'Camión': 'Camiones',
+                    'Bicicleta': 'Bicicletas',
+                    'Moto': 'Motos'
+                };
+                return plurales[clasificacion] || clasificacion + 's';
+            }
+
+            const plural = getPlural(clasificacion);
+            modalTitle.innerHTML = `<i class="fa-solid fa-eye me-2"></i>${plural} asociados a la plaza ${plaza}`;
+            modalClasificacion.textContent = clasificacion;
+            modalPlaza.textContent = 'Plaza ' + plaza;
+            
+            modalPatentes.innerHTML = '';
+            patentes.forEach(patente => {
+                if (patente.trim()) {
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item d-flex align-items-center';
+                    item.innerHTML = `
+                        <i class="fa-solid fa-car me-2 text-primary"></i>
+                        <span class="fw-medium">${patente.trim()}</span>
+                    `;
+                    modalPatentes.appendChild(item);
+                }
+            });
+        });
+    });
+    </script>
+}
