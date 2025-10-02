@@ -63,3 +63,5 @@ estacionamientos/.DS_Store
 estacionamientos/Views/.DS_Store
 estacionamientos/Views/PlayaEstacionamiento/.DS_Store
 
+#Migrations
+Migrations/
