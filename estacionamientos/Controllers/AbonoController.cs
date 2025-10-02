@@ -36,7 +36,7 @@ namespace estacionamientos.Controllers
 
             // Servicios de abono disponibles (según seed: 7=1 día, 8=1 semana, 9=1 mes)
             var serviciosAbono = await _ctx.Servicios
-                .Where(s => (s.SerNom == "Abono por 1 Día") || (s.SerNom == "Abono por 1 Semana") || (s.SerNom == "Abono por 1 Mes"))
+                .Where(s => (s.SerNom == "Abono por 1 día") || (s.SerNom == "Abono por 1 semana") || (s.SerNom == "Abono por 1 mes"))
                 .OrderBy(s => s.SerID)
                 .Select(s => new { s.SerID, s.SerNom, s.SerDuracionMinutos })
                 .ToListAsync();

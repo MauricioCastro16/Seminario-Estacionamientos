@@ -31,15 +31,31 @@ namespace estacionamientos.Controllers
             if (!ModelState.IsValid) return View(model);
 
             // 1) Buscar usuario por email
-            var user = await _ctx.Usuarios.AsNoTracking()
+            var user = await _ctx.Usuarios
                 .FirstOrDefaultAsync(u => u.UsuEmail == model.EmailOrUsername || u.UsuNomUsu == model.EmailOrUsername);
 
             // 2) Verificar contraseña
             var passwordOk = false;
             if (user is not null)
             {
-                // 🔐 Verificar contraseña hasheada con BCrypt
-                passwordOk = BCrypt.Net.BCrypt.Verify(model.Password, user.UsuPswd);
+                try
+                {
+                    // 🔐 Verificar contraseña hasheada con BCrypt
+                    passwordOk = BCrypt.Net.BCrypt.Verify(model.Password, user.UsuPswd);
+                }
+                catch (BCrypt.Net.SaltParseException)
+                {
+                    // Si hay un error de salt, intentar con la contraseña en texto plano (solo para migración)
+                    // NOTA: Esto es temporal para usuarios con hashes incompatibles
+                    passwordOk = model.Password == user.UsuPswd;
+                    
+                    // Si la contraseña coincide, actualizar el hash con la versión correcta
+                    if (passwordOk)
+                    {
+                        user.UsuPswd = BCrypt.Net.BCrypt.HashPassword(model.Password);
+                        await _ctx.SaveChangesAsync();
+                    }
+                }
             }
 
             if (user is null || !passwordOk)
@@ -49,13 +65,13 @@ namespace estacionamientos.Controllers
             }
 
             // 3) ¿Qué rol tiene?
-            var esAdmin = await _ctx.Administradores.AsNoTracking()
+            var esAdmin = await _ctx.Administradores
                 .AnyAsync(a => a.UsuNU == user.UsuNU);
-            var esPlayero = await _ctx.Playeros.AsNoTracking()
+            var esPlayero = await _ctx.Playeros
                 .AnyAsync(p => p.UsuNU == user.UsuNU);
-            var esConductor = await _ctx.Conductores.AsNoTracking()
+            var esConductor = await _ctx.Conductores
                 .AnyAsync(c => c.UsuNU == user.UsuNU);
-            var esDuenio = await _ctx.Duenios.AsNoTracking()
+            var esDuenio = await _ctx.Duenios
                 .AnyAsync(d => d.UsuNU == user.UsuNU);
 
             // 4) Claims
