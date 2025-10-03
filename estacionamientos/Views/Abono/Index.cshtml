@@ -41,31 +41,27 @@
             <td>@item.AboFyhFin?.ToString("dd/MM/yyyy")</td>
             <td>
                 @{
-                    // Determinar estado de pago basado en fechas y monto
-                    var estadoPago = "Pagado"; // Por defecto, si existe el abono es porque se pagó
-                    var badgeClass = "bg-success";
+                    string estadoTexto = item.EstadoPago switch
+                    {
+                        estacionamientos.Models.EstadoPago.Activo => "Activo",
+                        estacionamientos.Models.EstadoPago.Pendiente => "Pendiente",
+                        estacionamientos.Models.EstadoPago.Finalizado => "Finalizado",
+                        estacionamientos.Models.EstadoPago.Cancelado => "Cancelado",
+                        _ => "Desconocido"
+                    };
                     
-                    // Si la fecha de fin ya pasó, mostrar como completado
-                    if (item.AboFyhFin.HasValue && item.AboFyhFin.Value < DateTime.UtcNow)
+                    string estadoColor = item.EstadoPago switch
                     {
-                        estadoPago = "Completado";
-                        badgeClass = "bg-secondary";
-                    }
-                    // Si está en vigencia
-                    else if (item.AboFyhIni <= DateTime.UtcNow && (!item.AboFyhFin.HasValue || item.AboFyhFin.Value >= DateTime.UtcNow))
-                    {
-                        estadoPago = "Activo";
-                        badgeClass = "bg-primary";
-                    }
-                    // Si aún no ha comenzado
-                    else if (item.AboFyhIni > DateTime.UtcNow)
-                    {
-                        estadoPago = "Programado";
-                        badgeClass = "bg-info";
-                    }
+                        estacionamientos.Models.EstadoPago.Activo => "text-success",
+                        estacionamientos.Models.EstadoPago.Pendiente => "text-warning",
+                        estacionamientos.Models.EstadoPago.Finalizado => "text-secondary",
+                        estacionamientos.Models.EstadoPago.Cancelado => "text-danger",
+                        _ => "text-muted"
+                    };
                 }
-                <span class="badge @badgeClass">@estadoPago</span>
+                <span class="@estadoColor fw-medium">@estadoTexto</span>
             </td>
+
             <td>
                 <span class="fw-medium">@item.AboMonto.ToString("C")</span>
             </td>
@@ -73,9 +69,21 @@
                 @{
                     var clasificacion = item.Vehiculos.FirstOrDefault()?.Vehiculo?.Clasificacion?.ClasVehTipo ?? "Sin clasificación";
                     var patentes = item.Vehiculos.Select(v => v.VehPtnt).ToList();
+                    
+                    // Icono según el tipo de vehículo
+                    string icono = clasificacion switch
+                    {
+                        "Automóvil" => "fa-solid fa-car-side",
+                        "Camioneta" => "fa-truck-pickup",
+                        "Camión" => "fa-solid fa-truck",
+                        "Motocicleta" => "fa-motorcycle",
+                        "Bicicleta" => "fa-bicycle",
+                        _ => "fa-car"
+                    };
                 }
                 <a href="#" class="text-decoration-none position-relative border border-secondary rounded px-2 py-1 d-inline-block" data-bs-toggle="modal" data-bs-target="#vehiculosModal" 
                    data-clasificacion="@clasificacion" data-patentes="@string.Join(",", patentes)" data-plaza="@item.PlzNum">
+                    <i class="fas @icono me-1 text-primary"></i>
                     <span class="fw-medium">@clasificacion</span>
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
                         @patentes.Count
@@ -189,17 +197,33 @@
             }
 
             const plural = getPlural(clasificacion);
-            modalTitle.innerHTML = `<i class="fa-solid fa-eye me-2"></i>${plural} asociados a la plaza ${plaza}`;
+            // Determinar el género del adjetivo según la clasificación
+            const esFemenino = ['Camioneta', 'Motocicleta', 'Bicicleta'].includes(clasificacion);
+            const adjetivo = esFemenino ? 'asociadas' : 'asociados';
+            modalTitle.innerHTML = `<i class="fa-solid fa-eye me-2"></i>${plural} ${adjetivo} a la plaza ${plaza}`;
             modalClasificacion.textContent = clasificacion;
             modalPlaza.textContent = 'Plaza ' + plaza;
             
+            // Función para obtener el icono según la clasificación
+            function getIconoClasificacion(clasificacion) {
+                const iconos = {
+                    'Automóvil': 'fa-solid fa-car-side',
+                    'Camioneta': 'fa-truck-pickup',
+                    'Camión': 'fa-solid fa-truck',
+                    'Motocicleta': 'fa-motorcycle',
+                    'Bicicleta': 'fa-bicycle'
+                };
+                return iconos[clasificacion] || 'fa-car';
+            }
+
+            const iconoClasificacion = getIconoClasificacion(clasificacion);
             modalPatentes.innerHTML = '';
             patentes.forEach(patente => {
                 if (patente.trim()) {
                     const item = document.createElement('div');
                     item.className = 'list-group-item d-flex align-items-center';
                     item.innerHTML = `
-                        <i class="fa-solid fa-car me-2 text-primary"></i>
+                        <i class="fas ${iconoClasificacion} me-2 text-primary"></i>
                         <span class="fw-medium">${patente.trim()}</span>
                     `;
                     modalPatentes.appendChild(item);

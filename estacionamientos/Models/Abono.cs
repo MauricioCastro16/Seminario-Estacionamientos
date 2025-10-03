@@ -2,6 +2,15 @@ using System.ComponentModel.DataAnnotations;
 
 namespace estacionamientos.Models
 {
+
+     public enum EstadoPago
+    {
+        Activo,     // pago confirmado y vigente
+        Pendiente,  // vencido o deuda
+        Finalizado, // terminado exitosamente
+        Cancelado   // cancelado por el usuario
+    }
+
     public class Abono
     {
         // PK compuesta e identificador natural del abono
@@ -21,6 +30,9 @@ namespace estacionamientos.Models
 
         [Required]
         public int PagNum { get; set; }              // -> Pago (PlyID, PagNum) requerido
+
+        [Required]
+        public EstadoPago EstadoPago { get; set; } = EstadoPago.Activo;
 
         // Navs
         public PlazaEstacionamiento Plaza { get; set; } = default!;

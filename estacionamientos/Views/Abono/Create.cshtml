@@ -298,7 +298,8 @@
                                                     <option value="">-- Seleccione método de pago --</option>
                                                     <!-- Se llenará dinámicamente -->
                                                 </select>
-</div>
+                                                <div id="metodoPagoError" class="text-danger small mt-1" style="display: none;"></div>
+                                            </div>
 
                                             <!-- Monto a Pagar -->
                                             <div class="mt-3">
@@ -783,10 +784,12 @@
                 grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
             }
 
-            function showPrompt(msg) {
+            function showPrompt(msg, tipo = "info") {
+                const iconClass = tipo === "error" ? "fa-circle-exclamation" : "fa-circle-info";
+                const textClass = tipo === "error" ? "text-danger" : "";
                 grid.innerHTML = `
-                <div class="mensaje-inicial">
-                    <i class="fa-solid fa-circle-info"></i>
+                <div class="mensaje-inicial ${textClass}">
+                    <i class="fa-solid ${iconClass}"></i>
                     ${msg}
                 </div>`;
             }
@@ -893,14 +896,65 @@
                     return;
                 }
 
+                // Verificar tarifas antes de continuar
+                const clasVehID = selClas.value;
+                const serId = document.getElementById("SerID").value;
+                
+                try {
+                    const tarifaResponse = await fetch(`/Abono/GetAbonoInfo?plyId=${encodeURIComponent(plyID)}&serId=${encodeURIComponent(serId)}&clasVehId=${encodeURIComponent(clasVehID)}`);
+                    if (!tarifaResponse.ok) throw new Error("Error HTTP " + tarifaResponse.status);
+                    const tarifaData = await tarifaResponse.json();
+                    
+                    // Si no hay tarifa (monto es 0 o null), mostrar error
+                    if (!tarifaData.monto || tarifaData.monto === 0) {
+                        selPiso.disabled = true;
+                        selPiso.value = "";
+                        pisoActual = "";
+                        allPlazas = [];
+                        showPrompt("No existen tarifas de abono configuradas para esta clasificación de vehículo", "error");
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Error verificando tarifas:", e);
+                    selPiso.disabled = true;
+                    selPiso.value = "";
+                    pisoActual = "";
+                    allPlazas = [];
+                    showPrompt("Error verificando tarifas de abono", "error");
+                    return;
+                }
+
                 try {
                     showPrompt("Cargando opciones de piso...");
                     const clasVehID = selClas.value;
                     const techada = getTechada();
-                    const url = `/Abono/GetPlazasDisponibles?plyId=${encodeURIComponent(plyID)}&clasVehId=${encodeURIComponent(clasVehID)}&techo=${techada}`;
+                    const serId = document.getElementById("SerID").value;
+                    const url = `/Abono/GetPlazasDisponibles?plyId=${encodeURIComponent(plyID)}&clasVehId=${encodeURIComponent(clasVehID)}&techo=${techada}&serId=${serId}`;
                     const r = await fetch(url);
                     if (!r.ok) throw new Error("Error HTTP " + r.status);
                     const data = await r.json();
+
+                    // Verificar si hay error de tarifas
+                    if (data.error) {
+                        selPiso.disabled = true;
+                        selPiso.value = "";
+                        pisoActual = "";
+                        allPlazas = [];
+                        showPrompt(data.message, "error");
+
+                        // 🔹 Mostrar error debajo del combo de Clasificación
+                        selClas.classList.add("is-invalid");
+
+                        // Eliminar mensaje previo si existe
+                        const oldError = selClas.parentNode.querySelector(".error-tarifa");
+                        if (oldError) oldError.remove();
+
+                        const errorMsg = document.createElement("div");
+                        errorMsg.className = "error-tarifa text-danger small mt-1";
+                        errorMsg.textContent = "Debe seleccionar clasificación y si la plaza es techada o no";
+                        selClas.parentNode.appendChild(errorMsg);
+                        return;
+                    }
 
                     allPlazas = (data || []).map(x => ({
                         plzNum: x.plzNum,
@@ -1192,6 +1246,29 @@
              `;
          }
 
+         // Función para mostrar error en método de pago
+         function mostrarErrorMetodoPago(mensaje) {
+             const errorDiv = document.getElementById('metodoPagoError');
+             const select = document.getElementById('metodoPagoModal');
+             
+             if (errorDiv && select) {
+                 errorDiv.textContent = mensaje;
+                 errorDiv.style.display = 'block';
+                 select.classList.add('is-invalid');
+             }
+         }
+
+         // Función para ocultar error en método de pago
+         function ocultarErrorMetodoPago() {
+             const errorDiv = document.getElementById('metodoPagoError');
+             const select = document.getElementById('metodoPagoModal');
+             
+             if (errorDiv && select) {
+                 errorDiv.style.display = 'none';
+                 select.classList.remove('is-invalid');
+             }
+         }
+
          // Función para actualizar monto a pagar
          function actualizarMontoAPagar() {
              const opcionPago = document.querySelector('input[name="opcionPago"]:checked').value;
@@ -1433,14 +1510,92 @@
              }
          });
 
+         // Event listener para método de pago
+         const metodoPagoSelect = document.getElementById('metodoPagoModal');
+         if (metodoPagoSelect) {
+             metodoPagoSelect.addEventListener('change', function() {
+                 ocultarErrorMetodoPago();
+             });
+         }
+
          // Event listeners para botones del modal
          const btnConfirmarPago = document.getElementById('confirmarPago');
          if (btnConfirmarPago) {
-             btnConfirmarPago.addEventListener('click', function() {
-                 // Aquí se implementaría la lógica para procesar el pago
-                 alert('Funcionalidad de pago en desarrollo');
+            btnConfirmarPago.addEventListener('click', async function () {
+                // Validar método de pago antes de continuar
+                const metodoPago = document.getElementById('metodoPagoModal').value;
+                if (!metodoPago || metodoPago === '') {
+                    mostrarErrorMetodoPago('Debe seleccionar un método de pago');
+                    return;
+                }
+                
+                // Ocultar errores previos
+                ocultarErrorMetodoPago();
+                
+                // Armar objeto con los datos del formulario y modal
+                const data = {
+                PlyID: parseInt(document.querySelector('input[name="PlyID"]').value, 10),
+                SerID: parseInt(document.getElementById('SerID').value, 10),               // 🔹 faltaba
+                ClasVehID: parseInt(document.getElementById('ClasVehID').value, 10),
+                Periodos: parseInt(document.getElementById('Periodos').value, 10),         // 🔹 faltaba
+
+                AboFyhIni: new Date(document.querySelector('input[name="AboFyhIni"]').value).toISOString(),
+                AboFyhFin: new Date(document.querySelector('input[name="AboFyhFin"]').value).toISOString(),
+                AboMonto: parseFloat(document.getElementById('AboMontoHidden').value),
+
+                AboDNI: document.querySelector('input[name="AboDNI"]').value,
+                AboNom: document.querySelector('input[name="AboNom"]').value,
+
+                SelectedPlzNum: parseInt(document.getElementById('PlzNumAbono').value, 10),
+                SelectedPlzTecho: document.getElementById('PlzTechoAbono').value === "true",
+
+                MepID: parseInt(document.getElementById('metodoPagoModal').value, 10),
+                OpcionPago: document.querySelector('input[name="opcionPago"]:checked').value, // 🔹 faltaba
+                CantidadPeriodosPagar: document.querySelector('input[name="opcionPago"]:checked').value === 'todo'
+                    ? parseInt(document.getElementById('Periodos').value, 10)
+                    : parseInt(document.getElementById('cantidadPeriodosPagar').value, 10),   // 🔹 faltaba
+
+                MontoPagar: parseFloat(
+                    (document.getElementById('montoAPagar').value || "0")
+                        .replace(/[^\d,.-]/g, '')
+                        .replace(',', '.')
+                ),
+
+                 Vehiculos: []
+             };
+
+             // Agregar vehículos (solo una vez)
+             document.querySelectorAll('#vehiculos-list .vehiculo-item input').forEach(v => {
+                 if (v.value && v.value.trim()) {
+                     data.Vehiculos.push({ VehPtnt: v.value.trim() });
+                 }
              });
-         }
+
+                try {
+                    const response = await fetch('/Abono/ConfirmarPago', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+
+                     const result = await response.json();
+                     if (result.success) {
+                         // Redirigir a Index después de confirmar
+                         window.location.href = '/Abono/Index';
+                     } else {
+                         // Mostrar error específico si es del método de pago
+                         if (result.message && result.message.includes('método de pago')) {
+                             mostrarErrorMetodoPago(result.message);
+                         } else {
+                             alert(result.message || 'Error procesando el pago');
+                         }
+                     }
+                } catch (error) {
+                    alert('Error en la comunicación con el servidor: ' + error);
+                }
+            });
+        }
+
 
          
          // Event listeners para limpiar errores cuando el usuario interactúe con los campos
@@ -1453,14 +1608,21 @@
                  }
              }
              
-             // Limpiar errores de patentes cuando el usuario escriba
-             if (e.target.matches('input[name*="VehPtnt"]')) {
-                 const vehiculoItem = e.target.closest('.vehiculo-item');
-                 const errorExistente = vehiculoItem.querySelector('.error-vehiculo-individual');
-                 if (errorExistente) {
-                     errorExistente.remove();
-                 }
-             }
+            // Limpiar errores de patentes cuando el usuario escriba
+            if (e.target.matches('input[name*="VehPtnt"]')) {
+                const vehiculoItem = e.target.closest('.vehiculo-item');
+                const errorExistente = vehiculoItem.querySelector('.error-vehiculo-individual');
+                if (errorExistente) {
+                    errorExistente.remove();
+                }
+                
+                // Convertir patente a mayúsculas automáticamente
+                const valorOriginal = e.target.value;
+                const valorMayusculas = valorOriginal.toUpperCase();
+                if (valorOriginal !== valorMayusculas) {
+                    e.target.value = valorMayusculas;
+                }
+            }
          });
 
          // Event listeners para limpiar errores cuando el usuario cambie los selects

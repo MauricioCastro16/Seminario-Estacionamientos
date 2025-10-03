@@ -196,6 +196,22 @@ namespace estacionamientos.Controllers
                 }
             }
 
+            // Validar que existan tarifas configuradas para esta clasificación y servicio
+            var tieneTarifa = await _ctx.TarifasServicio
+                .AnyAsync(t => t.PlyID == model.PlyID
+                            && t.ClasVehID == model.ClasVehID
+                            && t.SerID == model.SerID
+                            && (t.TasFecFin == null || t.TasFecFin >= DateTime.UtcNow));
+
+            if (!tieneTarifa)
+            {
+                return Json(new { 
+                    error = true, 
+                    message = "No existen tarifas de abono configuradas para esta clasificación de vehículo" 
+                });
+            }
+
+
             if (!ModelState.IsValid)
             {
                 await LoadSelects(model.PlyID, null);
@@ -218,6 +234,7 @@ namespace estacionamientos.Controllers
                 AboFyhIni = DateTime.SpecifyKind(model.AboFyhIni, DateTimeKind.Utc),
                 AboFyhFin = model.AboFyhFin.HasValue ? DateTime.SpecifyKind(model.AboFyhFin.Value, DateTimeKind.Utc) : null,
                 AboDNI = model.AboDNI,
+                EstadoPago = EstadoPago.Activo,
                 // PagNum se asignará luego del Pago
             };
 
@@ -328,6 +345,8 @@ namespace estacionamientos.Controllers
                 await _ctx.SaveChangesAsync();
             }
             return RedirectToAction(nameof(Index));
+
+
         }
 
         // API: devuelve duración en días y monto vigente para serID, plyID y clasVehID
@@ -359,8 +378,24 @@ namespace estacionamientos.Controllers
 
         // API: plazas disponibles por filtros
         [HttpGet]
-        public async Task<IActionResult> GetPlazasDisponibles(int plyId, int clasVehId, bool? techo, int? piso)
+        public async Task<IActionResult> GetPlazasDisponibles(int plyId, int clasVehId, bool? techo, int? piso, int serId)
         {
+                        
+            var tieneTarifa = await _ctx.TarifasServicio
+                .AnyAsync(t => t.PlyID == plyId
+                            && t.SerID == serId
+                            && t.ClasVehID == clasVehId
+                            && (t.TasFecFin == null || t.TasFecFin >= DateTime.UtcNow));
+
+
+            if (!tieneTarifa)
+            {
+                return Json(new { 
+                    error = true, 
+                    message = "No existen tarifas de abono configuradas para esta clasificación de vehículo" 
+                });
+            }
+
             // Plazas hábiles, no ocupadas y que permitan la clasVehId (por PlazaClasificacion)
             var q = _ctx.Plazas
                 .Where(p => p.PlyID == plyId && p.PlzHab && !p.PlzOcupada)
@@ -509,7 +544,9 @@ namespace estacionamientos.Controllers
                     AboFyhFin = model.AboFyhFin,
                     AboMonto = model.AboMonto,
                     AboDNI = model.AboDNI,
-                    PagNum = nuevoPagNum
+                    PagNum = nuevoPagNum,
+                    EstadoPago = EstadoPago.Activo
+
                 };
                 _ctx.Abonos.Add(abono);
                 await _ctx.SaveChangesAsync();
@@ -531,15 +568,25 @@ namespace estacionamientos.Controllers
                         await _ctx.SaveChangesAsync();
                     }
 
-                    // Asociar vehículo al abono
-                    var vehiculoAbonado = new VehiculoAbonado
+                    // Verificar si ya existe la asociación VehiculoAbonado
+                    var vehiculoAbonadoExistente = await _ctx.VehiculosAbonados
+                        .FirstOrDefaultAsync(va => va.PlyID == model.PlyID && 
+                                                   va.PlzNum == model.SelectedPlzNum && 
+                                                   va.AboFyhIni == model.AboFyhIni && 
+                                                   va.VehPtnt == vehiculoVM.VehPtnt);
+                    
+                    if (vehiculoAbonadoExistente == null)
                     {
-                        PlyID = model.PlyID,
-                        PlzNum = model.SelectedPlzNum,
-                        AboFyhIni = model.AboFyhIni,
-                        VehPtnt = vehiculoVM.VehPtnt
-                    };
-                    _ctx.VehiculosAbonados.Add(vehiculoAbonado);
+                        // Asociar vehículo al abono solo si no existe
+                        var vehiculoAbonado = new VehiculoAbonado
+                        {
+                            PlyID = model.PlyID,
+                            PlzNum = model.SelectedPlzNum,
+                            AboFyhIni = model.AboFyhIni,
+                            VehPtnt = vehiculoVM.VehPtnt
+                        };
+                        _ctx.VehiculosAbonados.Add(vehiculoAbonado);
+                    }
                 }
 
                 await _ctx.SaveChangesAsync();
