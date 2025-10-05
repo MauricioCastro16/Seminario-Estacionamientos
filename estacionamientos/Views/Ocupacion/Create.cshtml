@@ -172,12 +172,6 @@
         letter-spacing: .2px;
     }
 
-    .plaza-sub {
-        font-size: .82rem;
-        color: #6c757d;
-        margin-top: 2px;
-    }
-
     .mensaje-inicial {
         text-align: center;
         color: #6c757d;               /* gris Bootstrap */
@@ -298,7 +292,6 @@
 
             card.innerHTML = `
                 <div class="plaza-title">${p.nombre ?? ("P" + p.plzNum)}</div>
-                <div class="plaza-sub">${p.piso === null ? "Sin piso" : ("Piso " + p.piso)}</div>
                 ${p.ocupada ? '<div class="small text-muted mt-1">Ocupada</div>' : ''}
                 ${p.hab === false ? '<div class="small text-muted mt-1">Inhabilitada</div>' : ''}
                 ${(p.hab !== false && !p.ocupada && p.compatible === false) ? '<div class="small mt-1">No compatible</div>' : ''}
