@@ -298,7 +298,6 @@
 
             card.innerHTML = `
                 <div class="plaza-title">${p.nombre ?? ("P" + p.plzNum)}</div>
-                <div class="plaza-sub">${p.piso === null ? "Sin piso" : ("Piso " + p.piso)}</div>
                 ${p.ocupada ? '<div class="small text-muted mt-1">Ocupada</div>' : ''}
                 ${p.hab === false ? '<div class="small text-muted mt-1">Inhabilitada</div>' : ''}
                 ${(p.hab !== false && !p.ocupada && p.compatible === false) ? '<div class="small mt-1">No compatible</div>' : ''}
