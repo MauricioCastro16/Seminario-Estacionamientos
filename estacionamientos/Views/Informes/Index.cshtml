@@ -101,12 +101,13 @@
             {
                 <div class="table-responsive">
                     <table class="table table-sm align-middle">
-                        <thead>
+                                <thead>
                             <tr>
                                 <th>Tipo de pago</th>
                                 <th class="text-end">Ingresos totales</th>
                                 <th class="text-end">Cantidad de transacciones</th>
                                 <th class="text-end">Participación en ingresos</th>
+                                <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -125,6 +126,16 @@
                                 <td class="text-end">@m.Cantidad.ToString("N0")</td>
                                 <td class="text-end">
                                     <span class="badge bg-light text-dark">@m.PorcentajeMonto.ToString("F1")%</span>
+                                </td>
+                                <td class="text-center">
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       asp-controller="Informes" asp-action="DetalleMetodoPagoGeneral"
+                                       asp-route-mepID="@m.MepID"
+                                       asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
+                                       asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")"
+                                       title="Ver todos los pagos con @m.Metodo">
+                                        <i class="fa-solid fa-eye"></i> Ver detalles
+                                    </a>
                                 </td>
                             </tr>
                         }

@@ -90,4 +90,30 @@ namespace estacionamientos.ViewModels
         public List<SeriePuntoVM> IngresosPorHora { get; set; } = new();  // etiqueta = "00-23"
         
     }
+
+    // ----- detalle por método de pago (vista general) -----
+    public class InformeDetalleMetodoPagoGeneralItemVM
+    {
+        public int PlyID { get; set; }
+        public string PlayaNombre { get; set; } = "";
+        public int PagNum { get; set; }
+        public DateTime FechaUtc { get; set; }
+        public decimal Monto { get; set; }
+        public string Metodo { get; set; } = "";
+        public int OcupacionesCount { get; set; }
+        public int ServiciosExtrasCount { get; set; }
+        public List<string> OcupacionesVehiculos { get; set; } = new();
+        public List<string> ServiciosExtrasNombres { get; set; } = new();
+    }
+
+    public class InformeDetalleMetodoPagoGeneralVM
+    {
+        public InformeFiltroVM Filtros { get; set; } = new();
+        public List<InformeDetalleMetodoPagoGeneralItemVM> Items { get; set; } = new();
+
+        public int CantPagos => Items.Count;
+        public decimal Total => Items.Sum(x => x.Monto);
+        public List<SeriePuntoVM> IngresosPorDia { get; set; } = new();   // etiqueta = "dd/MM"
+        public List<SeriePuntoVM> IngresosPorHora { get; set; } = new();  // etiqueta = "00-23"
+    }
 }
