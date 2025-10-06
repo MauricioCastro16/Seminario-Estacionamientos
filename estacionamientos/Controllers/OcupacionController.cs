@@ -760,6 +760,20 @@ namespace estacionamientos.Controllers
                 nuevaPlaza.PlzHab = false;
                 
                 _ctx.Ocupaciones.Add(nuevaOcupacion);
+
+                //registrar el movimiento del playero
+                var usuNu = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                var movimientoPlayero = new MovimientoPlayero{
+                    PlyID = nuevaOcupacion.PlyID,
+                    PlaNU = usuNu,
+                    TipoMov = TipoMovimiento.ReubicacionVehiculo,
+                    FechaMov = nuevaOcupacion.OcufFyhIni,
+                    VehPtnt = nuevaOcupacion.VehPtnt,
+                    PlzNum = nuevaOcupacion.PlzNum,
+                };
+
+                _ctx.MovimientosPlayeros.Add(movimientoPlayero);
+
                 await _ctx.SaveChangesAsync();
 
                 TempData["Success"] = $"Plaza modificada para {ocupacionActual?.Vehiculo?.Clasificacion.ClasVehTipo ?? "vehículo"} {nuevaOcupacion.VehPtnt}";

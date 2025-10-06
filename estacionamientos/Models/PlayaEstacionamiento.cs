@@ -52,5 +52,7 @@ namespace estacionamientos.Models
         public ICollection<Pago> Pagos { get; set; } = new List<Pago>();
         public ICollection<PlazaEstacionamiento> Plazas { get; set; } = new List<PlazaEstacionamiento>();
         public ICollection<ServicioProveido> ServiciosProveidos { get; set; } = new List<ServicioProveido>();
+
+        public ICollection<MovimientoPlayero> Movimientos { get; set; } = new List<MovimientoPlayero>();
     }
 }

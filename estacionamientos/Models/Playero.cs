@@ -5,6 +5,7 @@ namespace estacionamientos.Models
     // Hereda toda la info de Usuario
     public class Playero : Usuario
     {
-        // Sin campos adicionales por ahora
+        // relacion con movimientos
+        public ICollection<MovimientoPlayero> Movimientos { get; set; } = new List<MovimientoPlayero>();
     }
 }

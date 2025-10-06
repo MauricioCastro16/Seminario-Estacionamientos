@@ -35,8 +35,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Abono> Abonos { get; set; } = default!;
     public DbSet<VehiculoAbonado> VehiculosAbonados { get; set; } = default!;
     public DbSet<PlazaClasificacion> PlazasClasificaciones { get; set; } = default!;
-
-
+    public DbSet<MovimientoPlayero> MovimientosPlayeros { get; set; }
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -729,6 +729,27 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
              .WithMany() // si querés inversa: Vehiculo.Abonos
              .HasForeignKey(v => v.VehPtnt)
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MovimientoPlayero>(e => 
+        {
+            e.HasKey(m => new { m.MovNum, m.PlyID, m.PlaNU });
+            // Relación con Playa
+            e.HasOne(m => m.Playa)
+            .WithMany(p => p.Movimientos)
+            .HasForeignKey(m => m.PlyID)
+            .OnDelete(DeleteBehavior.Restrict);
+
+            // Relación con Playero
+            e.HasOne(m => m.Playero)
+            .WithMany(p => p.Movimientos)
+            .HasForeignKey(m => m.PlaNU)
+            .OnDelete(DeleteBehavior.Restrict);
+
+            // Guardar enum TipoMov como string
+            e.Property(m => m.TipoMov)
+            .HasConversion<string>();
+                    
         });
     }
 
