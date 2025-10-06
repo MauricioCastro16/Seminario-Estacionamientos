@@ -697,10 +697,88 @@ namespace estacionamientos.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        public async Task<IActionResult> ReubicarVehiculo(int plyID, int plzNum)
+        [HttpGet]
+
+        public async Task<IActionResult> ReubicarVehiculo(int plyID, int plzNum, string vehPtnt)
+        {   
+            await PrepararVistaReubicar(plyID, plzNum, vehPtnt, string.Empty);
+            return View("ReubicarVehiculo");
+        }
+
+        // POST: /Ocupacion/ReubicarVehiculo
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ReubicarVehiculo(int plyID, int plzNum, string vehPtnt, int nuevaPlazaId)
         {
-            var ocupacionActual = await _ctx.Ocupaciones
-                .Where(o => o.PlyID == plyID && o.PlzNum == plzNum)
+            try
+            {
+                Console.WriteLine($"Modificando ocupación estacionamiento {plyID}, patente: {vehPtnt} (plaza {plzNum} -> plaza {nuevaPlazaId})");
+                var ocupacionActual = await _ctx.Ocupaciones
+                    .Include(o => o.Plaza)
+                    .FirstOrDefaultAsync(o => o.PlyID == plyID && o.PlzNum == plzNum && o.VehPtnt == vehPtnt && o.OcufFyhFin == null);
+
+                if (ocupacionActual == null)
+                {
+                    Console.WriteLine("Error: No se encontró la ocupación actual.");
+                    await PrepararVistaReubicar(plyID, plzNum, vehPtnt, "Error al buscar la ocupación actual");
+                    return View("ReubicarVehiculo");
+                }
+
+                var nuevaPlaza = await _ctx.Plazas
+                    .FirstOrDefaultAsync(p => p.PlyID == plyID && p.PlzNum == nuevaPlazaId);
+
+                if (nuevaPlaza == null || !nuevaPlaza.PlzHab)
+                {
+                    Console.WriteLine("Error: La plaza seleccionada no está disponible.");
+                    await PrepararVistaReubicar(plyID, plzNum, vehPtnt, "La plaza seleccionada no está disponible.", ocupacionActual);
+                    return View("ReubicarVehiculo");
+                }
+
+                if(ocupacionActual.OcufFyhFin != null || ocupacionActual.PagNum != null){
+                    Console.WriteLine("Error: No se puede modificar una ocupación ya terminada");
+                    Console.WriteLine($"ocupacionActual.OcufFyhFin: {ocupacionActual.OcufFyhFin}");
+                    Console.WriteLine($"ocupacionActual.PagNum: {ocupacionActual.PagNum}");
+                    await PrepararVistaReubicar(plyID, plzNum, vehPtnt, "No se puede modificar una ocupación ya terminada");
+                    return View("ReubicarVehiculo");
+                }
+                // Liberar la plaza
+                ocupacionActual.Plaza.PlzHab = true;
+
+                // Borrar ocupación anterior (para insertar una nueva con misma clave pero distinta plaza)
+                _ctx.Ocupaciones.Remove(ocupacionActual);
+
+                //Crear una nueva ocupación
+                var nuevaOcupacion = new Ocupacion{
+                    PlyID = plyID,
+                    PlzNum = nuevaPlaza.PlzNum,
+                    VehPtnt = ocupacionActual.VehPtnt,
+                    OcufFyhIni = ocupacionActual.OcufFyhIni,
+                    OcuLlavDej = ocupacionActual.OcuLlavDej,
+                    PagNum = ocupacionActual.PagNum,
+                };
+
+                nuevaPlaza.PlzHab = false;
+                
+                _ctx.Ocupaciones.Add(nuevaOcupacion);
+                await _ctx.SaveChangesAsync();
+
+                TempData["Success"] = $"Plaza modificada para {ocupacionActual?.Vehiculo?.Clasificacion.ClasVehTipo ?? "vehículo"} {nuevaOcupacion.VehPtnt}";
+                Console.WriteLine("Plaza cambiada correctamente");
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error inesperado: {ex.Message}");
+                await PrepararVistaReubicar(plyID, plzNum, vehPtnt, "Ocurrió un error inesperado. Intente nuevamente.");
+                return View("ReubicarVehiculo");
+            }
+        }
+
+        // Método privado para preparar datos de la vista
+        private async Task PrepararVistaReubicar(int plyID, int plzNum, string vehPtnt, string errorMensaje, Ocupacion? ocupacion = null)
+        {
+            var ocupacionActual = ocupacion ?? await _ctx.Ocupaciones
+                .Where(o => o.PlyID == plyID && o.PlzNum == plzNum && o.VehPtnt == vehPtnt && o.OcufFyhFin == null)
                 .Include(o => o.Plaza)
                     .ThenInclude(p => p.Clasificaciones)
                         .ThenInclude(pc => pc.Clasificacion)
@@ -709,21 +787,27 @@ namespace estacionamientos.Controllers
                 .Include(o => o.Vehiculo)
                     .ThenInclude(v => v.Clasificacion)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(); // <-- Asegurate de usar await
-
-            if (ocupacionActual == null)
-                return NotFound();
-
-            var tipoVehiculo = ocupacionActual?.Vehiculo?.ClasVehID;
+                .FirstOrDefaultAsync();
 
             var plazasValidas = await _ctx.PlazasClasificaciones
                 .Where(plz => plz.PlyID == plyID)
                 .Include(plz => plz.Plaza)
                     .ThenInclude(plz => plz.Ocupaciones.Where(o => o.OcufFyhFin == null))
                 .Include(plz => plz.Clasificacion)
+                .AsNoTracking()
                 .ToListAsync();
-            
-            return View("ReubicarVehiculo", (ocupacionActual, plazasValidas));
+
+            var plazasUnicas = plazasValidas
+                .GroupBy(pc => pc.Plaza.PlzNum)
+                .Select(g => g.First())
+                .ToList();
+                
+
+            ViewBag.ListaPlazas = plazasUnicas;
+            ViewBag.ErrorMensaje = errorMensaje;
+
+            // Enviamos la ocupación al ViewData para la vista
+            ViewBag.OcupacionActual = ocupacionActual;
         }
     }
 }
