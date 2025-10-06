@@ -81,6 +81,7 @@ namespace estacionamientos.ViewModels
         public string PlayaNombre { get; set; } = "";
         public InformeFiltroVM Filtros { get; set; } = new();
         public List<InformeDetallePlayaItemVM> Items { get; set; } = new();
+        public List<MetodoPagoMixVM> MixMetodos { get; set; } = new();
 
         public int CantPagos => Items.Count;
         public decimal Total => Items.Sum(x => x.Monto);

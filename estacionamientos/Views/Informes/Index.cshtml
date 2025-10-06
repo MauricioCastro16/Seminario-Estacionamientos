@@ -96,27 +96,36 @@
     <!-- Métodos de pago -->
     <div class="card shadow-sm mb-4">
         <div class="card-body">
-            <h5 class="card-title mb-3">Métodos de pago</h5>
+            <h5 class="card-title mb-3">Método de pago</h5>
             @if (k.MixMetodos?.Any() == true)
             {
                 <div class="table-responsive">
                     <table class="table table-sm align-middle">
                         <thead>
                             <tr>
-                                <th>Método</th>
-                                <th class="text-end">Monto</th>
-                                <th class="text-end"># Pagos</th>
-                                <th class="text-end">% del Total</th>
+                                <th>Tipo de pago</th>
+                                <th class="text-end">Ingresos totales</th>
+                                <th class="text-end">Cantidad de transacciones</th>
+                                <th class="text-end">Participación en ingresos</th>
                             </tr>
                         </thead>
                         <tbody>
                         @foreach (var m in k.MixMetodos)
                         {
                             <tr>
-                                <td>@m.Metodo</td>
-                                <td class="text-end">$ @m.Monto.ToString("N2")</td>
-                                <td class="text-end">@m.Cantidad</td>
-                                <td class="text-end">@m.PorcentajeMonto.ToString("0.0")%</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-2">
+                                            <div class="payment-method-indicator bg-primary"></div>
+                                        </div>
+                                        <span class="fw-medium">@m.Metodo</span>
+                                    </div>
+                                </td>
+                                <td class="text-end fw-medium">$ @m.Monto.ToString("N2")</td>
+                                <td class="text-end">@m.Cantidad.ToString("N0")</td>
+                                <td class="text-end">
+                                    <span class="badge bg-light text-dark">@m.PorcentajeMonto.ToString("F1")%</span>
+                                </td>
                             </tr>
                         }
                         </tbody>
@@ -189,6 +198,13 @@
     width: 100% !important;
     height: 100% !important;
     display: block;
+  }
+  
+  .payment-method-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
   }
 </style>
 

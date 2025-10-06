@@ -427,6 +427,32 @@ namespace estacionamientos.Controllers
                 })
                 .ToList();
 
+            // Calcular métodos de pago más utilizados para esta playa
+            var mixMetodosRaw = pagos
+                .GroupBy(p => p.MepID)
+                .Select(g => new
+                {
+                    MepID = g.Key,
+                    Monto = g.Sum(x => x.PagMonto),
+                    Cantidad = g.Count()
+                })
+                .ToList();
+
+            var mixMetodos = mixMetodosRaw
+                .Select(x => new MetodoPagoMixVM
+                {
+                    MepID = x.MepID,
+                    Metodo = nombresMetodos.TryGetValue(x.MepID, out var nom) ? nom : $"Mep #{x.MepID}",
+                    Monto = x.Monto,
+                    Cantidad = x.Cantidad
+                })
+                .OrderByDescending(x => x.Monto)
+                .ToList();
+
+            var ingresosTotales = pagos.Sum(p => p.PagMonto);
+            foreach (var m in mixMetodos)
+                m.PorcentajeMonto = ingresosTotales > 0 ? (m.Monto / ingresosTotales * 100m) : 0m;
+
             var vm = new InformeDetallePlayaVM
             {
                 PlyID = plyID,
@@ -438,7 +464,8 @@ namespace estacionamientos.Controllers
                     PlayasIds = new List<int> { plyID },
                     DuenioId = currentUserId
                 },
-                Items = items
+                Items = items,
+                MixMetodos = mixMetodos
             };
 
             return View(vm);
