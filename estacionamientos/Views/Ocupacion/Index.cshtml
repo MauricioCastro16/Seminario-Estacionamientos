@@ -421,7 +421,16 @@
                     </div>
                 `;
             }
-            
+            let historialPlazasHtml = '';
+            if (data.historialPlazas && data.historialPlazas.length > 1) {
+                historialPlazasHtml = `
+                    <tr>
+                        <td><strong>Cambios de Plaza:</strong></td>
+                        <td>${[...data.historialPlazas].join(' → ')}</td>
+                    </tr>
+                `;
+            }
+
             document.getElementById('detallesContent').innerHTML = `
                 <div class="row mb-3">
                     <div class="col-md-6">
@@ -443,6 +452,7 @@
                                 <td><strong>Plaza:</strong></td>
                                 <td>${data.plzNum}</td>
                             </tr>
+                            ${historialPlazasHtml}
                         </table>
                     </div>
                     <div class="col-md-6">

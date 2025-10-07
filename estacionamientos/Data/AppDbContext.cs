@@ -734,6 +734,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<MovimientoPlayero>(e => 
         {
             e.HasKey(m => new { m.MovNum, m.PlyID, m.PlaNU });
+
+            // Autoincrementar MovNum
+            e.Property(m => m.MovNum)
+            .UseIdentityByDefaultColumn();
+            
             // Relación con Playa
             e.HasOne(m => m.Playa)
             .WithMany(p => p.Movimientos)
@@ -749,6 +754,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // Guardar enum TipoMov como string
             e.Property(m => m.TipoMov)
             .HasConversion<string>();
+
                     
         });
     }

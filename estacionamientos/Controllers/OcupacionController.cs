@@ -232,6 +232,18 @@ namespace estacionamientos.Controllers
             };
 
             _ctx.Ocupaciones.Add(ocup);
+
+            var movimientoPlayero = new MovimientoPlayero{
+                PlyID = plyID,
+                PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)),
+                TipoMov = TipoMovimiento.IngresoVehiculo,
+                FechaMov = DateTime.UtcNow,
+                VehPtnt = vehPtnt,
+                PlzNum = plzNum,
+            };
+
+            _ctx.MovimientosPlayeros.Add(movimientoPlayero);
+
             await _ctx.SaveChangesAsync();
 
             TempData["Success"] = $"Vehículo {vehPtnt} ingresó a la plaza {plzNum}.";
@@ -259,6 +271,17 @@ namespace estacionamientos.Controllers
             var fechaEgreso = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             var cobroVM = await CalcularCobro(plyID, plzNum, vehPtnt, ocup.OcufFyhIni, fechaEgreso);
             
+            var movimientoPlayero = new MovimientoPlayero{
+                PlyID = plyID,
+                PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)),
+                TipoMov = TipoMovimiento.EgresoVehiculo,
+                FechaMov = DateTime.UtcNow,
+                VehPtnt = vehPtnt,
+                PlzNum = plzNum,
+            };
+
+            _ctx.MovimientosPlayeros.Add(movimientoPlayero);
+            await _ctx.SaveChangesAsync();
             return View("CobroEgreso", cobroVM);
         }
 
@@ -365,7 +388,6 @@ namespace estacionamientos.Controllers
                 .Include(o => o.Pago)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(o => o.PlyID == plyID && o.PlzNum == plzNum && o.VehPtnt == vehPtnt && o.OcufFyhIni == ocufFyhIni);
-
             return item is null ? NotFound() : View(item);
         }
 
@@ -390,6 +412,17 @@ namespace estacionamientos.Controllers
                 return Json(new { error = "Ocupación no encontrada" });
             }
 
+            // para mostrar en el detalla las plazas anteriores en caso de que una ocupación haya sido cambiada de lugar
+            var historialPlazas = await _ctx.MovimientosPlayeros
+                .Where(
+                    m => m.PlyID == plyID && 
+                    m.VehPtnt == vehPtnt && 
+                    m.FechaMov > ocufFyhIni && 
+                    (m.TipoMov == TipoMovimiento.IngresoVehiculo || m.TipoMov == TipoMovimiento.ReubicacionVehiculo))
+                .OrderBy(m => m.FechaMov)
+                .Select(m => m.PlzNum)
+                .ToListAsync();
+
             var resultado = new
             {
                 plyID = ocupacion.PlyID,
@@ -407,7 +440,8 @@ namespace estacionamientos.Controllers
                         pagMonto = ocupacion.Pago.PagMonto,
                         pagFyh = ocupacion.Pago.PagFyh
                     } 
-                    : null
+                    : null,
+                historialPlazas = historialPlazas ?? null
             };
             return Json(resultado);
         }
@@ -629,6 +663,19 @@ namespace estacionamientos.Controllers
             model.OcufFyhIni = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             model.OcufFyhFin = null;
             _ctx.Ocupaciones.Add(model);
+
+            // registrar el movimiento del playero
+            
+            var movimientoPlayero = new MovimientoPlayero{
+                PlyID = model.PlyID,
+                PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)),
+                TipoMov = TipoMovimiento.IngresoVehiculo,
+                FechaMov = DateTime.UtcNow,
+                VehPtnt = model.VehPtnt,
+                PlzNum = model.PlzNum,
+            };
+
+            _ctx.MovimientosPlayeros.Add(movimientoPlayero);
             await _ctx.SaveChangesAsync();
 
             var plaza = await _ctx.Plazas.FindAsync(model.PlyID, model.PlzNum);
@@ -767,7 +814,7 @@ namespace estacionamientos.Controllers
                     PlyID = nuevaOcupacion.PlyID,
                     PlaNU = usuNu,
                     TipoMov = TipoMovimiento.ReubicacionVehiculo,
-                    FechaMov = nuevaOcupacion.OcufFyhIni,
+                    FechaMov = DateTime.UtcNow,
                     VehPtnt = nuevaOcupacion.VehPtnt,
                     PlzNum = nuevaOcupacion.PlzNum,
                 };
