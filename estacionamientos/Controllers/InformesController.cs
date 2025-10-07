@@ -47,9 +47,9 @@ namespace estacionamientos.Controllers
         }
 
         // =====================
-        // INDEX (dashboard)
+        // INDEX UNIFICADO (dashboard completo)
         // =====================
-        public IActionResult Index(DateTime? desde, DateTime? hasta, List<int>? playasIds, int? duenioId = null)
+        public IActionResult Index(DateTime? desde, DateTime? hasta, List<int>? playasIds, int? duenioId = null, int? metodoPagoId = null, List<int>? metodosIds = null)
         {
             var todayLocal = DateTime.Now;
             var defaultDesdeUtc = DayStartUtc(todayLocal.AddDays(-30));
@@ -66,26 +66,59 @@ namespace estacionamientos.Controllers
             var desdeUtc = desde.HasValue ? DayStartUtc(desde.Value) : defaultDesdeUtc;
             var hastaUtc = hasta.HasValue ? DayEndUtc(hasta.Value) : defaultHastaUtc;
 
+            // Dueño actual
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdStr, out var currentUserId))
+                return Unauthorized();
+
+            // Obtener playas disponibles del dueño
+            var playasDisponibles = _ctx.Playas
+                .AsNoTracking()
+                .Where(pl => pl.Administradores.Any(a => a.DueNU == currentUserId))
+                .Select(pl => new InformePlayaRowVM
+                {
+                    PlyID = pl.PlyID,
+                    PlayaNombre = string.IsNullOrWhiteSpace(pl.PlyNom) ? (pl.PlyCiu + " - " + pl.PlyDir) : pl.PlyNom,
+                    IngresosTotales = 0, // Se calculará después
+                    CantPagos = 0
+                })
+                .ToList();
+
+            // Si no se especificaron playas, usar todas las del dueño
+            var playasSeleccionadas = playasIds?.Any() == true ? playasIds : playasDisponibles.Select(p => p.PlyID).ToList();
+
             var pagos = _ctx.Pagos
                 .AsNoTracking()
                 .Include(p => p.Playa)
                 .Include(p => p.MetodoPago)
-                .Where(p => p.PagFyh >= desdeUtc && p.PagFyh <= hastaUtc);
+                .Where(p => p.PagFyh >= desdeUtc && p.PagFyh <= hastaUtc)
+                .Where(p => playasSeleccionadas.Contains(p.PlyID));
 
-            // Dueño actual => solo sus playas
-            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdStr, out var currentUserId))
+            // Filtrar por métodos de pago si se especifica
+            if (metodosIds?.Any() == true)
             {
-                pagos = pagos.Where(p => p.Playa.Administradores.Any(a => a.DueNU == currentUserId));
-                filtros.DuenioId = currentUserId;
+                pagos = pagos.Where(p => metodosIds.Contains(p.MepID));
             }
-
-            if (playasIds != null && playasIds.Count > 0)
-                pagos = pagos.Where(p => playasIds.Contains(p.PlyID));
+            else if (metodoPagoId.HasValue)
+            {
+                // Compatibilidad con filtro único
+                pagos = pagos.Where(p => p.MepID == metodoPagoId.Value);
+            }
 
             var ingresosTotales = pagos.Sum(p => (decimal?)p.PagMonto) ?? 0m;
             var cantPagos = pagos.Count();
 
+            // Obtener TODOS los métodos de pago disponibles (no solo los que tienen pagos)
+            var todosLosMetodos = _ctx.AceptaMetodosPago
+                .AsNoTracking()
+                .Include(a => a.MetodoPago)
+                .Where(a => a.MetodoPago != null)
+                .GroupBy(a => new { a.MepID, a.MetodoPago!.MepNom })
+                .Select(g => new { g.Key.MepID, Nombre = g.Key.MepNom })
+                .ToList()
+                .ToDictionary(x => x.MepID, x => x.Nombre);
+
+            // Obtener estadísticas de pagos por método (solo para los que tienen pagos)
             var mixRaw = pagos
                 .GroupBy(p => p.MepID)
                 .Select(g => new
@@ -96,24 +129,14 @@ namespace estacionamientos.Controllers
                 })
                 .ToList();
 
-            var mepIds = mixRaw.Select(x => x.MepID).Distinct().ToList();
-
-            var nombresMetodos = _ctx.AceptaMetodosPago
-                .AsNoTracking()
-                .Include(a => a.MetodoPago)
-                .Where(a => mepIds.Contains(a.MepID) && a.MetodoPago != null)
-                .GroupBy(a => new { a.MepID, a.MetodoPago!.MepNom })
-                .Select(g => new { g.Key.MepID, Nombre = g.Key.MepNom })
-                .ToList()
-                .ToDictionary(x => x.MepID, x => x.Nombre);
-
-            var mixMetodos = mixRaw
-                .Select(x => new MetodoPagoMixVM
+            // Crear lista completa de métodos (todos los disponibles, con estadísticas si tienen pagos)
+            var mixMetodos = todosLosMetodos.Keys
+                .Select(mepId => new MetodoPagoMixVM
                 {
-                    MepID = x.MepID,
-                    Metodo = nombresMetodos.TryGetValue(x.MepID, out var nom) ? nom : $"Mep #{x.MepID}",
-                    Monto = x.Monto,
-                    Cantidad = x.Cantidad
+                    MepID = mepId,
+                    Metodo = todosLosMetodos[mepId],
+                    Monto = mixRaw.FirstOrDefault(x => x.MepID == mepId)?.Monto ?? 0m,
+                    Cantidad = mixRaw.FirstOrDefault(x => x.MepID == mepId)?.Cantidad ?? 0
                 })
                 .OrderByDescending(x => x.Monto)
                 .ToList();
@@ -185,6 +208,99 @@ namespace estacionamientos.Controllers
                     })
                 .ToList();
 
+            // Calcular estadísticas por playa para las playas disponibles
+            var estadisticasPorPlaya = pagos
+                .GroupBy(p => p.PlyID)
+                .Select(g => new
+                {
+                    PlyID = g.Key,
+                    IngresosTotales = g.Sum(x => x.PagMonto),
+                    CantPagos = g.Count()
+                })
+                .ToDictionary(x => x.PlyID, x => new { x.IngresosTotales, x.CantPagos });
+
+            // Actualizar estadísticas en playas disponibles
+            foreach (var playa in playasDisponibles)
+            {
+                if (estadisticasPorPlaya.TryGetValue(playa.PlyID, out var stats))
+                {
+                    playa.IngresosTotales = stats.IngresosTotales;
+                    playa.CantPagos = stats.CantPagos;
+                }
+            }
+
+            // Obtener detalles de pagos para la tabla (solo si se especifica un método de pago)
+            List<InformeDetalleMetodoPagoGeneralItemVM>? detallePagos = null;
+            if (metodosIds?.Any() == true || metodoPagoId.HasValue)
+            {
+                var clavesPagos = pagos.Select(p => new { p.PlyID, p.PagNum }).ToList();
+
+                var ocupacionesPorPago = _ctx.Ocupaciones
+                    .AsNoTracking()
+                    .Where(o => o.PagNum != null)
+                    .Select(o => new { o.PlyID, o.PagNum, o.VehPtnt })
+                    .ToList()
+                    .Where(x => clavesPagos.Any(k => k.PlyID == x.PlyID && k.PagNum == x.PagNum))
+                    .GroupBy(x => new { x.PlyID, x.PagNum })
+                    .ToDictionary(
+                        g => (g.Key.PlyID, g.Key.PagNum!.Value),
+                        g => new { Count = g.Count(), Vehiculos = g.Select(v => v.VehPtnt).Distinct().ToList() }
+                    );
+
+                var serviciosPorPago = _ctx.ServiciosExtrasRealizados
+                    .AsNoTracking()
+                    .Where(s => s.PagNum != null)
+                    .Include(s => s.ServicioProveido)
+                    .ThenInclude(sp => sp.Servicio)
+                    .Select(s => new { s.PlyID, s.PagNum, SerNom = s.ServicioProveido.Servicio.SerNom })
+                    .ToList()
+                    .Where(x => clavesPagos.Any(k => k.PlyID == x.PlyID && k.PagNum == x.PagNum))
+                    .GroupBy(x => new { x.PlyID, x.PagNum })
+                    .ToDictionary(
+                        g => (g.Key.PlyID, g.Key.PagNum!.Value),
+                        g => new { Count = g.Count(), Nombres = g.Select(v => v.SerNom).ToList() }
+                    );
+
+                var metodoNombre = "";
+                if (metodosIds?.Any() == true)
+                {
+                    var nombresMetodosSeleccionados = mixMetodos.Where(m => metodosIds.Contains(m.MepID)).Select(m => m.Metodo).ToList();
+                    metodoNombre = nombresMetodosSeleccionados.Count == 1 ? nombresMetodosSeleccionados.First() : $"{nombresMetodosSeleccionados.Count} métodos seleccionados";
+                }
+                else if (metodoPagoId.HasValue)
+                {
+                    metodoNombre = mixMetodos.FirstOrDefault(m => m.MepID == metodoPagoId.Value)?.Metodo ?? $"Método #{metodoPagoId.Value}";
+                }
+
+                detallePagos = pagos
+                    .OrderByDescending(p => p.PagFyh)
+                    .ToList()
+                    .Select(p =>
+                    {
+                        var key = (p.PlyID, p.PagNum);
+                        var cantOcup = ocupacionesPorPago.TryGetValue(key, out var oc) ? oc.Count : 0;
+                        var cantServ = serviciosPorPago.TryGetValue(key, out var se) ? se.Count : 0;
+
+                        // Obtener el nombre específico del método de pago para este pago
+                        var metodoEspecifico = todosLosMetodos.TryGetValue(p.MepID, out var nomMetodo) ? nomMetodo : $"Método #{p.MepID}";
+
+                        return new InformeDetalleMetodoPagoGeneralItemVM
+                        {
+                            PlyID = p.PlyID,
+                            PlayaNombre = !string.IsNullOrWhiteSpace(p.Playa.PlyNom) ? p.Playa.PlyNom : $"Playa #{p.PlyID}",
+                            PagNum = p.PagNum,
+                            FechaUtc = p.PagFyh,
+                            Monto = p.PagMonto,
+                            Metodo = metodoEspecifico,
+                            OcupacionesCount = cantOcup,
+                            ServiciosExtrasCount = cantServ,
+                            OcupacionesVehiculos = ocupacionesPorPago.TryGetValue(key, out var oc2) ? oc2.Vehiculos : new List<string>(),
+                            ServiciosExtrasNombres = serviciosPorPago.TryGetValue(key, out var se2) ? se2.Nombres : new List<string>()
+                        };
+                    })
+                    .ToList();
+            }
+
             var vm = new InformeDuenioVM
             {
                 Filtros = filtros,
@@ -196,8 +312,27 @@ namespace estacionamientos.Controllers
                 },
                 PorPlaya = porPlaya,
                 IngresosPorDia = ingresosPorDia,
-                IngresosPorHora = ingresosPorHora
+                IngresosPorHora = ingresosPorHora,
+                PlayasDisponibles = playasDisponibles,
+                PlayasSeleccionadas = playasSeleccionadas,
+                DetallePagos = detallePagos,
+                MetodoPagoSeleccionado = metodoPagoId,
+                MetodosPagoSeleccionados = metodosIds ?? new List<int>()
             };
+
+            // Agregar información adicional al ViewData
+            if (metodosIds?.Any() == true)
+            {
+                var nombresMetodosViewData = mixMetodos.Where(m => metodosIds.Contains(m.MepID)).Select(m => m.Metodo).ToList();
+                var metodoNombreViewData = nombresMetodosViewData.Count == 1 ? nombresMetodosViewData.First() : $"{nombresMetodosViewData.Count} métodos seleccionados";
+                ViewData["MetodoPagoNombre"] = metodoNombreViewData;
+            }
+            else if (metodoPagoId.HasValue)
+            {
+                var metodoNombreViewData = mixMetodos.FirstOrDefault(m => m.MepID == metodoPagoId.Value)?.Metodo ?? $"Método #{metodoPagoId.Value}";
+                ViewData["MetodoPagoNombre"] = metodoNombreViewData;
+                ViewData["MetodoPagoID"] = metodoPagoId.Value;
+            }
 
             return View(vm);
         }
@@ -247,7 +382,7 @@ namespace estacionamientos.Controllers
 
             // Nombre de playa (si una sola) y detalle de pagos (opcional)
             string playaNombre = "Todas";
-            List<InformeDetallePlayaItemVM>? detalleItems = null;
+            List<InformeDetalleMetodoPagoGeneralItemVM>? detalleItems = null;
             if (playasIds != null && playasIds.Count == 1)
             {
                 var plyId = playasIds[0];
@@ -309,9 +444,10 @@ namespace estacionamientos.Controllers
 
                 detalleItems = pagos
                     .OrderByDescending(p => p.PagFyh)
-                    .Select(p => new InformeDetallePlayaItemVM
+                    .Select(p => new InformeDetalleMetodoPagoGeneralItemVM
                     {
                         PlyID = p.PlyID,
+                        PlayaNombre = playaNombre,
                         PagNum = p.PagNum,
                         FechaUtc = p.PagFyh,
                         Monto = p.PagMonto,
@@ -319,6 +455,7 @@ namespace estacionamientos.Controllers
                                 : (nombresMetodos.TryGetValue(p.MepID, out var nom) ? nom : $"Mep #{p.MepID}"),
                         OcupacionesCount = ocupacionesPorPago.TryGetValue((p.PlyID, p.PagNum), out var oc) ? oc : 0,
                         ServiciosExtrasCount = serviciosPorPago.TryGetValue((p.PlyID, p.PagNum), out var se) ? se.Count : 0,
+                        OcupacionesVehiculos = new List<string>(),
                         ServiciosExtrasNombres = serviciosPorPago.TryGetValue((p.PlyID, p.PagNum), out var se2) ? se2 : new List<string>()
                     })
                     .ToList();
@@ -332,123 +469,15 @@ namespace estacionamientos.Controllers
             return File(pdfBytes, "application/pdf", fileName);
         }
 
-        // =======================
-        // Detalle de pagos por playa
-        // =======================
-        [HttpGet("/Informes/DetallePlaya")]
-        public IActionResult DetallePlaya(int plyID, DateTime? desde, DateTime? hasta)
-        {
-            var todayLocal = DateTime.Now;
-            var desdeUtc = DayStartUtc((desde ?? todayLocal.AddDays(-30)));
-            var hastaUtc = DayEndUtc((hasta ?? todayLocal));
 
-            // dueño actual
-            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!int.TryParse(userIdStr, out var currentUserId))
-                return Unauthorized();
 
-            // validar que la playa sea del dueño
-            var esDelDuenio = _ctx.Playas
-                .AsNoTracking()
-                .Any(pl => pl.PlyID == plyID && pl.Administradores.Any(a => a.DueNU == currentUserId));
-            if (!esDelDuenio) return Forbid();
 
-            var playaNombre = _ctx.Playas.AsNoTracking()
-                .Where(pl => pl.PlyID == plyID)
-                .Select(pl => string.IsNullOrWhiteSpace(pl.PlyNom) ? (pl.PlyCiu + " - " + pl.PlyDir) : pl.PlyNom)
-                .FirstOrDefault() ?? $"Playa #{plyID}";
-
-            var pagos = _ctx.Pagos
-                .AsNoTracking()
-                .Include(p => p.MetodoPago)
-                .Where(p => p.PlyID == plyID && p.PagFyh >= desdeUtc && p.PagFyh <= hastaUtc)
-                .Select(p => new { p.PlyID, p.PagNum, p.PagFyh, p.PagMonto, p.MepID, Metodo = p.MetodoPago.MepNom })
-                .ToList();
-
-            var clavesPagos = pagos.Select(p => new { p.PlyID, p.PagNum }).ToList();
-
-            var ocupacionesPorPago = _ctx.Ocupaciones
-                .AsNoTracking()
-                .Where(o => o.PlyID == plyID && o.PagNum != null)
-                .Select(o => new { o.PlyID, o.PagNum, o.VehPtnt })
-                .ToList()
-                .Where(x => clavesPagos.Any(k => k.PlyID == x.PlyID && k.PagNum == x.PagNum))
-                .GroupBy(x => new { x.PlyID, x.PagNum })
-                .ToDictionary(
-                    g => (g.Key.PlyID, g.Key.PagNum!.Value),
-                    g => new { Count = g.Count(), Vehiculos = g.Select(v => v.VehPtnt).Distinct().ToList() }
-                );
-
-            var serviciosPorPago = _ctx.ServiciosExtrasRealizados
-                .AsNoTracking()
-                .Where(s => s.PlyID == plyID && s.PagNum != null)
-                .Include(s => s.ServicioProveido)
-                .ThenInclude(sp => sp.Servicio)
-                .Select(s => new { s.PlyID, s.PagNum, SerNom = s.ServicioProveido.Servicio.SerNom })
-                .ToList()
-                .Where(x => clavesPagos.Any(k => k.PlyID == x.PlyID && k.PagNum == x.PagNum))
-                .GroupBy(x => new { x.PlyID, x.PagNum })
-                .ToDictionary(
-                    g => (g.Key.PlyID, g.Key.PagNum!.Value),
-                    g => new { Count = g.Count(), Nombres = g.Select(v => v.SerNom).ToList() }
-                );
-
-            var mepIds = pagos.Select(p => p.MepID).Distinct().ToList();
-            var nombresMetodos = _ctx.AceptaMetodosPago
-                .AsNoTracking()
-                .Include(a => a.MetodoPago)
-                .Where(a => mepIds.Contains(a.MepID) && a.MetodoPago != null)
-                .GroupBy(a => new { a.MepID, a.MetodoPago!.MepNom })
-                .Select(g => new { g.Key.MepID, Nombre = g.Key.MepNom })
-                .ToList()
-                .ToDictionary(x => x.MepID, x => x.Nombre);
-
-            var items = pagos
-                .OrderByDescending(p => p.PagFyh)
-                .Select(p =>
-                {
-                    var key = (p.PlyID, p.PagNum);
-                    var cantOcup = ocupacionesPorPago.TryGetValue(key, out var oc) ? oc.Count : 0;
-                    var cantServ = serviciosPorPago.TryGetValue(key, out var se) ? se.Count : 0;
-
-                    return new InformeDetallePlayaItemVM
-                    {
-                        PlyID = p.PlyID,
-                        PagNum = p.PagNum,
-                        FechaUtc = p.PagFyh,
-                        Monto = p.PagMonto,
-                        Metodo = !string.IsNullOrWhiteSpace(p.Metodo) ? p.Metodo
-                                : (nombresMetodos.TryGetValue(p.MepID, out var nom) ? nom : $"Mep #{p.MepID}"),
-                        OcupacionesCount = cantOcup,
-                        ServiciosExtrasCount = cantServ,
-                        OcupacionesVehiculos = ocupacionesPorPago.TryGetValue(key, out var oc2) ? oc2.Vehiculos : new List<string>(),
-                        ServiciosExtrasNombres = serviciosPorPago.TryGetValue(key, out var se2) ? se2.Nombres : new List<string>()
-                    };
-                })
-                .ToList();
-
-            var vm = new InformeDetallePlayaVM
-            {
-                PlyID = plyID,
-                PlayaNombre = playaNombre,
-                Filtros = new InformeFiltroVM
-                {
-                    Desde = (desde ?? todayLocal.AddDays(-30)).Date,
-                    Hasta = (hasta ?? todayLocal).Date,
-                    PlayasIds = new List<int> { plyID },
-                    DuenioId = currentUserId
-                },
-                Items = items
-            };
-
-            return View(vm);
-        }
 
         // =======================
         // PDF Builder (KPIs arriba, luego gráficos, luego mix y desglose)
         // =======================
 
-      private static byte[] BuildInformePdf(InformeDuenioVM vm, byte[]? logoBytes, byte[]? watermarkBytes, string duenioNombre, string playaNombre, List<InformeDetallePlayaItemVM>? detalleItems)
+      private static byte[] BuildInformePdf(InformeDuenioVM vm, byte[]? logoBytes, byte[]? watermarkBytes, string duenioNombre, string playaNombre, List<InformeDetalleMetodoPagoGeneralItemVM>? detalleItems)
 {
     return Document.Create(container =>
     {

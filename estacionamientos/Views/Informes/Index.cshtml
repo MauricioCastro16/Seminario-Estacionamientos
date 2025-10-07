@@ -18,32 +18,54 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mb-0">Informes</h1>
-        <div class="btn-group">
-            <!-- Botón para Descargar el informe en PDF -->
             <a class="btn btn-primary"
                asp-controller="Informes" asp-action="Descargar"
                asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
-               asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")">
-                <i class="fa-solid fa-file-pdf"></i> Descargar PDF
+           asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")"
+           asp-route-playasIds="@string.Join(",", Model.PlayasSeleccionadas)">
+            <i class="fas fa-file-pdf me-2"></i>
+            Descargar PDF
             </a>
+    </div>
+
+    <!-- Filtros unificados -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h6 class="mb-0">Filtros</h6>
+        </div>
+        <div class="card-body">
+            <form id="mainFiltersForm" method="GET" asp-controller="Informes" asp-action="Index" class="row g-3">
+                <!-- Filtros de fecha -->
+                <div class="col-md-3">
+                    <label for="desde" class="form-label fw-medium">Fecha desde</label>
+                    <input type="date" class="form-control" id="desde" name="desde" value="@Model.Filtros.Desde.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+                </div>
+                <div class="col-md-3">
+                    <label for="hasta" class="form-label fw-medium">Fecha hasta</label>
+                    <input type="date" class="form-control" id="hasta" name="hasta" value="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+                </div>
+                
+                <!-- Checkboxes ocultos para mantener los valores seleccionados -->
+                @foreach (var playa in Model.PlayasDisponibles)
+                {
+                    <input type="checkbox" name="playasIds" value="@playa.PlyID" 
+                           @(Model.PlayasSeleccionadas.Contains(playa.PlyID) ? "checked" : "") 
+                           style="display: none;" />
+                }
+                @foreach (var metodo in Model.Kpis.MixMetodos ?? new List<estacionamientos.ViewModels.MetodoPagoMixVM>())
+                {
+                    <input type="checkbox" name="metodosIds" value="@metodo.MepID" 
+                           @(Model.MetodosPagoSeleccionados?.Contains(metodo.MepID) == true ? "checked" : "") 
+                           style="display: none;" />
+                }
+                
+            </form>
         </div>
     </div>
 
-    <!-- Filtro de fechas -->
-    <form id="dateRangeForm" method="GET" asp-controller="Informes" asp-action="Index" class="row g-3 mb-4">
-        <div class="col-md-6">
-            <label for="desde" class="form-label">Fecha desde</label>
-            <input type="date" class="form-control" id="desde" name="desde" value="@Model.Filtros.Desde.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
-        </div>
-        <div class="col-md-6">
-            <label for="hasta" class="form-label">Fecha hasta</label>
-            <input type="date" class="form-control" id="hasta" name="hasta" value="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
-        </div>
-    </form>
-
     <!-- KPIs -->
     <div class="row g-3 mb-4">
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md-3">
             <div class="card shadow-sm">
                 <div class="card-body">
                     <div class="text-muted small">Ingresos totales</div>
@@ -51,7 +73,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-6 col-md-4">
+        <div class="col-6 col-md-3">
             <div class="card shadow-sm">
                 <div class="card-body">
                     <div class="text-muted small">Cantidad de pagos</div>
@@ -59,11 +81,19 @@
                 </div>
             </div>
         </div>
-        <div class="col-6 col-md-4">
+        <div class="col-6 col-md-3">
             <div class="card shadow-sm">
                 <div class="card-body">
                     <div class="text-muted small">Ingreso promedio por pago</div>
                     <div class="h4 m-0">$ @(k.TicketPromedio.ToString("N2"))</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Playas seleccionadas</div>
+                    <div class="h4 m-0">@Model.PlayasSeleccionadas.Count / @Model.PlayasDisponibles.Count</div>
                 </div>
             </div>
         </div>
@@ -95,28 +125,130 @@
 
     <!-- Métodos de pago -->
     <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Métodos de pago</h6>
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="metodosDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span id="metodosDropdownText">
+                        @if (Model.MetodosPagoSeleccionados?.Count == 0)
+                        {
+                            <text>Seleccionar métodos</text>
+                        }
+                        else if (Model.MetodosPagoSeleccionados?.Count == Model.Kpis.MixMetodos?.Count)
+                        {
+                            <text>Todos los métodos</text>
+                        }
+                        else
+                        {
+                            <text>@Model.MetodosPagoSeleccionados?.Count métodos</text>
+                        }
+                    </span>
+                </button>
+                <div class="dropdown-menu p-3" style="min-width: 450px;">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="selectAllMetodos" 
+                               @(Model.MetodosPagoSeleccionados?.Count == Model.Kpis.MixMetodos?.Count ? "checked" : "")>
+                        <label class="form-check-label fw-semibold" for="selectAllMetodos" onclick="event.stopPropagation();">
+                            Seleccionar todos los métodos
+                        </label>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <div class="row g-2" style="max-height: 300px; overflow-y: auto;">
+                        @foreach (var metodo in Model.Kpis.MixMetodos ?? new List<estacionamientos.ViewModels.MetodoPagoMixVM>())
+                        {
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input metodo-checkbox" type="checkbox" 
+                                           id="metodo_@metodo.MepID" name="metodosIds" value="@metodo.MepID"
+                                           @(Model.MetodosPagoSeleccionados?.Contains(metodo.MepID) == true ? "checked" : "")>
+                                    <label class="form-check-label" for="metodo_@metodo.MepID" onclick="event.stopPropagation();">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-2">
+                                                @switch (metodo.Metodo.ToLower())
+                                                {
+                                                    case "efectivo":
+                                                        <i class="fas fa-money-bill-wave text-success"></i>
+                                                        break;
+                                                    case "tarjeta":
+                                                    case "tarjeta de crédito":
+                                                    case "tarjeta de débito":
+                                                        <i class="fas fa-credit-card text-primary"></i>
+                                                        break;
+                                                    case "transferencia":
+                                                    case "transferencia bancaria":
+                                                        <i class="fas fa-university text-info"></i>
+                                                        break;
+                                                    case "qr":
+                                                    case "código qr":
+                                                        <i class="fas fa-qrcode text-warning"></i>
+                                                        break;
+                                                    case "pago móvil":
+                                                    case "pago movil":
+                                                        <i class="fas fa-mobile-alt text-danger"></i>
+                                                        break;
+                                                    default:
+                                                        <i class="fas fa-wallet text-secondary"></i>
+                                                        break;
+                                                }
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <div class="fw-semibold">@metodo.Metodo</div>
+                                                <small class="text-muted">@metodo.Cantidad pagos - $@metodo.Monto.ToString("N0")</small>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limpiarSeleccionMetodos()">
+                            <i class="fas fa-times me-1"></i>
+                            Limpiar
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="aplicarFiltrosMetodos()">
+                            <i class="fas fa-filter me-1"></i>
+                            Aplicar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="card-body">
-            <h5 class="card-title mb-3">Métodos de pago</h5>
             @if (k.MixMetodos?.Any() == true)
             {
                 <div class="table-responsive">
                     <table class="table table-sm align-middle">
                         <thead>
                             <tr>
-                                <th>Método</th>
-                                <th class="text-end">Monto</th>
-                                <th class="text-end"># Pagos</th>
-                                <th class="text-end">% del Total</th>
+                                <th>Tipo de pago</th>
+                                <th class="text-end">Ingresos</th>
+                                <th class="text-end">Transacciones</th>
+                                <th class="text-end">%</th>
                             </tr>
                         </thead>
                         <tbody>
                         @foreach (var m in k.MixMetodos)
                         {
-                            <tr>
-                                <td>@m.Metodo</td>
-                                <td class="text-end">$ @m.Monto.ToString("N2")</td>
-                                <td class="text-end">@m.Cantidad</td>
-                                <td class="text-end">@m.PorcentajeMonto.ToString("0.0")%</td>
+                            <tr class="@(Model.MetodoPagoSeleccionado == m.MepID ? "table-primary" : "")">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-2">
+                                            <div class="payment-method-indicator @(Model.MetodoPagoSeleccionado == m.MepID ? "bg-primary" : "bg-secondary")"></div>
+                                        </div>
+                                        <span class="fw-medium">@m.Metodo</span>
+                                        @if (Model.MetodoPagoSeleccionado == m.MepID)
+                                        {
+                                            <span class="badge bg-primary ms-2">Activo</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="text-end fw-medium">$ @m.Monto.ToString("N2")</td>
+                                <td class="text-end">@m.Cantidad.ToString("N0")</td>
+                                <td class="text-end">
+                                    <span class="badge bg-light text-dark">@m.PorcentajeMonto.ToString("F1")%</span>
+                                </td>
                             </tr>
                         }
                         </tbody>
@@ -131,7 +263,69 @@
     </div>
 
     <!-- Desglose por playa -->
-    <div class="card shadow-sm">
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Desglose por playa</h6>
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="playasDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span id="playasDropdownText">
+                        @if (Model.PlayasSeleccionadas.Count == 0)
+                        {
+                            <text>Seleccionar playas</text>
+                        }
+                        else if (Model.PlayasSeleccionadas.Count == Model.PlayasDisponibles.Count)
+                        {
+                            <text>Todas las playas</text>
+                        }
+                        else
+                        {
+                            <text>@Model.PlayasSeleccionadas.Count playas</text>
+                        }
+                    </span>
+                </button>
+                <div class="dropdown-menu p-3" style="min-width: 400px;">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="selectAllPlayas" 
+                               @(Model.PlayasSeleccionadas.Count == Model.PlayasDisponibles.Count ? "checked" : "")>
+                        <label class="form-check-label fw-semibold" for="selectAllPlayas" onclick="event.stopPropagation();">
+                            Seleccionar todas las playas
+                        </label>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <div class="row g-2" style="max-height: 300px; overflow-y: auto;">
+                        @foreach (var playa in Model.PlayasDisponibles.OrderBy(p => p.PlayaNombre))
+                        {
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input playa-checkbox" type="checkbox" 
+                                           id="playa_@playa.PlyID" name="playasIds" value="@playa.PlyID"
+                                           @(Model.PlayasSeleccionadas.Contains(playa.PlyID) ? "checked" : "")>
+                                    <label class="form-check-label" for="playa_@playa.PlyID" onclick="event.stopPropagation();">
+                                        <i class="fas fa-parking text-info me-2"></i>
+                                        @playa.PlayaNombre
+                                        @if (playa.CantPagos > 0)
+                                        {
+                                            <small class="text-muted">(@playa.CantPagos pagos)</small>
+                                        }
+                                    </label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limpiarSeleccionPlayas()">
+                            <i class="fas fa-times me-1"></i>
+                            Limpiar
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="aplicarFiltrosPlayas()">
+                            <i class="fas fa-filter me-1"></i>
+                            Aplicar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="card-body">
             <h5 class="card-title mb-3">Desglose por playa</h5>
 
@@ -144,27 +338,28 @@
                                 <th>Playa</th>
                                 <th class="text-end"># Pagos</th>
                                 <th class="text-end">Ingresos</th>
-                                <th class="text-end">Ingreso prom. por pago</th>
-                                <th class="text-center">Acciones</th>  <!-- NUEVA -->
+                                <th class="text-end">Promedio</th>
                             </tr>
                         </thead>
                         <tbody>
                         @foreach (var r in Model.PorPlaya)
                         {
                             <tr>
-                                <td>@r.PlayaNombre</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-2">
+                                            <div class="playa-indicator bg-success"></div>
+                                        </div>
+                                        <span class="fw-medium">@r.PlayaNombre</span>
+                                        @if (Model.PlayasSeleccionadas.Contains(r.PlyID))
+                                        {
+                                            <span class="badge bg-primary ms-2">Activa</span>
+                                        }
+                                    </div>
+                                </td>
                                 <td class="text-end">@r.CantPagos</td>
                                 <td class="text-end">$ @r.IngresosTotales.ToString("N2")</td>
                                 <td class="text-end">$ @r.TicketPromedio.ToString("N2")</td>
-                                <td class="text-center">
-                                    <a class="btn btn-sm btn-outline-primary"
-                                    asp-controller="Informes" asp-action="DetallePlaya"
-                                    asp-route-plyID="@r.PlyID"
-                                    asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
-                                    asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")">
-                                        Ver pagos
-                                    </a>
-                                </td>
                             </tr>
                         }
                         </tbody>
@@ -173,10 +368,90 @@
             }
             else
             {
-                <div class="text-muted">Todavía no hay pagos registrados para generar informes.</div>
+                <div class="text-muted">Sin datos en el período.</div>
             }
         </div>
     </div>
+
+    <!-- Detalle de pagos (solo si hay métodos de pago seleccionados) -->
+    @if ((Model.MetodoPagoSeleccionado.HasValue || Model.MetodosPagoSeleccionados?.Any() == true) && Model.DetallePagos?.Any() == true)
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">Pagos de @ViewData["MetodoPagoNombre"]</h5>
+                    <span class="badge bg-primary">@Model.DetallePagos.Count pagos</span>
+                </div>
+
+                <div class="table-responsive">
+                    <form id="searchForm" class="row g-2 align-items-center mb-2">
+                        <div class="col-sm-6 col-md-5 col-lg-4 ms-auto">
+                            <input type="text" id="qInput" class="form-control" placeholder="Buscar..." />
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" id="btnBuscar" class="btn btn-secondary" title="Buscar">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </button>
+                            <button type="button" id="btnLimpiarTabla" class="btn btn-outline-secondary d-none" title="Limpiar filtros">
+                                <i class="fa-regular fa-circle-xmark"></i>
+                            </button>
+                        </div>
+                    </form>
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th># Pago</th>
+                                <th>Playa</th>
+                                <th>Fecha</th>
+                                <th class="text-end">Monto</th>
+                                <th>Método</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var x in Model.DetallePagos)
+                        {
+                            <tr class="pago-row" data-key="@x.PagNum">
+                                <td>@x.PagNum</td>
+                                <td>@x.PlayaNombre</td>
+                                <td>@x.FechaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-end">$ @x.Monto.ToString("N2")</td>
+                                <td>@x.Metodo</td>
+                            </tr>
+                            @if (x.OcupacionesCount > 0 || x.ServiciosExtrasCount > 0)
+                            {
+                                <tr class="table-light pago-detail" data-key="@x.PagNum">
+                                    <td colspan="5">
+                                        <div class="py-2 px-2">
+                                            @if (x.OcupacionesCount > 0)
+                                            {
+                                                <div class="text-muted">Incluye @x.OcupacionesCount @(x.OcupacionesCount == 1 ? "ocupación" : "ocupaciones").</div>
+                                            }
+                                            @if (x.ServiciosExtrasNombres?.Any() == true)
+                                            {
+                                                <div class="text-muted">Servicios extra: @string.Join(", ", x.ServiciosExtrasNombres).</div>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+    else if (Model.MetodoPagoSeleccionado.HasValue || Model.MetodosPagoSeleccionados?.Any() == true)
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="text-muted text-center py-4">
+                    <i class="fa-solid fa-info-circle fa-2x mb-2"></i>
+                    <p class="mb-0">No hay pagos con el método "@ViewData["MetodoPagoNombre"]" en el período y playas seleccionadas.</p>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 <style>
@@ -190,9 +465,87 @@
     height: 100% !important;
     display: block;
   }
+  
+  .payment-method-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  
+  .playa-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  
+  /* Estilos para dropdowns de selección */
+  .dropdown-menu {
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+      border: 1px solid rgba(0, 0, 0, 0.15);
+  }
+  
+  .dropdown-menu .form-check-label {
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+  }
+  
+  .dropdown-menu .form-check:hover {
+      background-color: rgba(13, 110, 253, 0.05);
+      border-radius: 0.375rem;
+  }
+  
+  .dropdown-menu .form-check-input:checked + .form-check-label {
+      background-color: rgba(13, 110, 253, 0.1);
+      border-radius: 0.375rem;
+  }
+  
+  /* Animación suave para el checkbox "Todos" */
+  .form-check-input:indeterminate {
+      background-color: #ffc107;
+      border-color: #ffc107;
+  }
+  
+  /* Mejorar el botón de aplicar filtros */
+  .btn-primary {
+      box-shadow: 0 2px 4px rgba(13, 110, 253, 0.2);
+      transition: all 0.2s ease;
+  }
+  
+  .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+  }
+  
+  /* Estilo para las secciones expandibles */
+  #playasSection, #metodosSection {
+      animation: slideDown 0.3s ease-out;
+  }
+  
+  @@keyframes slideDown {
+      from {
+          opacity: 0;
+          transform: translateY(-10px);
+      }
+      to {
+          opacity: 1;
+          transform: translateY(0);
+      }
+  }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Restaurar la posición del scroll después de cargar la página
+  document.addEventListener('DOMContentLoaded', function() {
+    const savedPosition = sessionStorage.getItem('scrollPosition');
+    if (savedPosition) {
+      window.scrollTo(0, parseInt(savedPosition));
+      sessionStorage.removeItem('scrollPosition');
+    }
+  });
+</script>
 <script>
   (function () {
     const labelsDia = @Html.Raw(J(labelsDia));
@@ -242,5 +595,207 @@
         options: optCommon
       }
     );
+  })();
+
+  // Funcionalidad de selección de playas
+  (function () {
+    const selectAllCheckbox = document.getElementById('selectAllPlayas');
+    const playaCheckboxes = document.querySelectorAll('.playa-checkbox');
+    const playasDropdownText = document.getElementById('playasDropdownText');
+
+    // Función para actualizar el estado del checkbox "Seleccionar todas"
+    function updateSelectAllState() {
+      const totalCheckboxes = playaCheckboxes.length;
+      const checkedCheckboxes = document.querySelectorAll('.playa-checkbox:checked').length;
+      
+      if (checkedCheckboxes === 0) {
+        selectAllCheckbox.indeterminate = false;
+        selectAllCheckbox.checked = false;
+        playasDropdownText.textContent = 'Seleccionar playas';
+      } else if (checkedCheckboxes === totalCheckboxes) {
+        selectAllCheckbox.indeterminate = false;
+        selectAllCheckbox.checked = true;
+        playasDropdownText.textContent = 'Todas las playas';
+      } else {
+        selectAllCheckbox.indeterminate = true;
+        selectAllCheckbox.checked = false;
+        playasDropdownText.textContent = `${checkedCheckboxes} playas`;
+      }
+    }
+
+    // Event listener para el checkbox "Seleccionar todas"
+    if (selectAllCheckbox) {
+      selectAllCheckbox.addEventListener('change', function() {
+        const isChecked = this.checked;
+        playaCheckboxes.forEach(checkbox => {
+          checkbox.checked = isChecked;
+        });
+        updateSelectAllState();
+      });
+      // Prevenir que se cierre el dropdown al hacer click en el checkbox "Seleccionar todas"
+      selectAllCheckbox.addEventListener('click', function(e) {
+        e.stopPropagation();
+      });
+    }
+
+    // Event listeners para los checkboxes individuales
+    playaCheckboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', updateSelectAllState);
+      // Prevenir que se cierre el dropdown al hacer click en el checkbox
+      checkbox.addEventListener('click', function(e) {
+        e.stopPropagation();
+      });
+    });
+
+    // Función para limpiar selección
+    window.limpiarSeleccionPlayas = function() {
+      playaCheckboxes.forEach(checkbox => {
+        checkbox.checked = false;
+      });
+      selectAllCheckbox.checked = false;
+      selectAllCheckbox.indeterminate = false;
+      updateSelectAllState();
+    };
+
+    // Función para aplicar filtros
+    window.aplicarFiltrosPlayas = function() {
+      // Sincronizar checkboxes visibles con los ocultos
+      syncPlayasCheckboxes();
+      // Guardar la posición actual del scroll
+      sessionStorage.setItem('scrollPosition', window.pageYOffset);
+      document.getElementById('mainFiltersForm').submit();
+    };
+
+    // Función para sincronizar checkboxes de playas
+    function syncPlayasCheckboxes() {
+      const visibleCheckboxes = document.querySelectorAll('.playa-checkbox');
+      const hiddenCheckboxes = document.querySelectorAll('input[name="playasIds"]');
+      
+      visibleCheckboxes.forEach(visibleCheckbox => {
+        const hiddenCheckbox = Array.from(hiddenCheckboxes).find(h => h.value === visibleCheckbox.value);
+        if (hiddenCheckbox) {
+          hiddenCheckbox.checked = visibleCheckbox.checked;
+        }
+      });
+    }
+
+    // Inicializar estado
+    updateSelectAllState();
+  })();
+
+  // Funcionalidad de selección de métodos de pago
+  (function () {
+    const selectAllMetodosCheckbox = document.getElementById('selectAllMetodos');
+    const metodoCheckboxes = document.querySelectorAll('.metodo-checkbox');
+    const metodosDropdownText = document.getElementById('metodosDropdownText');
+
+    // Función para actualizar el estado del checkbox "Seleccionar todas"
+    function updateSelectAllMetodosState() {
+      const totalCheckboxes = metodoCheckboxes.length;
+      const checkedCheckboxes = document.querySelectorAll('.metodo-checkbox:checked').length;
+      
+      if (checkedCheckboxes === 0) {
+        selectAllMetodosCheckbox.indeterminate = false;
+        selectAllMetodosCheckbox.checked = false;
+        metodosDropdownText.textContent = 'Seleccionar métodos';
+      } else if (checkedCheckboxes === totalCheckboxes) {
+        selectAllMetodosCheckbox.indeterminate = false;
+        selectAllMetodosCheckbox.checked = true;
+        metodosDropdownText.textContent = 'Todos los métodos';
+      } else {
+        selectAllMetodosCheckbox.indeterminate = true;
+        selectAllMetodosCheckbox.checked = false;
+        metodosDropdownText.textContent = `${checkedCheckboxes} métodos`;
+      }
+    }
+
+    // Event listener para el checkbox "Seleccionar todas"
+    if (selectAllMetodosCheckbox) {
+      selectAllMetodosCheckbox.addEventListener('change', function() {
+        const isChecked = this.checked;
+        metodoCheckboxes.forEach(checkbox => {
+          checkbox.checked = isChecked;
+        });
+        updateSelectAllMetodosState();
+      });
+      // Prevenir que se cierre el dropdown al hacer click en el checkbox "Seleccionar todas"
+      selectAllMetodosCheckbox.addEventListener('click', function(e) {
+        e.stopPropagation();
+      });
+    }
+
+    // Event listeners para los checkboxes individuales
+    metodoCheckboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', updateSelectAllMetodosState);
+      // Prevenir que se cierre el dropdown al hacer click en el checkbox
+      checkbox.addEventListener('click', function(e) {
+        e.stopPropagation();
+      });
+    });
+
+    // Función para limpiar selección
+    window.limpiarSeleccionMetodos = function() {
+      metodoCheckboxes.forEach(checkbox => {
+        checkbox.checked = false;
+      });
+      selectAllMetodosCheckbox.checked = false;
+      selectAllMetodosCheckbox.indeterminate = false;
+      updateSelectAllMetodosState();
+    };
+
+    // Función para aplicar filtros
+    window.aplicarFiltrosMetodos = function() {
+      // Sincronizar checkboxes visibles con los ocultos
+      syncMetodosCheckboxes();
+      // Guardar la posición actual del scroll
+      sessionStorage.setItem('scrollPosition', window.pageYOffset);
+      document.getElementById('mainFiltersForm').submit();
+    };
+
+    // Función para sincronizar checkboxes de métodos de pago
+    function syncMetodosCheckboxes() {
+      const visibleCheckboxes = document.querySelectorAll('.metodo-checkbox');
+      const hiddenCheckboxes = document.querySelectorAll('input[name="metodosIds"]');
+      
+      visibleCheckboxes.forEach(visibleCheckbox => {
+        const hiddenCheckbox = Array.from(hiddenCheckboxes).find(h => h.value === visibleCheckbox.value);
+        if (hiddenCheckbox) {
+          hiddenCheckbox.checked = visibleCheckbox.checked;
+        }
+      });
+    }
+
+    // Inicializar estado
+    updateSelectAllMetodosState();
+  })();
+
+
+  // Filtro de búsqueda en tabla de pagos (si existe)
+  (function () {
+    const input = document.getElementById('qInput');
+    const btnBuscar = document.getElementById('btnBuscar');
+    const btnLimpiar = document.getElementById('btnLimpiarTabla');
+    if (!input || !btnBuscar || !btnLimpiar) return;
+
+    const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}+/gu, '');
+
+    function applyFilter() {
+      const q = normalize(input.value);
+      const rows = Array.from(document.querySelectorAll('tr.pago-row'));
+      rows.forEach(row => {
+        const key = row.getAttribute('data-key');
+        const detail = document.querySelector(`tr.pago-detail[data-key="${key}"]`);
+        const text = normalize(row.textContent + (detail ? (' ' + detail.textContent) : ''));
+        const match = q === '' || text.includes(q);
+        row.style.display = match ? '' : 'none';
+        if (detail) detail.style.display = match ? '' : 'none';
+      });
+      btnLimpiar.classList.toggle('d-none', !(input.value && input.value.trim().length));
+    }
+
+    btnBuscar.addEventListener('click', (e) => { e.preventDefault(); applyFilter(); });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyFilter(); } });
+    input.addEventListener('input', () => { btnLimpiar.classList.toggle('d-none', !(input.value && input.value.trim().length)); });
+    btnLimpiar.addEventListener('click', () => { input.value = ''; applyFilter(); });
   })();
 </script>

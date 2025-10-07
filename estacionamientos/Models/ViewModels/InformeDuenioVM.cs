@@ -59,12 +59,20 @@ namespace estacionamientos.ViewModels
         // Series para gráficos
         public List<SeriePuntoVM> IngresosPorDia { get; set; } = new();   // etiqueta = "dd/MM"
         public List<SeriePuntoVM> IngresosPorHora { get; set; } = new();  // etiqueta = "00-23"
+
+        // Funcionalidades unificadas
+        public List<InformePlayaRowVM> PlayasDisponibles { get; set; } = new();
+        public List<int> PlayasSeleccionadas { get; set; } = new();
+        public List<InformeDetalleMetodoPagoGeneralItemVM>? DetallePagos { get; set; }
+        public int? MetodoPagoSeleccionado { get; set; } // Para compatibilidad con filtro único
+        public List<int> MetodosPagoSeleccionados { get; set; } = new(); // Para selección múltiple
     }
 
-    // ----- detalle por playa -----
-    public class InformeDetallePlayaItemVM
+    // ----- detalle por método de pago (vista general) -----
+    public class InformeDetalleMetodoPagoGeneralItemVM
     {
         public int PlyID { get; set; }
+        public string PlayaNombre { get; set; } = "";
         public int PagNum { get; set; }
         public DateTime FechaUtc { get; set; }
         public decimal Monto { get; set; }
@@ -73,20 +81,5 @@ namespace estacionamientos.ViewModels
         public int ServiciosExtrasCount { get; set; }
         public List<string> OcupacionesVehiculos { get; set; } = new();
         public List<string> ServiciosExtrasNombres { get; set; } = new();
-    }
-
-    public class InformeDetallePlayaVM
-    {
-        public int PlyID { get; set; }
-        public string PlayaNombre { get; set; } = "";
-        public InformeFiltroVM Filtros { get; set; } = new();
-        public List<InformeDetallePlayaItemVM> Items { get; set; } = new();
-
-        public int CantPagos => Items.Count;
-        public decimal Total => Items.Sum(x => x.Monto);
-    // Agregar propiedades para los gráficos
-        public List<SeriePuntoVM> IngresosPorDia { get; set; } = new();   // etiqueta = "dd/MM"
-        public List<SeriePuntoVM> IngresosPorHora { get; set; } = new();  // etiqueta = "00-23"
-        
     }
 }
