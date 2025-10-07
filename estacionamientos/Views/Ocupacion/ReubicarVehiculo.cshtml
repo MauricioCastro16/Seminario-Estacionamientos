@@ -1,0 +1,325 @@
+@{
+    ViewData["Title"] = "Reubicar Vehículo";
+    var listaPlazas = ViewBag.ListaPlazas as List<estacionamientos.Models.PlazaClasificacion>;
+    string errorMensaje = ViewBag.ErrorMensaje;
+    var ocupacionActual = ViewBag.OcupacionActual as estacionamientos.Models.Ocupacion;
+}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="mb-4">
+                        <h2 class="mb-1">@ViewData["Title"]</h2>
+                    </div>
+                    @if (!string.IsNullOrEmpty(errorMensaje))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fa-solid fa-circle-exclamation me-2"></i>
+                            @errorMensaje
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                        </div>
+                    }
+                    <form asp-action="ReubicarVehiculo" method="post" class="d-grid" id="form">
+                        <div class="vehiculo-info card shadow-sm mb-3">
+                            <div class="card-body py-2 px-3">
+                                <h6>Ocupación actual</h6>
+                                <div class="d-flex flex-wrap small">
+                                    
+                                    <div class="me-4"><strong>Patente:</strong> @ocupacionActual?.VehPtnt</div>
+                                    <div class="me-4"><strong>Clasificación:</strong> @ocupacionActual?.Vehiculo?.Clasificacion?.ClasVehTipo</div>
+                                    <div class="me-4"><strong>Playa:</strong> @ocupacionActual?.Plaza?.Playa?.PlyNom</div>
+                                    <div class="me-4"><strong>Piso:</strong> @ocupacionActual?.Plaza?.Piso</div>
+                                    <div class="me-4"><strong>Plaza:</strong> @ocupacionActual?.PlzNum</div>
+                                    <div class="me-4"><strong>Techada:</strong> @(ocupacionActual?.Plaza?.PlzTecho == true ? "Sí" : "No")</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            
+                            <div class="col-12 col-sm-6">
+                                <label class="form-label fw-medium">Piso</label>
+                                <select id="PisoSelect" class="form-select">
+                                    @foreach (var piso in listaPlazas.Select(p => p.Plaza.Piso).Distinct().OrderBy(p => p))
+                                    {
+                                        var esSeleccionado = piso == ocupacionActual?.Plaza?.Piso;
+                                        if (esSeleccionado)
+                                        {
+                                            @:<option value="@piso" selected>Piso @piso</option>
+                                        }
+                                        else
+                                        {
+                                            @:<option value="@piso">Piso @piso</option>
+                                        }
+                                    }
+                                </select>
+
+                            </div>
+                        </div>
+
+                        <!-- Para el POST -->
+                        <input type="hidden" name="plyID" value="@ocupacionActual?.PlyID" />
+                        <input type="hidden" name="plzNum" id="PlzNum" value="@ocupacionActual?.PlzNum" />
+                        <input type="hidden" name="vehPtnt" value="@ocupacionActual?.VehPtnt" />
+                        <input type="hidden" name="nuevaPlazaId" id="NuevaPlazaId" />
+                        
+
+                        <div class="mt-2 text-center text-muted d-flex flex-column">
+                            <span>Reubicando @ocupacionActual?.Vehiculo?.Clasificacion?.ClasVehTipo.ToLower() <b>@ocupacionActual?.Vehiculo?.VehPtnt</b></span>
+                            <span id="plazaCambio">
+                                @ocupacionActual?.Plaza?.PlzNombre <small>(Piso @ocupacionActual?.Plaza?.Piso)</small> <i class="fa-solid fa-arrow-right"></i> (selecciona una plaza)
+                            </span>
+                        </div>
+                        <!-- Grilla -->
+                        <div class="mt-3 plazas-grid-wrapper">
+                            <div id="PlazasGrid" class="plazas-grid mb-3">
+                                @foreach (var pc in listaPlazas)
+                                {
+                                    var plaza = pc.Plaza;
+                                    bool esActual = plaza.PlzNum == ocupacionActual?.PlzNum;
+                                    bool ocupada = plaza.Ocupaciones.Any(o => o.OcufFyhFin == null); // Si hay ocupación activa
+                                    bool inhabilitada = !plaza.PlzHab;
+                                    bool compatible = pc.Clasificacion?.ClasVehID == ocupacionActual?.Vehiculo?.ClasVehID;
+
+                                    string estadoClase = esActual ? "actual" :
+                                                        inhabilitada ? "inhabilitada" :
+                                                        ocupada ? "ocupada" :
+                                                        !compatible ? "incompatible" : "disponible";
+
+                                    string textoPlaza;
+                                    if (esActual)
+                                    {
+                                        textoPlaza = "Plaza Actual"; // Patente del vehículo actual
+                                    }
+                                    else if (ocupada)
+                                    {
+                                        var ocupacion = plaza.Ocupaciones.FirstOrDefault(o => o.OcufFyhFin == null);
+                                        textoPlaza = ocupacion?.Vehiculo?.VehPtnt ?? "Ocupada";
+                                    }
+                                    else if (inhabilitada)
+                                    {
+                                        textoPlaza = "Inhabilitada";
+                                    }
+                                    else if (!compatible)
+                                    {
+                                        textoPlaza = "No compatible";
+                                    }
+                                    else
+                                    {
+                                        textoPlaza = "Libre";
+                                    }
+
+                                    string techoTexto = plaza.PlzTecho ? "(Techada)" : "(Sin techo)";
+
+                                    <div class="plaza-card @(estadoClase)"
+                                        data-plznombre="@plaza.PlzNombre"
+                                        data-plznum="@plaza.PlzNum"
+                                        data-piso="@plaza.Piso"
+                                        data-estado="@estadoClase">
+                                        <div class="plaza-title">Plaza @plaza.PlzNombre</div>
+                                        <div class="plaza-sub">@textoPlaza</div>
+                                        <div class="plaza-techo">@techoTexto</div>
+                                    </div>
+                                }
+                                
+                            </div>
+                        </div>
+
+                        
+                        <div class="text-center mt-2">
+                            <a asp-action="Index" class="btn btn-secondary px-4 ms-2">Cancelar</a>
+                            <button type="submit" class="btn btn-primary px-4" id="btnSubmit" disabled>
+                                <i class="fa-regular fa-circle-check"></i> Confirmar cambio de plaza
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Contenedor centrado para la grilla */
+    .plazas-grid-wrapper {
+        max-width: 860px;
+        margin: 0 auto;            /* centra horizontalmente */
+    }
+    .plaza-techo {
+        font-size: 0.75rem;
+        color: #495057;
+        margin-top: 2px;
+    }
+    .plazas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+        gap: 12px;
+        max-width: 720px;
+        margin: 0 auto; /* centra horizontalmente */
+    }
+
+    .plazas-grid > .mensaje-inicial {
+        grid-column: 1 / -1;     /* ocupa todo el ancho de la grilla */
+        justify-self: center;    /* centra el ítem dentro de la grilla */
+        text-align: center;
+        color: #6c757d;
+        font-size: 0.9rem;
+        padding: 10px 14px;
+        border: 1px dashed #ced4da;
+        border-radius: 8px;
+        background: #f8f9fa;
+        max-width: 520px;
+        width: 100%;
+    }
+
+
+    .plaza-card {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 14px 8px;
+        text-align: center;
+        cursor: pointer;
+        user-select: none;
+        transition: transform .05s, box-shadow .05s, background-color .2s;
+        background: #fff;
+    }
+
+
+    .plaza-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, .06);
+        border-color: #dee2e6;
+    }
+
+    /* Estados */
+    .plaza-card.inhabilitada {
+        background: #f8f9fa;
+        color: #6c757d;
+        border-style: dashed;
+        cursor: not-allowed;
+        opacity: .85;
+    }
+
+    .plaza-card.ocupada {
+        background: #fff7e6;
+        border-color: #ffe8b3;
+        color: #7a5e00;
+        cursor: not-allowed;
+    }
+
+    .plaza-card.disponible {
+        background: #eef9f2;
+        border-color: #cdeedc;
+    }
+
+    .plaza-card.incompatible {
+        background: #fdecec;
+        border-color: #f5c2c7;
+        color: #7a1a1a;
+    }
+
+    .plaza-card.selected {
+        outline: 3px solid #0d6efd;
+        background: #e7f1ff;
+        box-shadow: 0 0 0 4px rgba(13, 110, 253, .15);
+    }
+
+    .plaza-title {
+        font-weight: 700;
+        font-size: .98rem;
+        letter-spacing: .2px;
+    }
+
+    .plaza-sub {
+        font-size: .82rem;
+        color: #6c757d;
+        margin-top: 2px;
+    }
+    .actual > .plaza-sub {
+        font-size: .82rem;
+        color: #0c5460;
+        margin-top: 2px;
+    }
+    .mensaje-inicial {
+        text-align: center;
+        color: #6c757d;               /* gris Bootstrap */
+        font-size: 0.9rem;
+        padding: 10px 14px;
+        border: 1px dashed #ced4da;   /* un marco suave */
+        border-radius: 8px;
+        background: #f8f9fa;          /* gris clarito */
+        max-width: 500px;
+        margin: 0 auto;               /* centra el mensaje */
+    }
+
+    .plaza-card.actual {
+        background: #d1ecf1;
+        border: 2px solid #0c5460;
+        color: #000;
+        font-weight: bold;
+        cursor: default;
+    }
+
+
+    @@media (max-width: 576px) {
+        .plazas-grid {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        }
+    }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const grid = document.getElementById("PlazasGrid");
+    const nuevaPlazaId = document.getElementById("NuevaPlazaId");
+    const btnSubmit = document.getElementById("btnSubmit");
+    const pisoSelect = document.getElementById("PisoSelect");
+    const plazaCambio = document.getElementById("plazaCambio");
+
+    // Nombre de la plaza actual
+    const plazaActual = "@ocupacionActual?.Plaza?.PlzNombre";
+    const pisoActual = "@ocupacionActual?.Plaza?.Piso";
+    // Filtrar grilla por piso
+    function filtrarPlazas(piso) {
+        grid.querySelectorAll(".plaza-card").forEach(c => {
+            c.style.display = (c.dataset.piso === piso) ? "block" : "none";
+        });
+    }
+
+    // Inicial con el piso actual
+    filtrarPlazas(pisoSelect.value);
+
+    pisoSelect.addEventListener("change", function () {
+        filtrarPlazas(this.value);
+    });
+
+    // Selección de plaza
+    grid.addEventListener("click", function (e) {
+        const card = e.target.closest(".plaza-card");
+        if (!card) return;
+
+        // No permitir seleccionar estados inválidos
+        if (["actual","inhabilitada","ocupada","incompatible"].some(cls => card.classList.contains(cls))) {
+            return;
+        }
+
+        // Quitar selección previa
+        grid.querySelectorAll(".plaza-card").forEach(c => c.classList.remove("selected"));
+
+        // Marcar la nueva seleccionada
+        card.classList.add("selected");
+        
+
+        nuevaPlazaId.value = card.dataset.plznum;
+        // Habilitar submit
+        btnSubmit.removeAttribute("disabled");
+        
+        // Actualizar texto con la nueva plaza elegida
+        plazaCambio.innerHTML = `
+            ${plazaActual} <small>(Piso ${pisoActual})</small> <i class="fa-solid fa-arrow-right"></i> <span class="fw-bold text-dark">${card.dataset.plznombre} <small class="text-muted fw-normal">(Piso ${card.dataset.piso})</small></span>
+        `;
+    });
+});
+</script>
