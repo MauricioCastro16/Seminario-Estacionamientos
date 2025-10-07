@@ -64,6 +64,7 @@ public static class DbInitializer
         {
             new Servicio
             {
+                SerID = 1,
                 SerNom = "Lavado de vehículo",
                 SerTipo = "ServicioExtra",
                 SerDesc = "Lavado exterior e interior del vehículo",
@@ -71,6 +72,7 @@ public static class DbInitializer
             },
             new Servicio
             {
+                SerID = 2,
                 SerNom = "Mantenimiento de vehículo",
                 SerTipo = "ServicioExtra",
                 SerDesc = "Revisión y mantenimiento mecánico del vehículo",
@@ -78,6 +80,7 @@ public static class DbInitializer
             },
             new Servicio
             {
+                SerID = 3,
                 SerNom = "Carga de combustible",
                 SerTipo = "ServicioExtra",
                 SerDesc = "Carga de combustible en el vehículo",
@@ -85,6 +88,7 @@ public static class DbInitializer
             },
             new Servicio
             {
+                SerID = 4,
                 SerNom = "Revisión técnica",
                 SerTipo = "ServicioExtra",
                 SerDesc = "Revisión técnica del vehículo para verificar su estado",
@@ -110,6 +114,7 @@ public static class DbInitializer
 
             new Servicio
             {
+                SerID = 7,
                 SerNom = "Abono por 1 día",
                 SerTipo = "Estacionamiento",
                 SerDesc = "Servicio de estacionamiento por 1 día en playa",
@@ -117,6 +122,7 @@ public static class DbInitializer
             },
             new Servicio
             {
+                SerID = 8,
                 SerNom = "Abono por 1 semana",
                 SerTipo = "Estacionamiento",
                 SerDesc = "Servicio de estacionamiento por 1 semana en playa",
@@ -124,6 +130,7 @@ public static class DbInitializer
             },
             new Servicio
             {
+                SerID = 9,
                 SerNom = "Abono por 1 mes",
                 SerTipo = "Estacionamiento",
                 SerDesc = "Servicio de estacionamiento por 1 mes en playa",
