@@ -1,4 +1,5 @@
-@model estacionamientos.Models.Abono
+@model estacionamientos.ViewModels.AbonoCreateVM
+
 
 @{
     ViewData["Title"] = "Registrar Abono";
@@ -6,9 +7,8 @@
 
 <div class="container py-1">
     <div class="row justify-content-center">
-        <div class="col-12 col-md-10 col-lg-8">
-            <div class="card shadow-sm border-0 rounded-4">
-                <div class="card-body p-4 p-md-5">
+        <div class="col-12 col-lg-10">
+        
 
                     <div class="text-center mb-3">
                         <h2 class="mb-1">@ViewData["Title"]</h2>
@@ -19,71 +19,1630 @@
                     <form asp-action="Create" method="post" class="d-grid gap-3">
                         <div class="row g-3">
 
-                            <!-- Playa -->
-                            <div class="col-12">
-                                <label class="form-label fw-medium">Playa</label>
-                                <input type="text" class="form-control" value="@ViewBag.PlayaNombre" disabled />
-                                <input type="hidden" asp-for="PlyID" value="@Model.PlyID" />
+                            <!-- Columna izquierda: Datos del Abono -->
+                            <div class="col-12 col-md-7">
+                                <div class="card shadow border-0 rounded-4 h-100">
+                                    <div class="card-body p-3">
+                                        <h5 class="fw-semibold mb-3"><i class="bi bi-file-earmark-text me-1"></i> Datos del Abono</h5>
+
+                                        <!-- Playa -->
+                                        <div class="mb-3">
+                                            <label class="form-label fw-medium">Playa</label>
+                                            <input type="text" class="form-control" value="@ViewBag.PlayaNombre" disabled />
+                                            <input type="hidden" asp-for="PlyID" value="@Model.PlyID" />
+                                        </div>
+
+                                        <div class="row">
+
+                                        <!-- Tipo de Abono (Servicio) -->
+                                        <div class="col-12 mb-3">
+                                            <label class="form-label fw-medium">Tipo de Abono</label>
+                                            <select asp-for="SerID" asp-items="ViewBag.ServiciosAbono" class="form-select" id="SerID">
+                                                <option value="">-- Seleccione tipo de abono --</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Abonado DNI -->
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="AboDNI" class="form-label fw-medium">DNI Abonado</label>
+                                            <input asp-for="AboDNI" class="form-control" placeholder="DNI" />
+                                            <span asp-validation-for="AboDNI" class="text-danger small"></span>
+                                        </div>
+
+                                        <!-- Abonado Nombre -->
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="AboNom" class="form-label fw-medium">Nombre Abonado</label>
+                                            <input asp-for="AboNom" class="form-control" placeholder="Nombre" />
+                                            <span asp-validation-for="AboNom" class="text-danger small"></span>
+                                        </div>
+                                    </div>
+
+
+                                        <div class="row">
+                                        <!-- Fecha inicio -->
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="AboFyhIni" class="form-label fw-medium">Fecha inicio</label>
+                                            <input asp-for="AboFyhIni" type="date" class="form-control" id="fechaInicioInput" />
+                                            <span asp-validation-for="AboFyhIni" class="text-danger small"></span>
+                                        </div>
+
+                                        <!-- Fecha fin -->
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="AboFyhFin" class="form-label fw-medium">Fecha fin</label>
+                                            <input asp-for="AboFyhFin" type="date" class="form-control" readonly style="background-color: #e9ecef; cursor: not-allowed;" />
+                                            <span asp-validation-for="AboFyhFin" class="text-danger small"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <!-- Monto total -->
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label fw-medium">Monto total</label>
+                                            <input asp-for="AboMonto" type="hidden" id="AboMontoHidden" />
+                                            <input type="text" class="form-control" id="AboMonto" readonly style="background-color: #e9ecef; cursor: not-allowed;" />
+                                            <span asp-validation-for="AboMonto" class="text-danger small"></span>
+                                        </div>
+
+                                        <!-- Cantidad de períodos -->
+                                        <div class="col-md-6 mb-3">
+                                            <label asp-for="Periodos" class="form-label fw-medium">Cantidad de períodos</label>
+                                            <input asp-for="Periodos" type="number" min="1" class="form-control" id="Periodos" value="1" />
+                                            <span class="form-text" id="periodosHelp">Selecciona un tipo de abono para ver la descripción.</span>
+                                        </div>
+                                    </div>
+
+
+                                    </div>
+                                </div>
                             </div>
 
-                            <!-- Plaza -->
-                            <div class="col-12 col-md-6">
-                                <label asp-for="PlzNum" class="form-label fw-medium">Plaza</label>
-                                <select asp-for="PlzNum" asp-items="ViewBag.PlzNum" class="form-select">
-                                    <option value="">-- Seleccione plaza --</option>
-                                </select>
-                                <span asp-validation-for="PlzNum" class="text-danger small"></span>
+                            <!-- Columna derecha: Seleccionar plaza y Vehículos para el abono -->
+                            <div class="col-12 col-md-5">
+                                <div class="card shadow border-0 rounded-4">
+                                    <div class="card-body p-3">
+                                        <h5 class="fw-semibold mb-3"><i class="bi bi-geo-alt me-1"></i> Seleccionar plaza para el abono</h5>
+                                        @if (ViewData.ModelState.ContainsKey("SelectedPlzNum") && ViewData.ModelState["SelectedPlzNum"].Errors.Count > 0)
+                                        {
+                                            <span class="text-danger small">@ViewData.ModelState["SelectedPlzNum"].Errors[0].ErrorMessage</span>
+                                        }
+
+                                        <!-- Clasificación de vehículo (única para el abono) -->
+                                        <div class="mb-3">
+                                            <label asp-for="ClasVehID" class="form-label fw-medium">Clasificación del vehículo</label>
+                                            <select asp-for="ClasVehID" asp-items="ViewBag.ClasVehID" class="form-select" id="ClasVehID">
+                                                <option value="">-- Clasificación --</option>
+                                            </select>
+                                            <span asp-validation-for="ClasVehID" class="text-danger small"></span>
+                                        </div>
+                                        
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-12">
+                                                <label class="form-label fw-medium d-block mb-1">¿Plaza techada?</label>
+                                                <div class="d-flex gap-3">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="radio" name="techada-abono" value="true" id="techadaAbonoSi">
+                                                        <label class="form-check-label" for="techadaAbonoSi">Sí</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="radio" name="techada-abono" value="false" id="techadaAbonoNo">
+                                                        <label class="form-check-label" for="techadaAbonoNo">No</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 col-sm-6">
+                                                <label class="form-label fw-medium">Piso</label>
+                                                <select id="PisoSelectAbono" class="form-select" disabled>
+                                                    <option value="">-- Seleccione piso --</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <!-- Grilla de plazas -->
+                                        <div class="mt-3">
+                                            <div id="PlazasGridAbono" class="plazas-grid mb-3"></div>
+                                        </div>
+
+                                        <!-- Hidden inputs para el POST -->
+                                        <input type="hidden" asp-for="SelectedPlzNum" id="PlzNumAbono" value="0" />
+                                        <input type="hidden" asp-for="SelectedPlzTecho" id="PlzTechoAbono" />
+                                    </div>
+                                </div>
+
+                                <div class="card shadow border-0 rounded-4 mt-3">
+                                    <div class="card-body p-3">
+                                        <h5 class="fw-semibold mb-3"><i class="bi bi-car-front-fill me-1"></i> Vehículos para el abono</h5>
+
+                                        <div id="vehiculos-list" class="border rounded p-2" style="height: 150px; overflow-y: auto; background-color: #f8f9fa;">
+                                            @if (Model.Vehiculos.Count == 0)
+                                                {
+                                                    <p id="vehiculos-empty" class="text-muted small">No hay vehículos agregados aún.</p>
+                                                }
+                                                else
+                                                {
+                                                    @for (int i = 0; i < Model.Vehiculos.Count; i++)
+                                                    {
+                                                        <div class="row g-2 mb-2 vehiculo-item">
+                                                            <div class="col-10">
+                                                                <input asp-for="Vehiculos[i].VehPtnt" class="form-control" placeholder="Patente" />
+                                                                <span asp-validation-for="Vehiculos[i].VehPtnt" class="text-danger small"></span>
+                                                            </div>
+                                                            <div class="col-2 d-flex align-items-center">
+                                                                <button type="button" class="btn btn-outline-danger btn-sm remove-vehiculo" title="Eliminar vehículo">
+                                                                    <i class="bi bi-x"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                }
+                                        </div>
+                                        
+                                        <!-- Botón fijo fuera del scroll -->
+                                        <div class="mt-3">
+                                            <button type="button" class="btn btn-outline-primary btn-sm w-100" id="add-vehiculo">
+                                            <i class="bi bi-plus-lg"></i> Agregar Vehículo
+                                        </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <!-- Abonado -->
-                            <div class="col-12 col-md-6">
-                                <label asp-for="AboDNI" class="form-label fw-medium">Abonado</label>
-                                <select asp-for="AboDNI" asp-items="ViewBag.AboDNI" class="form-select">
-                                    <option value="">-- Seleccione abonado --</option>
-                                </select>
-                                <span asp-validation-for="AboDNI" class="text-danger small"></span>
-                            </div>
+                            
 
-                            <!-- Pago -->
-                            <div class="col-12 col-md-6">
-                                <label asp-for="PagNum" class="form-label fw-medium">Pago</label>
-                                <select asp-for="PagNum" asp-items="ViewBag.PagNum" class="form-select">
-                                    <option value="">-- Seleccione pago --</option>
-                                </select>
-                                <span asp-validation-for="PagNum" class="text-danger small"></span>
-                            </div>
-
-                            <!-- Fecha inicio -->
-                            <div class="col-12 col-md-6">
-                                <label asp-for="AboFyhIni" class="form-label fw-medium">Fecha inicio</label>
-                                <input asp-for="AboFyhIni" type="date" class="form-control" />
-                                <span asp-validation-for="AboFyhIni" class="text-danger small"></span>
-                            </div>
-
-                            <!-- Fecha fin -->
-                            <div class="col-12 col-md-6">
-                                <label asp-for="AboFyhFin" class="form-label fw-medium">Fecha fin</label>
-                                <input asp-for="AboFyhFin" type="date" class="form-control" />
-                                <span asp-validation-for="AboFyhFin" class="text-danger small"></span>
-                            </div>
                         </div>
+
 
                         <!-- Botones -->
                         <div class="text-center mt-3">
-                            <button type="submit" class="btn btn-primary px-4">
+                             <button type="button" class="btn btn-primary px-4" id="btnConfirmarAbono">
                                 <i class="bi bi-check-circle me-1"></i> Confirmar abono
                             </button>
                             <a asp-action="Index" class="btn btn-secondary px-4 ms-2">Cancelar</a>
                         </div>
                     </form>
 
+                    <!-- Modal de Gestión de Pagos -->
+                    <div class="modal fade" id="pagoAbonoModal" tabindex="-1" aria-labelledby="pagoAbonoModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="pagoAbonoModalLabel">
+                                        <i class="bi bi-credit-card me-2"></i>Gestión de Pagos del Abono
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <!-- Resumen del Abono -->
+                                    <div class="card mb-3">
+                                        <div class="card-header">
+                                            <h6 class="mb-0"><i class="bi bi-info-circle me-1"></i>Resumen del Abono</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <strong>Abonado:</strong> <span id="modalAbonado"></span><br>
+                                                    <strong>Plaza:</strong> <span id="modalPlaza"></span><br>
+                                                    <strong>Duración Total:</strong> <span id="modalDuracion"></span>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <strong>Fecha Inicio:</strong> <span id="modalFechaInicio"></span><br>
+                                                    <strong>Fecha Fin:</strong> <span id="modalFechaFin"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                </div>
-            </div>
+                                    <!-- Desglose de Períodos -->
+                                    <div class="card mb-3">
+                                        <div class="card-header">
+                                            <h6 class="mb-0"><i class="bi bi-list-ul me-1"></i>Desglose de Períodos</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="periodosDesglose">
+                                                <!-- Se llenará dinámicamente -->
+                                            </div>
+                                            <hr>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <strong>Total a Pagar:</strong>
+                                                <span id="totalPagar" class="fw-bold text-success fs-5"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Opciones de Pago -->
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0"><i class="bi bi-gear me-1"></i>Opciones de Pago</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="radio" name="opcionPago" id="pagarParcial" value="parcial" checked>
+                                                        <label class="form-check-label" for="pagarParcial">
+                                                            <strong>Pago Parcial</strong><br>
+                                                            <small class="text-muted">Seleccionar períodos específicos</small>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="radio" name="opcionPago" id="pagarTodo" value="todo">
+                                                        <label class="form-check-label" for="pagarTodo">
+                                                            <strong>Pagar Todo</strong><br>
+                                                            <small class="text-muted">Pagar el monto total del abono</small>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Selección de Períodos (solo visible si se selecciona pago parcial) -->
+                                            <div id="seleccionPeriodos" class="mt-3" style="display: block;">
+                                                <label class="form-label fw-medium" id="labelCantidadPeriodos">Indique cuántos períodos desea pagar:</label>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <input type="number" id="cantidadPeriodosPagar" class="form-control" min="1" value="1" />
+                                                        <div class="form-text" id="ayudaCantidadPeriodos">Mínimo: 1, Máximo: <span id="maxPeriodos">1</span></div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="mt-2">
+                                                            <strong>Subtotal:</strong> <span id="subtotalParcial" class="text-success fw-bold">$0</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Método de Pago -->
+                                            <div class="mt-3">
+                                                <label class="form-label fw-medium">Método de Pago</label>
+                                                <select id="metodoPagoModal" class="form-select">
+                                                    <option value="">-- Seleccione método de pago --</option>
+                                                    <!-- Se llenará dinámicamente -->
+                                                </select>
+                                                <div id="metodoPagoError" class="text-danger small mt-1" style="display: none;"></div>
+                                            </div>
+
+                                            <!-- Monto a Pagar -->
+                                            <div class="mt-3">
+                                                <label class="form-label fw-medium">Monto a Pagar</label>
+                                                <input type="text" id="montoAPagar" class="form-control" readonly style="background-color: #e9ecef; cursor: not-allowed;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="button" class="btn btn-success" id="confirmarPago">
+                                        <i class="bi bi-check-circle me-1"></i>Confirmar Pago
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                
+            
         </div>
     </div>
 </div>
 
+
+<style>
+    /* Contenedor centrado para la grilla */
+    .plazas-grid-wrapper {
+        max-width: 860px;
+        margin: 0 auto;            /* centra horizontalmente */
+    }
+
+    .plazas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+        gap: 8px;
+        max-width: 500px;
+        max-height: 200px;
+        overflow-y: auto;
+        margin: 0 auto; /* centra horizontalmente */
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        padding: 8px;
+        background: #f8f9fa;
+    }
+
+    .plazas-grid > .mensaje-inicial {
+        grid-column: 1 / -1;     /* ocupa todo el ancho de la grilla */
+        justify-self: center;    /* centra el ítem dentro de la grilla */
+        text-align: center;
+        color: #6c757d;
+        font-size: 0.9rem;
+        padding: 10px 14px;
+        border: 1px dashed #ced4da;
+        border-radius: 8px;
+        background: #f8f9fa;
+        max-width: 520px;
+        width: 100%;
+    }
+
+    .plaza-card {
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 8px 4px;
+        text-align: center;
+        cursor: pointer;
+        user-select: none;
+        transition: transform .05s, box-shadow .05s, background-color .2s;
+        background: #fff;
+        font-size: 0.8rem;
+        min-height: 60px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .plaza-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, .06);
+        border-color: #dee2e6;
+    }
+
+    /* Estados */
+    .plaza-card.inhabilitada {
+        background: #f8f9fa;
+        color: #6c757d;
+        border-style: dashed;
+        cursor: not-allowed;
+        opacity: .85;
+    }
+
+    .plaza-card.ocupada {
+        background: #fff7e6;
+        border-color: #ffe8b3;
+        color: #7a5e00;
+        cursor: not-allowed;
+    }
+
+    .plaza-card.disponible {
+        background: #eef9f2;
+        border-color: #cdeedc;
+    }
+
+    .plaza-card.incompatible {
+        background: #fdecec;
+        border-color: #f5c2c7;
+        color: #7a1a1a;
+    }
+
+    .plaza-card.selected {
+        outline: 3px solid #0d6efd;
+        background: #e7f1ff;
+        box-shadow: 0 0 0 4px rgba(13, 110, 253, .15);
+    }
+
+    .plaza-title {
+        font-weight: 700;
+        font-size: .85rem;
+        letter-spacing: .05px;
+        line-height: 1.1;
+    }
+
+    .plaza-sub {
+        font-size: .7rem;
+        color: #6c757d;
+        margin-top: 1px;
+        line-height: 1.1;
+    }
+
+    .mensaje-inicial {
+        text-align: center;
+        color: #6c757d;               /* gris Bootstrap */
+        font-size: 0.9rem;
+        padding: 10px 14px;
+        border: 1px dashed #ced4da;   /* un marco suave */
+        border-radius: 8px;
+        background: #f8f9fa;          /* gris clarito */
+        max-width: 500px;
+        margin: 0 auto;               /* centra el mensaje */
+    }
+
+    @@media (max-width: 576px) {
+        .plazas-grid {
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            max-height: 180px;
+        }
+    }
+</style>
+
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        function formatDateInput(dt) {
+            const y = dt.getUTCFullYear();
+            const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+            const d = String(dt.getUTCDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        // Función para establecer la fecha mínima permitida
+        function establecerFechaMinima() {
+            const fechaInicioInput = document.getElementById('fechaInicioInput');
+            if (fechaInicioInput) {
+                const hoy = new Date();
+                const fechaHoy = new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()));
+                fechaInicioInput.min = formatDateInput(fechaHoy);
+            }
+        }
+
+        // Función para validar fecha en tiempo real
+        function validarFechaEnTiempoReal(input) {
+            if (!input.value) return;
+            
+            const fechaSeleccionada = new Date(input.value + 'T00:00:00Z');
+            const hoy = new Date();
+            const fechaHoy = new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()));
+            
+            if (fechaSeleccionada < fechaHoy) {
+                // Restablecer a la fecha actual
+                input.value = formatDateInput(fechaHoy);
+                
+                // Mostrar mensaje de error temporal
+                mostrarErrorTemporal(input, 'No se pueden seleccionar fechas anteriores a la fecha actual.');
+                
+                // Recalcular campos después de corregir la fecha
+                updateAbonoFields();
+            }
+        }
+
+        // Función para mostrar error temporal
+        function mostrarErrorTemporal(elemento, mensaje) {
+            // Limpiar error previo si existe
+            const errorExistente = elemento.parentNode.querySelector('.error-temporal');
+            if (errorExistente) {
+                errorExistente.remove();
+            }
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-temporal text-danger small mt-1';
+            errorDiv.textContent = mensaje;
+            elemento.parentNode.appendChild(errorDiv);
+            
+            // Remover el error después de 3 segundos
+            setTimeout(() => {
+                if (errorDiv.parentNode) {
+                    errorDiv.remove();
+                }
+            }, 3000);
+        }
+
+
+        function updatePeriodosHelp() {
+            const serSelect = document.getElementById('SerID');
+            const periodosInput = document.getElementById('Periodos');
+            const periodosHelp = document.getElementById('periodosHelp');
+            
+            if (!serSelect || !periodosInput || !periodosHelp) {
+                console.warn('Elementos del DOM no encontrados para updatePeriodosHelp');
+                return;
+            }
+            
+            if (!serSelect.value) {
+                periodosHelp.textContent = 'Selecciona un tipo de abono para ver la descripción.';
+                return;
+            }
+
+            const serText = serSelect.options[serSelect.selectedIndex].text.toLowerCase();
+            const periodos = parseInt(periodosInput.value || '1', 10);
+            
+            // Validar que periodos sea un número válido
+            if (isNaN(periodos) || periodos < 1) {
+                periodosHelp.textContent = 'Ingresa una cantidad válida de períodos.';
+                return;
+            }
+            
+            // Detectar tipo actual
+            let tipoActual = '';
+            if (serText.includes('día') || serText.includes('dia')) {
+                tipoActual = 'día';
+            } else if (serText.includes('semana')) {
+                tipoActual = 'semana';
+            } else if (serText.includes('mes')) {
+                tipoActual = 'mes';
+            }
+            
+            // Mostrar descripción simple sin conversiones
+            const unidad = getPlural(tipoActual, periodos);
+            const descripcion = `${periodos} ${unidad}`;
+            periodosHelp.textContent = `Duración: ${descripcion}`;
+        }
+
+        // Función auxiliar para obtener plurales correctos
+        function getPlural(tipo, cantidad) {
+            if (cantidad === 1) return tipo;
+            const plurales = {
+                'día': 'días',
+                'dia': 'días', 
+                'semana': 'semanas',
+                'mes': 'meses'
+            };
+            return plurales[tipo] || tipo + 's';
+        }
+
+
+        async function updateAbonoFields() {
+            const serSelect = document.getElementById('SerID');
+            const serId = parseInt(serSelect.value || '0', 10);
+            const plyId = parseInt(document.querySelector('input[name="PlyID"]').value, 10);
+            const periodos = Math.max(1, parseInt(document.getElementById('Periodos')?.value || '1', 10));
+
+            // Usar la clasificación única del abono
+            const clasVehId = parseInt(document.getElementById('ClasVehID')?.value || '0', 10);
+
+            if (!serId || !plyId || !clasVehId) return;
+
+            try {
+                // Obtener información del servicio actual
+                const url = `@Url.Action("GetAbonoInfo", "Abono")?plyId=${plyId}&serId=${serId}&clasVehId=${clasVehId}`;
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                // Cálculo directo sin conversiones
+                const montoCalculado = (data.monto ?? 0) * periodos;
+                const duracionTotalDias = (data.duracionDias || 0) * periodos;
+
+                // Calcular fechas
+                const iniInput = document.querySelector('input[name="AboFyhIni"]');
+                let ini;
+                
+                // Si ya hay una fecha seleccionada, usarla; si no, usar la fecha actual
+                if (iniInput && iniInput.value) {
+                    ini = new Date(iniInput.value + 'T00:00:00Z');
+                } else {
+                    const hoy = new Date();
+                    ini = new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()));
+                }
+                
+                const fin = new Date(ini);
+                fin.setUTCDate(fin.getUTCDate() + duracionTotalDias);
+
+                const finInput = document.querySelector('input[name="AboFyhFin"]');
+                const montoInput = document.getElementById('AboMonto');
+                const montoHidden = document.getElementById('AboMontoHidden');
+
+                if (iniInput) iniInput.value = formatDateInput(ini);
+                if (finInput) finInput.value = formatDateInput(fin);
+                if (montoInput && montoHidden) {
+                    montoHidden.value = montoCalculado; // Valor numérico para el servidor
+                    montoInput.value = montoCalculado.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }); // Formato visual
+                }
+            } catch (error) {
+                console.error('Error calculando monto:', error);
+            }
+        }
+
+
+
+        // Event listeners para actualizar la duración
+        const serIDSelect = document.getElementById('SerID');
+        if (serIDSelect) {
+            serIDSelect.addEventListener('change', function() {
+                updateAbonoFields();
+                updatePeriodosHelp();
+            });
+        }
+
+        const periodosInput = document.getElementById('Periodos');
+        if (periodosInput) {
+            periodosInput.addEventListener('input', function() {
+                updatePeriodosHelp();
+                updateAbonoFields(); // También recalcular monto cuando cambien los períodos
+            });
+
+            periodosInput.addEventListener('change', function() {
+                updatePeriodosHelp();
+                updateAbonoFields();
+            });
+
+            // Event listener adicional para asegurar actualización
+            periodosInput.addEventListener('blur', function() {
+                updatePeriodosHelp();
+            });
+        }
+
+        // Forzar actualización inicial
+        document.addEventListener('DOMContentLoaded', function() {
+            // Establecer fecha mínima permitida
+            establecerFechaMinima();
+            
+            // Establecer fecha actual como valor por defecto si no hay fecha establecida
+            const fechaInicioInput = document.querySelector('input[name="AboFyhIni"]');
+            if (fechaInicioInput && !fechaInicioInput.value) {
+                const hoy = new Date();
+                const fechaHoy = new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()));
+                fechaInicioInput.value = formatDateInput(fechaHoy);
+            }
+            
+            setTimeout(() => {
+                updatePeriodosHelp();
+            }, 100);
+        });
+
+        // Función de debug para verificar el estado
+        function debugPeriodosHelp() {
+            const serSelect = document.getElementById('SerID');
+            const periodosInput = document.getElementById('Periodos');
+            const periodosHelp = document.getElementById('periodosHelp');
+            
+            console.log('Debug updatePeriodosHelp:');
+            console.log('- serSelect:', serSelect?.value);
+            console.log('- periodosInput:', periodosInput?.value);
+            console.log('- periodosHelp:', periodosHelp?.textContent);
+            
+            if (serSelect && periodosInput && periodosHelp) {
+                updatePeriodosHelp();
+            }
+        }
+
+        // Exponer función de debug globalmente para testing
+        window.debugPeriodosHelp = debugPeriodosHelp;
+
+        const btnAddVehiculo = document.getElementById('add-vehiculo');
+        if (btnAddVehiculo) {
+            btnAddVehiculo.addEventListener('click', function () {
+                const list = document.getElementById('vehiculos-list');
+                const index = list.querySelectorAll('.vehiculo-item').length;
+
+                const row = document.createElement('div');
+                row.classList.add('row', 'g-2', 'mb-2', 'vehiculo-item');
+                row.innerHTML = `
+                    <div class="col-10">
+                        <input name="Vehiculos[${index}].VehPtnt" class="form-control" placeholder="Patente" />
+                    </div>
+                    <div class="col-2 d-flex align-items-center">
+                        <button type="button" class="btn btn-outline-danger btn-sm remove-vehiculo" title="Eliminar vehículo">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>`;
+
+                // Ocultar mensaje vacío si existe
+                const empty = document.getElementById('vehiculos-empty');
+                if (empty) empty.remove();
+
+                list.appendChild(row);
+
+                // Si agregamos el primer vehículo, reintentar cálculo
+                updateAbonoFields();
+            });
+        }
+
+        // Cambio de clasificación única recalcula
+        const clasVehIDSelect = document.getElementById('ClasVehID');
+        if (clasVehIDSelect) {
+            clasVehIDSelect.addEventListener('change', updateAbonoFields);
+        }
+
+        // Event listener para cambio de fecha de inicio
+        const fechaInicioInput = document.querySelector('input[name="AboFyhIni"]');
+        if (fechaInicioInput) {
+            fechaInicioInput.addEventListener('change', function() {
+                validarFechaEnTiempoReal(this);
+                updateAbonoFields();
+            });
+            
+            // También validar cuando se escriba directamente (input event)
+            fechaInicioInput.addEventListener('input', function() {
+                validarFechaEnTiempoReal(this);
+            });
+            
+            // Validar cuando pierda el foco (blur event)
+            fechaInicioInput.addEventListener('blur', function() {
+                validarFechaEnTiempoReal(this);
+            });
+        }
+
+        // Eventos para botones de eliminar vehículos existentes
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-vehiculo')) {
+                const vehiculoItem = e.target.closest('.vehiculo-item');
+                vehiculoItem.remove();
+                
+                // Limpiar errores de vehículos cuando se elimina uno
+                if (typeof limpiarErroresVehiculos === 'function') {
+                    limpiarErroresVehiculos();
+                }
+                
+                // Si no quedan vehículos, mostrar mensaje vacío
+                const list = document.getElementById('vehiculos-list');
+                if (list.querySelectorAll('.vehiculo-item').length === 0) {
+                    const emptyMsg = document.createElement('p');
+                    emptyMsg.id = 'vehiculos-empty';
+                    emptyMsg.className = 'text-muted small';
+                    emptyMsg.textContent = 'No hay vehículos agregados aún.';
+                    list.appendChild(emptyMsg);
+                }
+            }
+        });
+
+        // === FUNCIONES PARA PLAZAS (copiadas de Ocupacion/Create) ===
+        (() => {
+            const plyID = document.querySelector("input[name='PlyID']").value;
+            const selClas = document.getElementById("ClasVehID");
+            const selPiso = document.getElementById("PisoSelectAbono");
+            const grid = document.getElementById("PlazasGridAbono");
+            const hiddenPlz = document.getElementById("PlzNumAbono");
+            const hiddenTecho = document.getElementById("PlzTechoAbono");
+            const radiosTechada = document.querySelectorAll("input[name='techada-abono']");
+
+            /** Estado en memoria **/
+            let allPlazas = []; // plazas completas del fetch (no se muestran hasta elegir piso)
+            let pisoActual = ""; // "", "0", "1", ...
+
+            function getTechada() {
+                const checked = document.querySelector("input[name='techada-abono']:checked");
+                return checked ? checked.value : "";
+            }
+
+            function limpiarSeleccion() {
+                hiddenPlz.value = "0";
+                hiddenTecho.value = "";
+                grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
+            }
+
+            function showPrompt(msg, tipo = "info") {
+                const iconClass = tipo === "error" ? "fa-circle-exclamation" : "fa-circle-info";
+                const textClass = tipo === "error" ? "text-danger" : "";
+                grid.innerHTML = `
+                <div class="mensaje-inicial ${textClass}">
+                    <i class="fa-solid ${iconClass}"></i>
+                    ${msg}
+                </div>`;
+            }
+
+            function requisitosBasicosElegidos() {
+                return !!selClas.value && getTechada() !== "";
+            }
+
+            function requisitosCompletos() {
+                return requisitosBasicosElegidos() && selPiso.value !== "";
+            }
+
+            function renderPisos(plazas) {
+                // Construir conjunto de pisos
+                const setPisos = new Set();
+                plazas.forEach(p => setPisos.add(p.piso === null ? "" : String(p.piso)));
+
+                // Llenar combo
+                selPiso.innerHTML = '<option value="">-- Seleccione piso --</option>';
+
+                // Orden: "Sin piso" primero si existiera, luego numéricos
+                const arr = Array.from(setPisos);
+                arr.sort((a,b) => (a === "" ? -1 : Number(a)) - (b === "" ? -1 : Number(b)));
+
+                arr.forEach(v => {
+                    const opt = document.createElement("option");
+                    opt.value = v;
+                    opt.textContent = (v === "") ? "Sin piso" : `Piso ${v}`;
+                    selPiso.appendChild(opt);
+                });
+
+                // Habilitar selector de piso si hay opciones además de la cabecera
+                selPiso.disabled = arr.length === 0;
+                if (selPiso.disabled) {
+                    selPiso.value = "";
+                    pisoActual = "";
+                } else if (arr.includes(pisoActual)) {
+                    selPiso.value = pisoActual;
+                } else {
+                    selPiso.value = "";
+                    pisoActual = "";
+                }
+            }
+
+            function renderGrid() {
+                const filtroPiso = selPiso.value; // "" o "n"
+                grid.innerHTML = "";
+
+                const plazas = allPlazas.filter(p => {
+                    const pisoStr = (p.piso === null ? "" : String(p.piso));
+                    return pisoStr === filtroPiso;
+                });
+
+                if (plazas.length === 0) {
+                    grid.innerHTML = `<div class="text-muted">No hay plazas para ese piso con los filtros seleccionados.</div>`;
+                    return;
+                }
+
+                plazas.forEach(p => {
+                    const card = document.createElement("div");
+                    card.className = "plaza-card";
+
+                    if (p.hab === false) card.classList.add("inhabilitada");
+                    else if (p.ocupada) card.classList.add("ocupada");
+                    else if (p.compatible === false) card.classList.add("incompatible");
+                    else card.classList.add("disponible");
+
+                    // Solo mostrar piso si no se ha seleccionado uno específico
+                    const mostrarPiso = !selPiso.value || selPiso.value === "";
+                    card.innerHTML = `
+                        <div class="plaza-title">${p.nombre ?? ("P" + p.plzNum)}</div>
+                        ${mostrarPiso ? `<div class="plaza-sub">${p.piso === null ? "Sin piso" : ("Piso " + p.piso)}</div>` : ''}
+                        ${p.ocupada ? '<div class="small text-muted mt-1">Ocupada</div>' : ''}
+                        ${p.hab === false ? '<div class="small text-muted mt-1">Inhabilitada</div>' : ''}
+                        ${(p.hab !== false && !p.ocupada && p.compatible === false) ? '<div class="small mt-1">No compatible</div>' : ''}
+                    `;
+
+                    const esSeleccionable = (p.hab !== false) && !p.ocupada && (p.compatible !== false);
+                    if (esSeleccionable) {
+                        card.addEventListener("click", () => {
+                            grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
+                            card.classList.add("selected");
+                            hiddenPlz.value = p.plzNum.toString();
+                            hiddenTecho.value = getTechada();
+                        });
+                    } else {
+                        card.style.pointerEvents = "none";
+                    }
+
+                    grid.appendChild(card);
+                });
+            }
+
+            async function fetchPlazasYPrepararPisos() {
+                limpiarSeleccion();
+
+                // Si faltan clas/techada, no hago fetch y dejo Piso deshabilitado
+                if (!requisitosBasicosElegidos()) {
+                    selPiso.disabled = true;
+                    selPiso.value = "";
+                    pisoActual = "";
+                    allPlazas = [];
+                    showPrompt("Elegí clasificación y si la plaza es techada o no para habilitar el piso.");
+                    return;
+                }
+
+                // Verificar tarifas antes de continuar
+                const clasVehID = selClas.value;
+                const serId = document.getElementById("SerID").value;
+                
+                try {
+                    const tarifaResponse = await fetch(`/Abono/GetAbonoInfo?plyId=${encodeURIComponent(plyID)}&serId=${encodeURIComponent(serId)}&clasVehId=${encodeURIComponent(clasVehID)}`);
+                    if (!tarifaResponse.ok) throw new Error("Error HTTP " + tarifaResponse.status);
+                    const tarifaData = await tarifaResponse.json();
+                    
+                    // Si no hay tarifa (monto es 0 o null), mostrar error
+                    if (!tarifaData.monto || tarifaData.monto === 0) {
+                        selPiso.disabled = true;
+                        selPiso.value = "";
+                        pisoActual = "";
+                        allPlazas = [];
+                        showPrompt("No existen tarifas de abono configuradas para esta clasificación de vehículo", "error");
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Error verificando tarifas:", e);
+                    selPiso.disabled = true;
+                    selPiso.value = "";
+                    pisoActual = "";
+                    allPlazas = [];
+                    showPrompt("Error verificando tarifas de abono", "error");
+                    return;
+                }
+
+                try {
+                    showPrompt("Cargando opciones de piso...");
+                    const clasVehID = selClas.value;
+                    const techada = getTechada();
+                    const serId = document.getElementById("SerID").value;
+                    const url = `/Abono/GetPlazasDisponibles?plyId=${encodeURIComponent(plyID)}&clasVehId=${encodeURIComponent(clasVehID)}&techo=${techada}&serId=${serId}`;
+                    const r = await fetch(url);
+                    if (!r.ok) throw new Error("Error HTTP " + r.status);
+                    const data = await r.json();
+
+                    // Verificar si hay error de tarifas
+                    if (data.error) {
+                        selPiso.disabled = true;
+                        selPiso.value = "";
+                        pisoActual = "";
+                        allPlazas = [];
+                        showPrompt(data.message, "error");
+
+                        // 🔹 Mostrar error debajo del combo de Clasificación
+                        selClas.classList.add("is-invalid");
+
+                        // Eliminar mensaje previo si existe
+                        const oldError = selClas.parentNode.querySelector(".error-tarifa");
+                        if (oldError) oldError.remove();
+
+                        const errorMsg = document.createElement("div");
+                        errorMsg.className = "error-tarifa text-danger small mt-1";
+                        errorMsg.textContent = "Debe seleccionar clasificación y si la plaza es techada o no";
+                        selClas.parentNode.appendChild(errorMsg);
+                        return;
+                    }
+
+                    allPlazas = (data || []).map(x => ({
+                        plzNum: x.plzNum,
+                        piso: (x.piso ?? null),
+                        hab: true, // Las plazas devueltas ya están filtradas por hábiles
+                        ocupada: false, // Las plazas devueltas ya están filtradas por no ocupadas
+                        compatible: true, // Las plazas devueltas ya están filtradas por compatibilidad
+                        nombre: x.plzNombre ?? null
+                    }));
+
+                    renderPisos(allPlazas);
+
+                    if (selPiso.disabled) {
+                        showPrompt("No hay pisos disponibles para esos filtros.");
+                    } else if (!selPiso.value) {
+                        showPrompt("Elegí un piso para ver las plazas.");
+                    } else {
+                        renderGrid();
+                    }
+                } catch (e) {
+                    console.error(e);
+                    selPiso.disabled = true;
+                    selPiso.value = "";
+                    pisoActual = "";
+                    allPlazas = [];
+                    showPrompt("No se pudieron cargar las plazas.");
+                }
+            }
+
+            // Eventos
+            selClas.addEventListener("change", fetchPlazasYPrepararPisos);
+            radiosTechada.forEach(r => r.addEventListener("change", fetchPlazasYPrepararPisos));
+
+            selPiso.addEventListener("change", () => {
+                pisoActual = selPiso.value;
+                limpiarSeleccion();
+                if (!selPiso.value) {
+                    showPrompt("Elegí un piso para ver las plazas.");
+                    return;
+                }
+                if (!requisitosBasicosElegidos()) {
+                    showPrompt("Elegí clasificación y techada/no para continuar.");
+                    return;
+                }
+                renderGrid();
+            });
+
+            // Estado inicial: nada seleccionado → mensaje guía y Piso deshabilitado
+            selPiso.disabled = true;
+            showPrompt("Elegí clasificación, si es techada o no y luego el piso para ver las plazas.");
+        })();
+
+         // Inicializar campo hidden con valor 0
+         document.addEventListener('DOMContentLoaded', function() {
+             const hiddenPlz = document.getElementById("PlzNumAbono");
+             if (hiddenPlz) {
+                 hiddenPlz.value = "0";
+             }
+         });
+
+         // === FUNCIONALIDAD DEL MODAL DE PAGOS ===
+         
+         // Función para validar el formulario antes de abrir el modal
+         function validarFormulario() {
+             const serID = document.getElementById('SerID').value;
+             const clasVehID = document.getElementById('ClasVehID').value;
+             const periodos = document.getElementById('Periodos').value;
+             const aboDNI = document.querySelector('input[name="AboDNI"]').value;
+             const aboNom = document.querySelector('input[name="AboNom"]').value;
+             const selectedPlzNum = document.getElementById('PlzNumAbono').value;
+             
+             if (!serID) {
+                 alert('Debe seleccionar un tipo de abono');
+                 return false;
+             }
+             if (!clasVehID) {
+                 alert('Debe seleccionar una clasificación de vehículo');
+                 return false;
+             }
+             if (!periodos || periodos < 1) {
+                 alert('Debe ingresar una cantidad válida de períodos');
+                 return false;
+             }
+             if (!aboDNI) {
+                 alert('Debe ingresar el DNI del abonado');
+                 return false;
+             }
+             if (!aboNom) {
+                 alert('Debe ingresar el nombre del abonado');
+                 return false;
+             }
+             if (!selectedPlzNum || selectedPlzNum === "0") {
+                 alert('Debe seleccionar una plaza para el abono');
+                 return false;
+             }
+             
+             return true;
+         }
+
+         // Función para abrir el modal de pagos
+         async function abrirModalPago() {
+             if (!validarFormulario()) {
+                 return;
+             }
+             
+             // Llenar datos del modal
+             await llenarModalPago();
+             
+             // Mostrar el modal
+             const modal = new bootstrap.Modal(document.getElementById('pagoAbonoModal'));
+             modal.show();
+         }
+
+         // Función para llenar los datos del modal
+         async function llenarModalPago() {
+             // Datos básicos
+             document.getElementById('modalAbonado').textContent = document.querySelector('input[name="AboNom"]').value;
+             document.getElementById('modalPlaza').textContent = 'Plaza ' + document.getElementById('PlzNumAbono').value;
+             document.getElementById('modalFechaInicio').textContent = document.querySelector('input[name="AboFyhIni"]').value;
+             document.getElementById('modalFechaFin').textContent = document.querySelector('input[name="AboFyhFin"]').value;
+             
+             // Duración total
+             const periodos = parseInt(document.getElementById('Periodos').value);
+             const tipoServicio = document.querySelector('select[name="SerID"]').selectedOptions[0].text;
+             const duracionText = `${periodos} ${getPlural(tipoServicio.toLowerCase().includes('día') ? 'día' : tipoServicio.toLowerCase().includes('semana') ? 'semana' : 'mes', periodos)}`;
+             document.getElementById('modalDuracion').textContent = duracionText;
+             
+             // Generar desglose de períodos
+             await generarDesglosePeriodos(periodos, tipoServicio, document.getElementById('AboMonto').value);
+             
+             // Cargar métodos de pago
+             cargarMetodosPago();
+             
+             // Asegurar que el monto inicial sea correcto
+             actualizarMontoAPagar();
+         }
+
+         // Función para generar el desglose de períodos - REUTILIZA LA MISMA LÓGICA DEL FORMULARIO
+            async function generarDesglosePeriodos(periodos, tipoServicio, montoTotal) {
+                const periodosDesglose = document.getElementById('periodosDesglose');
+
+                let html = '';
+                let detalle = [];
+
+                const plyId = parseInt(document.querySelector('input[name="PlyID"]').value, 10);
+                const clasVehId = parseInt(document.getElementById('ClasVehID')?.value || '0', 10);
+                const serId = parseInt(document.getElementById('SerID').value || '0', 10);
+
+                // Obtener tarifa del servicio
+                const url = `@Url.Action("GetAbonoInfo", "Abono")?plyId=${plyId}&serId=${serId}&clasVehId=${clasVehId}`;
+                const data = await (await fetch(url)).json();
+                const tarifa = data.monto ?? 0;
+
+                // Detectar tipo de servicio
+                let tipoUnidad = '';
+                if (tipoServicio.toLowerCase().includes('día') || tipoServicio.toLowerCase().includes('dia')) {
+                    tipoUnidad = 'día';
+                } else if (tipoServicio.toLowerCase().includes('semana')) {
+                    tipoUnidad = 'semana';
+                } else if (tipoServicio.toLowerCase().includes('mes')) {
+                    tipoUnidad = 'mes';
+                }
+
+                // Crear detalle agrupado: N períodos × 1 unidad
+                const montoCalculado = tarifa * periodos;
+                const label = `${periodos} × 1 ${tipoUnidad}`;
+                const montoFmt = montoCalculado.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+
+                // Renderizar una sola línea
+                html += `
+                    <div class="row align-items-center mb-2">
+                        <div class="col-md-3"><strong>${label}</strong></div>
+                        <div class="col-md-5"><span class="fw-bold text-success">${montoFmt}</span></div>
+                    </div>
+                `;
+
+                // Configurar el selector de períodos para pago parcial
+                configurarSelectorPeriodos(periodos, tipoUnidad, tarifa);
+
+                // Crear detalle para cálculos internos - un elemento por período
+                for (let i = 0; i < periodos; i++) {
+                    detalle.push({ 
+                        tipo: tipoUnidad, 
+                        cantidad: 1, 
+                        monto: tarifa 
+                    });
+                }
+
+                periodosDesglose.innerHTML = html;
+
+                const montoTotalNum = detalle.reduce((sum, x) => sum + x.monto, 0);
+                document.getElementById('totalPagar').textContent = montoTotalNum.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+                document.getElementById('montoAPagar').value = montoTotalNum.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+            }
+
+            // Función para configurar el selector de períodos
+            function configurarSelectorPeriodos(periodosTotal, tipoUnidad, tarifaPorPeriodo) {
+                const labelCantidad = document.getElementById('labelCantidadPeriodos');
+                const inputCantidad = document.getElementById('cantidadPeriodosPagar');
+                const maxPeriodos = document.getElementById('maxPeriodos');
+                const subtotalParcial = document.getElementById('subtotalParcial');
+
+                // Actualizar etiqueta según el tipo de unidad
+                let etiqueta = '';
+                if (tipoUnidad === 'día') {
+                    etiqueta = 'Indique cuántos días desea pagar:';
+                } else if (tipoUnidad === 'semana') {
+                    etiqueta = 'Indique cuántas semanas desea pagar:';
+                } else if (tipoUnidad === 'mes') {
+                    etiqueta = 'Indique cuántos meses desea pagar:';
+                } else {
+                    const unidadPlural = getPlural(tipoUnidad, 2);
+                    etiqueta = `Indique cuántos ${unidadPlural} desea pagar:`;
+                }
+                labelCantidad.textContent = etiqueta;
+
+                // Configurar límites del input
+                inputCantidad.min = 1;
+                inputCantidad.max = periodosTotal;
+                inputCantidad.value = 1;
+                maxPeriodos.textContent = periodosTotal;
+
+                // Guardar datos para cálculos
+                inputCantidad.dataset.tarifaPorPeriodo = tarifaPorPeriodo;
+                inputCantidad.dataset.tipoUnidad = tipoUnidad;
+
+                // Calcular subtotal inicial
+                actualizarSubtotalParcial();
+
+                // Event listener para actualizar subtotal cuando cambie la cantidad
+                inputCantidad.removeEventListener('input', actualizarSubtotalParcial);
+                inputCantidad.addEventListener('input', actualizarSubtotalParcial);
+                inputCantidad.removeEventListener('change', actualizarSubtotalParcial);
+                inputCantidad.addEventListener('change', actualizarSubtotalParcial);
+            }
+
+            // Función para actualizar el subtotal del pago parcial
+            function actualizarSubtotalParcial() {
+                const inputCantidad = document.getElementById('cantidadPeriodosPagar');
+                const subtotalParcial = document.getElementById('subtotalParcial');
+                
+                if (!inputCantidad || !subtotalParcial) return;
+
+                const cantidad = parseInt(inputCantidad.value) || 1;
+                const tarifaPorPeriodo = parseFloat(inputCantidad.dataset.tarifaPorPeriodo) || 0;
+                const subtotal = cantidad * tarifaPorPeriodo;
+
+                subtotalParcial.textContent = subtotal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+
+                // También actualizar el monto a pagar si está en modo parcial
+                const opcionPago = document.querySelector('input[name="opcionPago"]:checked');
+                if (opcionPago && opcionPago.value === 'parcial') {
+                    document.getElementById('montoAPagar').value = subtotal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+                }
+            }
+
+
+         // Función para cargar métodos de pago
+         async function cargarMetodosPago() {
+             const plyId = document.querySelector('input[name="PlyID"]').value;
+             
+             try {
+                 const response = await fetch(`@Url.Action("GetMetodosPago", "Abono")?plyId=${plyId}`);
+                 if (response.ok) {
+                     const metodos = await response.json();
+                     const select = document.getElementById('metodoPagoModal');
+                     select.innerHTML = '<option value="">-- Seleccione método de pago --</option>';
+                     
+                     metodos.forEach(metodo => {
+                         select.innerHTML += `<option value="${metodo.mepID}">${metodo.mepNom}</option>`;
+                     });
+                 } else {
+                     cargarMetodosPagoBasicos();
+                 }
+             } catch (error) {
+                 console.error('Error cargando métodos de pago:', error);
+                 cargarMetodosPagoBasicos();
+             }
+         }
+
+         function cargarMetodosPagoBasicos() {
+             const select = document.getElementById('metodoPagoModal');
+             select.innerHTML = `
+                 <option value="">-- Seleccione método de pago --</option>
+                 <option value="1">Efectivo</option>
+                 <option value="2">Tarjeta de Débito</option>
+                 <option value="3">Tarjeta de Crédito</option>
+                 <option value="4">Transferencia</option>
+             `;
+         }
+
+         // Función para mostrar error en método de pago
+         function mostrarErrorMetodoPago(mensaje) {
+             const errorDiv = document.getElementById('metodoPagoError');
+             const select = document.getElementById('metodoPagoModal');
+             
+             if (errorDiv && select) {
+                 errorDiv.textContent = mensaje;
+                 errorDiv.style.display = 'block';
+                 select.classList.add('is-invalid');
+             }
+         }
+
+         // Función para ocultar error en método de pago
+         function ocultarErrorMetodoPago() {
+             const errorDiv = document.getElementById('metodoPagoError');
+             const select = document.getElementById('metodoPagoModal');
+             
+             if (errorDiv && select) {
+                 errorDiv.style.display = 'none';
+                 select.classList.remove('is-invalid');
+             }
+         }
+
+         // Función para actualizar monto a pagar
+         function actualizarMontoAPagar() {
+             const opcionPago = document.querySelector('input[name="opcionPago"]:checked').value;
+             let monto = 0;
+             
+             if (opcionPago === 'todo') {
+                 // Obtener el monto total directamente del campo del formulario
+                 const montoTotalHidden = document.getElementById('AboMontoHidden').value;
+                 monto = parseFloat(montoTotalHidden) || 0;
+             } else {
+                 // Pago parcial: usar el selector numérico
+                 const inputCantidad = document.getElementById('cantidadPeriodosPagar');
+                 if (inputCantidad) {
+                     const cantidad = parseInt(inputCantidad.value) || 1;
+                     const tarifaPorPeriodo = parseFloat(inputCantidad.dataset.tarifaPorPeriodo) || 0;
+                     monto = cantidad * tarifaPorPeriodo;
+                 }
+             }
+             
+             document.getElementById('montoAPagar').value = monto.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+         }
+
+         // Event listeners para el modal
+         const btnConfirmarAbono = document.getElementById('btnConfirmarAbono');
+         if (btnConfirmarAbono) {
+             btnConfirmarAbono.addEventListener('click', function(e) {
+                 // Limpiar errores previos
+                 limpiarTodosLosErrores();
+                 
+                 let hayErrores = false;
+                 
+                 // 1. Validar tipo de abono
+                 const serID = document.getElementById('SerID').value;
+                 if (!serID) {
+                     mostrarErrorCampo(document.getElementById('SerID'), 'Debe seleccionar un tipo de abono.');
+                     hayErrores = true;
+                 }
+
+                 // 2. Validar clasificación de vehículo
+                 const clasVehID = document.getElementById('ClasVehID').value;
+                 if (!clasVehID) {
+                     mostrarErrorCampo(document.getElementById('ClasVehID'), 'Debe seleccionar una clasificación de vehículo.');
+                     hayErrores = true;
+                 }
+
+                 // 3. Validar períodos
+                 const periodos = document.getElementById('Periodos').value;
+                 if (!periodos || periodos < 1) {
+                     mostrarErrorCampo(document.getElementById('Periodos'), 'Debe ingresar una cantidad válida de períodos.');
+                     hayErrores = true;
+                 }
+
+                 // 4. Validar DNI del abonado
+                 const aboDNI = document.querySelector('input[name="AboDNI"]').value;
+                 if (!aboDNI || !aboDNI.trim()) {
+                     mostrarErrorCampo(document.querySelector('input[name="AboDNI"]'), 'Debe ingresar el DNI del abonado.');
+                     hayErrores = true;
+                 }
+
+                // 5. Validar nombre del abonado
+                const aboNom = document.querySelector('input[name="AboNom"]').value;
+                if (!aboNom || !aboNom.trim()) {
+                    mostrarErrorCampo(document.querySelector('input[name="AboNom"]'), 'Debe ingresar el nombre del abonado.');
+                    hayErrores = true;
+                }
+
+                // 6. Validar fecha de inicio
+                const fechaInicio = document.querySelector('input[name="AboFyhIni"]').value;
+                if (!fechaInicio) {
+                    mostrarErrorCampo(document.querySelector('input[name="AboFyhIni"]'), 'Debe seleccionar una fecha de inicio.');
+                    hayErrores = true;
+                } else {
+                    // Validar que la fecha no sea anterior a la fecha actual
+                    const fechaSeleccionada = new Date(fechaInicio + 'T00:00:00Z');
+                    const hoy = new Date();
+                    const fechaHoy = new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()));
+                    
+                    if (fechaSeleccionada < fechaHoy) {
+                        mostrarErrorCampo(document.querySelector('input[name="AboFyhIni"]'), 'La fecha de inicio no puede ser anterior a la fecha actual.');
+                        hayErrores = true;
+                    }
+                }
+
+                 // 7. Validar selección de plaza
+                 const selectedPlzNum = document.getElementById('PlzNumAbono').value;
+                 if (!selectedPlzNum || selectedPlzNum === "0") {
+                     mostrarErrorPlaza('Debe seleccionar una plaza para el abono.');
+                     hayErrores = true;
+                 }
+
+                 // 8. Validar vehículos
+                 const vehiculosList = document.getElementById('vehiculos-list');
+                 const vehiculosItems = vehiculosList.querySelectorAll('.vehiculo-item');
+                 
+                 if (vehiculosItems.length === 0) {
+                     mostrarErrorVehiculos('Debe agregar al menos un vehículo para el abono.');
+                     hayErrores = true;
+                 } else {
+                     // Validar que todos los vehículos tengan patente
+                     vehiculosItems.forEach((item, index) => {
+                         const patenteInput = item.querySelector('input[name*="VehPtnt"]');
+                         if (!patenteInput || !patenteInput.value.trim()) {
+                             mostrarErrorVehiculoIndividual(item, 'La patente es obligatoria.');
+                             hayErrores = true;
+                         }
+                     });
+                 }
+                 
+                 if (hayErrores) {
+                     e.preventDefault(); // Solo prevenir si hay errores
+                     return;
+                 }
+                 
+                 // Si todo está bien, abrir el modal
+                 abrirModalPago();
+             });
+         }
+         
+         // Función para limpiar errores de vehículos
+         function limpiarErroresVehiculos() {
+             // Limpiar error general
+             const errorGeneral = document.getElementById('error-vehiculos-general');
+             if (errorGeneral) {
+                 errorGeneral.remove();
+             }
+             
+             // Limpiar errores individuales
+             const erroresIndividuales = document.querySelectorAll('.error-vehiculo-individual');
+             erroresIndividuales.forEach(error => error.remove());
+         }
+         
+         // Función para limpiar todos los errores
+         function limpiarTodosLosErrores() {
+             // Limpiar errores de vehículos
+             limpiarErroresVehiculos();
+             
+             // Limpiar errores de campos individuales (tipo abono, clasificación, períodos, DNI, nombre)
+             const erroresCampos = document.querySelectorAll('.error-campo-individual');
+             erroresCampos.forEach(error => error.remove());
+             
+             // Limpiar errores temporales
+             const erroresTemporales = document.querySelectorAll('.error-temporal');
+             erroresTemporales.forEach(error => error.remove());
+             
+             // Limpiar error de plaza
+             const errorPlaza = document.getElementById('error-plaza-general');
+             if (errorPlaza) {
+                 errorPlaza.remove();
+             }
+         }
+         
+         // Función para mostrar error general de vehículos
+         function mostrarErrorVehiculos(mensaje) {
+             const vehiculosList = document.getElementById('vehiculos-list');
+             const errorDiv = document.createElement('div');
+             errorDiv.id = 'error-vehiculos-general';
+             errorDiv.className = 'text-danger small mt-2';
+             errorDiv.textContent = mensaje;
+             vehiculosList.appendChild(errorDiv);
+         }
+         
+         // Función para mostrar error individual de vehículo
+         function mostrarErrorVehiculoIndividual(vehiculoItem, mensaje) {
+             // Limpiar error previo si existe
+             const errorExistente = vehiculoItem.querySelector('.error-vehiculo-individual');
+             if (errorExistente) {
+                 errorExistente.remove();
+             }
+             
+             const errorDiv = document.createElement('div');
+             errorDiv.className = 'error-vehiculo-individual text-danger small mt-1';
+             errorDiv.textContent = mensaje;
+             
+             // Insertar el error después de toda la fila del vehículo, no dentro del col-10
+             vehiculoItem.appendChild(errorDiv);
+         }
+         
+         // Función para mostrar error en campos individuales
+         function mostrarErrorCampo(elemento, mensaje) {
+             // Limpiar error previo si existe
+             const errorExistente = elemento.parentNode.querySelector('.error-campo-individual');
+             if (errorExistente) {
+                 errorExistente.remove();
+             }
+             
+             const errorDiv = document.createElement('div');
+             errorDiv.className = 'error-campo-individual text-danger small mt-1';
+             errorDiv.textContent = mensaje;
+             elemento.parentNode.appendChild(errorDiv);
+         }
+         
+         // Función para mostrar error de plaza
+         function mostrarErrorPlaza(mensaje) {
+             // Limpiar error previo si existe
+             const errorExistente = document.getElementById('error-plaza-general');
+             if (errorExistente) {
+                 errorExistente.remove();
+             }
+             
+             // Buscar el contenedor correcto donde mostrar el error
+             const plazasGrid = document.getElementById('PlazasGridAbono');
+             if (plazasGrid) {
+                 const errorDiv = document.createElement('div');
+                 errorDiv.id = 'error-plaza-general';
+                 errorDiv.className = 'text-danger small mt-2 text-center';
+                 errorDiv.textContent = mensaje;
+                 
+                 // Insertar el error antes de la grilla de plazas
+                 plazasGrid.parentNode.insertBefore(errorDiv, plazasGrid);
+             }
+         }
+
+         document.addEventListener('change', function(e) {
+             if (e.target.name === 'opcionPago') {
+                 const seleccionPeriodos = document.getElementById('seleccionPeriodos');
+                 if (e.target.value === 'parcial') {
+                     seleccionPeriodos.style.display = 'block';
+                 } else {
+                     seleccionPeriodos.style.display = 'none';
+                 }
+                 actualizarMontoAPagar();
+             }
+             
+             if (e.target.id === 'cantidadPeriodosPagar') {
+                 // Validar que esté dentro de los límites
+                 const input = e.target;
+                 const min = parseInt(input.min) || 1;
+                 const max = parseInt(input.max) || 1;
+                 let valor = parseInt(input.value) || 1;
+                 
+                 if (valor < min) {
+                     input.value = min;
+                 } else if (valor > max) {
+                     input.value = max;
+                 }
+                 
+                 actualizarSubtotalParcial();
+                 actualizarMontoAPagar();
+             }
+         });
+
+         // Event listener para método de pago
+         const metodoPagoSelect = document.getElementById('metodoPagoModal');
+         if (metodoPagoSelect) {
+             metodoPagoSelect.addEventListener('change', function() {
+                 ocultarErrorMetodoPago();
+             });
+         }
+
+         // Event listeners para botones del modal
+         const btnConfirmarPago = document.getElementById('confirmarPago');
+         if (btnConfirmarPago) {
+            btnConfirmarPago.addEventListener('click', async function () {
+                // Validar método de pago antes de continuar
+                const metodoPago = document.getElementById('metodoPagoModal').value;
+                if (!metodoPago || metodoPago === '') {
+                    mostrarErrorMetodoPago('Debe seleccionar un método de pago');
+                    return;
+                }
+                
+                // Ocultar errores previos
+                ocultarErrorMetodoPago();
+                
+                // Armar objeto con los datos del formulario y modal
+                const data = {
+                PlyID: parseInt(document.querySelector('input[name="PlyID"]').value, 10),
+                SerID: parseInt(document.getElementById('SerID').value, 10),               // 🔹 faltaba
+                ClasVehID: parseInt(document.getElementById('ClasVehID').value, 10),
+                Periodos: parseInt(document.getElementById('Periodos').value, 10),         // 🔹 faltaba
+
+                AboFyhIni: new Date(document.querySelector('input[name="AboFyhIni"]').value).toISOString(),
+                AboFyhFin: new Date(document.querySelector('input[name="AboFyhFin"]').value).toISOString(),
+                AboMonto: parseFloat(document.getElementById('AboMontoHidden').value),
+
+                AboDNI: document.querySelector('input[name="AboDNI"]').value,
+                AboNom: document.querySelector('input[name="AboNom"]').value,
+
+                SelectedPlzNum: parseInt(document.getElementById('PlzNumAbono').value, 10),
+                SelectedPlzTecho: document.getElementById('PlzTechoAbono').value === "true",
+
+                MepID: parseInt(document.getElementById('metodoPagoModal').value, 10),
+                OpcionPago: document.querySelector('input[name="opcionPago"]:checked').value, // 🔹 faltaba
+                CantidadPeriodosPagar: document.querySelector('input[name="opcionPago"]:checked').value === 'todo'
+                    ? parseInt(document.getElementById('Periodos').value, 10)
+                    : parseInt(document.getElementById('cantidadPeriodosPagar').value, 10),   // 🔹 faltaba
+
+                MontoPagar: parseFloat(
+                    (document.getElementById('montoAPagar').value || "0")
+                        .replace(/[^\d,.-]/g, '')
+                        .replace(',', '.')
+                ),
+
+                 Vehiculos: []
+             };
+
+             // Agregar vehículos (solo una vez)
+             document.querySelectorAll('#vehiculos-list .vehiculo-item input').forEach(v => {
+                 if (v.value && v.value.trim()) {
+                     data.Vehiculos.push({ VehPtnt: v.value.trim() });
+                 }
+             });
+
+                try {
+                    const response = await fetch('/Abono/ConfirmarPago', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+
+                     const result = await response.json();
+                     if (result.success) {
+                         // Redirigir a Index después de confirmar
+                         window.location.href = '/Abono/Index';
+                     } else {
+                         // Mostrar error específico si es del método de pago
+                         if (result.message && result.message.includes('método de pago')) {
+                             mostrarErrorMetodoPago(result.message);
+                         } else {
+                             alert(result.message || 'Error procesando el pago');
+                         }
+                     }
+                } catch (error) {
+                    alert('Error en la comunicación con el servidor: ' + error);
+                }
+            });
+        }
+
+
+         
+         // Event listeners para limpiar errores cuando el usuario interactúe con los campos
+         document.addEventListener('input', function(e) {
+             // Limpiar errores de campos individuales cuando el usuario escriba
+             if (e.target.matches('#SerID, #AboDNI, #AboNom, #ClasVehID, #Periodos, input[name="AboFyhIni"]')) {
+                 const errorExistente = e.target.parentNode.querySelector('.error-campo-individual');
+                 if (errorExistente) {
+                     errorExistente.remove();
+                 }
+             }
+             
+            // Limpiar errores de patentes cuando el usuario escriba
+            if (e.target.matches('input[name*="VehPtnt"]')) {
+                const vehiculoItem = e.target.closest('.vehiculo-item');
+                const errorExistente = vehiculoItem.querySelector('.error-vehiculo-individual');
+                if (errorExistente) {
+                    errorExistente.remove();
+                }
+                
+                // Convertir patente a mayúsculas automáticamente
+                const valorOriginal = e.target.value;
+                const valorMayusculas = valorOriginal.toUpperCase();
+                if (valorOriginal !== valorMayusculas) {
+                    e.target.value = valorMayusculas;
+                }
+            }
+         });
+
+         // Event listeners para limpiar errores cuando el usuario cambie los selects
+         document.addEventListener('change', function(e) {
+             // Limpiar errores de campos individuales cuando el usuario cambie selects
+             if (e.target.matches('#SerID, #ClasVehID')) {
+                 const errorExistente = e.target.parentNode.querySelector('.error-campo-individual');
+                 if (errorExistente) {
+                     errorExistente.remove();
+                 }
+             }
+             
+             // Limpiar error de plaza cuando se seleccione una
+             if (e.target.matches('input[name="SelectedPlzNum"]')) {
+                 const errorExistente = document.getElementById('error-plaza-general');
+                 if (errorExistente) {
+                     errorExistente.remove();
+                 }
+             }
+         });
+
+    </script>
 }
