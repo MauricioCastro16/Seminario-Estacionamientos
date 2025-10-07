@@ -224,6 +224,7 @@ body.sidebar-open {
 }
 
 /* ===== MOBILE SIDEBAR ===== */
+/* Optimizaciones de rendimiento para animaciones más suaves */
 .sidebar-overlay {
     position: fixed;
     top: 0;
@@ -234,11 +235,12 @@ body.sidebar-open {
     z-index: 1040;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.7s cubic-bezier(0.23, 1, 0.32, 1), 
-                visibility 0.7s cubic-bezier(0.23, 1, 0.32, 1),
-                backdrop-filter 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+    transition: opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
+                visibility 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                backdrop-filter 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     backdrop-filter: blur(0px);
     will-change: opacity, backdrop-filter;
+    transform: translateZ(0); /* Force hardware acceleration */
 }
 
 .sidebar-overlay.active {
@@ -257,17 +259,18 @@ body.sidebar-open {
     background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
     z-index: 1050;
     transform: translateX(-100%);
-    transition: transform 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     box-shadow: 2px 0 20px rgba(0, 0, 0, 0.15);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     border-radius: 0 1rem 1rem 0;
     will-change: transform;
+    transform: translateX(-100%) translateZ(0); /* Force hardware acceleration */
 }
 
 .mobile-sidebar.active {
-    transform: translateX(0);
+    transform: translateX(0) translateZ(0); /* Force hardware acceleration */
 }
 
 /* ===== SIDEBAR HEADER ===== */
@@ -436,41 +439,7 @@ body.sidebar-open {
     gap: 0.5rem;
 }
 
-/* Animación de entrada escalonada para los elementos del menú */
-.mobile-sidebar.active .sidebar-nav .nav-item {
-    animation: slideInFromRight 0.8s cubic-bezier(0.23, 1, 0.32, 1);
-    animation-fill-mode: both;
-}
-
-.mobile-sidebar.active .sidebar-user-info {
-    animation: slideInFromRight 0.8s cubic-bezier(0.23, 1, 0.32, 1);
-    animation-delay: 0.15s;
-    animation-fill-mode: both;
-}
-
-.mobile-sidebar.active .sidebar-playground-badge {
-    animation: slideInFromRight 0.8s cubic-bezier(0.23, 1, 0.32, 1);
-    animation-delay: 0.2s;
-    animation-fill-mode: both;
-}
-
-.mobile-sidebar.active .sidebar-nav .nav-item:nth-child(1) { animation-delay: 0.25s; }
-.mobile-sidebar.active .sidebar-nav .nav-item:nth-child(2) { animation-delay: 0.3s; }
-.mobile-sidebar.active .sidebar-nav .nav-item:nth-child(3) { animation-delay: 0.35s; }
-.mobile-sidebar.active .sidebar-nav .nav-item:nth-child(4) { animation-delay: 0.4s; }
-.mobile-sidebar.active .sidebar-nav .nav-item:nth-child(5) { animation-delay: 0.45s; }
-
-.mobile-sidebar.active .sidebar-footer {
-    animation: slideInFromBottom 0.8s cubic-bezier(0.23, 1, 0.32, 1);
-    animation-delay: 0.5s;
-    animation-fill-mode: both;
-}
-
-.mobile-sidebar.active .sidebar-login {
-    animation: slideInFromBottom 0.8s cubic-bezier(0.23, 1, 0.32, 1);
-    animation-delay: 0.5s;
-    animation-fill-mode: both;
-}
+/* Los elementos del menú aparecen todos juntos sin animación escalonada */
 
 @keyframes slideInFromRight {
     0% {
@@ -781,29 +750,27 @@ body.sidebar-open {
 
 /* ===== ANIMATIONS & MICRO-INTERACTIONS ===== */
 
-/* Animación de entrada escalonada para los elementos del menú - solo esta se mantiene */
-@keyframes slideInFromRight {
-    from {
-        transform: translateX(30px);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+/* Las animaciones de los botones del menú han sido removidas para que aparezcan todos juntos */
+
+/* Optimizaciones adicionales para mejor rendimiento */
+.mobile-sidebar,
+.sidebar-overlay {
+    backface-visibility: hidden;
+    perspective: 1000px;
+    transform-style: preserve-3d;
 }
 
 /* Estados de cierre para transiciones suaves */
 .mobile-sidebar.closing {
-    transform: translateX(-100%) !important;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.6, 1) !important;
+    transform: translateX(-100%) translateZ(0) !important;
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
 }
 
 .sidebar-overlay.closing {
     opacity: 0 !important;
     backdrop-filter: blur(0px) !important;
-    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.6, 1),
-                backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.6, 1) !important;
+    transition: opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                backdrop-filter 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
 }
 
 /* ===== ACCESSIBILITY IMPROVEMENTS ===== */
