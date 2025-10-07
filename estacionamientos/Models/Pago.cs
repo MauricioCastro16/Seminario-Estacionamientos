@@ -11,6 +11,9 @@ namespace estacionamientos.Models
         // FK al método usado (parte de la FK compuesta hacia AceptaMetodoPago)
         public int MepID { get; set; }
 
+        // 🔹 Nuevo campo: playero que hizo el cobro
+        public int PlaNU { get; set; }
+
         [Required]
         public decimal PagMonto { get; set; }
 

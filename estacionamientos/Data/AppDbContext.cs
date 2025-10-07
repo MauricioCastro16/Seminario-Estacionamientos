@@ -338,7 +338,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
                 // Navegaciones directas (comodidad)
                 e.HasOne(t => t.Playa).WithMany().HasForeignKey(t => t.PlyID).OnDelete(DeleteBehavior.Restrict);
-                e.HasOne(t => t.Playero).WithMany().HasForeignKey(t => t.PlaNU).OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(t => t.Playero).WithMany().HasForeignKey(p => p.PlaNU).OnDelete(DeleteBehavior.Restrict);
 
                 // Índices útiles
                 e.HasIndex(t => new { t.PlyID, t.TurFyhIni });

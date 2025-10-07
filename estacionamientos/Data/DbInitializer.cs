@@ -66,55 +66,68 @@ public static class DbInitializer
             {
                 SerNom = "Lavado de vehículo",
                 SerTipo = "ServicioExtra",
-                SerDesc = "Lavado exterior e interior del vehículo"
+                SerDesc = "Lavado exterior e interior del vehículo",
+                SerDuracionMinutos = null
             },
             new Servicio
             {
                 SerNom = "Mantenimiento de vehículo",
                 SerTipo = "ServicioExtra",
-                SerDesc = "Revisión y mantenimiento mecánico del vehículo"
+                SerDesc = "Revisión y mantenimiento mecánico del vehículo",
+                SerDuracionMinutos = null
             },
             new Servicio
             {
                 SerNom = "Carga de combustible",
                 SerTipo = "ServicioExtra",
-                SerDesc = "Carga de combustible en el vehículo"
+                SerDesc = "Carga de combustible en el vehículo",
+                SerDuracionMinutos = null
             },
             new Servicio
             {
                 SerNom = "Revisión técnica",
                 SerTipo = "ServicioExtra",
-                SerDesc = "Revisión técnica del vehículo para verificar su estado"
+                SerDesc = "Revisión técnica del vehículo para verificar su estado",
+                SerDuracionMinutos = null
             },
             new Servicio
             {
-                SerNom = "Estacionamiento por 1 Hora",
+                SerID = 5,
+                SerNom = "Estacionamiento por hora",
                 SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de estacionamiento por 1 hora en playa"
+                SerDesc = "Servicio de estacionamiento por 1 hora en playa",
+                SerDuracionMinutos = 60
             },
+
             new Servicio
             {
-                SerNom = "Estacionamiento por 6 Horas",
+                SerID = 6,
+                SerNom = "Estacionamiento por fraccion de hora",
                 SerTipo = "Estacionamiento",
-                SerDesc = "Servicio de estacionamiento por 6 horas en playa"
+                SerDesc = "Servicio de estacionamiento por fraccion",
+                SerDuracionMinutos = 30
             },
+
             new Servicio
             {
                 SerNom = "Abono por 1 día",
                 SerTipo = "Estacionamiento",
-                SerDesc = "Abono de estacionamiento por 1 día en playa"
+                SerDesc = "Servicio de estacionamiento por 1 día en playa",
+                SerDuracionMinutos = 1440
             },
             new Servicio
             {
                 SerNom = "Abono por 1 semana",
                 SerTipo = "Estacionamiento",
-                SerDesc = "Abono de estacionamiento por 1 semana en playa"
+                SerDesc = "Servicio de estacionamiento por 1 semana en playa",
+                SerDuracionMinutos = 10080
             },
             new Servicio
             {
                 SerNom = "Abono por 1 mes",
                 SerTipo = "Estacionamiento",
-                SerDesc = "Abono de estacionamiento por 1 mes en playa"
+                SerDesc = "Servicio de estacionamiento por 1 mes en playa",
+                SerDuracionMinutos = 43200
             }
         };
         context.Servicios.AddRange(servicios);
