@@ -21,8 +21,9 @@
             <a class="btn btn-primary"
                asp-controller="Informes" asp-action="Descargar"
                asp-route-desde="@Model.Filtros.Desde.ToString("yyyy-MM-dd")"
-           asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")"
-           asp-route-playasIds="@string.Join(",", Model.PlayasSeleccionadas)">
+               asp-route-hasta="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")"
+               asp-route-playasIds="@string.Join(",", Model.PlayasSeleccionadas)"
+               asp-route-metodosIds="@(Model.MetodosPagoSeleccionados?.Any() == true ? string.Join(",", Model.MetodosPagoSeleccionados) : null)">
             <i class="fas fa-file-pdf me-2"></i>
             Descargar PDF
             </a>
