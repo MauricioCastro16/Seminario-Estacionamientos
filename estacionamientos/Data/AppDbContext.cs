@@ -34,6 +34,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Abonado> Abonados { get; set; } = default!;
     public DbSet<Abono> Abonos { get; set; } = default!;
     public DbSet<VehiculoAbonado> VehiculosAbonados { get; set; } = default!;
+    public DbSet<PeriodoAbono> PeriodosAbono { get; set; } = default!;
     public DbSet<PlazaClasificacion> PlazasClasificaciones { get; set; } = default!;
     public DbSet<MovimientoPlayero> MovimientosPlayeros { get; set; }
     
@@ -662,8 +663,34 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // Guardar enum TipoMov como string
             e.Property(m => m.TipoMov)
             .HasConversion<string>();
+        });
 
-                    
+        modelBuilder.Entity<PeriodoAbono>(e =>
+        {
+            e.ToTable("PeriodoAbono");
+            e.HasKey(p => new { p.PlyID, p.PlzNum, p.AboFyhIni, p.PeriodoNumero });
+
+            e.Property(p => p.PeriodoMonto).HasPrecision(12, 2).IsRequired();
+            e.Property(p => p.PeriodoFechaInicio).IsRequired();
+            e.Property(p => p.PeriodoFechaFin).IsRequired();
+            e.Property(p => p.PeriodoPagado).HasDefaultValue(false);
+            e.Property(p => p.PeriodoFechaPago);
+
+            // FK al Abono
+            e.HasOne(p => p.Abono)
+             .WithMany(a => a.Periodos)
+             .HasForeignKey(p => new { p.PlyID, p.PlzNum, p.AboFyhIni })
+             .OnDelete(DeleteBehavior.Cascade);
+
+             // 🔹 Relación opcional con Pago
+            e.HasOne(p => p.Pago)
+            .WithMany() // si querés, más adelante podés poner .WithMany(p => p.Periodos)
+            .HasForeignKey(p => new { p.PlyID, p.PagNum })
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+            // Índice para consultas por fecha
+            e.HasIndex(p => new { p.PlyID, p.PlzNum, p.AboFyhIni, p.PeriodoNumero });
         });
     }
 
