@@ -1,0 +1,72 @@
+@model estacionamientos.Models.ViewModels.HorarioFormVM
+@{
+    ViewData["Title"] = "Editar horario";
+    var originalCla = Model.ClaDiasIDOriginal ?? Model.ClaDiasID;
+    var originalInicio = Model.HorFyhIniOriginal?.ToString("o") ?? string.Empty;
+}
+
+<div class="container py-3" style="max-width:720px;">
+    <div class="mb-3">
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index" asp-route-plyID="@Model.PlyID">
+            <i class="fa-solid fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h3 class="card-title mb-2">Editar horario de atencion</h3>
+            <p class="text-muted mb-4">
+                @Model.PlayaNombre
+                @if (!string.IsNullOrWhiteSpace(Model.PlayaResumen))
+                {
+                    <span class="d-block small">@Model.PlayaResumen</span>
+                }
+            </p>
+
+            <form asp-action="Edit"
+                  asp-route-plyID="@Model.PlyID"
+                  asp-route-claDiasID="@originalCla"
+                  asp-route-horFyhIni="@originalInicio"
+                  method="post"
+                  class="row g-3">
+                <input type="hidden" asp-for="PlyID" />
+                <input type="hidden" asp-for="HorFyhIniOriginal" />
+                <input type="hidden" asp-for="ClaDiasIDOriginal" />
+
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                <div class="col-12">
+                    <label asp-for="ClaDiasID" class="form-label"></label>
+                    <select asp-for="ClaDiasID" asp-items="Model.Clasificaciones" class="form-select">
+                        <option value="">Seleccionar clasificacion...</option>
+                    </select>
+                    <span asp-validation-for="ClaDiasID" class="text-danger"></span>
+                </div>
+
+                <div class="col-sm-6">
+                    <label asp-for="HoraApertura" class="form-label"></label>
+                    <input asp-for="HoraApertura" class="form-control" type="time" step="300" />
+                    <span asp-validation-for="HoraApertura" class="text-danger"></span>
+                </div>
+
+                <div class="col-sm-6">
+                    <label asp-for="HoraCierre" class="form-label"></label>
+                    <input asp-for="HoraCierre" class="form-control" type="time" step="300" />
+                    <span asp-validation-for="HoraCierre" class="text-danger"></span>
+                </div>
+
+                <div class="col-12 d-flex justify-content-end gap-2">
+                    <a class="btn btn-outline-secondary" asp-action="Index" asp-route-plyID="@Model.PlyID">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Actualizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}
+
+
+

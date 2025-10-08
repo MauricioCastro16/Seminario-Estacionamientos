@@ -186,12 +186,19 @@ namespace estacionamientos.Controllers
         {
             var playa = await _context.Playas
                 .Include(p => p.Valoraciones)
+                .Include(p => p.Horarios)
+                    .ThenInclude(h => h.ClasificacionDias)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.PlyID == id);
 
             if (playa is null) return NotFound();
 
-            // Turno abierto más reciente en esta playa (si hay)
+            ViewBag.Clasificaciones = await _context.ClasificacionesDias
+                .AsNoTracking()
+                .OrderBy(c => c.ClaDiasID)
+                .ToListAsync();
+
+            // Turno abierto mas reciente en esta playa (si hay)
             var turnoAbierto = await _context.Turnos
                 .Include(t => t.Playero)
                 .AsNoTracking()
@@ -206,10 +213,17 @@ namespace estacionamientos.Controllers
         public async Task<IActionResult> DetailsPlayero(int id)
         {
             var playa = await _context.Playas
+                .Include(p => p.Horarios)
+                    .ThenInclude(h => h.ClasificacionDias)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.PlyID == id);
 
             if (playa is null) return NotFound();
+
+            ViewBag.Clasificaciones = await _context.ClasificacionesDias
+                .AsNoTracking()
+                .OrderBy(c => c.ClaDiasID)
+                .ToListAsync();
 
             return View(playa);
         }
@@ -294,3 +308,7 @@ namespace estacionamientos.Controllers
 
     }
 }
+
+
+
+

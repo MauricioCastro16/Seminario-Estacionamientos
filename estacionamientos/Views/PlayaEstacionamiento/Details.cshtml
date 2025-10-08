@@ -1,7 +1,13 @@
 @model estacionamientos.Models.PlayaEstacionamiento
+@using System.Linq
 @{
     ViewData["Title"] = "Detalle de playa";
     var turno = ViewBag.TurnoAbierto as estacionamientos.Models.Turno;
+    var clasifs = ViewBag.Clasificaciones as List<estacionamientos.Models.ClasificacionDias> ?? new List<estacionamientos.Models.ClasificacionDias>();
+    var horarios = (Model.Horarios ?? new List<estacionamientos.Models.Horario>())
+        .OrderBy(h => h.ClaDiasID)
+        .ThenBy(h => h.HorFyhIni)
+        .ToList();
 }
 
 <div class="container py-3" style="max-width:900px">
@@ -15,7 +21,7 @@
         </div>
     </div>
 
-    <!-- Estado actual: quién está en turno -->
+    <!-- Estado actual: quien esta en turno -->
     <div class="mt-2">
         <h6 class="mb-2">Estado actual</h6>
         @if (turno != null)
@@ -47,9 +53,59 @@
                 <dt class="col-sm-3">Ciudad</dt>
                 <dd class="col-sm-9">@Model.PlyCiu</dd>
 
-                <dt class="col-sm-3">Dirección</dt>
+                <dt class="col-sm-3">Direccion</dt>
                 <dd class="col-sm-9">@Model.PlyDir</dd>
             </dl>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">Horarios de atencion</h6>
+                <small class="text-muted">Horas mostradas en hora local</small>
+            </div>
+
+            @if (clasifs.Count == 0)
+            {
+                <div class="text-muted">Sin clasificaciones definidas.</div>
+            }
+            else
+            {
+                foreach (var cla in clasifs)
+                {
+                    var franjas = horarios
+                        .Where(h => h.ClaDiasID == cla.ClaDiasID)
+                        .ToList();
+
+                    <div class="mb-3">
+                        <div class="fw-semibold">@cla.ClaDiasTipo</div>
+                        @if (!string.IsNullOrWhiteSpace(cla.ClaDiasDesc))
+                        {
+                            <div class="text-muted small">@cla.ClaDiasDesc</div>
+                        }
+
+                        @if (franjas.Count == 0)
+                        {
+                            <div class="text-muted small">Sin horario definido.</div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                @foreach (var franja in franjas)
+                                {
+                                    var fin = franja.HorFyhFin.HasValue
+                                        ? franja.HorFyhFin.Value.ToString("HH:mm")
+                                        : "--:--";
+                                    <span class="badge rounded-pill text-bg-light border">
+                                        @franja.HorFyhIni.ToString("HH:mm") - @fin
+                                    </span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            }
         </div>
     </div>
 </div>

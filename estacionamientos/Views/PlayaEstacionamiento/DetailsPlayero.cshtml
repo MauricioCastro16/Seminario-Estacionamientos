@@ -1,34 +1,76 @@
 @model estacionamientos.Models.PlayaEstacionamiento
-
+@using System.Linq
 @{
     ViewData["Title"] = "Mi playa";
-    var playa = ViewBag.Playa as estacionamientos.Models.PlayaEstacionamiento;
+    var clasifs = ViewBag.Clasificaciones as List<estacionamientos.Models.ClasificacionDias> ?? new List<estacionamientos.Models.ClasificacionDias>();
+    var horarios = (Model.Horarios ?? new List<estacionamientos.Models.Horario>())
+        .OrderBy(h => h.ClaDiasID)
+        .ThenBy(h => h.HorFyhIni)
+        .ToList();
 }
 
 <div class="card shadow-sm mt-4">
     <div class="card-body">
-        <h5 class="card-title">
-            <i class="bi bi-geo-alt-fill text-primary"></i>
+        <h5 class="card-title mb-2">
+            <i class="fa-solid fa-location-dot text-primary"></i>
             @Model.PlyNom
         </h5>
-        <p class="card-text text-muted mb-2">
-            <strong>Dirección:</strong> @Model.PlyDir (@Model.PlyProv, @Model.PlyCiu)
+        <p class="card-text text-muted mb-3">
+            <strong>Direccion:</strong> @Model.PlyDir (@Model.PlyProv, @Model.PlyCiu)
         </p>
-        <div class="mt-3">
-            <a asp-controller="AceptaMetodoPago" asp-action="Lista" asp-route-plyID="@Model.PlyID"
-            class="btn btn-outline-primary">
-                <i class="fa-regular fa-credit-card"></i> Métodos de pago
-            </a>
 
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            <a asp-controller="AceptaMetodoPago" asp-action="Lista" asp-route-plyID="@Model.PlyID"
+               class="btn btn-outline-primary btn-sm">
+                <i class="fa-regular fa-credit-card"></i> Metodos de pago
+            </a>
             <a asp-controller="Playero" asp-action="Plazas" asp-route-id="@Model.PlyID"
-               class="btn btn-outline-primary">
+               class="btn btn-outline-primary btn-sm">
                 <i class="fa-solid fa-grip"></i> Plazas
             </a>
-
             <a asp-controller="TarifaServicio" asp-action="VigentesPlayero" asp-route-plyId="@Model.PlyID"
-               class="btn btn-outline-primary">
+               class="btn btn-outline-primary btn-sm">
                 <i class="fa-solid fa-money-bills"></i> Tarifas vigentes
             </a>
-
         </div>
+
+        <h6 class="mb-2">Horarios de atencion</h6>
+        <small class="text-muted d-block mb-3">Horarios expresados en hora local</small>
+
+        @if (clasifs.Count == 0)
+        {
+            <div class="text-muted">Sin clasificaciones disponibles.</div>
+        }
+        else
+        {
+            foreach (var cla in clasifs)
+            {
+                var franjas = horarios.Where(h => h.ClaDiasID == cla.ClaDiasID).ToList();
+                <div class="mb-3">
+                    <div class="fw-semibold">@cla.ClaDiasTipo</div>
+                    @if (!string.IsNullOrWhiteSpace(cla.ClaDiasDesc))
+                    {
+                        <div class="text-muted small">@cla.ClaDiasDesc</div>
+                    }
+
+                    @if (franjas.Count == 0)
+                    {
+                        <div class="text-muted small">Sin horario definido.</div>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            @foreach (var fr in franjas)
+                            {
+                                var fin = fr.HorFyhFin.HasValue ? fr.HorFyhFin.Value.ToString("HH:mm") : "--:--";
+                                <span class="badge rounded-pill text-bg-light border">
+                                    @fr.HorFyhIni.ToString("HH:mm") - @fin
+                                </span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
 </div>

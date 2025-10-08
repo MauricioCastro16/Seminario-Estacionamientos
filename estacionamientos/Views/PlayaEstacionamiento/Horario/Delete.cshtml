@@ -1,0 +1,41 @@
+@model estacionamientos.Models.Horario
+@{
+    ViewData["Title"] = "Eliminar horario";
+}
+
+<div class="container py-3" style="max-width:640px;">
+    <div class="mb-3">
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index" asp-route-plyID="@Model.PlyID">
+            <i class="fa-solid fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <div class="card border-danger">
+        <div class="card-body">
+            <h3 class="card-title text-danger">Confirmar eliminacion</h3>
+            <p class="text-muted mb-4">Vas a eliminar esta franja horaria de la playa. Esta accion no se puede deshacer.</p>
+
+            <dl class="row mb-0">
+                <dt class="col-sm-4">Playa</dt>
+                <dd class="col-sm-8">@Model.Playa?.PlyNom (@Model.Playa?.PlyCiu - @Model.Playa?.PlyDir)</dd>
+
+                <dt class="col-sm-4">Clasificacion</dt>
+                <dd class="col-sm-8">@Model.ClasificacionDias?.ClaDiasTipo</dd>
+
+                <dt class="col-sm-4">Apertura</dt>
+                <dd class="col-sm-8">@Model.HorFyhIni.ToString("HH:mm")</dd>
+
+                <dt class="col-sm-4">Cierre</dt>
+                <dd class="col-sm-8">@(Model.HorFyhFin.HasValue ? Model.HorFyhFin.Value.ToString("HH:mm") : "--:--")</dd>
+            </dl>
+
+            <form asp-action="Delete" method="post" class="mt-4 d-flex justify-content-end gap-2">
+                <input type="hidden" name="plyID" value="@Model.PlyID" />
+                <input type="hidden" name="claDiasID" value="@Model.ClaDiasID" />
+                <input type="hidden" name="horFyhIni" value="@Model.HorFyhIni.ToString("o")" />
+                <a class="btn btn-outline-secondary" asp-action="Index" asp-route-plyID="@Model.PlyID">Cancelar</a>
+                <button type="submit" class="btn btn-danger">Eliminar</button>
+            </form>
+        </div>
+    </div>
+</div>

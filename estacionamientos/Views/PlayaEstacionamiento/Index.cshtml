@@ -286,6 +286,13 @@
                       <td class="text-center">
                           <a class="btn btn-outline-primary btn-sm"
                             asp-action="Index"
+                            asp-controller="Horario"
+                            asp-route-plyID="@playa.PlyID"
+                            title="Horarios">
+                              <i class="fa-regular fa-clock"></i>
+                          </a>
+                          <a class="btn btn-outline-primary btn-sm"
+                            asp-action="Index"
                             asp-controller="AceptaMetodoPago"
                             asp-route-plyID="@playa.PlyID"
                             title="Métodos de pago">
@@ -515,3 +522,4 @@
     })();
     </script>
 }
+

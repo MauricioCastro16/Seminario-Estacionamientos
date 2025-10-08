@@ -1,0 +1,180 @@
+@model estacionamientos.Models.ViewModels.HorariosIndexVM
+@{
+    ViewData["Title"] = "Horarios";
+    var noPlayas = (bool?)(ViewBag.NoPlayas) ?? false;
+    var alert = TempData["HorarioMessage"] as string;
+}
+
+<div class="container py-3" style="max-width:960px;">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+        <div>
+            <h2 class="mb-1">Horarios de atención</h2>
+            @if (Model?.PlayaNombre?.Length > 0)
+            {
+                <div class="text-secondary fw-semibold fs-5">@Model.PlayaNombre</div>
+                <div class="text-muted small">@Model.PlayaCiudad - @Model.PlayaDireccion</div>
+            }
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" asp-controller="PlayaEstacionamiento" asp-action="Index">
+                <i class="fa-solid fa-arrow-left"></i> Volver
+            </a>
+            @if (!noPlayas && Model?.PlyID > 0)
+            {
+                <a class="btn btn-primary" asp-action="Create" asp-route-plyID="@Model.PlyID">
+                    <i class="fa-solid fa-plus"></i> Nuevo horario
+                </a>
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(alert))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @alert
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+    }
+
+    @if (noPlayas)
+    {
+        <div class="alert alert-info">
+            Aun no tenes playas asociadas. Crealas desde el listado de playas para poder definir Horarios de atención.
+        </div>
+        return;
+    }
+
+    @if (Model?.Clasificaciones?.Count > 0)
+    {
+        foreach (var grupo in Model.Clasificaciones)
+        {
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <h5 class="mb-1">@grupo.ClasificacionNombre</h5>
+                            @if (!string.IsNullOrWhiteSpace(grupo.ClasificacionDescripcion))
+                            {
+                                <p class="text-muted small mb-0">@grupo.ClasificacionDescripcion</p>
+                            }
+                        </div>
+                        @if (Model.PlyID > 0)
+                        {
+                            <a class="btn btn-outline-primary btn-sm"
+                               asp-action="Create"
+                               asp-route-plyID="@Model.PlyID"
+                               asp-route-claDiasID="@grupo.ClasificacionId">
+                                <i class="fa-solid fa-plus"></i> Agregar franja
+                            </a>
+                        }
+                    </div>
+
+                    @if (grupo.Franjas.Count > 0)
+                    {
+                        <div class="text-muted small mt-3">Puedes cargar varias franjas para esta clasificacion. Usa las acciones para editarlas o eliminarlas.</div>
+                        <ul class="list-group list-group-flush mt-2">
+                            @foreach (var slot in grupo.Franjas)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center flex-column flex-md-row gap-2">
+                                    <div class="fw-semibold">
+                                        @slot.Inicio.ToString("HH:mm")
+                                        @if (slot.Fin.HasValue)
+                                        {
+                                            <span> - @slot.Fin.Value.ToString("HH:mm")</span>
+                                        }
+                                        else
+                                        {
+                                            <span> - --:--</span>
+                                        }
+                                    </div>
+                                    <div class="btn-group btn-group-sm">
+                                        <a class="btn btn-outline-secondary"
+                                           asp-action="Edit"
+                                           asp-route-plyID="@Model.PlyID"
+                                           asp-route-claDiasID="@grupo.ClasificacionId"
+                                           asp-route-horFyhIni="@slot.Inicio.ToString("o")">
+                                            <i class="fa-regular fa-pen-to-square"></i> Editar
+                                        </a>
+                                        <button type="button" class="btn btn-outline-danger btn-delete-horario"
+                                            data-ply-id="@Model.PlyID"
+                                            data-cla-id="@grupo.ClasificacionId"
+                                            data-hor-ini="@slot.Inicio.ToString("o")"
+                                            data-cla-nombre="@grupo.ClasificacionNombre"
+                                            data-hor-ini-human="@slot.Inicio.ToString("HH:mm")"
+                                            data-hor-fin-human="@(slot.Fin.HasValue ? slot.Fin.Value.ToString("HH:mm") : "--:--")"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteHorarioModal">
+                                            <i class="fa-regular fa-trash-can"></i> Eliminar
+                                        </button>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-secondary">Carga tu primer horario para esta playa.</div>
+    }
+<div class="modal fade" id="deleteHorarioModal" tabindex="-1" aria-hidden="true" aria-labelledby="deleteHorarioLabel">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteHorarioLabel">Eliminar franja horaria</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Querés eliminar la franja seleccionada?</p>
+                <ul class="list-unstyled small mb-0">
+                    <li><strong>Clasificación:</strong> <span id="deleteHorarioClasificacion"></span></li>
+                    <li><strong>Horario:</strong> <span id="deleteHorarioRango"></span></li>
+                </ul>
+            </div>
+            <form method="post" id="deleteHorarioForm" class="modal-footer" action="@Url.Action("Delete", "Horario")">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="plyID" id="deletePlyID" />
+                <input type="hidden" name="claDiasID" id="deleteClaID" />
+                <input type="hidden" name="horFyhIni" id="deleteHorIni" />
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-danger">Eliminar</button>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const modalEl = document.getElementById("deleteHorarioModal");
+            if (!modalEl) return;
+            const claSpan = document.getElementById("deleteHorarioClasificacion");
+            const rangoSpan = document.getElementById("deleteHorarioRango");
+            const inputPly = document.getElementById("deletePlyID");
+            const inputCla = document.getElementById("deleteClaID");
+            const inputHor = document.getElementById("deleteHorIni");
+
+            modalEl.addEventListener("show.bs.modal", event => {
+                const button = event.relatedTarget;
+                if (!button) return;
+
+                const claNombre = button.getAttribute("data-cla-nombre") ?? "";
+                const horIniHuman = button.getAttribute("data-hor-ini-human") ?? "";
+                const horFinHuman = button.getAttribute("data-hor-fin-human") ?? "";
+
+                claSpan.textContent = claNombre;
+                rangoSpan.textContent = `${horIniHuman} - ${horFinHuman}`;
+
+                inputPly.value = button.getAttribute("data-ply-id") ?? "";
+                inputCla.value = button.getAttribute("data-cla-id") ?? "";
+                inputHor.value = button.getAttribute("data-hor-ini") ?? "";
+            });
+        })();
+    </script>
+}
+
+
+
