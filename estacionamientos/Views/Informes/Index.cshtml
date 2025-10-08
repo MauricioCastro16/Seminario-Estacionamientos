@@ -141,7 +141,7 @@
     <!-- Métodos de pago -->
     <div class="card shadow-sm mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h6 class="mb-0"><i class="fas fa-credit-card me-2 text-primary"></i>Métodos de pago</h6>
+            <h6 class="mb-0"><i class="fas fa-credit-card me-2 text-primary"></i>Distribución de ingresos por método de pago</h6>
             <div class="dropdown">
                 <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="metodosDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     <span id="metodosDropdownText">
@@ -238,9 +238,9 @@
                          <thead>
                              <tr>
                                  <th><i class="fas fa-wallet me-1 text-secondary"></i>Método de pago</th>
-                                 <th class="text-end">Pagos</th>
-                                 <th class="text-end">Ingresos</th>
-                                 <th class="text-end">Participación</th>
+                                 <th class="text-end">Pagos (cantidad)</th>
+                                 <th class="text-end">Ingresos totales ($)</th>
+                                 <th class="text-end">Participación en ingresos (%)</th>
                              </tr>
                          </thead>
                         <tbody>
@@ -304,7 +304,7 @@
     <!-- Desglose por playa -->
     <div class="card shadow-sm mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h6 class="mb-0"><i class="fas fa-parking me-2 text-primary"></i>Desglose por playa</h6>
+            <h6 class="mb-0"><i class="fas fa-parking me-2 text-primary"></i>Desglose de ingresos por playa</h6>
             <div class="dropdown">
                 <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="playasDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     <span id="playasDropdownText">
@@ -373,9 +373,9 @@
                          <thead>
                              <tr>
                                  <th>Playa</th>
-                                 <th class="text-end">Pagos</th>
-                                 <th class="text-end">Ingresos</th>
-                                 <th class="text-end">Promedio</th>
+                                 <th class="text-end">Pagos (cantidad)</th>
+                                 <th class="text-end">Ingresos totales ($)</th>
+                                 <th class="text-end">Ingreso promedio por pago ($)</th>
                              </tr>
                          </thead>
                         <tbody>
@@ -414,7 +414,7 @@
             <div class="card-body">
                 @{ var totalPagos = Model.DetallePagos.Count; var totalMonto = Model.DetallePagos.Sum(x => x.Monto); }
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="card-title mb-0"><i class="fas fa-receipt me-2 text-primary"></i>Pagos de @ViewData["MetodoPagoNombre"]</h5>
+                    <h5 class="card-title mb-0"><i class="fas fa-receipt me-2 text-primary"></i>Detalle de pagos por método (@ViewData["MetodoPagoNombre"])</h5>
                     <div class="d-flex align-items-center gap-2">
                         <span class="badge bg-primary"><i class="fas fa-hashtag me-1"></i>@totalPagos</span>
                         <span class="badge bg-success"><i class="fas fa-dollar-sign me-1"></i>@totalMonto.ToString("C2", new System.Globalization.CultureInfo("es-AR"))</span>
@@ -438,9 +438,9 @@
                             <tr>
                                 <th># Pago</th>
                                 <th>Playa</th>
-                                <th>Fecha</th>
-                                <th class="text-end">Monto</th>
-                                <th>Método</th>
+                                <th>Fecha y hora</th>
+                                <th class="text-end">Monto ($)</th>
+                                <th>Método de pago</th>
                             </tr>
                         </thead>
                         <tbody>
