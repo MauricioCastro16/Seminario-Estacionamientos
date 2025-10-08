@@ -26,7 +26,12 @@ namespace estacionamientos.Controllers
         static string F(float v) => v.ToString("0.###", CultureInfo.InvariantCulture);
 
         private readonly AppDbContext _ctx;
-        public InformesController(AppDbContext ctx) => _ctx = ctx;
+        public InformesController(AppDbContext ctx) 
+        {
+            _ctx = ctx;
+            // Configurar licencia de QuestPDF
+            QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+        }
         private static readonly HttpClient Http = new HttpClient();
 
         // =====================
@@ -229,9 +234,9 @@ namespace estacionamientos.Controllers
                 }
             }
 
-            // Obtener detalles de pagos para la tabla (solo si se especifica un método de pago)
+            // Obtener detalles de pagos para la tabla (siempre)
             List<InformeDetalleMetodoPagoGeneralItemVM>? detallePagos = null;
-            if (metodosIds?.Any() == true || metodoPagoId.HasValue)
+            if (pagos.Any())
             {
                 var clavesPagos = pagos.Select(p => new { p.PlyID, p.PagNum }).ToList();
 
@@ -301,6 +306,9 @@ namespace estacionamientos.Controllers
                     .ToList();
             }
 
+            // Por defecto, si no se especificaron métodos de pago, seleccionar todos los disponibles
+            var metodosPagoSeleccionados = metodosIds ?? mixMetodos.Select(m => m.MepID).ToList();
+
             var vm = new InformeDuenioVM
             {
                 Filtros = filtros,
@@ -317,7 +325,7 @@ namespace estacionamientos.Controllers
                 PlayasSeleccionadas = playasSeleccionadas,
                 DetallePagos = detallePagos,
                 MetodoPagoSeleccionado = metodoPagoId,
-                MetodosPagoSeleccionados = metodosIds ?? new List<int>()
+                MetodosPagoSeleccionados = metodosPagoSeleccionados
             };
 
             // Agregar información adicional al ViewData
@@ -333,6 +341,11 @@ namespace estacionamientos.Controllers
                 ViewData["MetodoPagoNombre"] = metodoNombreViewData;
                 ViewData["MetodoPagoID"] = metodoPagoId.Value;
             }
+            else
+            {
+                // Si no se especificaron métodos, mostrar "Todos" (porque se seleccionan todos por defecto)
+                ViewData["MetodoPagoNombre"] = "Todos";
+            }
 
             return View(vm);
         }
@@ -341,9 +354,40 @@ namespace estacionamientos.Controllers
         // PDF "premium"
         // =======================
         [HttpGet]
-        public IActionResult Descargar(DateTime? desde, DateTime? hasta, List<int>? playasIds)
+        public IActionResult Descargar(DateTime? desde, DateTime? hasta, List<int>? playasIds, int? duenioId = null, int? metodoPagoId = null, List<int>? metodosIds = null)
         {
-            var result = Index(desde, hasta, playasIds, null) as ViewResult;
+            // Normalizar listas desde querystring cuando vienen separadas por coma
+            if (metodosIds == null || metodosIds.Count == 0)
+            {
+                var qpMetodos = Request.Query["metodosIds"].ToString();
+                if (!string.IsNullOrWhiteSpace(qpMetodos))
+                {
+                    metodosIds = qpMetodos
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(s => int.TryParse(s.Trim(), out var v) ? v : (int?)null)
+                        .Where(v => v.HasValue)
+                        .Select(v => v!.Value)
+                        .Distinct()
+                        .ToList();
+                }
+            }
+
+            if (playasIds == null || playasIds.Count == 0)
+            {
+                var qpPlayas = Request.Query["playasIds"].ToString();
+                if (!string.IsNullOrWhiteSpace(qpPlayas))
+                {
+                    playasIds = qpPlayas
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(s => int.TryParse(s.Trim(), out var v) ? v : (int?)null)
+                        .Where(v => v.HasValue)
+                        .Select(v => v!.Value)
+                        .Distinct()
+                        .ToList();
+                }
+            }
+
+            var result = Index(desde, hasta, playasIds, duenioId, metodoPagoId, metodosIds) as ViewResult;
             if (result?.Model is not InformeDuenioVM vm)
                 return NotFound();
 
@@ -380,88 +424,39 @@ namespace estacionamientos.Controllers
                 .Select(d => d.UsuNyA)
                 .FirstOrDefault() ?? "";
 
-            // Nombre de playa (si una sola) y detalle de pagos (opcional)
-            string playaNombre = "Todas";
-            List<InformeDetalleMetodoPagoGeneralItemVM>? detalleItems = null;
-            if (playasIds != null && playasIds.Count == 1)
+            // Lógica de playas: decidir "Todas" vs listar una a una usando el VM
+            string playaNombre;
+            var todasLasPlayasDisponibles = vm.PlayasDisponibles.Select(p => p.PlyID).ToList();
+            var playasSeleccionadasVm = vm.PlayasSeleccionadas ?? new List<int>();
+            var setTodasPlayas = new HashSet<int>(todasLasPlayasDisponibles);
+            var setSelPlayas = new HashSet<int>(playasSeleccionadasVm);
+            bool todasPlayasSeleccionadas = setSelPlayas.Count == setTodasPlayas.Count && setSelPlayas.SetEquals(setTodasPlayas);
+
+            if (todasPlayasSeleccionadas)
             {
-                var plyId = playasIds[0];
-                playaNombre = _ctx.Playas
-                    .AsNoTracking()
-                    .Where(pl => pl.PlyID == plyId)
-                    .Select(pl => string.IsNullOrWhiteSpace(pl.PlyNom) ? (pl.PlyCiu + " - " + pl.PlyDir) : pl.PlyNom)
-                    .FirstOrDefault() ?? $"Playa #{plyId}";
-
-                // Calcular detalle de pagos para esa playa y período
-                var todayLocal = DateTime.Now;
-                var desdeUtc = DayStartUtc((desde ?? todayLocal.AddDays(-30)));
-                var hastaUtc = DayEndUtc((hasta ?? todayLocal));
-
-                var pagos = _ctx.Pagos
-                    .AsNoTracking()
-                    .Include(p => p.MetodoPago)
-                    .Where(p => p.PlyID == plyId && p.PagFyh >= desdeUtc && p.PagFyh <= hastaUtc)
-                    .Select(p => new { p.PlyID, p.PagNum, p.PagFyh, p.PagMonto, p.MepID, Metodo = p.MetodoPago.MepNom })
+                playaNombre = "Todas";
+            }
+            else if (setSelPlayas.Count == 1)
+            {
+                var plyId = setSelPlayas.First();
+                var playa = vm.PlayasDisponibles.FirstOrDefault(p => p.PlyID == plyId);
+                playaNombre = playa?.PlayaNombre ?? $"Playa #{plyId}";
+            }
+            else if (setSelPlayas.Count > 1)
+            {
+                var nombresPlayas = vm.PlayasDisponibles
+                    .Where(p => setSelPlayas.Contains(p.PlyID))
+                    .Select(p => p.PlayaNombre)
                     .ToList();
-
-                var clavesPagos = pagos.Select(p => new { p.PlyID, p.PagNum }).ToList();
-
-                var ocupacionesPorPago = _ctx.Ocupaciones
-                    .AsNoTracking()
-                    .Where(o => o.PlyID == plyId && o.PagNum != null)
-                    .Select(o => new { o.PlyID, o.PagNum })
-                    .ToList()
-                    .Where(x => clavesPagos.Any(k => k.PlyID == x.PlyID && k.PagNum == x.PagNum))
-                    .GroupBy(x => new { x.PlyID, x.PagNum })
-                    .ToDictionary(
-                        g => (g.Key.PlyID, g.Key.PagNum!.Value),
-                        g => g.Count()
-                    );
-
-                var serviciosPorPago = _ctx.ServiciosExtrasRealizados
-                    .AsNoTracking()
-                    .Where(s => s.PlyID == plyId && s.PagNum != null)
-                    .Include(s => s.ServicioProveido)
-                    .ThenInclude(sp => sp.Servicio)
-                    .Select(s => new { s.PlyID, s.PagNum, SerNom = s.ServicioProveido.Servicio.SerNom })
-                    .ToList()
-                    .Where(x => clavesPagos.Any(k => k.PlyID == x.PlyID && k.PagNum == x.PagNum))
-                    .GroupBy(x => new { x.PlyID, x.PagNum })
-                    .ToDictionary(
-                        g => (g.Key.PlyID, g.Key.PagNum!.Value),
-                        g => g.Select(v => v.SerNom).ToList()
-                    );
-
-                var mepIds = pagos.Select(p => p.MepID).Distinct().ToList();
-                var nombresMetodos = _ctx.AceptaMetodosPago
-                    .AsNoTracking()
-                    .Include(a => a.MetodoPago)
-                    .Where(a => mepIds.Contains(a.MepID) && a.MetodoPago != null)
-                    .GroupBy(a => new { a.MepID, a.MetodoPago!.MepNom })
-                    .Select(g => new { g.Key.MepID, Nombre = g.Key.MepNom })
-                    .ToList()
-                    .ToDictionary(x => x.MepID, x => x.Nombre);
-
-                detalleItems = pagos
-                    .OrderByDescending(p => p.PagFyh)
-                    .Select(p => new InformeDetalleMetodoPagoGeneralItemVM
-                    {
-                        PlyID = p.PlyID,
-                        PlayaNombre = playaNombre,
-                        PagNum = p.PagNum,
-                        FechaUtc = p.PagFyh,
-                        Monto = p.PagMonto,
-                        Metodo = !string.IsNullOrWhiteSpace(p.Metodo) ? p.Metodo
-                                : (nombresMetodos.TryGetValue(p.MepID, out var nom) ? nom : $"Mep #{p.MepID}"),
-                        OcupacionesCount = ocupacionesPorPago.TryGetValue((p.PlyID, p.PagNum), out var oc) ? oc : 0,
-                        ServiciosExtrasCount = serviciosPorPago.TryGetValue((p.PlyID, p.PagNum), out var se) ? se.Count : 0,
-                        OcupacionesVehiculos = new List<string>(),
-                        ServiciosExtrasNombres = serviciosPorPago.TryGetValue((p.PlyID, p.PagNum), out var se2) ? se2 : new List<string>()
-                    })
-                    .ToList();
+                playaNombre = string.Join(", ", nombresPlayas);
+            }
+            else
+            {
+                // Sin selección explícita en VM (fallback)
+                playaNombre = "Todas";
             }
 
-            var pdfBytes = BuildInformePdf(vm, logo, watermark, duenioNombre, playaNombre, detalleItems);
+            var pdfBytes = BuildInformePdf(vm, logo, watermark, duenioNombre, playaNombre, vm.DetallePagos, playasIds, metodosIds);
 
             // Nombre de archivo: incluir playa sin espacios
             var playaSlug = new string((playaNombre ?? "").Where(ch => !char.IsWhiteSpace(ch)).ToArray());
@@ -477,8 +472,11 @@ namespace estacionamientos.Controllers
         // PDF Builder (KPIs arriba, luego gráficos, luego mix y desglose)
         // =======================
 
-      private static byte[] BuildInformePdf(InformeDuenioVM vm, byte[]? logoBytes, byte[]? watermarkBytes, string duenioNombre, string playaNombre, List<InformeDetalleMetodoPagoGeneralItemVM>? detalleItems)
+        private static byte[] BuildInformePdf(InformeDuenioVM vm, byte[]? logoBytes, byte[]? watermarkBytes, string duenioNombre, string playaNombre, List<InformeDetalleMetodoPagoGeneralItemVM>? detalleItems, List<int>? playasIds = null, List<int>? metodosIds = null)
 {
+    // Configurar licencia de QuestPDF
+    QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+    
     return Document.Create(container =>
     {
         container.Page(page =>
@@ -497,9 +495,41 @@ namespace estacionamientos.Controllers
                     if (!string.IsNullOrWhiteSpace(duenioNombre))
                         col.Item().Text($"Dueño: {duenioNombre}")
                             .FontSize(10).FontColor(PdfTheme.Text);
+                    
+                    // Información específica de filtros aplicados
                     if (!string.IsNullOrWhiteSpace(playaNombre))
-                        col.Item().Text($"Playa: {playaNombre}")
+                        col.Item().Text($"Playas: {playaNombre}")
                             .FontSize(10).FontColor(PdfTheme.Text);
+                    
+                    // Lógica de métodos de pago: decidir "Todos" vs lista usando el VM
+                    {
+                        var todosMetodos = vm.Kpis.MixMetodos?.ToList() ?? new List<MetodoPagoMixVM>();
+                        var todosMetodosIds = new HashSet<int>(todosMetodos.Select(m => m.MepID));
+                        var seleccionMetodosIds = new HashSet<int>((vm.MetodosPagoSeleccionados?.Any() == true)
+                            ? vm.MetodosPagoSeleccionados
+                            : todosMetodosIds);
+
+                        bool todosMetodosSeleccionados = seleccionMetodosIds.Count == todosMetodosIds.Count && seleccionMetodosIds.SetEquals(todosMetodosIds);
+
+                        if (todosMetodosSeleccionados)
+                        {
+                            col.Item().Text("Métodos de pago: Todos").FontSize(10).FontColor(PdfTheme.Text);
+                        }
+                        else if (seleccionMetodosIds.Count == 1)
+                        {
+                            var unicoId = seleccionMetodosIds.First();
+                            var nombre = todosMetodos.FirstOrDefault(m => m.MepID == unicoId)?.Metodo ?? $"Método #{unicoId}";
+                            col.Item().Text($"Método de pago: {nombre}").FontSize(10).FontColor(PdfTheme.Text);
+                        }
+                        else
+                        {
+                            var nombres = todosMetodos
+                                .Where(m => seleccionMetodosIds.Contains(m.MepID))
+                                .Select(m => m.Metodo)
+                                .ToList();
+                            col.Item().Text($"Métodos de pago: {string.Join(", ", nombres)}").FontSize(10).FontColor(PdfTheme.Text);
+                        }
+                    }
                 });
 
                 row.ConstantItem(80).AlignRight().AlignMiddle().Element(e =>
@@ -545,33 +575,38 @@ namespace estacionamientos.Controllers
                 }
                 catch { }
 
-                // Línea por día
-                col.Item().PaddingTop(10).Element(card =>
+                // Gráficos en una fila para ahorrar espacio
+                if (chartDiaPng is not null || chartHoraPng is not null)
+                {
+                    col.Item().PaddingTop(10).Row(row =>
+                    {
+                        if (chartDiaPng is not null)
+                        {
+                            row.RelativeItem().Element(card =>
                 {
                     card.Border(1).BorderColor(PdfTheme.Border)
                         .Padding(PdfTheme.CardPadding).Column(cc =>
                         {
-                            cc.Item().Text("Ingresos por día (línea)").Bold().FontColor(PdfTheme.Accent);
-                            if (chartDiaPng is not null)
+                                        cc.Item().Text("Ingresos por día").FontSize(10).Bold().FontColor(PdfTheme.Accent);
                                 cc.Item().Image(chartDiaPng).FitWidth();
-                            else
-                                cc.Item().Text("Sin datos").FontColor(PdfTheme.Muted);
                         });
                 });
+                        }
 
-                // Barras por hora
-                col.Item().PaddingTop(8).Element(card =>
+                        if (chartHoraPng is not null)
+                        {
+                            row.RelativeItem().PaddingLeft(8).Element(card =>
                 {
                     card.Border(1).BorderColor(PdfTheme.Border)
                         .Padding(PdfTheme.CardPadding).Column(cc =>
                         {
-                            cc.Item().Text("Ingresos por hora (barras)").Bold().FontColor(PdfTheme.Accent);
-                            if (chartHoraPng is not null)
+                                        cc.Item().Text("Ingresos por hora").FontSize(10).Bold().FontColor(PdfTheme.Accent);
                                 cc.Item().Image(chartHoraPng).FitWidth();
-                            else
-                                cc.Item().Text("Sin datos").FontColor(PdfTheme.Muted);
                         });
                 });
+                        }
+                    });
+                }
 
                 // Separador bien fino y con poco margen
                 col.Item().PaddingTop(8).Element(e => e.BorderBottom(0.5f).BorderColor(PdfTheme.Border));
@@ -673,7 +708,7 @@ namespace estacionamientos.Controllers
                         }
                     });
                 });
-                // ===== (5) DETALLE DE PAGOS (solo si hay una playa seleccionada) =====
+                // ===== (5) DETALLE DE PAGOS =====
                 if (detalleItems != null && detalleItems.Any())
                 {
                     col.Item().PaddingTop(14).Element(section =>
@@ -703,12 +738,14 @@ namespace estacionamientos.Controllers
                                         h.Cell().Element(Th).Text("Método");
                                     });
 
+                                    var zebra = false;
                                     foreach (var x in detalleItems)
                                     {
-                                        table.Cell().Element(r => Td(r, false)).Text(x.PagNum.ToString());
-                                        table.Cell().Element(r => Td(r, false)).Text(x.FechaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
-                                        table.Cell().Element(r => TdRight(r, false)).Text(PdfTheme.Money(x.Monto));
-                                        table.Cell().Element(r => Td(r, false)).Text(x.Metodo);
+                                        zebra = !zebra;
+                                        table.Cell().Element(r => Td(r, zebra)).Text(x.PagNum.ToString());
+                                        table.Cell().Element(r => Td(r, zebra)).Text(x.FechaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
+                                        table.Cell().Element(r => TdRight(r, zebra)).Text(PdfTheme.Money(x.Monto));
+                                        table.Cell().Element(r => Td(r, zebra)).Text(x.Metodo);
 
                                         // Subfila descriptiva
                                         var desc = new List<string>();
@@ -719,7 +756,7 @@ namespace estacionamientos.Controllers
 
                                         if (desc.Count > 0)
                                         {
-                                            table.Cell().ColumnSpan(4).Element(r => Td(r, false)).Text(string.Join(". ", desc) + ".");
+                                            table.Cell().ColumnSpan(4).Element(r => Td(r, zebra)).Text(string.Join(". ", desc) + ".");
                                         }
                                     }
                                 });
@@ -1006,7 +1043,7 @@ private static void RenderBarChart(IContainer container, List<SeriePuntoVM> seri
                 };
 
                 var url = "https://quickchart.io/chart";
-                var payload = new { width = 900, height = 400, format = "png", backgroundColor = "white", chart = cfg };
+                var payload = new { width = 450, height = 200, format = "png", backgroundColor = "white", chart = cfg };
                 var json = JsonSerializer.Serialize(payload);
                 var resp = Http.PostAsync(url, new StringContent(json, System.Text.Encoding.UTF8, "application/json")).Result;
                 if (!resp.IsSuccessStatusCode) return null;
