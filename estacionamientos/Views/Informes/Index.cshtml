@@ -235,14 +235,14 @@
             {
                 <div class="table-responsive">
                     <table class="table table-sm align-middle">
-                        <thead>
-                            <tr>
-                                <th><i class="fas fa-wallet me-1 text-secondary"></i>Tipo de pago</th>
-                                <th class="text-end">Ingresos</th>
-                                <th class="text-end">Transacciones</th>
-                                <th class="text-end">%</th>
-                            </tr>
-                        </thead>
+                         <thead>
+                             <tr>
+                                 <th><i class="fas fa-wallet me-1 text-secondary"></i>Método de pago</th>
+                                 <th class="text-end">Pagos</th>
+                                 <th class="text-end">Ingresos</th>
+                                 <th class="text-end">Participación</th>
+                             </tr>
+                         </thead>
                         <tbody>
                         @foreach (var m in k.MixMetodos)
                         {
@@ -254,39 +254,39 @@
                                             @{
                                                 var metodoLower = (m.Metodo ?? "").ToLower();
                                             }
-                                            @if (metodoLower.Contains("efectivo"))
-                                            {
-                                                <i class="fas fa-money-bill-wave text-success me-1"></i>
-                                            }
-                                            else if (metodoLower.Contains("tarjeta"))
-                                            {
-                                                <i class="fas fa-credit-card text-primary me-1"></i>
-                                            }
-                                            else if (metodoLower.Contains("transferencia"))
-                                            {
-                                                <i class="fas fa-university text-info me-1"></i>
-                                            }
-                                            else if (metodoLower.Contains("qr"))
-                                            {
-            									<i class="fas fa-qrcode text-warning me-1"></i>
-                                            }
-                                            else if (metodoLower.Contains("movil") || metodoLower.Contains("móvil"))
-                                            {
-                                                <i class="fas fa-mobile-alt text-danger me-1"></i>
-                                            }
-                                            else
-                                            {
-                                                <i class="fas fa-wallet text-secondary me-1"></i>
-                                            }
+                                             @if (metodoLower.Contains("efectivo"))
+                                             {
+                                                 <i class="fas fa-money-bill-wave text-primary me-1"></i>
+                                             }
+                                             else if (metodoLower.Contains("tarjeta"))
+                                             {
+                                                 <i class="fas fa-credit-card text-primary me-1"></i>
+                                             }
+                                             else if (metodoLower.Contains("transferencia"))
+                                             {
+                                                 <i class="fas fa-university text-primary me-1"></i>
+                                             }
+                                             else if (metodoLower.Contains("qr"))
+                                             {
+                                                 <i class="fas fa-qrcode text-primary me-1"></i>
+                                             }
+                                             else if (metodoLower.Contains("movil") || metodoLower.Contains("móvil"))
+                                             {
+                                                 <i class="fas fa-mobile-alt text-primary me-1"></i>
+                                             }
+                                             else
+                                             {
+                                                 <i class="fas fa-wallet text-primary me-1"></i>
+                                             }
                                             @m.Metodo
                                         </span>
                                         @* etiqueta de estado removida *@
                                     </div>
                                 </td>
-                                <td class="text-end fw-medium">$ @m.Monto.ToString("N2")</td>
-                                <td class="text-end">@m.Cantidad.ToString("N0")</td>
+                                 <td class="text-end">@m.Cantidad.ToString("N0")</td>
+                                 <td class="text-end fw-medium">$ @m.Monto.ToString("N2")</td>
                                 <td class="text-end">
-                                    <span class="badge bg-light text-dark">@m.PorcentajeMonto.ToString("F1")%</span>
+                                     <span class="badge bg-light text-dark">@m.PorcentajeMonto.ToString("F1")%</span>
                                 </td>
                             </tr>
                         }
@@ -370,14 +370,14 @@
             {
                 <div class="table-responsive">
                     <table class="table table-striped align-middle">
-                        <thead>
-                            <tr>
-                                <th>Playa</th>
-                                <th class="text-end"># Pagos</th>
-                                <th class="text-end">Ingresos</th>
-                                <th class="text-end">Promedio</th>
-                            </tr>
-                        </thead>
+                         <thead>
+                             <tr>
+                                 <th>Playa</th>
+                                 <th class="text-end">Pagos</th>
+                                 <th class="text-end">Ingresos</th>
+                                 <th class="text-end">Promedio</th>
+                             </tr>
+                         </thead>
                         <tbody>
                         @foreach (var r in Model.PorPlaya)
                         {
