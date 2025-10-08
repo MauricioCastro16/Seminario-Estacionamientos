@@ -36,16 +36,30 @@
         </div>
         <div class="card-body">
             <form id="mainFiltersForm" method="GET" asp-controller="Informes" asp-action="Index" class="row g-3">
-                <!-- Filtros de fecha -->
-                <div class="col-md-3">
+                <!-- Filtros de fecha (embellecidos) -->
+                <div class="col-md-4">
                     <label for="desde" class="form-label fw-medium">Fecha desde</label>
-                    <input type="date" class="form-control" id="desde" name="desde" value="@Model.Filtros.Desde.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-calendar-alt text-primary"></i></span>
+                        <input type="date" class="form-control" id="desde" name="desde" value="@Model.Filtros.Desde.ToString("yyyy-MM-dd")" />
+                    </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label for="hasta" class="form-label fw-medium">Fecha hasta</label>
-                    <input type="date" class="form-control" id="hasta" name="hasta" value="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-calendar-day text-primary"></i></span>
+                        <input type="date" class="form-control" id="hasta" name="hasta" value="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")" />
+                    </div>
                 </div>
-                
+                <div class="col-md-4 d-flex align-items-end">
+                    <div class="btn-group w-100" role="group" aria-label="Rangos rápidos">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setRangeDays(0)"><i class="fas fa-bolt me-1"></i>Hoy</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setRangeDays(7)">7 días</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setRangeDays(30)">30 días</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setRangeMonth()">Este mes</button>
+        </div>
+    </div>
+
                 <!-- Checkboxes ocultos para mantener los valores seleccionados -->
                 @foreach (var playa in Model.PlayasDisponibles)
                 {
@@ -62,7 +76,7 @@
                 
             </form>
         </div>
-    </div>
+        </div>
 
     <!-- KPIs -->
     <div class="row g-3 mb-4">
@@ -127,7 +141,7 @@
     <!-- Métodos de pago -->
     <div class="card shadow-sm mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h6 class="mb-0">Métodos de pago</h6>
+            <h6 class="mb-0"><i class="fas fa-credit-card me-2 text-primary"></i>Métodos de pago</h6>
             <div class="dropdown">
                 <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="metodosDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     <span id="metodosDropdownText">
@@ -168,7 +182,7 @@
                                                 @switch (metodo.Metodo.ToLower())
                                                 {
                                                     case "efectivo":
-                                                        <i class="fas fa-money-bill-wave text-success"></i>
+                                                        <i class="fas fa-money-bill-wave text-primary"></i>
                                                         break;
                                                     case "tarjeta":
                                                     case "tarjeta de crédito":
@@ -177,18 +191,18 @@
                                                         break;
                                                     case "transferencia":
                                                     case "transferencia bancaria":
-                                                        <i class="fas fa-university text-info"></i>
+                                                        <i class="fas fa-university text-primary"></i>
                                                         break;
                                                     case "qr":
                                                     case "código qr":
-                                                        <i class="fas fa-qrcode text-warning"></i>
+                                                        <i class="fas fa-qrcode text-primary"></i>
                                                         break;
                                                     case "pago móvil":
                                                     case "pago movil":
-                                                        <i class="fas fa-mobile-alt text-danger"></i>
+                                                        <i class="fas fa-mobile-alt text-primary"></i>
                                                         break;
                                                     default:
-                                                        <i class="fas fa-wallet text-secondary"></i>
+                                                        <i class="fas fa-wallet text-primary"></i>
                                                         break;
                                                 }
                                             </div>
@@ -223,7 +237,7 @@
                     <table class="table table-sm align-middle">
                         <thead>
                             <tr>
-                                <th>Tipo de pago</th>
+                                <th><i class="fas fa-wallet me-1 text-secondary"></i>Tipo de pago</th>
                                 <th class="text-end">Ingresos</th>
                                 <th class="text-end">Transacciones</th>
                                 <th class="text-end">%</th>
@@ -235,10 +249,37 @@
                             <tr class="@(Model.MetodoPagoSeleccionado == m.MepID ? "table-primary" : "")">
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <div class="me-2">
-                                            <div class="payment-method-indicator @(Model.MetodoPagoSeleccionado == m.MepID ? "bg-primary" : "bg-secondary")"></div>
-                                        </div>
-                                        <span class="fw-medium">@m.Metodo</span>
+                                        <span class="fw-medium">
+                                            @* Icono por método en la tabla *@
+                                            @{
+                                                var metodoLower = (m.Metodo ?? "").ToLower();
+                                            }
+                                            @if (metodoLower.Contains("efectivo"))
+                                            {
+                                                <i class="fas fa-money-bill-wave text-success me-1"></i>
+                                            }
+                                            else if (metodoLower.Contains("tarjeta"))
+                                            {
+                                                <i class="fas fa-credit-card text-primary me-1"></i>
+                                            }
+                                            else if (metodoLower.Contains("transferencia"))
+                                            {
+                                                <i class="fas fa-university text-info me-1"></i>
+                                            }
+                                            else if (metodoLower.Contains("qr"))
+                                            {
+            									<i class="fas fa-qrcode text-warning me-1"></i>
+                                            }
+                                            else if (metodoLower.Contains("movil") || metodoLower.Contains("móvil"))
+                                            {
+                                                <i class="fas fa-mobile-alt text-danger me-1"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-wallet text-secondary me-1"></i>
+                                            }
+                                            @m.Metodo
+                                        </span>
                                         @if (Model.MetodoPagoSeleccionado == m.MepID)
                                         {
                                             <span class="badge bg-primary ms-2">Activo</span>
@@ -266,7 +307,7 @@
     <!-- Desglose por playa -->
     <div class="card shadow-sm mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h6 class="mb-0">Desglose por playa</h6>
+            <h6 class="mb-0"><i class="fas fa-parking me-2 text-primary"></i>Desglose por playa</h6>
             <div class="dropdown">
                 <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="playasDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     <span id="playasDropdownText">
@@ -328,8 +369,6 @@
             </div>
         </div>
         <div class="card-body">
-            <h5 class="card-title mb-3">Desglose por playa</h5>
-
             @if (Model.PorPlaya?.Any() == true)
             {
                 <div class="table-responsive">
@@ -538,6 +577,26 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+  // Rango rápido: últimos N días (o hoy si n=0)
+  function setRangeDays(n) {
+    const hoy = new Date();
+    const hasta = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const desde = new Date(hasta);
+    desde.setDate(hasta.getDate() - (n === 0 ? 0 : n - 1));
+    document.getElementById('desde').value = desde.toISOString().slice(0,10);
+    document.getElementById('hasta').value = hasta.toISOString().slice(0,10);
+    document.getElementById('mainFiltersForm').submit();
+  }
+
+  // Rango rápido: este mes calendario
+  function setRangeMonth() {
+    const hoy = new Date();
+    const desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    const hasta = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+    document.getElementById('desde').value = desde.toISOString().slice(0,10);
+    document.getElementById('hasta').value = hasta.toISOString().slice(0,10);
+    document.getElementById('mainFiltersForm').submit();
+  }
   // Restaurar la posición del scroll después de cargar la página
   document.addEventListener('DOMContentLoaded', function() {
     const savedPosition = sessionStorage.getItem('scrollPosition');
