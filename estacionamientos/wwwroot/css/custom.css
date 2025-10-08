@@ -263,3 +263,19 @@
         cursor: not-allowed !important;
         filter: grayscale(100%) !important;
     }
+
+    /* Estilos para períodos de abono */
+    .bg-light-success {
+        background-color: #d1edcc !important;
+        border-color: #badbcc !important;
+    }
+
+    .bg-light-warning {
+        background-color: #fff3cd !important;
+        border-color: #ffecb5 !important;
+    }
+
+    .bg-light-info {
+        background-color: #d1ecf1 !important;
+        border-color: #bee5eb !important;
+    }

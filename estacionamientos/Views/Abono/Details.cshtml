@@ -38,12 +38,12 @@
                                 
                                 <div class="col-6">
                                     <label class="form-label fw-medium text-muted">Fecha Inicio</label>
-                                    <div class="fw-bold">@Model.AboFyhIni.ToString("dd/MM/yyyy")</div>
+                                    <div class="fw-bold">@Model.AboFyhIni.ToString("dd/MM/yyyy HH:mm")</div>
                                 </div>
                                 
                                 <div class="col-6">
                                     <label class="form-label fw-medium text-muted">Fecha Fin</label>
-                                    <div class="fw-bold">@(Model.AboFyhFin?.ToString("dd/MM/yyyy") ?? "No definida")</div>
+                                    <div class="fw-bold">@(Model.AboFyhFin?.ToString("dd/MM/yyyy HH:mm") ?? "No definida")</div>
                                 </div>
                                 
                                 <div class="col-6">
@@ -55,26 +55,25 @@
                                     <label class="form-label fw-medium text-muted">Estado</label>
                                     <div>
                                         @{
-                                            var estadoPago = "Pagado";
-                                            var badgeClass = "bg-success";
+                                            string estadoTexto = Model.EstadoPago switch
+                                            {
+                                                estacionamientos.Models.EstadoPago.Activo => "Al día",
+                                                estacionamientos.Models.EstadoPago.Pendiente => "Pendiente",
+                                                estacionamientos.Models.EstadoPago.Finalizado => "Finalizado",
+                                                estacionamientos.Models.EstadoPago.Cancelado => "Cancelado",
+                                                _ => "Desconocido"
+                                            };
                                             
-                                            if (Model.AboFyhFin.HasValue && Model.AboFyhFin.Value < DateTime.UtcNow)
+                                            string badgeClass = Model.EstadoPago switch
                                             {
-                                                estadoPago = "Completado";
-                                                badgeClass = "bg-secondary";
-                                            }
-                                            else if (Model.AboFyhIni <= DateTime.UtcNow && (!Model.AboFyhFin.HasValue || Model.AboFyhFin.Value >= DateTime.UtcNow))
-                                            {
-                                                estadoPago = "Activo";
-                                                badgeClass = "bg-primary";
-                                            }
-                                            else if (Model.AboFyhIni > DateTime.UtcNow)
-                                            {
-                                                estadoPago = "Programado";
-                                                badgeClass = "bg-info";
-                                            }
+                                                estacionamientos.Models.EstadoPago.Activo => "bg-success",
+                                                estacionamientos.Models.EstadoPago.Pendiente => "bg-warning",
+                                                estacionamientos.Models.EstadoPago.Finalizado => "bg-secondary",
+                                                estacionamientos.Models.EstadoPago.Cancelado => "bg-danger",
+                                                _ => "bg-muted"
+                                            };
                                         }
-                                        <span class="badge @badgeClass fs-6">@estadoPago</span>
+                                        <span class="badge @badgeClass fs-6">@estadoTexto</span>
                                     </div>
                                 </div>
                             </div>
@@ -171,7 +170,7 @@
                     </div>
                 </div>
 
-                <!-- Períodos de Pago (Futuro) -->
+                <!-- Períodos de Pago -->
                 <div class="col-12">
                     <div class="card shadow border-0 rounded-4">
                         <div class="card-body p-4">
@@ -179,24 +178,74 @@
                                 <i class="bi bi-calendar-check me-2 text-primary"></i>Períodos de Pago
                             </h5>
                             
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle me-2"></i>
-                                <strong>Funcionalidad en desarrollo:</strong> Aquí se mostrarán los períodos individuales del abono con su estado de pago (pagado/pendiente).
-                            </div>
-                            
-                            <!-- Placeholder para futura implementación -->
-                            <div class="row g-2">
-                                <div class="col-12 col-md-6 col-lg-3">
-                                    <div class="border rounded-3 p-3">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="fw-medium">Período 1</span>
-                                            <span class="badge bg-success">Pagado</span>
+                            @if (Model.Periodos != null && Model.Periodos.Any())
+                            {
+                                <div class="row g-2">
+                                    @foreach (var periodo in Model.Periodos.OrderBy(p => p.PeriodoNumero))
+                                    {
+                                        <div class="col-12 col-md-6 col-lg-3">
+                                            <div class="border rounded-3 p-3 @(periodo.PeriodoPagado ? "bg-light-success" : "bg-light-warning")">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <span class="fw-medium">Período @periodo.PeriodoNumero</span>
+                                                    <span class="badge @(periodo.PeriodoPagado ? "bg-success" : "bg-warning")">
+                                                        @(periodo.PeriodoPagado ? "Pagado" : "Pendiente")
+                                                    </span>
+                                                </div>
+                                                <div class="small text-muted mb-1">
+                                                    <strong>Del:</strong> @periodo.PeriodoFechaInicio.ToString("dd/MM/yyyy HH:mm")
+                                                </div>
+                                                <div class="small text-muted mb-1">
+                                                    <strong>Al:</strong> @periodo.PeriodoFechaFin.ToString("dd/MM/yyyy HH:mm")
+                                                </div>
+                                                <div class="small text-muted mb-1">
+                                                    <strong>Monto:</strong> @periodo.PeriodoMonto.ToString("C")
+                                                </div>
+                                                @if (periodo.PeriodoFechaPago.HasValue)
+                                                {
+                                                    <div class="small text-success">
+                                                        <strong>Pago:</strong> @periodo.PeriodoFechaPago.Value.ToString("dd/MM/yyyy HH:mm")
+                                                    </div>
+                                                }
+                                            </div>
                                         </div>
-                                        <small class="text-muted">@Model.AboFyhIni.ToString("dd/MM/yyyy")</small>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    <strong>Abono sin períodos:</strong> Este abono fue creado antes de la implementación del sistema de períodos. 
+                                    <br><small class="text-muted">Para generar períodos automáticamente, contacte al administrador.</small>
+                                </div>
+                                
+                                <!-- Mostrar información básica del abono como período único -->
+                                <div class="row g-2">
+                                    <div class="col-12 col-md-6 col-lg-3">
+                                        <div class="border rounded-3 p-3 bg-light-info">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="fw-medium">Período Único</span>
+                                                <span class="badge bg-info">Completo</span>
+                                            </div>
+                                            <div class="small text-muted mb-1">
+                                                <strong>Del:</strong> @Model.AboFyhIni.ToString("dd/MM/yyyy HH:mm")
+                                            </div>
+                                            <div class="small text-muted mb-1">
+                                                <strong>Al:</strong> @(Model.AboFyhFin?.ToString("dd/MM/yyyy HH:mm") ?? "Sin fecha de fin")
+                                            </div>
+                                            <div class="small text-muted mb-1">
+                                                <strong>Monto:</strong> @Model.AboMonto.ToString("C")
+                                            </div>
+                                            @if (Model.Pago?.PagFyh != null)
+                                            {
+                                                <div class="small text-success">
+                                                    <strong>Pago:</strong> @Model.Pago.PagFyh.ToString("dd/MM/yyyy HH:mm")
+                                                </div>
+                                            }
+                                        </div>
                                     </div>
                                 </div>
-                                <!-- Más períodos se agregarán dinámicamente -->
-                            </div>
+                            }
                         </div>
                     </div>
                 </div>

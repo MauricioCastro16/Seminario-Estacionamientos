@@ -395,7 +395,7 @@
         background: #fff7e6;
         border-color: #ffe8b3;
         color: #7a5e00;
-        cursor: not-allowed;
+        cursor: pointer;
     }
 
     .plaza-card.disponible {
@@ -447,6 +447,13 @@
             max-height: 180px;
         }
     }
+
+    /* 🔹 Quitar borde azul al campo de monto (readonly) */
+    #AboMonto:focus {
+        outline: none !important;
+        box-shadow: none !important;
+    }
+
 </style>
 
 @section Scripts {
@@ -458,6 +465,16 @@
             const d = String(dt.getUTCDate()).padStart(2, '0');
             return `${y}-${m}-${d}`;
         }
+        // 🔹 Nueva función: para mostrar fechas en formato dd-mm-aaaa en modal y avisos
+        function formatDateDisplay(dateStr) {
+            if (!dateStr) return "";
+            const d = new Date(dateStr);
+            const dia = String(d.getUTCDate()).padStart(2, '0');
+            const mes = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const anio = d.getUTCFullYear();
+            return `${dia}-${mes}-${anio}`;
+        }
+
 
         // Función para establecer la fecha mínima permitida
         function establecerFechaMinima() {
@@ -793,9 +810,140 @@
                     ${msg}
                 </div>`;
             }
+            
+            function showPromptWithButton(msg, tipo = "info") {
+                const iconClass = tipo === "error" ? "fa-circle-exclamation" : "fa-circle-info";
+                const textClass = tipo === "error" ? "text-danger" : tipo === "warning" ? "text-dark" : "";
+                const bgClass = tipo === "warning" ? "bg-warning bg-opacity-25" : "";
+                grid.innerHTML = `
+                <div class="mensaje-inicial ${textClass} ${bgClass}">
+                    <i class="fa-solid ${iconClass}"></i>
+                    ${msg}
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="mostrarPlazasDisponibles()">
+                            <i class="fa-solid fa-search me-2"></i>Seleccionar otra plaza
+                        </button>
+                    </div>
+                </div>`;
+            }
+            
+            function mostrarPlazasDisponibles() {
+                // 🔹 1. Limpiar selección actual
+                limpiarSeleccion();
+
+                // 🔹 2. Restablecer la fecha de inicio a la actual
+                const fechaInicioInput = document.querySelector('input[name="AboFyhIni"]');
+                if (fechaInicioInput) {
+                    const hoy = new Date();
+                    const fechaHoy = hoy.toISOString().split('T')[0];
+
+                    // 🔹 ESTA ES LA LÍNEA NUEVA
+                    fechaInicioInput.min = fechaHoy;   // Restablece el mínimo permitido al día actual
+
+                    // Ya estaba
+                    fechaInicioInput.value = fechaHoy;
+                    fechaInicioInput.removeAttribute('title'); // 🔹 Limpia el tooltip si existía antes
+
+                    // Recalcular automáticamente fechas y montos
+                    updateAbonoFields();
+                }
+
+                // 🔹 3. Volver a mostrar la grilla
+                if (allPlazas && allPlazas.length > 0 && selPiso.value) {
+                    renderGrid();
+                } else {
+                    fetchPlazasYPrepararPisos();
+                }
+            }
+
+
+            // 🔹 Exponer función al ámbito global para poder usarla desde el botón del mensaje
+            window.mostrarPlazasDisponibles = mostrarPlazasDisponibles;
+
+
+
+            // Función para verificar disponibilidad de plaza
+            async function verificarDisponibilidadPlaza(plzNum) {
+                try {
+                    const fechaIni = document.querySelector('input[name="AboFyhIni"]').value;
+                    const fechaFin = document.querySelector('input[name="AboFyhFin"]').value;
+                    
+                    if (!fechaIni || !fechaFin) {
+                        showPrompt("Debe seleccionar las fechas del abono antes de elegir la plaza.", "error");
+                        return;
+                    }
+
+                    // Convertir fechas a formato ISO para UTC
+                    const fechaIniISO = new Date(fechaIni + 'T00:00:00.000Z').toISOString();
+                    const fechaFinISO = new Date(fechaFin + 'T23:59:59.999Z').toISOString();
+
+                    const url = `/Abono/VerificarDisponibilidadPlaza?plyId=${encodeURIComponent(plyID)}&plzNum=${encodeURIComponent(plzNum)}&fechaIni=${encodeURIComponent(fechaIniISO)}&fechaFin=${encodeURIComponent(fechaFinISO)}`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+
+                if (data.disponible) {
+                    // Plaza disponible, proceder con la selección
+                    grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
+                    const selectedCard = grid.querySelector(`[data-plz-num="${plzNum}"]`);
+                    if (selectedCard) {
+                        selectedCard.classList.add("selected");
+                    }
+                    hiddenPlz.value = plzNum.toString();
+                    hiddenTecho.value = getTechada();
+                    // No mostrar mensaje, mantener la lista de plazas visible
+                } else {
+                    // Plaza ocupada, pero permitir selección y programar automáticamente
+                    grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
+                    const selectedCard = grid.querySelector(`[data-plz-num="${plzNum}"]`);
+                    if (selectedCard) {
+                        selectedCard.classList.add("selected");
+                    }
+                    hiddenPlz.value = plzNum.toString();
+                    hiddenTecho.value = getTechada();
+                    
+                    // Si hay fecha de fin de ocupación, programar automáticamente
+                    if (data.fechaFinOcupacion) {
+                        const fechaFinOcupacion = new Date(data.fechaFinOcupacion);
+                        const fechaSugerida = new Date(fechaFinOcupacion);
+                        fechaSugerida.setDate(fechaSugerida.getDate() + 1);
+                        
+                        const fechaSugeridaStr = fechaSugerida.toISOString().split('T')[0];
+                        const fechaIniInput = document.querySelector('input[name="AboFyhIni"]');
+
+                        if (fechaIniInput) {
+                            // 🔹 Establecer la fecha sugerida
+                            fechaIniInput.value = fechaSugeridaStr;
+                            // 🔹 Limitar el mínimo a la fecha en que la plaza se desocupa
+                            fechaIniInput.min = fechaSugeridaStr;
+                            // 🔹 (No se desactiva el campo, solo se limita el rango)
+                        }
+
+                        // Recalcular fechas y monto en base a esa fecha
+                        updateAbonoFields();
+
+                        // Mostrar mensaje informativo con botón
+                      showPromptWithButton(
+                        `Plaza seleccionada. Se programó automáticamente desde el ${formatDateDisplay(fechaSugeridaStr)} (después de que se libere).`,
+                        "warning"
+                    );
+                    fechaIniInput.title = `No se pueden seleccionar fechas anteriores al ${formatDateDisplay(fechaSugeridaStr)}.`;
+
+
+                    }
+                    else {
+                        // Si no hay fecha de fin, mostrar mensaje de error
+                        showPrompt(data.mensaje, "error");
+                    }
+                }
+                } catch (error) {
+                    console.error("Error verificando disponibilidad:", error);
+                    showPrompt("Error verificando disponibilidad de la plaza.", "error");
+                }
+            }
 
             function requisitosBasicosElegidos() {
-                return !!selClas.value && getTechada() !== "";
+                const serID = document.getElementById('SerID').value;
+                return !!selClas.value && getTechada() !== "" && !!serID;
             }
 
             function requisitosCompletos() {
@@ -848,9 +996,35 @@
                     return;
                 }
 
+                // Función para verificar ocupación de una plaza
+                async function verificarOcupacionPlaza(plzNum) {
+                    const fechaIni = document.querySelector('input[name="AboFyhIni"]').value;
+                    const fechaFin = document.querySelector('input[name="AboFyhFin"]').value;
+                    
+                    if (!fechaIni || !fechaFin) {
+                        return false;
+                    }
+                    
+                    try {
+                        const fechaIniISO = new Date(fechaIni + 'T00:00:00.000Z').toISOString();
+                        const fechaFinISO = new Date(fechaFin + 'T23:59:59.999Z').toISOString();
+                        
+                        const url = `/Abono/VerificarDisponibilidadPlaza?plyId=${encodeURIComponent(plyID)}&plzNum=${encodeURIComponent(plzNum)}&fechaIni=${encodeURIComponent(fechaIniISO)}&fechaFin=${encodeURIComponent(fechaFinISO)}`;
+                        
+                        const response = await fetch(url);
+                        const data = await response.json();
+                        
+                        return !data.disponible;
+                    } catch (error) {
+                        return false;
+                    }
+                }
+
+                // Crear las plazas inicialmente
                 plazas.forEach(p => {
                     const card = document.createElement("div");
                     card.className = "plaza-card";
+                    card.setAttribute("data-plz-num", p.plzNum);
 
                     if (p.hab === false) card.classList.add("inhabilitada");
                     else if (p.ocupada) card.classList.add("ocupada");
@@ -862,18 +1036,16 @@
                     card.innerHTML = `
                         <div class="plaza-title">${p.nombre ?? ("P" + p.plzNum)}</div>
                         ${mostrarPiso ? `<div class="plaza-sub">${p.piso === null ? "Sin piso" : ("Piso " + p.piso)}</div>` : ''}
-                        ${p.ocupada ? '<div class="small text-muted mt-1">Ocupada</div>' : ''}
+                        ${p.ocupada ? '<div class="small text-warning mt-1"><i class="fa-solid fa-exclamation-triangle me-1"></i>Ocupada</div>' : ''}
                         ${p.hab === false ? '<div class="small text-muted mt-1">Inhabilitada</div>' : ''}
                         ${(p.hab !== false && !p.ocupada && p.compatible === false) ? '<div class="small mt-1">No compatible</div>' : ''}
                     `;
 
-                    const esSeleccionable = (p.hab !== false) && !p.ocupada && (p.compatible !== false);
+                    const esSeleccionable = (p.hab !== false) && (p.compatible !== false);
                     if (esSeleccionable) {
-                        card.addEventListener("click", () => {
-                            grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
-                            card.classList.add("selected");
-                            hiddenPlz.value = p.plzNum.toString();
-                            hiddenTecho.value = getTechada();
+                        card.addEventListener("click", async () => {
+                            // Verificar disponibilidad antes de seleccionar
+                            await verificarDisponibilidadPlaza(p.plzNum);
                         });
                     } else {
                         card.style.pointerEvents = "none";
@@ -881,6 +1053,44 @@
 
                     grid.appendChild(card);
                 });
+
+                // Verificar ocupación por abonos después de crear las plazas
+                const verificarTodasLasPlazas = async () => {
+                    // Esperar a que las fechas estén disponibles
+                    const fechaIni = document.querySelector('input[name="AboFyhIni"]').value;
+                    const fechaFin = document.querySelector('input[name="AboFyhFin"]').value;
+                    
+                    if (!fechaIni || !fechaFin) {
+                        // Si no hay fechas, reintentar en 200ms
+                        setTimeout(verificarTodasLasPlazas, 200);
+                        return;
+                    }
+                    
+                    for (const p of plazas) {
+                        const card = grid.querySelector(`[data-plz-num="${p.plzNum}"]`);
+                        if (!card) continue;
+
+                        const estaOcupadaPorAbono = await verificarOcupacionPlaza(p.plzNum);
+                        
+                        if (estaOcupadaPorAbono && !p.ocupada) {
+                            // Cambiar a estado ocupada por abono
+                            card.classList.remove("disponible", "incompatible");
+                            card.classList.add("ocupada");
+                            
+                            // Actualizar el contenido
+                            const mostrarPiso = !selPiso.value || selPiso.value === "";
+                            card.innerHTML = `
+                                <div class="plaza-title">${p.nombre ?? ("P" + p.plzNum)}</div>
+                                ${mostrarPiso ? `<div class="plaza-sub">${p.piso === null ? "Sin piso" : ("Piso " + p.piso)}</div>` : ''}
+                                <div class="small text-warning mt-1"><i class="fa-solid fa-exclamation-triangle me-1"></i>Ocupada</div>
+                            `;
+                        }
+                    }
+                };
+
+                // Ejecutar verificación inmediatamente y también con delay
+                verificarTodasLasPlazas();
+                setTimeout(verificarTodasLasPlazas, 300);
             }
 
             async function fetchPlazasYPrepararPisos() {
@@ -892,7 +1102,7 @@
                     selPiso.value = "";
                     pisoActual = "";
                     allPlazas = [];
-                    showPrompt("Elegí clasificación y si la plaza es techada o no para habilitar el piso.");
+                    showPrompt("Elegí tipo de abono, clasificación de vehículo y si la plaza es techada o no para habilitar el piso.");
                     return;
                 }
 
@@ -900,13 +1110,20 @@
                 const clasVehID = selClas.value;
                 const serId = document.getElementById("SerID").value;
                 
+                console.log(`Verificando tarifas: SerID=${serId}, ClasVehID=${clasVehID}, PlyID=${plyID}`);
+                
                 try {
                     const tarifaResponse = await fetch(`/Abono/GetAbonoInfo?plyId=${encodeURIComponent(plyID)}&serId=${encodeURIComponent(serId)}&clasVehId=${encodeURIComponent(clasVehID)}`);
-                    if (!tarifaResponse.ok) throw new Error("Error HTTP " + tarifaResponse.status);
+                    if (!tarifaResponse.ok) {
+                        console.error(`Error HTTP ${tarifaResponse.status}: ${tarifaResponse.statusText}`);
+                        throw new Error("Error HTTP " + tarifaResponse.status);
+                    }
                     const tarifaData = await tarifaResponse.json();
+                    console.log("Respuesta de tarifa:", tarifaData);
                     
                     // Si no hay tarifa (monto es 0 o null), mostrar error
                     if (!tarifaData.monto || tarifaData.monto === 0) {
+                        console.log("No se encontró tarifa válida");
                         selPiso.disabled = true;
                         selPiso.value = "";
                         pisoActual = "";
@@ -914,6 +1131,7 @@
                         showPrompt("No existen tarifas de abono configuradas para esta clasificación de vehículo", "error");
                         return;
                     }
+                    console.log("Tarifa encontrada:", tarifaData.monto);
                 } catch (e) {
                     console.error("Error verificando tarifas:", e);
                     selPiso.disabled = true;
@@ -984,9 +1202,41 @@
                 }
             }
 
-            // Eventos
-            selClas.addEventListener("change", fetchPlazasYPrepararPisos);
-            radiosTechada.forEach(r => r.addEventListener("change", fetchPlazasYPrepararPisos));
+            // Eventos - techada se maneja en el event listener específico arriba
+            
+            // Event listener para el tipo de abono
+            const serIDSelect = document.getElementById('SerID');
+            if (serIDSelect) {
+                serIDSelect.addEventListener("change", function() {
+                    // Resetear fecha de inicio a la actual cuando cambia el tipo de abono
+                    resetearFechaInicio();
+                    fetchPlazasYPrepararPisos();
+                });
+            }
+            
+            // Event listener para clasificación de vehículo
+            selClas.addEventListener("change", function() {
+                // Resetear fecha de inicio a la actual cuando cambia la clasificación
+                resetearFechaInicio();
+                fetchPlazasYPrepararPisos();
+            });
+            
+            // Event listener para techada/no techada
+            radiosTechada.forEach(r => r.addEventListener("change", function() {
+                // Resetear fecha de inicio a la actual cuando cambia techada
+                resetearFechaInicio();
+                fetchPlazasYPrepararPisos();
+            }));
+            
+            // Función para resetear fecha de inicio a la fecha actual
+            function resetearFechaInicio() {
+                const fechaInicioInput = document.querySelector('input[name="AboFyhIni"]');
+                const hoy = new Date();
+                const fechaActual = hoy.toISOString().split('T')[0];
+                fechaInicioInput.value = fechaActual;
+                // Recalcular fechas después del reset
+                updateAbonoFields();
+            }
 
             selPiso.addEventListener("change", () => {
                 pisoActual = selPiso.value;
@@ -996,9 +1246,11 @@
                     return;
                 }
                 if (!requisitosBasicosElegidos()) {
-                    showPrompt("Elegí clasificación y techada/no para continuar.");
+                    showPrompt("Elegí tipo de abono, clasificación y techada/no para continuar.");
                     return;
                 }
+                // Resetear fecha de inicio a la actual cuando cambia el piso
+                resetearFechaInicio();
                 renderGrid();
             });
 
@@ -1006,6 +1258,18 @@
             selPiso.disabled = true;
             showPrompt("Elegí clasificación, si es techada o no y luego el piso para ver las plazas.");
         })();
+
+        // 🔹 Corrección: registrar eventos de techada/no después de que el DOM esté listo
+            document.addEventListener('DOMContentLoaded', () => {
+                const radiosTechada = document.querySelectorAll("input[name='techada-abono']");
+                radiosTechada.forEach(radio => {
+                    radio.addEventListener('change', function () {
+                        resetearFechaInicio();
+                        fetchPlazasYPrepararPisos();
+                    });
+                });
+            });
+
 
          // Inicializar campo hidden con valor 0
          document.addEventListener('DOMContentLoaded', function() {
@@ -1016,6 +1280,20 @@
          });
 
          // === FUNCIONALIDAD DEL MODAL DE PAGOS ===
+
+         // 🔹 Evitar que el campo de períodos a pagar se quede en 0 en tiempo real
+        const cantidadPeriodosInput = document.getElementById('cantidadPeriodosPagar');
+        if (cantidadPeriodosInput) {
+            cantidadPeriodosInput.addEventListener('input', function() {
+                let valor = parseInt(this.value, 10);
+                if (isNaN(valor) || valor < 1) {
+                    this.value = 1;
+                }
+                actualizarSubtotalParcial();
+                actualizarMontoAPagar();
+            });
+        }
+
          
          // Función para validar el formulario antes de abrir el modal
          function validarFormulario() {
@@ -1073,8 +1351,9 @@
              // Datos básicos
              document.getElementById('modalAbonado').textContent = document.querySelector('input[name="AboNom"]').value;
              document.getElementById('modalPlaza').textContent = 'Plaza ' + document.getElementById('PlzNumAbono').value;
-             document.getElementById('modalFechaInicio').textContent = document.querySelector('input[name="AboFyhIni"]').value;
-             document.getElementById('modalFechaFin').textContent = document.querySelector('input[name="AboFyhFin"]').value;
+             document.getElementById('modalFechaInicio').textContent = formatDateDisplay(document.querySelector('input[name="AboFyhIni"]').value);
+             document.getElementById('modalFechaFin').textContent = formatDateDisplay(document.querySelector('input[name="AboFyhFin"]').value);
+
              
              // Duración total
              const periodos = parseInt(document.getElementById('Periodos').value);

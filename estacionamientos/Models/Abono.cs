@@ -5,10 +5,10 @@ namespace estacionamientos.Models
 
      public enum EstadoPago
     {
-        Activo,     // pago confirmado y vigente
-        Pendiente,  // vencido o deuda
-        Finalizado, // terminado exitosamente
-        Cancelado   // cancelado por el usuario
+        Activo,     // al día - tiene el periodo actual de abono pagado
+        Pendiente,  // según la fecha le faltan pagos
+        Finalizado, // se llegó al fin del abono con todo pagado
+        Cancelado   // se canceló manualmente o por vencimiento del pago
     }
 
     public class Abono
@@ -39,5 +39,6 @@ namespace estacionamientos.Models
         public Abonado Abonado { get; set; } = default!;
         public Pago Pago { get; set; } = default!;
         public ICollection<VehiculoAbonado> Vehiculos { get; set; } = new List<VehiculoAbonado>();
+        public ICollection<PeriodoAbono> Periodos { get; set; } = new List<PeriodoAbono>();
     }
 }

@@ -13,6 +13,16 @@
     </a>
 </div>
 
+@if (User.IsInRole("Admin"))
+{
+    <form asp-action="PopulateExistingAbonosPeriods" method="post" class="mb-3">
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+            <i class="fa fa-sync"></i> Generar períodos para abonos antiguos
+        </button>
+    </form>
+}
+
+
 <table id="abonosTable" class="table table-striped table-hover table-sm align-middle text-center">
     <thead>
         <tr>
@@ -43,7 +53,7 @@
                 @{
                     string estadoTexto = item.EstadoPago switch
                     {
-                        estacionamientos.Models.EstadoPago.Activo => "Activo",
+                        estacionamientos.Models.EstadoPago.Activo => "Al día",
                         estacionamientos.Models.EstadoPago.Pendiente => "Pendiente",
                         estacionamientos.Models.EstadoPago.Finalizado => "Finalizado",
                         estacionamientos.Models.EstadoPago.Cancelado => "Cancelado",
@@ -52,11 +62,11 @@
                     
                     string estadoColor = item.EstadoPago switch
                     {
-                        estacionamientos.Models.EstadoPago.Activo => "text-success",
-                        estacionamientos.Models.EstadoPago.Pendiente => "text-warning",
-                        estacionamientos.Models.EstadoPago.Finalizado => "text-secondary",
-                        estacionamientos.Models.EstadoPago.Cancelado => "text-danger",
-                        _ => "text-muted"
+                        estacionamientos.Models.EstadoPago.Activo => "text-success fw-bold",
+                        estacionamientos.Models.EstadoPago.Pendiente => "text-warning fw-bold",
+                        estacionamientos.Models.EstadoPago.Finalizado => "text-dark fw-bold",
+                        estacionamientos.Models.EstadoPago.Cancelado => "text-danger fw-bold",
+                        _ => "text-muted fw-bold"
                     };
                 }
                 <span class="@estadoColor fw-medium">@estadoTexto</span>
@@ -74,16 +84,19 @@
                     string icono = clasificacion switch
                     {
                         "Automóvil" => "fa-solid fa-car-side",
-                        "Camioneta" => "fa-truck-pickup",
+                        "Camioneta" => "fa-solid fa-truck-pickup",
                         "Camión" => "fa-solid fa-truck",
-                        "Motocicleta" => "fa-motorcycle",
-                        "Bicicleta" => "fa-bicycle",
-                        _ => "fa-car"
+                        "Motocicleta" => "fa-solid fa-motorcycle",
+                        "Bicicleta" => "fa-solid fa-bicycle",
+                        _ => "fa-solid fa-car"
                     };
+
                 }
                 <a href="#" class="text-decoration-none position-relative border border-secondary rounded px-2 py-1 d-inline-block" data-bs-toggle="modal" data-bs-target="#vehiculosModal" 
-                   data-clasificacion="@clasificacion" data-patentes="@string.Join(",", patentes)" data-plaza="@item.PlzNum">
-                    <i class="fas @icono me-1 text-primary"></i>
+                   data-clasificacion="@clasificacion" data-patentes="@string.Join(",", patentes)" data-plaza="@item.PlzNum"
+                   data-plyid="@item.PlyID" data-plznum="@item.PlzNum" data-abofyhini="@item.AboFyhIni.ToString("yyyy-MM-ddTHH:mm:ss")"
+                   data-abonado="@item.Abonado.AboNom" data-estado="@item.EstadoPago">
+                    <i class="@icono me-1 text-primary"></i>
                     <span class="fw-medium">@clasificacion</span>
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
                         @patentes.Count
@@ -91,46 +104,143 @@
                 </a>
             </td>
             <td class="text-center">
-                <a asp-action="Details" asp-route-plyID="@item.PlyID" asp-route-plzNum="@item.PlzNum" asp-route-aboFyhIni="@item.AboFyhIni" 
-                   class="btn btn-outline-primary btn-sm" title="Ver detalles">
+                <a href="#" class="btn btn-outline-primary btn-sm" title="Ver detalles"
+                data-bs-toggle="modal" data-bs-target="#detallesAbonoModal"
+                data-plyid="@item.PlyID"
+                data-plznum="@item.PlzNum"
+                data-abofyhini="@item.AboFyhIni.ToString("yyyy-MM-ddTHH:mm:ss")"
+                data-abonado="@item.Abonado.AboNom"
+                data-dni="@item.Abonado.AboDNI"
+                data-fechaini="@item.AboFyhIni.ToString("dd/MM/yyyy")"
+                data-fechafin="@item.AboFyhFin?.ToString("dd/MM/yyyy")"
+                data-monto="@item.AboMonto.ToString("C")"
+                data-estado="@item.EstadoPago"
+                data-clasificacion="@(item.Vehiculos.FirstOrDefault()?.Vehiculo?.Clasificacion?.ClasVehTipo ?? "Sin clasificación")"
+                data-patentes="@string.Join(",", item.Vehiculos.Select(v => v.VehPtnt))">
                     <i class="fa fa-eye"></i>
                 </a>
-                <a asp-action="Edit" asp-route-plyID="@item.PlyID" asp-route-plzNum="@item.PlzNum" asp-route-aboFyhIni="@item.AboFyhIni" 
-                   class="btn btn-outline-secondary btn-sm" title="Editar">
-                    <i class="fa fa-pencil"></i>
-                </a>
-                <a asp-action="Delete" asp-route-plyID="@item.PlyID" asp-route-plzNum="@item.PlzNum" asp-route-aboFyhIni="@item.AboFyhIni" 
-                   class="btn btn-outline-danger btn-sm" title="Eliminar">
-                    <i class="fa fa-trash"></i>
-                </a>
+
+                <button type="button" class="btn btn-outline-secondary btn-sm gestionar-pagos-btn @(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "disabled" : "")" 
+                        title="@(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "Abono cancelado" : "Gestionar pagos")"
+                        data-plyid="@item.PlyID"
+                        data-plznum="@item.PlzNum"
+                        data-abofyhini="@item.AboFyhIni.ToString("yyyy-MM-ddTHH:mm:ss")"
+                        data-bs-toggle="modal" data-bs-target="#gestionarPagosModal"
+                        @(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "disabled" : "")>
+                    <i class="fa-solid fa-receipt"></i>
+                </button>
+                <button type="button"
+                    class="btn btn-outline-success btn-sm extender-abono-btn @(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "disabled" : "")"
+                    title="@(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "Abono cancelado" : "Extender abono")"
+                    data-bs-toggle="modal"
+                    data-bs-target="#extenderAbonoModal"
+                    data-plyid="@item.PlyID"
+                    data-plznum="@item.PlzNum"
+                    data-abofyhini="@item.AboFyhIni.ToString("yyyy-MM-ddTHH:mm:ss")"
+                    @(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "disabled" : "")>
+                    <i class="fa fa-calendar-plus"></i>
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm cancelar-abono-btn @(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "disabled" : "")" 
+                        title="@(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "Abono cancelado" : "Cancelar abono")"
+                        data-plyid="@item.PlyID"
+                        data-plznum="@item.PlzNum"
+                        data-abofyhini="@item.AboFyhIni.ToString("yyyy-MM-ddTHH:mm:ss")"
+                        data-abonado="@item.Abonado.AboNom"
+                        @(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "disabled" : "")>
+                    <i class="fa fa-ban"></i>
+                </button>
             </td>
         </tr>
     }
     </tbody>
 </table>
 
-<!-- Modal para mostrar vehículos -->
+<!-- Modal para gestionar vehículos -->
 <div class="modal fade" id="vehiculosModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="vehiculosModalTitle">
-                    <i class="fa-solid fa-eye me-2"></i>Vehículos asociados
+                    <i class="fa-solid fa-car me-2"></i>Vehículos del Abono
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Clasificación:</label>
-                    <div id="modalClasificacion" class="fw-medium"></div>
+                <!-- Información del abono -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Abonado:</label>
+                        <div id="modalAbonadoVehiculos" class="fw-medium"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Clasificación:</label>
+                        <div id="modalClasificacion" class="fw-medium"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Plaza:</label>
+                        <div id="modalPlaza" class="fw-medium"></div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Plaza:</label>
-                    <div id="modalPlaza" class="fw-medium"></div>
+
+                <!-- Modo Visualización -->
+                <div id="modoVisualizacion" class="card border-0 shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="fa fa-car me-1"></i>Vehículos Asociados</h6>
+                        <button type="button" class="btn btn-primary btn-sm" id="modificarVehiculosBtn">
+                            <i class="fa fa-edit me-2"></i>Modificar
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="vehiculos-visualizacion" class="list-group">
+                            <!-- Se llenará dinámicamente -->
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <label class="form-label fw-medium">Patentes:</label>
-                    <div id="modalPatentes" class="list-group"></div>
+
+                <!-- Modo Edición -->
+                <div id="modoEdicion" class="card border-0 shadow-sm" style="display: none;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="fa fa-edit me-1"></i>Editar Vehículos</h6>
+                        <button type="button" class="btn btn-primary btn-sm" id="addVehiculoBtn">
+                            <i class="fa fa-plus me-1"></i>Agregar Vehículo
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="vehiculos-list" class="border rounded p-2 bg-light" style="min-height: 120px; max-height: 300px; overflow-y: auto;">
+                            <p id="vehiculos-empty" class="text-muted text-center py-3">No hay vehículos agregados aún.</p>
+                        </div>
+                            <div id="vehiculosErrorMsg" class="text-danger small mt-2" style="display: none;">
+                                <i class="fa fa-exclamation-circle me-1"></i>
+                                Debe tener al menos un vehículo asociado al abono.
+                            </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btnCancelar">Cerrar</button>
+                <button type="button" class="btn btn-success" id="guardarVehiculosBtn" style="display: none;">
+                    Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para mostrar detalles del abono -->
+<div class="modal fade" id="detallesAbonoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detallesAbonoModalTitle">
+                    <i class="fa fa-eye me-2"></i>Detalles del Abono
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="detallesAbonoContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -140,10 +250,428 @@
     </div>
 </div>
 
+<!-- Modal para Gestionar Pagos -->
+<div class="modal fade" id="gestionarPagosModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-receipt me-2"></i>Gestionar Pagos del Abono
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Información del Abonado -->
+                <div class="row mb-2">
+                    <div class="col-md-6">
+                        <div><strong>Nombre:</strong> <span id="modalAboNom"></span></div>
+                        <div><strong>DNI:</strong> <span id="modalAboDni"></span></div>
+                        <div><strong>Plaza:</strong> <span id="modalPlazaNum"></span></div>
+                        <div><strong>Estado:</strong> <span id="modalEstadoAbono"></span></div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="bg-light rounded p-2 text-center">
+                            <strong>Resumen de períodos:</strong><br>
+                            Total: <span id="totalPeriodos" class="fw-bold">0</span> |
+                            Pagados: <span id="periodosPagados" class="text-success fw-bold">0</span> |
+                            Pendientes: <span id="periodosPendientes" class="fw-bold" style="color: #e67e22;">0</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Mensaje cuando todos los períodos están pagados -->
+                <div id="mensajeTodosPagados" class="alert alert-info text-center mb-2" style="display:none;">
+                    <i class="fa fa-info-circle me-2"></i>
+                    <strong>¡Todos los períodos están pagados!</strong>
+                </div>
+
+                <!-- Contenedor general de pagos -->
+                <div id="seccionPagos">
+                    <!-- Sección de Pagos -->
+                    <div class="row mt-2">
+                        <div class="col-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fa fa-list me-1"></i>Selección de Períodos</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-2">
+                                        <label class="form-label fw-bold">Cantidad de Períodos a Pagar:</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="cantidadPeriodosPagar" min="0" value="0">
+                                            <button type="button" class="btn btn-outline-secondary" id="btnTodosPendientes">Todos</button>
+                                        </div>
+                                        <div class="form-text small mt-1">Se pagarán desde el primer período pendiente. Máximo: <span id="maxPeriodosTexto">0</span> períodos</div>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label fw-bold">Períodos Seleccionados:</label>
+                                        <div id="periodosSeleccionados" class="border rounded p-2 bg-light small" style="height: 120px; overflow-y: auto;">
+                                            <small class="text-muted">Seleccione la cantidad arriba</small>
+                                        </div>
+                                        <div id="periodosError" class="text-danger small mt-1" style="display: none;">
+                                            <i class="fa fa-exclamation-circle me-1"></i>Debe seleccionar al menos un período para pagar
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fa fa-credit-card me-1"></i>Información de Pago</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-2">
+                                        <label class="form-label fw-bold">Método de Pago:</label>
+                                        <select class="form-select" id="metodoPago">
+                                            <option value="">Seleccione método de pago</option>
+                                        </select>
+                                        <div id="metodoPagoError" class="text-danger small mt-1" style="display: none;">
+                                            <i class="fa fa-exclamation-circle me-1"></i>Este campo es obligatorio
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label class="form-label fw-bold">Fecha de Pago:</label>
+                                        <input type="date" class="form-control" id="fechaPago" readonly style="cursor: not-allowed; background-color: #e9ecef; color: #000000; border: 1px solid #dee2e6;">
+                                    </div>
+
+                                    <div class="text-center">
+                                        <label class="form-label fw-bold">Total a Pagar:</label>
+                                        <div class="h5 text-success fw-bold mb-0" id="totalPagar">$0.00</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fa fa-times me-2"></i>Cerrar
+                </button>
+                <button type="button" class="btn btn-success" id="btnRegistrarPago" disabled>
+                    <i class="fa fa-check me-2"></i>Registrar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Extender Abono -->
+<div class="modal fade" id="extenderAbonoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg" style="max-height: 90vh;">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-calendar-plus me-2"></i>Extender Abono
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <!-- 1. Información del Abonado y Abono -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6 class="text-dark mb-1">Información del Abonado</h6>
+                        <table class="table table-sm table-borderless mb-0">
+                            <tr><td class="py-0"><strong>Nombre:</strong></td><td class="py-0"><span id="modalExtAboNom"></span></td></tr>
+                            <tr><td class="py-0"><strong>DNI:</strong></td><td class="py-0"><span id="modalExtAboDni"></span></td></tr>
+                            <tr><td class="py-0"><strong>Estado:</strong></td><td class="py-0"><span id="modalExtEstado"></span></td></tr>
+                            <tr><td class="py-0"><strong>Plaza:</strong></td><td class="py-0"><span id="modalExtPlazaNum"></span></td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-dark mb-1">Información del Abono</h6>
+                        <table class="table table-sm table-borderless mb-0">
+                            <tr><td class="py-0"><strong>Fecha Inicio:</strong></td><td class="py-0"><span id="modalExtFechaIni"></span></td></tr>
+                            <tr><td class="py-0"><strong>Fecha Fin:</strong></td><td class="py-0"><span id="modalExtFechaFin"></span></td></tr>
+                            <tr><td class="py-0"><strong>Tipo de Abono:</strong></td><td class="py-0"><span id="modalExtTipoAbono"></span></td></tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 2. Configuración de la Extensión -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fa fa-calendar-plus me-1"></i>Configuración de la Extensión</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Cantidad de Períodos:</label>
+                                    <div class="input-group">
+                                        <input type="number" id="cantidadPeriodosExtension" class="form-control" min="1" placeholder="Ingrese cantidad">
+                                        <span class="input-group-text" id="unidadPeriodo">días</span>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Fecha de Inicio de la Extensión:</label>
+                                    <input type="date" id="fechaInicioExtension" class="form-control bg-light" readonly>
+                                </div>
+
+                                <!-- Mensaje aclaratorio compacto -->
+                                <div class="alert alert-info py-2 px-3 mb-2 small" id="mensajeAclaratorio">
+                                    <i class="fa fa-info-circle me-1"></i>
+                                    <span id="textoAclaratorio">Si desea extender el período en un rango distinto, use el botón 'Agregar abono'.</span>
+                                </div>
+
+                                <button type="button" class="btn btn-primary" id="btnAgregarAbono">
+                                    <i class="fa fa-plus me-1"></i>Agregar abono
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Resumen de la Extensión -->
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fa fa-file-text me-1"></i>Resumen de la Extensión</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <label class="form-label fw-bold">Tarifa por Período:</label>
+                                    <div id="tarifaPorPeriodo" class="fw-bold text-success">$0.00</div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label fw-bold">Fecha de Fin:</label>
+                                    <div id="fechaFinCalculada" class="fw-medium">—</div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label fw-bold">Total a Pagar:</label>
+                                    <div id="totalExtension" class="fw-bold text-success">$0.00</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mensaje de advertencia sobre plaza ocupada -->
+                <div id="plazaOcupadaWarning" class="alert alert-warning" style="display: none;">
+                    <i class="fa fa-exclamation-triangle me-2"></i>
+                    <span id="plazaOcupadaMessage">La plaza se encuentra ocupada a partir de dd/mm/aaaa</span>
+                </div>
+
+                <!-- Botón para seleccionar otra plaza -->
+                <div id="seleccionarOtraPlazaContainer" class="text-center mb-3" style="display: none;">
+                    <button type="button" class="btn btn-outline-primary" id="btnSeleccionarOtraPlaza">
+                        <i class="fa fa-map-marker-alt me-1"></i>Seleccionar otra plaza
+                    </button>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="position: sticky; bottom: 0; background: white; border-top: 1px solid #dee2e6;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fa fa-times me-2"></i>Cerrar
+                </button>
+                <button type="button" class="btn btn-success" id="btnExtenderAbono">
+                    <i class="fa fa-calendar-plus me-2"></i>Extender abono
+                </button>
+                <button type="button" class="btn btn-primary" id="btnAgregarAbonoFooter" style="display: none;">
+                    <i class="fa fa-plus me-2"></i>Agregar abono
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
+
+    <style>
+        /* Estilos para botones deshabilitados */
+        .btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        .btn.disabled:hover {
+            opacity: 0.5;
+        }
+
+    #vehiculosErrorMsg {
+        transition: opacity 0.3s ease-in-out;
+    }
+
+    /* Estilos para mensajes personalizados */
+    .custom-alert {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 500px;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    
+    .custom-alert-header {
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        padding: 1rem;
+        border-radius: 0.5rem 0.5rem 0 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .custom-alert-title {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #495057;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .custom-alert-body {
+        padding: 1.5rem;
+        color: #495057;
+        line-height: 1.5;
+    }
+    
+    .custom-alert-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #dee2e6;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+    
+    .custom-alert-btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease-in-out;
+    }
+    
+    .custom-alert-btn-primary {
+        background-color: #0d6efd;
+        color: white;
+    }
+    
+    .custom-alert-btn-primary:hover {
+        background-color: #0b5ed7;
+    }
+    
+    .custom-alert-btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+    
+    .custom-alert-btn-secondary:hover {
+        background-color: #5c636a;
+    }
+    
+    .custom-alert-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9998;
+    }
+    
+    .alert-success .custom-alert-title i {
+        color: #198754;
+    }
+    
+    .alert-error .custom-alert-title i {
+        color: #dc3545;
+    }
+    
+    .alert-warning .custom-alert-title i {
+        color: #fd7e14;
+    }
+
+    /* Transición suave para mensajes de alerta */
+    .alert {
+        transition: opacity 0.3s ease-in-out;
+    }
+    
+    .alert.fade {
+        opacity: 0;
+    }
+    
+    .alert.show {
+        opacity: 1;
+    }
+    
+    /* Transición más marcada para mensajes de éxito */
+    .alert-success {
+        transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+    }
+    
+    .alert-success.fade {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    
+    .alert-success.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+        /* Ajustes de estilo para la nueva disposición del modal de pagos */
+    #gestionarPagosModal .card {
+        background-color: #fdfdfd;
+    }
+
+    #gestionarPagosModal .form-label {
+        font-size: 0.9rem;
+    }
+
+    /* Estilo personalizado para estados de pago en la tabla - solo la columna de estado */
+    #abonosTable td span.text-warning,
+    #abonosTable td span.text-warning.fw-bold {
+        color: #b8860b !important; /* Amarillo dorado más oscuro */
+        font-weight: bold !important;
+    }
+    
+    #abonosTable td span.text-success,
+    #abonosTable td span.text-success.fw-bold {
+        font-weight: bold !important;
+    }
+    
+    #abonosTable td span.text-dark,
+    #abonosTable td span.text-dark.fw-bold,
+    #abonosTable td span.text-secondary,
+    #abonosTable td span.text-secondary.fw-bold {
+        font-weight: bold !important;
+    }
+    
+    #abonosTable td span.text-danger,
+    #abonosTable td span.text-danger.fw-bold {
+        font-weight: bold !important;
+    }
+
+    </style>
+
+    
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    
 
     <script>
     $(document).ready(function () {
@@ -170,66 +698,1610 @@
             "language": datatableLanguage 
         });
 
-        // Modal de vehículos
+        // Modal de vehículos - Variables globales para gestión
+        let currentAbonoData = {};
+        let vehiculosList = [];
+        let isEditing = false;
+        let vehiculosBackup = [];
+
+
         const modal = document.getElementById('vehiculosModal');
         const modalTitle = document.getElementById('vehiculosModalTitle');
+        const modalAbonadoVehiculos = document.getElementById('modalAbonadoVehiculos');
         const modalClasificacion = document.getElementById('modalClasificacion');
         const modalPlaza = document.getElementById('modalPlaza');
-        const modalPatentes = document.getElementById('modalPatentes');
+        const modoVisualizacion = document.getElementById('modoVisualizacion');
+        const modoEdicion = document.getElementById('modoEdicion');
+        const vehiculosVisualizacion = document.getElementById('vehiculos-visualizacion');
+        const vehiculosListContainer = document.getElementById('vehiculos-list');
+        const modificarVehiculosBtn = document.getElementById('modificarVehiculosBtn');
+        const addVehiculoBtn = document.getElementById('addVehiculoBtn');
+        const guardarVehiculosBtn = document.getElementById('guardarVehiculosBtn');
+        const btnCancelar = document.getElementById('btnCancelar');
 
-        modal.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            const clasificacion = button.getAttribute('data-clasificacion');
-            const patentes = button.getAttribute('data-patentes').split(',');
-            const plaza = button.getAttribute('data-plaza');
-
-            // Función para obtener el plural correcto
-            function getPlural(clasificacion) {
-                const plurales = {
-                    'Automóvil': 'Automóviles',
-                    'Motocicleta': 'Motocicletas', 
-                    'Camioneta': 'Camionetas',
-                    'Camión': 'Camiones',
-                    'Bicicleta': 'Bicicletas',
-                    'Moto': 'Motos'
-                };
-                return plurales[clasificacion] || clasificacion + 's';
-            }
-
-            const plural = getPlural(clasificacion);
-            // Determinar el género del adjetivo según la clasificación
-            const esFemenino = ['Camioneta', 'Motocicleta', 'Bicicleta'].includes(clasificacion);
-            const adjetivo = esFemenino ? 'asociadas' : 'asociados';
-            modalTitle.innerHTML = `<i class="fa-solid fa-eye me-2"></i>${plural} ${adjetivo} a la plaza ${plaza}`;
-            modalClasificacion.textContent = clasificacion;
-            modalPlaza.textContent = 'Plaza ' + plaza;
+        // Modal de detalles del abono
+        const detallesModal = document.getElementById('detallesAbonoModal');
+        const modalAbonado = document.getElementById('modalAbonado');
+        const modalDNI = document.getElementById('modalDNI');
+        const modalEstado = document.getElementById('modalEstado');
+        const modalPlazaDetalle = document.getElementById('modalPlaza');
+        const modalFechaIni = document.getElementById('modalFechaIni');
+        const modalFechaFin = document.getElementById('modalFechaFin');
+        const modalDuracion = document.getElementById('modalDuracion');
+        const modalMonto = document.getElementById('modalMonto');
+        const modalEstadoPago = document.getElementById('modalEstadoPago');
+        const modalClasificacionDetalle = document.getElementById('modalClasificacion');
+        const modalPatentesDetalle = document.getElementById('modalPatentes');
             
             // Función para obtener el icono según la clasificación
             function getIconoClasificacion(clasificacion) {
                 const iconos = {
                     'Automóvil': 'fa-solid fa-car-side',
-                    'Camioneta': 'fa-truck-pickup',
+                    'Camioneta': 'fa-solid fa-truck-pickup',
                     'Camión': 'fa-solid fa-truck',
-                    'Motocicleta': 'fa-motorcycle',
-                    'Bicicleta': 'fa-bicycle'
+                    'Motocicleta': 'fa-solid fa-motorcycle',
+                    'Bicicleta': 'fa-solid fa-bicycle'
                 };
-                return iconos[clasificacion] || 'fa-car';
+                return iconos[clasificacion] || 'fa-solid fa-car';
             }
 
-            const iconoClasificacion = getIconoClasificacion(clasificacion);
-            modalPatentes.innerHTML = '';
-            patentes.forEach(patente => {
-                if (patente.trim()) {
+
+        // Función para renderizar la lista de vehículos en modo visualización
+        function renderVehiculosVisualizacion() {
+            vehiculosVisualizacion.innerHTML = '';
+            
+            if (vehiculosList.length === 0) {
+                vehiculosVisualizacion.innerHTML = '<p class="text-muted text-center py-3">No hay vehículos asociados.</p>';
+                return;
+            }
+
+            vehiculosList.forEach(vehiculo => {
+                const iconoClasificacion = getIconoClasificacion(currentAbonoData.clasificacion);
                     const item = document.createElement('div');
                     item.className = 'list-group-item d-flex align-items-center';
                     item.innerHTML = `
-                        <i class="fas ${iconoClasificacion} me-2 text-primary"></i>
-                        <span class="fw-medium">${patente.trim()}</span>
-                    `;
-                    modalPatentes.appendChild(item);
+                        <i class="${iconoClasificacion} me-2 text-primary"></i>
+
+                    <span class="fw-medium">${vehiculo.patente}</span>
+                `;
+                vehiculosVisualizacion.appendChild(item);
+            });
+        }
+
+        // Función para renderizar la lista de vehículos en modo edición
+        function renderVehiculosList() {
+            vehiculosListContainer.innerHTML = '';
+            
+            if (vehiculosList.length === 0) {
+                vehiculosListContainer.innerHTML = '<p id="vehiculos-empty" class="text-muted text-center py-3">No hay vehículos agregados aún.</p>';
+                return;
+            }
+
+            vehiculosList.forEach((vehiculo, index) => {
+                const vehiculoItem = document.createElement('div');
+                vehiculoItem.className = 'row g-2 mb-2 vehiculo-item';
+                vehiculoItem.innerHTML = `
+                    <div class="col-10">
+                        <input type="text" class="form-control" placeholder="Patente" value="${vehiculo.patente}" 
+                               data-index="${index}" />
+                    </div>
+                    <div class="col-2 d-flex align-items-center">
+                        <button type="button" class="btn btn-outline-danger btn-sm remove-vehiculo" 
+                                title="Eliminar vehículo" data-index="${index}">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                vehiculosListContainer.appendChild(vehiculoItem);
+            });
+        }
+
+        // Función para cambiar a modo edición
+        function cambiarAModoEdicion() {
+            // 🔹 Hacer una copia de seguridad de los vehículos actuales
+            vehiculosBackup = JSON.parse(JSON.stringify(vehiculosList));
+
+            isEditing = true;
+            modoVisualizacion.style.display = 'none';
+            modoEdicion.style.display = 'block';
+            guardarVehiculosBtn.style.display = 'inline-block';
+            btnCancelar.textContent = 'Cancelar';
+            modalTitle.innerHTML = `<i class="fa-solid fa-edit me-2"></i>Editar Vehículos del Abono`;
+            renderVehiculosList();
+        }
+
+        // Función para cambiar a modo visualización
+        function cambiarAModoVisualizacion() {
+            isEditing = false;
+            modoEdicion.style.display = 'none';
+            modoVisualizacion.style.display = 'block';
+            guardarVehiculosBtn.style.display = 'none';
+            btnCancelar.textContent = 'Cerrar';
+            modalTitle.innerHTML = `<i class="fa-solid fa-car me-2"></i>Vehículos del Abono`;
+            renderVehiculosVisualizacion();
+        }
+
+        // Función para validar vehículos
+        function validarVehiculos() {
+            if (!vehiculosList || vehiculosList.length === 0) return false;
+
+            const vehiculosValidos = vehiculosList.filter(v =>
+                v.patente &&
+                v.patente.trim() !== '' &&
+                /^[A-Z0-9]{2,8}$/i.test(v.patente.trim())  // opcional: valida formato simple
+            );
+
+            return vehiculosValidos.length > 0;
+        }
+
+
+        // Event listener para abrir modal de vehículos
+        modal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const clasificacion = button.getAttribute('data-clasificacion');
+            const patentes = button.getAttribute('data-patentes').split(',');
+            const plaza = button.getAttribute('data-plaza');
+            const plyID = button.getAttribute('data-plyid');
+            const plzNum = button.getAttribute('data-plznum');
+            const aboFyhIni = button.getAttribute('data-abofyhini');
+            const abonado = button.getAttribute('data-abonado');
+            const estado = button.getAttribute('data-estado');
+            
+            currentAbonoData = {
+                plyID: plyID,
+                plzNum: plzNum,
+                aboFyhIni: aboFyhIni,
+                clasificacion: clasificacion,
+                plaza: plaza,
+                patentes: patentes.filter(p => p.trim() !== ''),
+                estado: estado
+            };
+
+            // Actualizar información en la modal
+            modalAbonadoVehiculos.textContent = abonado;
+            modalClasificacion.textContent = clasificacion;
+            modalPlaza.textContent = 'Plaza ' + plaza;
+
+            vehiculosList = currentAbonoData.patentes.map(patente => ({
+                patente: patente.trim(),
+                esNuevo: false
+            }));
+
+            // Verificar si el abono está cancelado
+            if (estado === 'Cancelado') {
+                // Ocultar el botón de modificar si está cancelado
+                modificarVehiculosBtn.style.display = 'none';
+            } else {
+                // Mostrar el botón de modificar si no está cancelado
+                modificarVehiculosBtn.style.display = 'block';
+            }
+
+            cambiarAModoVisualizacion();
+        });
+
+
+        // Event listener para botón "Modificar Vehículos del Abono"
+        modificarVehiculosBtn.addEventListener('click', function() {
+            cambiarAModoEdicion();
+        });
+
+        // Event listener para agregar vehículo
+        addVehiculoBtn.addEventListener('click', function() {
+            vehiculosList.push({
+                patente: '',
+                esNuevo: true
+            });
+            renderVehiculosList();
+        });
+
+        // Event listener para eliminar vehículo
+        vehiculosListContainer.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-vehiculo')) {
+                const index = parseInt(e.target.closest('.remove-vehiculo').getAttribute('data-index'));
+                vehiculosList.splice(index, 1);
+                renderVehiculosList();
+            }
+        });
+
+        // Event listener para cambios en patentes
+            vehiculosListContainer.addEventListener('input', function(e) {
+                if (e.target.type === 'text') {
+                    const index = parseInt(e.target.getAttribute('data-index'));
+                    vehiculosList[index].patente = e.target.value.trim();
+
+                    // Si se empieza a escribir o agregar algo, ocultar el error
+                    const msg = document.getElementById('vehiculosErrorMsg');
+                    msg.style.display = 'none';
                 }
             });
+
+
+
+        // Event listener para botón cancelar/cerrar
+ // ==============================
+// BOTÓN CANCELAR / CERRAR
+// ==============================
+btnCancelar.addEventListener('click', function () {
+
+    if (isEditing) {
+        // 🔹 Restaurar lista original (descartar cambios)
+        vehiculosList = JSON.parse(JSON.stringify(vehiculosBackup));
+
+        cambiarAModoVisualizacion();
+
+        // 🔹 Mostrar alerta de cancelación (similar al éxito)
+        const cancelDiv = document.createElement('div');
+        cancelDiv.className = 'alert alert-secondary text-center fade show mb-2';
+        cancelDiv.innerHTML = `
+            <i class="fa fa-ban me-2"></i>
+            Cambios cancelados. No se guardó ninguna modificación.
+        `;
+        document.querySelector('.modal-body').prepend(cancelDiv);
+
+        // 🔹 Animación de transición igual a la de “Guardar cambios”
+        setTimeout(() => {
+            cancelDiv.classList.remove('show');
+            cancelDiv.addEventListener('transitionend', () => cancelDiv.remove());
+        }, 3000);
+
+        // 🔹 Restablecer estado visual
+        isEditing = false;
+        btnCancelar.textContent = 'Cerrar';
+        guardarVehiculosBtn.style.display = 'none';
+        modoEdicion.style.display = 'none';
+        modoVisualizacion.style.display = 'block';
+
+        // 🔹 Pequeña transición de fade entre los modos
+        modoVisualizacion.style.opacity = 0;
+        setTimeout(() => {
+            modoVisualizacion.style.transition = 'opacity 0.3s ease';
+            modoVisualizacion.style.opacity = 1;
+        }, 100);
+
+    } else {
+        // 🔹 Si no está editando, recién ahí cierra la modal
+        const bsModal = bootstrap.Modal.getInstance(modal);
+        bsModal.hide();
+    }
+    document.getElementById('vehiculosErrorMsg').style.display = 'none';
+
+});
+
+// 🔹 Ocultar el mensaje de error cuando se cancela o cierra la modal
+modal.addEventListener('hidden.bs.modal', function () {
+    const msg = document.getElementById('vehiculosErrorMsg');
+    msg.style.display = 'none';
+});
+
+        // Event listener para guardar vehículos
+// ==============================
+// BOTÓN GUARDAR CAMBIOS
+// ==============================
+        guardarVehiculosBtn.addEventListener('click', async function() {
+            // Validar que hay al menos un vehículo válido
+            const msg = document.getElementById('vehiculosErrorMsg');
+            if (!validarVehiculos()) {
+                msg.style.display = 'block';
+                return;
+            } 
+            msg.style.display = 'none';
+
+
+
+            guardarVehiculosBtn.disabled = true;
+            guardarVehiculosBtn.textContent = 'Guardando...';
+
+            try {
+                const vehiculosValidos = vehiculosList.filter(v => v.patente && v.patente.trim() !== '');
+                const requestData = {
+                    PlyID: parseInt(currentAbonoData.plyID),
+                    PlzNum: parseInt(currentAbonoData.plzNum),
+                    AboFyhIni: currentAbonoData.aboFyhIni.replace('Z', ''),
+                    Vehiculos: vehiculosValidos.map(v => ({ VehPtnt: v.patente.trim() }))
+                };
+
+                const response = await fetch('/Abono/UpdateVehiculosAbono', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // 🔹 Mostrar mensaje de éxito arriba de la modal
+                    const successDiv = document.createElement('div');
+                    successDiv.className = 'alert alert-success text-center fade show mb-2';
+                    successDiv.innerHTML = `
+                        <i class="fa fa-check-circle me-2"></i>
+                        ¡Vehículos actualizados correctamente!
+                    `;
+                    document.querySelector('.modal-body').prepend(successDiv);
+
+                    // 🔹 Actualizar los datos en la vista
+                    vehiculosList = vehiculosValidos.map(v => ({ patente: v.patente }));
+                    cambiarAModoVisualizacion();
+
+                    // 🔹 Actualizar la cantidad en el badge del índice
+                    const abonoButton = document.querySelector(
+                        `[data-plyid="${currentAbonoData.plyID}"][data-plznum="${currentAbonoData.plzNum}"][data-abofyhini="${currentAbonoData.aboFyhIni}"]`
+                    );
+                    if (abonoButton) {
+                        const badge = abonoButton.querySelector('.badge');
+                        if (badge) badge.textContent = vehiculosValidos.length;
+                        abonoButton.setAttribute('data-patentes', vehiculosValidos.map(v => v.patente).join(','));
+                    }
+
+                    // 🔹 Autoocultar mensaje de éxito luego de 4 segundos
+                    setTimeout(() => {
+                        successDiv.classList.remove('show');
+                        successDiv.addEventListener('transitionend', () => successDiv.remove());
+                    }, 4000);
+                } else {
+                    // 🔹 Si hubo error desde el servidor
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'alert alert-danger alert-dismissible fade show mb-2';
+                    errorDiv.innerHTML = `
+                        <i class="fa fa-exclamation-triangle me-2"></i>
+                        Error: ${result.message || 'No se pudieron guardar los vehículos.'}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    vehiculosListContainer.insertBefore(errorDiv, vehiculosListContainer.firstChild);
+                    setTimeout(() => errorDiv.remove(), 4000);
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'alert alert-danger alert-dismissible fade show mb-2';
+                errorDiv.innerHTML = `
+                    <i class="fa fa-exclamation-triangle me-2"></i>
+                    Error al guardar los vehículos. Por favor, intente nuevamente.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                vehiculosListContainer.insertBefore(errorDiv, vehiculosListContainer.firstChild);
+                
+                // Auto-remover con transición fade después de 4 segundos
+                setTimeout(() => {
+                    errorDiv.classList.remove('show');
+                    errorDiv.addEventListener('transitionend', () => errorDiv.remove());
+                }, 4000);
+            } finally {
+                guardarVehiculosBtn.disabled = false;
+                guardarVehiculosBtn.textContent = 'Guardar Cambios';
+            }
         });
+
+
+        // Modal de detalles del abono
+        detallesModal.addEventListener('show.bs.modal', async function (event) {
+            const button = event.relatedTarget;
+            const plyID = button.getAttribute('data-plyid');
+            const plzNum = button.getAttribute('data-plznum');
+            const aboFyhIni = button.getAttribute('data-abofyhini');
+
+            const abonado = button.getAttribute('data-abonado');
+            const dni = button.getAttribute('data-dni');
+            const estadoRaw = button.getAttribute('data-estado');
+            
+            // Convertir el estado del enum al texto correcto
+            let estado = estadoRaw;
+            switch(estadoRaw) {
+                case 'Activo':
+                    estado = 'Al día';
+                    break;
+                case 'Pendiente':
+                    estado = 'Pendiente';
+                    break;
+                case 'Finalizado':
+                    estado = 'Finalizado';
+                    break;
+                case 'Cancelado':
+                    estado = 'Cancelado';
+                    break;
+                default:
+                    estado = 'Desconocido';
+            }
+            
+            const plaza = button.getAttribute('data-plznum');
+            const fechaIni = button.getAttribute('data-fechaini');
+            const fechaFin = button.getAttribute('data-fechafin');
+            const monto = button.getAttribute('data-monto');
+            const clasificacion = button.getAttribute('data-clasificacion');
+            const patentes = button.getAttribute('data-patentes').split(',');
+
+            const content = document.getElementById('detallesAbonoContent');
+            content.innerHTML = `<div class="text-center py-3"><div class="spinner-border" role="status"></div></div>`;
+
+            try {
+                // 🔹 Normalizar fecha eliminando la "Z" y milisegundos si los hay
+                const fechaParam = aboFyhIni.replace('Z', '').split('.')[0];
+
+                const response = await fetch(`/Abono/GetPeriodosAbono?plyID=${plyID}&plzNum=${plzNum}&aboFyhIni=${fechaParam}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP ${response.status}`);
+                }
+
+                const periodos = await response.json();
+
+                // Contar estados
+                const periodosPagados = periodos.filter(p => p.pagado === true).length;
+                const periodosPendientes = periodos.filter(p => p.pagado === false).length;
+
+
+                const hoy = new Date();
+
+                const periodosHTML = periodos.map(p => {
+                    const fechaInicio = new Date(p.fechaInicio);
+                    const fechaFin = new Date(p.fechaFin);
+                    let estadoTexto = '';
+                    let estadoClase = '';
+
+                   if (p.pagado) {
+                        estadoTexto = '<span class="text-success fw-bold"><i class="fa fa-check-circle"></i> Pagado</span>';
+                        estadoClase = 'table-success';
+                    } else {
+                        // 🔸 Si no está pagado:
+                        if (hoy > fechaFin) {
+                            estadoTexto = '<span class="text-danger fw-bold"><i class="fa fa-times-circle"></i> Vencido</span>';
+                            estadoClase = 'table-danger';
+                        } else {
+                            estadoTexto = '<span class="text-warning fw-bold"><i class="fa fa-clock"></i> Pendiente</span>';
+                            estadoClase = 'table-warning';
+                        }
+                    }
+
+
+                    return `
+                        <tr class="${estadoClase}">
+                            <td>${p.periodoNumero}</td>
+                            <td>${p.fechaInicio}</td>
+                            <td>${p.fechaFin}</td>
+                            <td>${Number(p.monto).toFixed(2)} $</td>
+                            <td>${estadoTexto}</td>
+                            <td>${p.pagado && p.fechaPago ? `<span class="text-success fw-medium">${p.fechaPago}</span>` : '<span class="text-muted">-</span>'}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+
+                content.innerHTML = `
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <h6 class="text-dark mb-1">Información del Abonado</h6>
+                            <table class="table table-sm table-borderless mb-0">
+                                <tr><td class="py-0"><strong>Nombre:</strong></td><td class="py-0">${abonado}</td></tr>
+                                <tr><td class="py-0"><strong>DNI:</strong></td><td class="py-0">${dni}</td></tr>
+                                <tr>
+                                <td class="py-0"><strong>Estado:</strong></td>
+                                <td class="py-0">
+                                    <span id="estadoPagoDetalle" class="fw-medium">${estado}</span>
+                                </td>
+                                </tr>
+                                <tr><td class="py-0"><strong>Plaza:</strong></td><td class="py-0">${plaza}</td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-dark mb-1">Información del Abono</h6>
+                            <table class="table table-sm table-borderless mb-0">
+                                <tr><td class="py-0"><strong>Fecha Inicio:</strong></td><td class="py-0">${fechaIni}</td></tr>
+                                <tr><td class="py-0"><strong>Fecha Fin:</strong></td><td class="py-0">${fechaFin || 'No especificada'}</td></tr>
+                                <tr><td class="py-0"><strong>Monto Total:</strong></td><td class="py-0 fw-bold text-success">${monto}</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
+                        <div class="col-md-12">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <h6 class="text-dark mb-0">Períodos del Abono</h6>
+                                <div class="d-flex align-items-center">
+                                    <label class="form-label me-2 mb-0 small">Mostrar:</label>
+                                    <select class="form-select form-select-sm" id="periodosPerPage" style="width: auto;">
+                                        <option value="4" selected>4</option>
+                                        <option value="8">8</option>
+                                        <option value="12">12</option>
+                                        <option value="16">16</option>
+                                        <option value="20">20</option>
+                                        <option value="all">Todos</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+                <table class="table table-bordered table-sm text-center mb-0" id="periodosTable">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th class="py-1">#</th>
+                            <th class="py-1">Fecha Inicio</th>
+                            <th class="py-1">Fecha Fin</th>
+                            <th class="py-1">Monto</th>
+                            <th class="py-1">Estado</th>
+                            <th class="py-1">Fecha Pago</th>
+                                    </tr>
+                                </thead>
+                    <tbody id="periodosTableBody">
+                        ${periodosHTML || '<tr><td colspan="6" class="text-muted">Sin períodos registrados</td></tr>'}
+                                </tbody>
+                            </table>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <div>
+                                <span class="text-dark fw-bold">Pagados: <span class="text-success fw-bold">${periodosPagados}</span> | Pendientes: <span class="text-dark fw-bold" style="color: #e67e22 !important;">${periodosPendientes}</span></span>
+                                </div>
+                                <div id="periodosPagination" class="pagination-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Inicializar paginación de períodos
+                initializePeriodosPagination(periodos);
+                
+            } catch (err) {
+                console.error("Error cargando detalles de abono:", err);
+                content.innerHTML = `<div class="text-danger text-center py-3">Error al cargar los detalles del abono (${err.message}).</div>`;
+            }
+        });
+
+        // Función para inicializar paginación de períodos en el modal
+        function initializePeriodosPagination(periodos) {
+            let currentPage = 1;
+            let itemsPerPage = 4;
+            
+            function renderPeriodos() {
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const currentPeriodos = periodos.slice(startIndex, endIndex);
+                
+                const periodosHTML = currentPeriodos.map(p => `
+                    <tr class="${p.pagado ? 'table-success' : 'table-warning'}">
+                        <td>${p.periodoNumero}</td>
+                        <td>${p.fechaInicio}</td>
+                        <td>${p.fechaFin}</td>
+                        <td>${Number(p.monto).toFixed(2)} $</td>
+                        <td>
+                            ${p.pagado
+                                ? `<span class="text-success fw-bold"><i class="fa fa-check-circle"></i> Pagado</span>`
+                                : `<span class="text-dark fw-bold" style="color: #fd7e14 !important;"><i class="fa fa-clock"></i> Pendiente</span>`}
+                        </td>
+                        <td>
+                            ${p.pagado && p.fechaPago 
+                                ? `<span class="text-success fw-medium">${p.fechaPago}</span>`
+                                : '<span class="text-muted">-</span>'}
+                        </td>
+                    </tr>
+                `).join('');
+                
+                document.getElementById('periodosTableBody').innerHTML = periodosHTML || '<tr><td colspan="6" class="text-muted">Sin períodos registrados</td></tr>';
+                renderPagination();
+            }
+            
+            function renderPagination() {
+                const totalPages = Math.ceil(periodos.length / itemsPerPage);
+                const paginationDiv = document.getElementById('periodosPagination');
+                
+                if (totalPages <= 1) {
+                    paginationDiv.innerHTML = '';
+                    return;
+                }
+                
+                let paginationHTML = '<nav><ul class="pagination pagination-sm mb-0">';
+                
+                // Botón anterior
+                paginationHTML += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="changePeriodosPage(${currentPage - 1})">«</a>
+                </li>`;
+                
+                // Páginas
+                for (let i = 1; i <= totalPages; i++) {
+                    if (i === currentPage || (i >= currentPage - 2 && i <= currentPage + 2) || i === 1 || i === totalPages) {
+                        paginationHTML += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                            <a class="page-link" href="#" onclick="changePeriodosPage(${i})">${i}</a>
+                        </li>`;
+                    } else if (i === currentPage - 3 || i === currentPage + 3) {
+                        paginationHTML += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                    }
+                }
+                
+                // Botón siguiente
+                paginationHTML += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="changePeriodosPage(${currentPage + 1})">»</a>
+                </li>`;
+                
+                paginationHTML += '</ul></nav>';
+                paginationDiv.innerHTML = paginationHTML;
+            }
+            
+            // Función global para cambiar página
+            window.changePeriodosPage = function(page) {
+                const totalPages = Math.ceil(periodos.length / itemsPerPage);
+                if (page >= 1 && page <= totalPages) {
+                    currentPage = page;
+                    renderPeriodos();
+                }
+                return false;
+            };
+            
+            // Event listener para cambiar items por página
+            document.getElementById('periodosPerPage').addEventListener('change', function() {
+                if (this.value === 'all') {
+                    itemsPerPage = periodos.length;
+                } else {
+                    itemsPerPage = parseInt(this.value);
+                }
+                currentPage = 1;
+                renderPeriodos();
+            });
+            
+            // Renderizar inicialmente
+            renderPeriodos();
+        }
+
+        // 🔹 Función para mostrar mensajes personalizados
+        function showCustomAlert(title, message, type = 'info', showCancel = false, onConfirm = null) {
+            // Crear overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'custom-alert-overlay';
+            
+            // Crear modal
+            const modal = document.createElement('div');
+            modal.className = `custom-alert alert-${type}`;
+            
+            // Iconos según el tipo
+            const icons = {
+                'success': '<i class="fa fa-check-circle"></i>',
+                'error': '<i class="fa fa-exclamation-circle"></i>',
+                'warning': '<i class="fa fa-exclamation-triangle"></i>',
+                'info': '<i class="fa fa-info-circle"></i>'
+            };
+            
+            // Botones según el tipo
+            const buttons = showCancel 
+                ? `<button class="custom-alert-btn custom-alert-btn-secondary" onclick="closeCustomAlert()">Cancelar</button>
+                   <button class="custom-alert-btn custom-alert-btn-primary" onclick="confirmCustomAlert()">Aceptar</button>`
+                : `<button class="custom-alert-btn custom-alert-btn-primary" onclick="closeCustomAlert()">Aceptar</button>`;
+            
+            modal.innerHTML = `
+                <div class="custom-alert-header">
+                    <h5 class="custom-alert-title">
+                        ${icons[type]} ${title}
+                    </h5>
+                </div>
+                <div class="custom-alert-body">
+                    ${message}
+                </div>
+                <div class="custom-alert-footer">
+                    ${buttons}
+                </div>
+            `;
+            
+            // Agregar al DOM
+            document.body.appendChild(overlay);
+            document.body.appendChild(modal);
+            
+            // Funciones globales para los botones
+            window.closeCustomAlert = function() {
+                document.body.removeChild(overlay);
+                document.body.removeChild(modal);
+                delete window.closeCustomAlert;
+                delete window.confirmCustomAlert;
+            };
+            
+            window.confirmCustomAlert = function() {
+                if (onConfirm) onConfirm();
+                closeCustomAlert();
+            };
+        }
+
+        // 🔹 Funciones para manejar mensajes de error
+        function mostrarError(campoId, mensaje) {
+            const errorElement = document.getElementById(campoId + 'Error');
+            if (errorElement) {
+                errorElement.textContent = mensaje;
+                errorElement.style.display = 'block';
+            }
+        }
+
+        function ocultarError(campoId) {
+            const errorElement = document.getElementById(campoId + 'Error');
+            if (errorElement) {
+                errorElement.style.display = 'none';
+            }
+        }
+
+        function ocultarTodosLosErrores() {
+            ocultarError('metodoPago');
+            ocultarError('periodos');
+        }
+
+        // 🔹 JavaScript para Modal de Gestión de Pagos
+        let abonoActual = null;
+        let periodosSeleccionados = [];
+
+        // ✅ Evento: cargar datos cuando se abre el modal de pagos
+        const gestionarPagosModal = document.getElementById('gestionarPagosModal');
+
+        if (gestionarPagosModal) {
+            gestionarPagosModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                if (!button) return;
+
+                const plyID = button.getAttribute('data-plyid');
+                const plzNum = button.getAttribute('data-plznum');
+                const aboFyhIni = button.getAttribute('data-abofyhini');
+
+                console.log("🟢 Abriendo modal de pagos con:", { plyID, plzNum, aboFyhIni });
+                cargarDatosAbono(plyID, plzNum, aboFyhIni);
+            });
+        } else {
+            console.warn("⚠️ No se encontró el modal #gestionarPagosModal en el DOM");
+        }
+
+
+        async function cargarDatosAbono(plyID, plzNum, aboFyhIni) {
+            try {
+                const fechaParam = aboFyhIni.replace('Z', '').split('.')[0];
+
+                // Cargar datos del abono y métodos de pago en paralelo
+                const [abonoResponse, metodosResponse] = await Promise.all([
+                    fetch(`/Abono/GetAbonoParaGestionarPagos?plyID=${plyID}&plzNum=${plzNum}&aboFyhIni=${fechaParam}`),
+                    fetch(`/Abono/GetMetodosPago?plyID=${plyID}`)
+                ]);
+                
+                const abonoResult = await abonoResponse.json();
+                const metodosResult = await metodosResponse.json();
+                
+                if (abonoResult.success) {
+                    abonoActual = abonoResult.abono;
+                    mostrarInformacionAbonado();
+                    mostrarResumenPeriodos();
+                    cargarMetodosPago(metodosResult); // metodosResult ya es el array directamente
+                    establecerFechaActual();
+                    limpiarFormularios();
+                } else {
+                    showCustomAlert('Error al Cargar Datos', abonoResult.message || 'No se pudieron cargar los datos del abono.', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showCustomAlert('Error de Conexión', 'No se pudo conectar con el servidor para cargar los datos del abono.', 'error');
+            }
+        }
+
+        function mostrarInformacionAbonado() {
+            document.getElementById('modalAboNom').textContent = abonoActual.abonado.nombre;
+            document.getElementById('modalAboDni').textContent = abonoActual.abonado.dni;
+            document.getElementById('modalPlazaNum').textContent = `Plaza ${abonoActual.plzNum}`;
+            
+            let estadoTexto = abonoActual.estadoPago;
+            switch(estadoTexto) {
+                case 'Activo':
+                    estadoTexto = 'Al día';
+                    break;
+                case 'Pendiente':
+                    estadoTexto = 'Pendiente';
+                    break;
+                case 'Finalizado':
+                    estadoTexto = 'Finalizado';
+                    break;
+                case 'Cancelado':
+                    estadoTexto = 'Cancelado';
+                    break;
+            }
+            document.getElementById('modalEstadoAbono').textContent = estadoTexto;
+        }
+
+        function mostrarResumenPeriodos() {
+        const totalPeriodos = abonoActual.periodos.length;
+        let periodosPagados = 0;
+        let periodosPendientesCount = 0;
+
+        // 🔹 Contar correctamente según estado del backend
+        abonoActual.periodos.forEach(p => {
+            if (p.estadoPago === 'Pagado') periodosPagados++;
+            else periodosPendientesCount++;
+        });
+
+        // 🔹 Filtrar los pendientes
+        const periodosPendientes = abonoActual.periodos
+        .filter(p => p.estadoPago === 'Pendiente')
+        .sort((a, b) => a.perNum - b.perNum); // 🔹 asegura que estén en orden
+
+
+        // Actualizar resumen
+        document.getElementById('totalPeriodos').textContent = totalPeriodos;
+        document.getElementById('periodosPagados').textContent = periodosPagados;
+        document.getElementById('periodosPendientes').textContent = periodosPendientesCount;
+
+        // Referencias a secciones
+        const mensajeTodosPagados = document.getElementById('mensajeTodosPagados');
+        const seccionPagos = document.getElementById('seccionPagos');
+        const totalLabel = document.getElementById('totalPagar');
+        const btnRegistrar = document.getElementById('btnRegistrarPago');
+
+        // 🔹 Caso: todos pagados
+        if (periodosPendientes.length === 0) {
+            mensajeTodosPagados.style.display = 'block';
+            seccionPagos.style.display = 'none';
+            totalLabel.textContent = '$0.00';
+            btnRegistrar.disabled = true;
+            return;
+        }
+
+        // 🔹 Caso: hay pendientes
+        mensajeTodosPagados.style.display = 'none';
+        seccionPagos.style.display = 'block';
+
+        // Configurar input cantidad
+        const cantidadInput = document.getElementById('cantidadPeriodosPagar');
+        cantidadInput.max = periodosPendientes.length;
+        cantidadInput.value = 0;
+        
+        // Actualizar texto de ayuda con el máximo
+        const maxPeriodosTexto = document.getElementById('maxPeriodosTexto');
+        if (maxPeriodosTexto) {
+            maxPeriodosTexto.textContent = periodosPendientes.length;
+        }
+
+        // 🔹 Inicializar sin períodos seleccionados
+        periodosSeleccionados = [];
+
+        // 🔹 Actualizar listado de períodos seleccionados y total
+        actualizarPeriodosPorCantidad();
+    }
+
+        function actualizarPeriodosPorCantidad() {
+            const cantidad = parseInt(document.getElementById('cantidadPeriodosPagar').value) || 0;
+            const periodosPendientes = abonoActual.periodos.filter(p => p.estadoPago === 'Pendiente');
+
+            
+            periodosSeleccionados = [];
+            let total = 0;
+
+            if (cantidad > 0 && periodosPendientes.length > 0) {
+                // Seleccionar los primeros 'cantidad' períodos pendientes
+                const periodosAseleccionar = periodosPendientes.slice(0, cantidad);
+                
+                periodosAseleccionar.forEach(periodo => {
+                    periodosSeleccionados.push(periodo.perNum);
+                    total += periodo.perMonto;
+                });
+            }
+
+            // Mostrar períodos seleccionados
+            const container = document.getElementById('periodosSeleccionados');
+            if (periodosSeleccionados.length > 0) {
+                container.innerHTML = periodosSeleccionados.map(perNum => {
+                    const periodo = abonoActual.periodos.find(p => p.perNum === perNum);
+                    const fechaInicio = new Date(periodo.perFyhIni).toLocaleDateString();
+                    const fechaFin = new Date(periodo.perFyhFin).toLocaleDateString();
+                    return `<div class="small mb-1">
+                        <strong>Período ${perNum}:</strong> 
+                        <span class="text-muted">${fechaInicio} - ${fechaFin}</span>
+                        <span class="text-muted"> - </span>
+                        <span class="fw-bold text-success">$${periodo.perMonto.toFixed(2)}</span>
+                    </div>`;
+                }).join('');
+            } else {
+                container.innerHTML = '<small class="text-muted">Seleccione la cantidad arriba</small>';
+            }
+
+            // Actualizar total
+            document.getElementById('totalPagar').textContent = total > 0 ? '$' + total.toFixed(2) : '$0.00';
+
+            // Habilitar/deshabilitar botón
+            const btnRegistrar = document.getElementById('btnRegistrarPago');
+            btnRegistrar.disabled = periodosSeleccionados.length === 0;
+            
+            // Ocultar error de períodos si hay períodos seleccionados
+            if (periodosSeleccionados.length > 0) {
+                ocultarError('periodos');
+            }
+        }
+
+        function cargarMetodosPago(metodosPago) {
+            const select = document.getElementById('metodoPago');
+            select.innerHTML = '<option value="">Seleccione método de pago</option>';
+            
+            if (Array.isArray(metodosPago)) {
+                metodosPago.forEach(metodo => {
+                    const option = document.createElement('option');
+                    option.value = metodo.mepID;
+                    option.textContent = metodo.mepNom;
+                    select.appendChild(option);
+                });
+            }
+        }
+
+        function establecerFechaActual() {
+            const now = new Date();
+            const fechaActual = now.toISOString().slice(0, 10); // Formato date (solo fecha)
+            document.getElementById('fechaPago').value = fechaActual;
+        }
+
+        // Event listener para registrar pago
+        console.log("🟢 Click en Registrar Pago detectado");
+        document.getElementById('btnRegistrarPago').addEventListener('click', async function() {
+            const metodoPago = document.getElementById('metodoPago').value;
+            const fechaPago = document.getElementById('fechaPago').value;
+            // 🔹 Usar los datos reales en lugar de leer el HTML
+            const totalPagar = parseFloat(document.getElementById('totalPagar').textContent.replace('$', '').trim()) || 0;
+
+            
+            // Limpiar errores previos
+            ocultarTodosLosErrores();
+            
+            let hayErrores = false;
+            
+            // Validar método de pago
+            if (!metodoPago) {
+                mostrarError('metodoPago', 'Este campo es obligatorio');
+                hayErrores = true;
+            }
+            
+            // Validar períodos seleccionados
+            if (periodosSeleccionados.length === 0) {
+                mostrarError('periodos', 'Debe seleccionar al menos un período para pagar');
+                hayErrores = true;
+            }
+            
+            if (hayErrores) {
+                return;
+            }
+            
+            try {
+                const requestData = {
+                    PlyID: parseInt(abonoActual.plyID),
+                    PlzNum: parseInt(abonoActual.plzNum),
+                    AboFyhIni: new Date(abonoActual.aboFyhIni).toISOString(), // ✅ formato válido
+                    PeriodosAPagar: periodosSeleccionados.map(num => parseInt(num)),
+                    MetodoPago: parseInt(metodoPago),
+                    FechaPago: new Date(fechaPago).toISOString(),
+                    TotalPagar: parseFloat(document.getElementById('totalPagar').textContent.replace('$', '').trim())
+                };
+                
+                console.log("Request JSON:", JSON.stringify(requestData, null, 2));
+                
+                const response = await fetch('/Abono/RegistrarPagosPeriodos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const modalBody = document.querySelector('#gestionarPagosModal .modal-body');
+
+                    // ✅ Mensaje de éxito (sin número de pago)
+                    const successDiv = document.createElement('div');
+                    successDiv.className = 'alert alert-success text-center fade show mb-3';
+                    successDiv.innerHTML = `
+                        <i class="fa fa-check-circle me-2"></i>
+                        ¡Pago registrado correctamente!<br>
+                        <small class="text-muted">
+                            Períodos pagados: <strong>${result.resumen.pagados}</strong> /
+                            <strong>${result.resumen.total}</strong>
+                        </small>
+                    `;
+                    modalBody.prepend(successDiv);
+
+                    // 🔄 Actualizar datos del abono
+                    await cargarDatosAbono(abonoActual.plyID, abonoActual.plzNum, abonoActual.aboFyhIni);
+
+                    // 🔄 Buscar fila del abono en la tabla principal
+                    const abonoFila = document.querySelector(
+                        `[data-plyid="${abonoActual.plyID}"][data-plznum="${abonoActual.plzNum}"][data-abofyhini="${abonoActual.aboFyhIni}"]`
+                    )?.closest('tr');
+
+                    // ✅ Actualizar estado en la tabla principal
+                    if (abonoFila && result.nuevoEstado) {
+                        const estadoTd = abonoFila.querySelector('td span.fw-medium');
+                        if (estadoTd) {
+                            estadoTd.textContent = result.nuevoEstado.texto;
+
+                            // Solo color en la tabla del Index
+                            switch (result.nuevoEstado.texto) {
+                                case 'Al día':
+                                    estadoTd.className = 'text-success fw-medium';
+                                    break;
+                                case 'Pendiente':
+                                    estadoTd.className = 'text-warning fw-medium';
+                                    break;
+                                case 'Finalizado':
+                                    estadoTd.className = 'text-secondary fw-medium';
+                                    break;
+                                case 'Cancelado':
+                                    estadoTd.className = 'text-danger fw-medium';
+                                    break;
+                                default:
+                                    estadoTd.className = 'text-muted fw-medium';
+                            }
+                        }
+
+                        // 🔄 Actualizar atributo del botón de detalles
+                        const detallesBtn = abonoFila.querySelector('a[title="Ver detalles"]');
+                        if (detallesBtn) {
+                            detallesBtn.setAttribute('data-estado', result.nuevoEstado.texto);
+                        }
+                    }
+
+                    // ✅ Actualizar estado en la modal de pagos
+                    const estadoModal = document.getElementById('modalEstadoAbono');
+                    if (estadoModal && result.nuevoEstado) {
+                        estadoModal.textContent = result.nuevoEstado.texto;
+                        estadoModal.className = 'fw-medium'; // sin color
+                    }
+
+                    // ✅ Si está abierta la modal de Detalles del abono, actualizar también
+                    const estadoDetalle = document.getElementById('estadoPagoDetalle');
+                    if (estadoDetalle && result.nuevoEstado) {
+                        estadoDetalle.textContent = result.nuevoEstado.texto;
+                        estadoDetalle.className = 'fw-medium'; // sin color
+                    }
+
+                    // ✨ Efecto fade-out del mensaje de éxito y recargar página
+                    setTimeout(() => {
+                        successDiv.classList.remove('show');
+                        successDiv.addEventListener('transitionend', () => {
+                            successDiv.remove();
+                            // 🔄 Recargar la página después de mostrar el mensaje de éxito
+                            location.reload();
+                        });
+                    }, 4000);
+                }
+                else {
+                    showCustomAlert(
+                        'Error al registrar pago',
+                        result.message || 'Ha ocurrido un error al procesar el pago. Por favor, intente nuevamente.',
+                        'error'
+                    );
+                }
+
+
+            } catch (error) {
+                console.error('Error:', error);
+                showCustomAlert('Error de Conexión', 'No se pudo conectar con el servidor. Verifique su conexión a internet e intente nuevamente.', 'error');
+            }
+        });
+
+
+        function limpiarFormularios() {
+            document.getElementById('metodoPago').value = '';
+            document.getElementById('totalPagar').textContent = '$0.00';
+            periodosSeleccionados = [];
+            ocultarTodosLosErrores();
+        }
+
+        // Event listeners para la nueva funcionalidad
+        const cantidadInput = document.getElementById('cantidadPeriodosPagar');
+        
+        cantidadInput.addEventListener('input', function() {
+            // Validar que no exceda el máximo de períodos pendientes
+            const maxPeriodos = parseInt(this.max) || 0;
+            const valorActual = parseInt(this.value) || 0;
+            
+            if (valorActual > maxPeriodos) {
+                this.value = maxPeriodos;
+            }
+            
+            // Actualizar períodos
+            actualizarPeriodosPorCantidad();
+        });
+        
+        // Validación adicional cuando se pierde el foco
+        cantidadInput.addEventListener('blur', function() {
+            const maxPeriodos = parseInt(this.max) || 0;
+            const valorActual = parseInt(this.value) || 0;
+            
+            // Si el valor es inválido, corregirlo
+            if (valorActual > maxPeriodos) {
+                this.value = maxPeriodos;
+                actualizarPeriodosPorCantidad();
+            } else if (valorActual < 0) {
+                this.value = 0;
+                actualizarPeriodosPorCantidad();
+            }
+        });
+        
+        // Event listeners para ocultar errores en tiempo real
+        document.getElementById('metodoPago').addEventListener('change', function() {
+            if (this.value) {
+                ocultarError('metodoPago');
+            }
+        });
+        
+        document.getElementById('btnTodosPendientes').addEventListener('click', function() {
+            const periodosPendientes = abonoActual.periodos.filter(p => p.estadoPago === 'Pendiente').length;
+            document.getElementById('cantidadPeriodosPagar').value = periodosPendientes;
+            actualizarPeriodosPorCantidad();
+        });
+
+        // 🔹 JavaScript para Modal de Extensión de Abono
+        let abonoParaExtension = null;
+        let tipoAbonoOriginal = null;
+
+        // Event listener para abrir modal de extensión
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.extender-abono-btn')) {
+                const button = e.target.closest('.extender-abono-btn');
+                const plyID = button.getAttribute('data-plyid');
+                const plzNum = button.getAttribute('data-plznum');
+                const aboFyhIni = button.getAttribute('data-abofyhini');
+                
+                cargarDatosParaExtension(plyID, plzNum, aboFyhIni);
+            }
+        });
+
+        async function cargarDatosParaExtension(plyID, plzNum, aboFyhIni) {
+            try {
+                const fechaParam = aboFyhIni.replace('Z', '').split('.')[0];
+                console.log('🔍 Debug - Parámetros:', { plyID, plzNum, aboFyhIni, fechaParam });
+                const response = await fetch(`/Abono/GetAbonoParaExtension?plyID=${plyID}&plzNum=${plzNum}&aboFyhIni=${fechaParam}`);
+                
+                if (response.ok) {
+                    const abonoData = await response.json();
+                    console.log('🔍 Debug - Datos recibidos:', abonoData);
+                    abonoParaExtension = abonoData;
+                    
+                    mostrarInformacionParaExtension();
+                    configurarEventListenersExtension();
+                } else {
+                    console.error('🔍 Debug - Error en respuesta:', response.status, response.statusText);
+                    const errorData = await response.json().catch(() => null);
+                    console.error('🔍 Debug - Error data:', errorData);
+                    showCustomAlert('Error', 'No se pudieron cargar los datos necesarios para la extensión.', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showCustomAlert('Error de Conexión', 'No se pudo conectar con el servidor para cargar los datos del abono.', 'error');
+            }
+        }
+
+        function mostrarInformacionParaExtension() {
+            // Limpiar campos dinámicos al abrir modal
+            limpiarCamposDinamicos();
+            
+            // Información del abonado
+            document.getElementById('modalExtAboNom').textContent = abonoParaExtension.abonado.nombre;
+            document.getElementById('modalExtAboDni').textContent = abonoParaExtension.abonado.dni;
+            document.getElementById('modalExtEstado').textContent = abonoParaExtension.abonado.estado || 'Pendiente';
+            document.getElementById('modalExtPlazaNum').textContent = `Plaza ${abonoParaExtension.abonado.plaza}`;
+            
+            // Información del abono
+            document.getElementById('modalExtFechaIni').textContent = abonoParaExtension.abonado.fechaInicio || 'N/A';
+            document.getElementById('modalExtFechaFin').textContent = abonoParaExtension.fechaFinAbono 
+            || abonoParaExtension.abonado.fechaFinActual 
+            || 'N/A';
+
+            
+            // Usar el tipo de abono del servidor
+            tipoAbonoOriginal = abonoParaExtension.tipoAbono;
+            document.getElementById('modalExtTipoAbono').textContent = tipoAbonoOriginal;
+            
+            // Configurar texto dinámico según tipo de abono
+            actualizarTextoInterfaz(tipoAbonoOriginal);
+            
+          
+ // 🔹 Calcular la fecha de inicio de la extensión (1 día después del fin del abono)
+        const fechaFuente = abonoParaExtension.fechaFinAbono || abonoParaExtension.abonado.fechaFinActual;
+        if (fechaFuente) {
+            const [dia, mes, anio] = fechaFuente.split('/');
+            const fechaFin = new Date(anio, mes - 1, dia);
+
+            // Formatear como YYYY-MM-DD para el input de fecha
+            const fechaInicioExtension = `${fechaFin.getFullYear()}-${String(fechaFin.getMonth() + 1).padStart(2, '0')}-${String(fechaFin.getDate()).padStart(2, '0')}`;
+            document.getElementById('fechaInicioExtension').value = fechaInicioExtension;
+        }
+
+            
+            // No establecer cantidad por defecto - dejar vacío
+            document.getElementById('cantidadPeriodosExtension').value = '';
+            
+            // No calcular automáticamente - esperar input del usuario
+            limpiarResumenExtension();
+        }
+
+        function limpiarCamposDinamicos() {
+            // Limpiar campos de entrada
+            document.getElementById('cantidadPeriodosExtension').value = '';
+            
+            // Limpiar resumen - mostrar valores vacíos inicialmente
+            document.getElementById('tarifaPorPeriodo').textContent = '$0.00';
+            document.getElementById('fechaFinCalculada').textContent = '—';
+            document.getElementById('totalExtension').textContent = '$0.00';
+            
+            // Ocultar mensajes de advertencia
+            document.getElementById('plazaOcupadaWarning').style.display = 'none';
+            document.getElementById('seleccionarOtraPlazaContainer').style.display = 'none';
+            document.getElementById('btnExtenderAbono').disabled = false;
+        }
+
+        function actualizarTextoInterfaz(tipoAbono) {
+            const unidadPeriodo = document.getElementById('unidadPeriodo');
+            const textoAclaratorio = document.getElementById('textoAclaratorio');
+            
+            switch (tipoAbono.toLowerCase()) {
+                case "por día":
+                    unidadPeriodo.textContent = "días";
+                    textoAclaratorio.textContent = "Si desea extender el período en un rango que no sea días, use el botón \"Agregar abono\" para crear un nuevo abono con diferentes condiciones.";
+                    break;
+                case "por semana":
+                    unidadPeriodo.textContent = "semanas";
+                    textoAclaratorio.textContent = "Si desea extender el período en un rango que no sea semanas, use el botón \"Agregar abono\" para crear un nuevo abono con diferentes condiciones.";
+                    break;
+                case "por mes":
+                    unidadPeriodo.textContent = "meses";
+                    textoAclaratorio.textContent = "Si desea extender el período en un rango que no sea meses, use el botón \"Agregar abono\" para crear un nuevo abono con diferentes condiciones.";
+                    break;
+            }
+        }
+
+        async function obtenerTarifaReal() {
+            try {
+                const response = await fetch(`/Abono/GetTarifaRealAbono?plyID=${abonoParaExtension.plyID}&plzNum=${abonoParaExtension.abonado.plaza}&aboFyhIni=${abonoParaExtension.aboFyhIni}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Actualizar el tipo de abono si es diferente al original
+                    if (data.tipoAbono && data.tipoAbono !== tipoAbonoOriginal) {
+                        tipoAbonoOriginal = data.tipoAbono;
+                        actualizarTextoInterfaz(tipoAbonoOriginal);
+                    }
+                    return data.tarifa;
+                } else {
+                    // Fallback a tarifas por defecto
+                    return obtenerTarifaPorDefecto(tipoAbonoOriginal);
+                }
+            } catch (error) {
+                console.error('Error obteniendo tarifa real:', error);
+                return obtenerTarifaPorDefecto(tipoAbonoOriginal);
+            }
+        }
+
+        function configurarEventListenersExtension() {
+            // Event listener para recalcular cuando cambia la cantidad
+            document.getElementById('cantidadPeriodosExtension').addEventListener('input', calcularTarifaYFecha);
+            
+            // Event listener para el botón "Agregar abono"
+            document.getElementById('btnAgregarAbono').addEventListener('click', redirigirACreate);
+            document.getElementById('btnAgregarAbonoFooter').addEventListener('click', redirigirACreate);
+            
+            // Event listener para el botón "Extender abono"
+            document.getElementById('btnExtenderAbono').addEventListener('click', extenderAbono);
+            
+            // Event listener para "Seleccionar otra plaza"
+            document.getElementById('btnSeleccionarOtraPlaza').addEventListener('click', redirigirACreate);
+            
+        }
+
+        async function calcularTarifaYFecha() {
+            const cantidad = parseInt(document.getElementById('cantidadPeriodosExtension').value) || 0;
+            const fechaInicio = document.getElementById('fechaInicioExtension').value;
+            
+            // Solo calcular si hay cantidad válida y fecha de inicio
+            if (!cantidad || cantidad <= 0 || !fechaInicio) {
+                limpiarResumenExtension();
+                return;
+            }
+            
+            try {
+                // Calcular fecha de fin basada en el tipo de período
+                const fechaInicioDate = new Date(fechaInicio);
+                let fechaFin = new Date(fechaInicioDate);
+                
+               // 🔹 Todas las extensiones suman +1 día adicional (DEUDA TECNICA)
+                switch (tipoAbonoOriginal.toLowerCase()) {
+                    case "por día":
+                        fechaFin.setDate(fechaInicioDate.getDate() + cantidad + 1);
+                        break;
+                    case "por semana":
+                        fechaFin.setDate(fechaInicioDate.getDate() + (cantidad * 7) + 1);
+                        break;
+                    case "por mes":
+                        fechaFin = new Date(fechaInicioDate);
+                        fechaFin.setMonth(fechaFin.getMonth() + cantidad);
+                        fechaFin.setDate(fechaFin.getDate() + 1);
+                        break;
+                }
+
+                
+                document.getElementById('fechaFinCalculada').textContent = fechaFin.toLocaleDateString();
+
+                // Verificar disponibilidad de la plaza
+                await verificarDisponibilidadPlaza(fechaInicioDate, fechaFin);
+                
+                // Obtener tarifa real del abono
+                const tarifaPorPeriodo = await obtenerTarifaReal();
+                const total = tarifaPorPeriodo * cantidad;
+                
+                document.getElementById('tarifaPorPeriodo').textContent = '$' + tarifaPorPeriodo.toFixed(2);
+                document.getElementById('totalExtension').textContent = '$' + total.toFixed(2);
+                
+            } catch (error) {
+                console.error('Error calculando tarifa:', error);
+            }
+        }
+
+        function obtenerTarifaPorDefecto(tipoAbono) {
+            switch (tipoAbono) {
+                case "por día": return 100;
+                case "por semana": return 600;
+                case "por mes": return 2400;
+                default: return 100;
+            }
+        }
+
+        async function verificarDisponibilidadPlaza(fechaInicio, fechaFin) {
+            try {
+                const fechaInicioISO = fechaInicio.toISOString();
+                const fechaFinISO = fechaFin.toISOString();
+
+                const response = await fetch(`/Abono/VerificarDisponibilidadPlaza?plyId=${abonoParaExtension.plyID}&plzNum=${abonoParaExtension.abonado.plaza}&fechaIni=${fechaInicioISO}&fechaFin=${fechaFinISO}&excluirAbono=${abonoParaExtension.aboFyhIni}`);
+                const disponibilidad = await response.json();
+
+                const plazaOcupadaWarning = document.getElementById('plazaOcupadaWarning');
+                const seleccionarOtraPlazaContainer = document.getElementById('seleccionarOtraPlazaContainer');
+                const btnExtenderAbono = document.getElementById('btnExtenderAbono');
+
+                if (!disponibilidad.disponible) {
+                    // Mostrar advertencia
+                    plazaOcupadaWarning.style.display = 'block';
+                    seleccionarOtraPlazaContainer.style.display = 'block';
+                    btnExtenderAbono.disabled = true;
+                    
+                    // Actualizar mensaje con fecha específica
+                    const fechaOcupacion = new Date(disponibilidad.fechaFinOcupacion || fechaInicio);
+                    document.getElementById('plazaOcupadaMessage').textContent = 
+                        `La plaza se encuentra ocupada a partir de ${fechaOcupacion.toLocaleDateString()}`;
+                } else {
+                    // Ocultar advertencias
+                    plazaOcupadaWarning.style.display = 'none';
+                    seleccionarOtraPlazaContainer.style.display = 'none';
+                    btnExtenderAbono.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error verificando disponibilidad:', error);
+            }
+        }
+
+        function limpiarResumenExtension() {
+            document.getElementById('tarifaPorPeriodo').textContent = '$0.00';
+            document.getElementById('fechaFinCalculada').textContent = '—';
+            document.getElementById('totalExtension').textContent = '$0.00';
+            document.getElementById('plazaOcupadaWarning').style.display = 'none';
+            document.getElementById('seleccionarOtraPlazaContainer').style.display = 'none';
+            document.getElementById('btnExtenderAbono').disabled = false;
+        }
+
+        async function extenderAbono() {
+            const cantidad = parseInt(document.getElementById('cantidadPeriodosExtension').value);
+            const fechaInicio = document.getElementById('fechaInicioExtension').value;
+            
+            // 🔹 Limpiar errores previos
+            document.querySelectorAll('.field-error').forEach(error => error.remove());
+            
+            let hasErrors = false;
+            
+            // 🔹 Validar cantidad de períodos
+            if (!cantidad || cantidad <= 0) {
+                const cantidadInput = document.getElementById('cantidadPeriodosExtension');
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'field-error text-danger small mt-1';
+                errorDiv.textContent = 'La cantidad de períodos es obligatoria y debe ser mayor a 0.';
+                cantidadInput.parentNode.appendChild(errorDiv);
+                hasErrors = true;
+            }
+            
+            // 🔹 Validar fecha de inicio
+            if (!fechaInicio) {
+                const fechaInput = document.getElementById('fechaInicioExtension');
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'field-error text-danger small mt-1';
+                errorDiv.textContent = 'La fecha de inicio es obligatoria.';
+                fechaInput.parentNode.appendChild(errorDiv);
+                hasErrors = true;
+            }
+            
+            if (hasErrors) {
+                return;
+            }
+            
+            // Validar que la extensión coincida con el tipo de abono original
+            if (!tipoAbonoOriginal) {
+                showCustomAlert('Error', 'No se pudo determinar el tipo de abono. Por favor, intente nuevamente.', 'error');
+                return;
+            }
+            
+            try {
+                const requestData = {
+                    plyID: abonoParaExtension.plyID,
+                    plzNum: abonoParaExtension.abonado.plaza,
+                    aboFyhIni: abonoParaExtension.aboFyhIni,
+                    tipoExtension: tipoAbonoOriginal,
+                    cantidadPeriodos: cantidad,
+                    fechaInicio: fechaInicio
+                };
+                                
+                const response = await fetch('/Abono/ExtenderAbonoPorPeriodos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 🔹 Mostrar mensaje de éxito dentro de la modal
+                    const modalBody = document.querySelector('#extenderAbonoModal .modal-body');
+                    const successDiv = document.createElement('div');
+                    successDiv.className = 'alert alert-success text-center fade show mb-3';
+                    successDiv.innerHTML = `
+                        <i class="fa fa-check-circle me-2"></i>
+                        ¡Abono extendido correctamente!
+                    `;
+                    modalBody.prepend(successDiv);
+
+                    // 🔹 Autoocultar mensaje de éxito luego de 4 segundos
+                    setTimeout(() => {
+                        successDiv.classList.remove('show');
+                        successDiv.addEventListener('transitionend', () => {
+                            successDiv.remove();
+                            // Cerrar modal y recargar después de ocultar el mensaje
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('extenderAbonoModal'));
+                            modal.hide();
+                            location.reload();
+                        });
+                    }, 4000);
+                } else {
+                    if (result.redirect) {
+                        // Si hay conflicto de plaza, redirigir a Create
+                        redirigirACreate();
+                    } else {
+                        // 🔹 Mostrar mensaje de error dentro de la modal
+                        const modalBody = document.querySelector('#extenderAbonoModal .modal-body');
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'alert alert-danger alert-dismissible fade show mb-3';
+                        errorDiv.innerHTML = `
+                            <i class="fa fa-exclamation-triangle me-2"></i>
+                            Error: ${result.message || 'Ha ocurrido un error al extender el abono.'}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                        modalBody.prepend(errorDiv);
+                        setTimeout(() => errorDiv.remove(), 4000);
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showCustomAlert('Error de Conexión', 'No se pudo conectar con el servidor para extender el abono.', 'error');
+            }
+        }
+
+        function redirigirACreate() {
+            // Cerrar modal actual
+            const modal = bootstrap.Modal.getInstance(document.getElementById('extenderAbonoModal'));
+            modal.hide();
+            
+            // Redirigir a Create con datos precargados
+            const params = new URLSearchParams({
+                abonado: abonoParaExtension.abonado.nombre,
+                dni: abonoParaExtension.abonado.dni,
+                vehiculos: JSON.stringify(abonoParaExtension.vehiculos || []),
+                plyID: abonoParaExtension.plyID
+            });
+            
+            window.location.href = `/Abono/Create?${params.toString()}`;
+        }
+
+       async function cancelarAbono(plyID, plzNum, aboFyhIni, abonado) {
+        console.log('🔍 Función cancelarAbono ejecutándose con:', { plyID, plzNum, aboFyhIni, abonado });
+        
+        // Crear modal de confirmación
+        const modalHtml = `
+            <div class="modal fade" id="confirmarCancelacionModal" tabindex="-1" aria-labelledby="confirmarCancelacionLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="confirmarCancelacionLabel">
+                                <i class="fa fa-ban me-2 text-danger"></i>Confirmar cancelación
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body text-center">
+                            <p>¿Desea cancelar el abono de <strong>${abonado}</strong>?</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">No</button>
+                            <button type="button" class="btn btn-danger btn-sm" id="btnConfirmarCancelacion">Sí, cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+        const modal = new bootstrap.Modal(document.getElementById('confirmarCancelacionModal'));
+        modal.show();
+
+        // Acción al confirmar
+        document.getElementById('btnConfirmarCancelacion').addEventListener('click', async () => {
+            console.log('🔍 Usuario confirmó la cancelación');
+            try {
+                console.log('🔍 Enviando request a /Abono/CancelarAbono con:', { plyID, plzNum, aboFyhIni });
+                const response = await fetch('/Abono/CancelarAbono', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        plyID: Number(plyID),
+                        plzNum: Number(plzNum),
+                        aboFyhIni: aboFyhIni
+                    })
+                });
+
+                console.log('🔍 Respuesta recibida:', response.status);
+                const resultData = await response.json();
+                console.log('🔍 Resultado del servidor:', resultData);
+                modal.hide();
+
+                // Mostrar modal de resultado
+                const resultModalHtml = `
+                    <div class="modal fade" id="resultadoCancelacionModal" tabindex="-1" aria-labelledby="resultadoCancelacionLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content border-0 shadow">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="resultadoCancelacionLabel">
+                                        ${resultData.success 
+                                            ? '<i class="fa fa-check-circle me-2 text-success"></i>Éxito' 
+                                            : '<i class="fa fa-times-circle me-2 text-danger"></i>Error'}
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body text-center">
+                                    <p>${resultData.message}</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">Aceptar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML("beforeend", resultModalHtml);
+                const resultModal = new bootstrap.Modal(document.getElementById('resultadoCancelacionModal'));
+                resultModal.show();
+
+                // Recargar solo si fue exitoso
+                if (resultData.success) {
+                    resultModal._element.addEventListener('hidden.bs.modal', () => location.reload());
+                }
+
+            } catch (error) {
+                console.error('Error al cancelar abono:', error);
+            }
+        });
+    }
+
+
+        // Event listener para botones de cancelar abono (fuera de document.ready para que funcione con elementos dinámicos)
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.cancelar-abono-btn')) {
+                console.log('🔍 Botón de cancelar clickeado');
+                const button = e.target.closest('.cancelar-abono-btn');
+                const plyID = button.getAttribute('data-plyid');
+                const plzNum = button.getAttribute('data-plznum');
+                const aboFyhIni = button.getAttribute('data-abofyhini');
+                const abonado = button.getAttribute('data-abonado');
+                console.log('🔍 Datos del botón:', { plyID, plzNum, aboFyhIni, abonado });
+                console.log('🔍 Llamando a cancelarAbono...');
+                cancelarAbono(plyID, plzNum, aboFyhIni, abonado);
+            }
+        });
+
     });
     </script>
 }
