@@ -292,7 +292,7 @@
                                 <td>@m.Cantidad.ToString("N0")</td>
                                 <td class="fw-medium">$ @m.Monto.ToString("N2")</td>
                                 <td>
-                                     <span class="badge bg-light text-dark">@m.PorcentajeMonto.ToString("F1")%</span>
+                                     <span class="small text-muted">@m.PorcentajeMonto.ToString("F1")%</span>
                                 </td>
                             </tr>
                         }
@@ -427,9 +427,9 @@
                 @{ var totalPagos = Model.DetallePagos.Count; var totalMonto = Model.DetallePagos.Sum(x => x.Monto); }
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="card-title mb-0"><i class="fas fa-receipt me-2 text-primary"></i>Detalle de pagos por método (@ViewData["MetodoPagoNombre"])</h5>
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-primary"><i class="fas fa-hashtag me-1"></i>@totalPagos</span>
-                        <span class="badge bg-success"><i class="fas fa-dollar-sign me-1"></i>@totalMonto.ToString("C2", new System.Globalization.CultureInfo("es-AR"))</span>
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="small text-muted"><i class="fas fa-hashtag me-1"></i>@totalPagos</span>
+                        <span class="small text-muted"><i class="fas fa-dollar-sign me-1"></i>@totalMonto.ToString("C2", new System.Globalization.CultureInfo("es-AR"))</span>
                     </div>
                 </div>
 
@@ -471,7 +471,7 @@
                                 <td>@x.FechaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                                 <td>$ @x.Monto.ToString("N2")</td>
                                 <td>
-                                    <span class="badge rounded-pill bg-light text-dark">@x.Metodo</span>
+                                    <span class="small text-muted">@x.Metodo</span>
                                 </td>
                             </tr>
                             @if (x.OcupacionesCount > 0 || x.ServiciosExtrasCount > 0)
