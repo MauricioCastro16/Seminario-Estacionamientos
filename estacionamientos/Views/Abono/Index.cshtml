@@ -30,7 +30,7 @@
             <th class="text-center">Abonado</th>
             <th class="text-center">Fecha inicio</th>
             <th class="text-center">Fecha fin</th>
-            <th class="text-center">Estado de pago</th>
+            <th class="text-center">Estado</th>
             <th class="text-center">Monto</th>
             <th class="text-center">Vehículos</th>
             <th class="text-center">Acciones</th>
@@ -53,7 +53,7 @@
                 @{
                     string estadoTexto = item.EstadoPago switch
                     {
-                        estacionamientos.Models.EstadoPago.Activo => "Al día",
+                        estacionamientos.Models.EstadoPago.Activo => "Al Día",
                         estacionamientos.Models.EstadoPago.Pendiente => "Pendiente",
                         estacionamientos.Models.EstadoPago.Finalizado => "Finalizado",
                         estacionamientos.Models.EstadoPago.Cancelado => "Cancelado",

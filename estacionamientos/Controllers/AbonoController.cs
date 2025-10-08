@@ -103,7 +103,7 @@ namespace estacionamientos.Controllers
                 // Actualizar el estado en el objeto (sin guardar en BD)
                 abono.EstadoPago = estadoTexto switch
                 {
-                    "Al día" => EstadoPago.Activo,
+                    "Al Día" => EstadoPago.Activo,
                     "Pendiente" => EstadoPago.Pendiente,
                     "Finalizado" => EstadoPago.Finalizado,
                     "Cancelado" => EstadoPago.Cancelado,
@@ -542,7 +542,7 @@ namespace estacionamientos.Controllers
             // Actualizar el estado en el objeto (sin guardar en BD)
             item.EstadoPago = estadoTexto switch
             {
-                "Al día" => EstadoPago.Activo,
+                "Al Día" => EstadoPago.Activo,
                 "Pendiente" => EstadoPago.Pendiente,
                 "Finalizado" => EstadoPago.Finalizado,
                 "Cancelado" => EstadoPago.Cancelado,
@@ -1236,7 +1236,7 @@ namespace estacionamientos.Controllers
                 // Convertir estado del enum al texto
                 string estadoTexto = abono.EstadoPago switch
                 {
-                    EstadoPago.Activo => "Al día",
+                    EstadoPago.Activo => "Al Día",
                     EstadoPago.Pendiente => "Pendiente",
                     EstadoPago.Finalizado => "Finalizado",
                     EstadoPago.Cancelado => "Cancelado",
@@ -1363,7 +1363,7 @@ namespace estacionamientos.Controllers
                 // Convertir el texto del estado al enum correspondiente
                 abono.EstadoPago = estadoTexto switch
                 {
-                    "Al día" => EstadoPago.Activo,
+                    "Al Día" => EstadoPago.Activo,
                     "Pendiente" => EstadoPago.Pendiente,
                     "Finalizado" => EstadoPago.Finalizado,
                     "Cancelado" => EstadoPago.Cancelado,
@@ -1849,54 +1849,69 @@ namespace estacionamientos.Controllers
 
             // 🔹 DEBUG: Log detallado
             Console.WriteLine($"🔹 CalcularEstadoTexto - Fecha hoy: {hoyDate:dd/MM/yyyy}");
+            Console.WriteLine($"🔹 CalcularEstadoTexto - Abono fechas: {abono.AboFyhIni:dd/MM/yyyy} - {abono.AboFyhFin?.ToString("dd/MM/yyyy") ?? "Sin fin"}");
             Console.WriteLine($"🔹 CalcularEstadoTexto - Períodos totales: {abono.Periodos.Count}");
             foreach (var p in abono.Periodos.OrderBy(x => x.PeriodoNumero))
             {
                 Console.WriteLine($"   Período {p.PeriodoNumero}: {p.PeriodoFechaInicio:dd/MM/yyyy} - {p.PeriodoFechaFin:dd/MM/yyyy}, Pagado: {p.PeriodoPagado}");
             }
 
-            // Si todos los períodos están pagados → Finalizado
-            if (abono.Periodos.All(p => p.PeriodoPagado))
+            // 🔹 PASO 1: Si el abono terminó su rango de fechas
+            if (abono.AboFyhFin.HasValue && hoyDate > abono.AboFyhFin.Value.Date)
             {
-                Console.WriteLine("🔹 RESULTADO: Finalizado (todos pagados)");
-                return "Finalizado";
+                // Si terminó el rango pero todos los períodos están pagados → Finalizado
+                if (abono.Periodos.All(p => p.PeriodoPagado))
+                {
+                    Console.WriteLine("🔹 RESULTADO: Finalizado (abono terminó y todos los períodos están pagados)");
+                    return "Finalizado";
+                }
+                // Si terminó el rango pero quedaron períodos pendientes → Pendiente
+                else
+                {
+                    Console.WriteLine("🔹 RESULTADO: Pendiente (abono terminó pero quedaron períodos impagos)");
+                    return "Pendiente";
+                }
             }
 
-            // 🔹 PASO 1: Identificar el período actual (donde debería estar hoy)
+            // 🔹 PASO 2: Si el abono está dentro de su rango de fechas o no tiene fecha fin
+            // Buscar el período actual donde está parado hoy
             var periodoActual = abono.Periodos
                 .Where(p => hoyDate >= p.PeriodoFechaInicio.Date && hoyDate <= p.PeriodoFechaFin.Date)
                 .FirstOrDefault();
 
-            Console.WriteLine($"🔹 PASO 1 - Período actual: {(periodoActual != null ? $"Período {periodoActual.PeriodoNumero} (Pagado: {periodoActual.PeriodoPagado})" : "Ninguno")}");
+            Console.WriteLine($"🔹 PASO 2 - Período actual: {(periodoActual != null ? $"Período {periodoActual.PeriodoNumero} (Pagado: {periodoActual.PeriodoPagado})" : "Ninguno")}");
 
-            // 🔹 PASO 2: Si hoy está dentro de un período y ese período está pagado → Al día
-            if (periodoActual != null && periodoActual.PeriodoPagado)
+            // 🔹 PASO 3: Si estoy dentro de un período específico
+            if (periodoActual != null)
             {
-                Console.WriteLine("🔹 RESULTADO: Al día (período actual pagado)");
-                return "Al día";
+                // Si el período actual está pagado → Al Día
+                if (periodoActual.PeriodoPagado)
+                {
+                    Console.WriteLine("🔹 RESULTADO: Al Día (período actual pagado)");
+                    return "Al Día";
+                }
+                // Si el período actual no está pagado → Pendiente
+                else
+                {
+                    Console.WriteLine("🔹 RESULTADO: Pendiente (período actual no pagado)");
+                    return "Pendiente";
+                }
             }
 
-            // 🔹 PASO 3: Si hay períodos vencidos sin pagar → Pendiente
+            // 🔹 PASO 4: Si no estoy dentro de ningún período pero el abono está vigente
+            // Verificar si hay períodos vencidos sin pagar
             var periodosVencidosSinPagar = abono.Periodos
                 .Any(p => !p.PeriodoPagado && p.PeriodoFechaFin.Date < hoyDate);
-            
-            Console.WriteLine($"🔹 PASO 3 - Períodos vencidos sin pagar: {periodosVencidosSinPagar}");
-            
+
+            Console.WriteLine($"🔹 PASO 4 - Períodos vencidos sin pagar: {periodosVencidosSinPagar}");
+
             if (periodosVencidosSinPagar)
             {
                 Console.WriteLine("🔹 RESULTADO: Pendiente (hay períodos vencidos sin pagar)");
                 return "Pendiente";
             }
 
-            // 🔹 PASO 4: Si no hay períodos vencidos pero el período actual no está pagado → Pendiente
-            if (periodoActual != null && !periodoActual.PeriodoPagado)
-            {
-                Console.WriteLine("🔹 RESULTADO: Pendiente (período actual no pagado)");
-                return "Pendiente";
-            }
-
-            // 🔹 PASO 5: Si no estamos dentro de ningún período pero hay períodos pagados → Al día
-            // (esto maneja el caso donde el abono terminó y todos los períodos están pagados)
+            // 🔹 PASO 5: Si no hay períodos vencidos, verificar si estoy en el rango de períodos pagados
             var ultimaFechaPagada = abono.Periodos
                 .Where(p => p.PeriodoPagado)
                 .Select(p => p.PeriodoFechaFin.Date)
@@ -1907,11 +1922,11 @@ namespace estacionamientos.Controllers
 
             if (hoyDate <= ultimaFechaPagada)
             {
-                Console.WriteLine("🔹 RESULTADO: Al día (dentro del rango de períodos pagados)");
-                return "Al día";
+                Console.WriteLine("🔹 RESULTADO: Al Día (dentro del rango de períodos pagados)");
+                return "Al Día";
             }
 
-            // 🔹 PASO 6: Cualquier otro caso → Pendiente
+            // 🔹 PASO 6: Caso por defecto → Pendiente
             Console.WriteLine("🔹 RESULTADO: Pendiente (caso por defecto)");
             return "Pendiente";
         }
@@ -2103,7 +2118,7 @@ namespace estacionamientos.Controllers
 
             return texto switch
             {
-                "Al día" => "text-success fw-bold",
+                "Al Día" => "text-success fw-bold",
                 "Pendiente" => "text-warning fw-bold",
                 "Finalizado" => "text-dark fw-bold",
                 "Cancelado" => "text-danger fw-bold",
