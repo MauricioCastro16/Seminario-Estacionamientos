@@ -116,7 +116,7 @@ public static class DbInitializer
             {
                 SerID = 7,
                 SerNom = "Abono por 1 día",
-                SerTipo = "Estacionamiento",
+                SerTipo = "Abono",
                 SerDesc = "Servicio de estacionamiento por 1 día en playa",
                 SerDuracionMinutos = 1440
             },
@@ -124,7 +124,7 @@ public static class DbInitializer
             {
                 SerID = 8,
                 SerNom = "Abono por 1 semana",
-                SerTipo = "Estacionamiento",
+                SerTipo = "Abono",
                 SerDesc = "Servicio de estacionamiento por 1 semana en playa",
                 SerDuracionMinutos = 10080
             },
@@ -132,7 +132,7 @@ public static class DbInitializer
             {
                 SerID = 9,
                 SerNom = "Abono por 1 mes",
-                SerTipo = "Estacionamiento",
+                SerTipo = "Abono",
                 SerDesc = "Servicio de estacionamiento por 1 mes en playa",
                 SerDuracionMinutos = 43200
             }
@@ -426,7 +426,7 @@ public static class DbInitializer
         // 6) ServiciosProveidos por playa
         // =========================
         var serviciosDisponibles = context.Servicios.AsNoTracking().ToList(); // SerID, SerNom, SerTipo
-        var serviciosEst = serviciosDisponibles.Where(s => (s.SerTipo ?? "").Equals("Estacionamiento", StringComparison.OrdinalIgnoreCase)).ToList();
+        var serviciosEst = serviciosDisponibles.Where(s => (s.SerTipo ?? "").Equals("Estacionamiento", StringComparison.OrdinalIgnoreCase) || (s.SerTipo ?? "").Equals("Abono", StringComparison.OrdinalIgnoreCase)).ToList();
         var serviciosExtra = serviciosDisponibles.Where(s => (s.SerTipo ?? "").Equals("ServicioExtra", StringComparison.OrdinalIgnoreCase)).ToList();
 
         var serviciosProveidos = new List<ServicioProveido>();
@@ -479,7 +479,7 @@ public static class DbInitializer
         foreach (var sp in serviciosProveidos)
         {
             var servicio = serviciosDisponibles.First(s => s.SerID == sp.SerID);
-            bool esEst = (servicio.SerTipo ?? "").Equals("Estacionamiento", StringComparison.OrdinalIgnoreCase);
+            bool esEst = (servicio.SerTipo ?? "").Equals("Estacionamiento", StringComparison.OrdinalIgnoreCase) || (servicio.SerTipo ?? "").Equals("Abono", StringComparison.OrdinalIgnoreCase);
 
             foreach (var clasId in clasifIds)
             {
