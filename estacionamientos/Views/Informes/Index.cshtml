@@ -234,13 +234,19 @@
             @if (k.MixMetodos?.Any() == true)
             {
                 <div class="table-responsive">
-                    <table class="table table-sm align-middle">
+                    <table class="table table-sm align-middle table-eq text-center">
+                        <colgroup>
+                            <col style="width:25%" />
+                            <col style="width:25%" />
+                            <col style="width:25%" />
+                            <col style="width:25%" />
+                        </colgroup>
                          <thead>
                              <tr>
-                                 <th><i class="fas fa-wallet me-1 text-secondary"></i>Método de pago</th>
-                                 <th class="text-end">Pagos (cantidad)</th>
-                                 <th class="text-end">Ingresos totales ($)</th>
-                                 <th class="text-end">Participación en ingresos (%)</th>
+                                <th><i class="fas fa-wallet me-1 text-secondary"></i>Método de pago</th>
+                                <th>Pagos (cantidad)</th>
+                                <th>Ingresos totales ($)</th>
+                                <th>Participación en ingresos (%)</th>
                              </tr>
                          </thead>
                         <tbody>
@@ -283,9 +289,9 @@
                                         @* etiqueta de estado removida *@
                                     </div>
                                 </td>
-                                 <td class="text-end">@m.Cantidad.ToString("N0")</td>
-                                 <td class="text-end fw-medium">$ @m.Monto.ToString("N2")</td>
-                                <td class="text-end">
+                                <td>@m.Cantidad.ToString("N0")</td>
+                                <td class="fw-medium">$ @m.Monto.ToString("N2")</td>
+                                <td>
                                      <span class="badge bg-light text-dark">@m.PorcentajeMonto.ToString("F1")%</span>
                                 </td>
                             </tr>
@@ -369,13 +375,19 @@
             @if (Model.PorPlaya?.Any() == true)
             {
                 <div class="table-responsive">
-                    <table class="table table-striped align-middle">
+                    <table class="table table-striped align-middle table-eq text-center">
+                        <colgroup>
+                            <col style="width:25%" />
+                            <col style="width:25%" />
+                            <col style="width:25%" />
+                            <col style="width:25%" />
+                        </colgroup>
                          <thead>
                              <tr>
-                                 <th>Playa</th>
-                                 <th class="text-end">Pagos (cantidad)</th>
-                                 <th class="text-end">Ingresos totales ($)</th>
-                                 <th class="text-end">Ingreso promedio por pago ($)</th>
+                                <th>Playa</th>
+                                <th>Pagos (cantidad)</th>
+                                <th>Ingresos totales ($)</th>
+                                <th>Ingreso promedio por pago ($)</th>
                              </tr>
                          </thead>
                         <tbody>
@@ -391,9 +403,9 @@
                                    
                                     </div>
                                 </td>
-                                <td class="text-end">@r.CantPagos</td>
-                                <td class="text-end">$ @r.IngresosTotales.ToString("N2")</td>
-                                <td class="text-end">$ @r.TicketPromedio.ToString("N2")</td>
+                                <td>@r.CantPagos</td>
+                                <td>$ @r.IngresosTotales.ToString("N2")</td>
+                                <td>$ @r.TicketPromedio.ToString("N2")</td>
                             </tr>
                         }
                         </tbody>
@@ -433,13 +445,20 @@
                             </div>
                         </div>
                     </form>
-                    <table class="table table-sm table-hover table-striped align-middle">
+                    <table class="table table-sm table-hover table-striped align-middle table-eq text-center">
+                        <colgroup>
+                            <col style="width:20%" />
+                            <col style="width:25%" />
+                            <col style="width:25%" />
+                            <col style="width:15%" />
+                            <col style="width:15%" />
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th># Pago</th>
                                 <th>Playa</th>
                                 <th>Fecha y hora</th>
-                                <th class="text-end">Monto ($)</th>
+                                <th>Monto ($)</th>
                                 <th>Método de pago</th>
                             </tr>
                         </thead>
@@ -450,7 +469,7 @@
                                 <td>@x.PagNum</td>
                                 <td>@x.PlayaNombre</td>
                                 <td>@x.FechaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                                <td class="text-end">$ @x.Monto.ToString("N2")</td>
+                                <td>$ @x.Monto.ToString("N2")</td>
                                 <td>
                                     <span class="badge rounded-pill bg-light text-dark">@x.Metodo</span>
                                 </td>
@@ -502,6 +521,13 @@
     width: 100% !important;
     height: 100% !important;
     display: block;
+  }
+  
+  /* Tablas: columnas equidistantes y texto centrado */
+  .table-eq th,
+  .table-eq td {
+    vertical-align: middle;
+    text-align: center;
   }
   
   .payment-method-indicator {
