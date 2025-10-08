@@ -641,12 +641,25 @@ namespace estacionamientos.Controllers
             try
             {
                 Console.WriteLine($"ConfirmarPago - Iniciando con datos: PlyID={model.PlyID}, PlzNum={model.SelectedPlzNum}, Vehículos={model.Vehiculos?.Count ?? 0}");
+                Console.WriteLine($"ConfirmarPago - Datos del modelo: SerID={model.SerID}, ClasVehID={model.ClasVehID}, Periodos={model.Periodos}");
+                Console.WriteLine($"ConfirmarPago - Abonado: DNI={model.AboDNI}, Nombre={model.AboNom}");
+                Console.WriteLine($"ConfirmarPago - Pago: MepID={model.MepID}, OpcionPago={model.OpcionPago}, CantidadPeriodosPagar={model.CantidadPeriodosPagar}, MontoPagar={model.MontoPagar}");
                 
                 if (!ModelState.IsValid)
                 {
                     var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                    Console.WriteLine($"ModelState inválido: {string.Join(", ", errors)}");
-                    return Json(new { success = false, message = "Datos inválidos" });
+                    var fieldErrors = ModelState.Where(x => x.Value.Errors.Count > 0)
+                        .Select(x => $"{x.Key}: {string.Join(", ", x.Value.Errors.Select(e => e.ErrorMessage))}");
+                    
+                    Console.WriteLine($"ModelState inválido - Errores generales: {string.Join(", ", errors)}");
+                    Console.WriteLine($"ModelState inválido - Errores por campo: {string.Join("; ", fieldErrors)}");
+                    
+                    return Json(new { 
+                        success = false, 
+                        message = "Datos inválidos", 
+                        errors = fieldErrors.ToList(),
+                        details = errors.ToList()
+                    });
                 }
 
                 using var transaction = await _ctx.Database.BeginTransactionAsync();

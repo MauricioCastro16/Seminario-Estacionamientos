@@ -137,7 +137,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             SerID = 7,
             SerNom = "Abono por 1 día",
-            SerTipo = "Estacionamiento",
+            SerTipo = "Abono",
             SerDesc = "Abono de estacionamiento por 1 día en playa",
             SerDuracionMinutos = 1440
         },
@@ -145,7 +145,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             SerID = 8,
             SerNom = "Abono por 1 semana",
-            SerTipo = "Estacionamiento",
+            SerTipo = "Abono",
             SerDesc = "Abono de estacionamiento por 1 semana en playa",
             SerDuracionMinutos = 10080
         },
@@ -153,7 +153,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             SerID = 9,
             SerNom = "Abono por 1 mes",
-            SerTipo = "Estacionamiento",
+            SerTipo = "Abono",
             SerDesc = "Abono de estacionamiento por 1 mes en playa",
             SerDuracionMinutos = 43200
         }
