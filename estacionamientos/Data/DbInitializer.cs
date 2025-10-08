@@ -749,20 +749,46 @@ public static class DbInitializer
         context.SaveChanges();
 
         // =========================
-        // 13) Abonados (5% de los conductores)
+        // 13) Abonados (20% conductores + 80% independientes)
         // =========================
         var abonados = new List<Abonado>();
-        var conductoresAbonados = conductores
-            .Where(c => faker.Random.Float() <= 0.05f) // 5% de los conductores
-            .ToList();
-
-        foreach (var conductor in conductoresAbonados)
+        
+        // Calcular cantidad total de abonados necesarios: 5 abonos por playa
+        int totalPlayas = playas.Count;
+        int totalAbonosNecesarios = totalPlayas * 5;
+        
+        // 20% serán conductores, 80% independientes
+        int conductoresAbonadosCount = (int)(totalAbonosNecesarios * 0.2);
+        int abonadosIndependientesCount = totalAbonosNecesarios - conductoresAbonadosCount;
+        
+        // Limitar la cantidad de conductores-abonados a los conductores disponibles
+        int conductoresDisponibles = conductores.Count;
+        int conductoresAbonadosReales = Math.Min(conductoresAbonadosCount, conductoresDisponibles);
+        int abonadosIndependientesReales = totalAbonosNecesarios - conductoresAbonadosReales;
+        
+        // Abonados que también son conductores (hasta el 20% del total, pero no más que los disponibles)
+        var conductoresSeleccionados = faker.PickRandom(conductores, conductoresAbonadosReales).ToList();
+        
+        foreach (var conductor in conductoresSeleccionados)
         {
             var abonado = new Abonado
             {
                 AboDNI = faker.Random.ReplaceNumbers("########"), // DNI aleatorio
                 AboNom = conductor.UsuNyA, // Nombre del conductor
                 ConNU = conductor.UsuNU, // Conductor asociado
+            };
+
+            abonados.Add(abonado);
+        }
+
+        // Abonados independientes (el resto del total)
+        for (int i = 0; i < abonadosIndependientesReales; i++)
+        {
+            var abonado = new Abonado
+            {
+                AboDNI = faker.Random.ReplaceNumbers("########"), // DNI aleatorio
+                AboNom = faker.Name.FullName(), // Nombre aleatorio
+                ConNU = null, // No es conductor del sistema
             };
 
             abonados.Add(abonado);
@@ -1083,7 +1109,238 @@ foreach (var playa in playas)
 context.ServiciosExtrasRealizados.AddRange(servicioExtraList);
 context.SaveChanges();
 
+        // =========================
+        // 21) Abonos y Períodos de Abono
+        // =========================
+        var abonosList = new List<Abono>();
+        var periodosAbonoList = new List<PeriodoAbono>();
+        var vehiculosAbonadosList = new List<VehiculoAbonado>();
+        var pagosAbonosList = new List<Pago>();
 
+        // Obtener servicios de tipo "Abono" disponibles
+        var serviciosAbono = context.Servicios
+            .Where(s => s.SerTipo == "Abono")
+            .ToList();
+
+        // Obtener plazas disponibles para abonos (no ocupadas)
+        var plazasDisponiblesAbonos = context.Plazas
+            .Where(p => !p.PlzOcupada)
+            .ToList();
+
+        // Obtener el siguiente número de pago disponible
+        var siguientePagNum = context.Pagos.Any() ? context.Pagos.Max(p => p.PagNum) + 1 : 1;
+
+        // Crear exactamente 5 abonos por playa
+        int abonadoIndex = 0;
+        foreach (var playa in playas)
+        {
+            // Crear exactamente 5 abonos para esta playa
+            for (int i = 0; i < 5; i++)
+            {
+                // Seleccionar el siguiente abonado disponible
+                var abonado = abonados[abonadoIndex % abonados.Count];
+                abonadoIndex++;
+                
+                // Seleccionar una plaza aleatoria disponible de la playa actual
+                var plazasDeEstaPlaya = plazasDisponiblesAbonos.Where(p => p.PlyID == playa.PlyID).ToList();
+                var plaza = plazasDeEstaPlaya.Any() ? faker.PickRandom(plazasDeEstaPlaya) : faker.PickRandom(plazasDisponiblesAbonos);
+                
+                // Seleccionar un servicio de abono aleatorio
+                var servicioAbono = faker.PickRandom(serviciosAbono);
+                
+                // Calcular duración del abono basado en el servicio
+                int duracionDias = servicioAbono.SerDuracionMinutos.HasValue 
+                    ? servicioAbono.SerDuracionMinutos.Value / 1440 // Convertir minutos a días
+                    : faker.Random.Int(30, 365); // Fallback: entre 30 días y 1 año
+                
+                // Fecha de inicio del abono (entre 6 meses atrás y 1 mes adelante)
+                var fechaInicio = faker.Date.Between(DateTime.UtcNow.AddMonths(-6), DateTime.UtcNow.AddMonths(1));
+                var fechaFin = fechaInicio.AddDays(duracionDias);
+                
+                // Determinar estado del abono basado en fechas
+                EstadoPago estadoAbono;
+                if (fechaFin < DateTime.UtcNow)
+                    estadoAbono = faker.Random.Bool(0.8f) ? EstadoPago.Finalizado : EstadoPago.Cancelado;
+                else if (fechaInicio > DateTime.UtcNow)
+                    estadoAbono = EstadoPago.Activo;
+                else
+                    estadoAbono = faker.Random.Bool(0.7f) ? EstadoPago.Activo : EstadoPago.Pendiente;
+                
+                // Calcular monto total del abono
+                var tarifaActual = context.TarifasServicio
+                    .Where(t => t.PlyID == plaza.PlyID && t.SerID == servicioAbono.SerID && t.TasFecFin == null)
+                    .FirstOrDefault();
+                
+                decimal montoTotal = tarifaActual?.TasMonto ?? faker.Random.Decimal(5000, 50000);
+                
+                // Crear número de pago único para este abono
+                var pagNum = siguientePagNum++;
+                
+                // Crear períodos de abono (mensuales, quincenales o semanales)
+                int duracionPeriodo = faker.PickRandom(new[] { 7, 15, 30 }); // Semanal, quincenal o mensual
+                int cantidadPeriodos = (int)Math.Ceiling((double)duracionDias / duracionPeriodo);
+                decimal montoPorPeriodo = montoTotal / cantidadPeriodos;
+                
+                // Crear pago principal del abono PRIMERO
+                var metodoPagoPrincipal = faker.PickRandom(context.AceptaMetodosPago
+                    .Where(ap => ap.PlyID == plaza.PlyID && ap.AmpHab)
+                    .ToList());
+                
+                var pagoPrincipal = new Pago
+                {
+                    PlyID = plaza.PlyID,
+                    PagNum = pagNum,
+                    MepID = metodoPagoPrincipal.MepID,
+                    PagMonto = montoTotal,
+                    PagFyh = fechaInicio,
+                    Playa = plaza.Playa,
+                    MetodoPago = metodoPagoPrincipal.MetodoPago,
+                    AceptaMetodoPago = metodoPagoPrincipal
+                };
+                
+                pagosAbonosList.Add(pagoPrincipal);
+                
+                // Crear el abono DESPUÉS del pago
+                var abono = new Abono
+                {
+                    PlyID = plaza.PlyID,
+                    PlzNum = plaza.PlzNum,
+                    AboFyhIni = fechaInicio,
+                    AboFyhFin = fechaFin,
+                    AboMonto = montoTotal,
+                    AboDNI = abonado.AboDNI,
+                    PagNum = pagNum,
+                    EstadoPago = estadoAbono,
+                    Plaza = plaza,
+                    Abonado = abonado,
+                    Pago = pagoPrincipal
+                };
+                
+                abonosList.Add(abono);
+                
+                for (int j = 0; j < cantidadPeriodos; j++)
+                {
+                    var periodoInicio = fechaInicio.AddDays(j * duracionPeriodo);
+                    var periodoFin = j == cantidadPeriodos - 1 
+                        ? fechaFin 
+                        : periodoInicio.AddDays(duracionPeriodo - 1);
+                    
+                    // Determinar si el período está pagado
+                    bool periodoPagado = false;
+                    DateTime? fechaPago = null;
+                    int? pagNumPeriodo = null;
+                    
+                    if (estadoAbono == EstadoPago.Activo || estadoAbono == EstadoPago.Finalizado)
+                    {
+                        // Si el período ya pasó, probablemente esté pagado
+                        if (periodoFin < DateTime.UtcNow)
+                        {
+                            periodoPagado = faker.Random.Bool(0.9f);
+                            if (periodoPagado)
+                            {
+                                fechaPago = faker.Date.Between(periodoInicio, periodoFin);
+                                pagNumPeriodo = siguientePagNum++;
+                            }
+                        }
+                        else if (periodoInicio <= DateTime.UtcNow && periodoFin >= DateTime.UtcNow)
+                        {
+                            // Período actual
+                            periodoPagado = faker.Random.Bool(0.7f);
+                            if (periodoPagado)
+                            {
+                                fechaPago = faker.Date.Between(periodoInicio, DateTime.UtcNow);
+                                pagNumPeriodo = siguientePagNum++;
+                            }
+                        }
+                    }
+                    
+                    var periodo = new PeriodoAbono
+                    {
+                        PlyID = plaza.PlyID,
+                        PlzNum = plaza.PlzNum,
+                        AboFyhIni = fechaInicio,
+                        PeriodoNumero = j + 1,
+                        PeriodoFechaInicio = periodoInicio,
+                        PeriodoFechaFin = periodoFin,
+                        PeriodoMonto = montoPorPeriodo,
+                        PeriodoPagado = periodoPagado,
+                        PeriodoFechaPago = fechaPago,
+                        PagNum = pagNumPeriodo,
+                        Abono = abono
+                    };
+                    
+                    periodosAbonoList.Add(periodo);
+                    
+                    // Crear pago para el período si está pagado
+                    if (periodoPagado && pagNumPeriodo.HasValue)
+                    {
+                        var metodoPago = faker.PickRandom(context.AceptaMetodosPago
+                            .Where(ap => ap.PlyID == plaza.PlyID && ap.AmpHab)
+                            .ToList());
+                        
+                        var pagoPeriodo = new Pago
+                        {
+                            PlyID = plaza.PlyID,
+                            PagNum = pagNumPeriodo.Value,
+                            MepID = metodoPago.MepID,
+                            PagMonto = montoPorPeriodo,
+                            PagFyh = fechaPago.Value,
+                            Playa = plaza.Playa,
+                            MetodoPago = metodoPago.MetodoPago,
+                            AceptaMetodoPago = metodoPago
+                        };
+                        
+                        pagosAbonosList.Add(pagoPeriodo);
+                    }
+                }
+                
+                // Asociar vehículos con el abono
+                var vehiculosAbonado = context.Vehiculos
+                    .Where(v => context.Conduces.Any(c => c.VehPtnt == v.VehPtnt && c.ConNU == abonado.ConNU))
+                    .ToList();
+                
+                if (!vehiculosAbonado.Any())
+                {
+                    // Si no tiene vehículos asociados como conductor, asignar vehículos aleatorios
+                    vehiculosAbonado = faker.PickRandom(context.Vehiculos.ToList(), faker.Random.Int(1, 2)).ToList();
+                }
+                
+                foreach (var vehiculo in vehiculosAbonado.Take(faker.Random.Int(1, 2)))
+                {
+                    var vehiculoAbonado = new VehiculoAbonado
+                    {
+                        PlyID = plaza.PlyID,
+                        PlzNum = plaza.PlzNum,
+                        AboFyhIni = fechaInicio,
+                        VehPtnt = vehiculo.VehPtnt,
+                        Abono = abono,
+                        Vehiculo = vehiculo
+                    };
+                    
+                    vehiculosAbonadosList.Add(vehiculoAbonado);
+                }
+                
+                // Marcar la plaza como ocupada por el abono
+                plaza.PlzOcupada = true;
+            }
+        }
+        
+        // Guardar todos los datos relacionados con abonos EN EL ORDEN CORRECTO
+        // 1. Primero los pagos
+        context.Pagos.AddRange(pagosAbonosList);
+        context.SaveChanges();
+        
+        // 2. Luego los abonos (que referencian los pagos)
+        context.Abonos.AddRange(abonosList);
+        context.SaveChanges();
+        
+        // 3. Después los períodos (que referencian los abonos)
+        context.PeriodosAbono.AddRange(periodosAbonoList);
+        context.SaveChanges();
+        
+        // 4. Finalmente las asociaciones de vehículos
+        context.VehiculosAbonados.AddRange(vehiculosAbonadosList);
+        context.SaveChanges();
 
     }
 
