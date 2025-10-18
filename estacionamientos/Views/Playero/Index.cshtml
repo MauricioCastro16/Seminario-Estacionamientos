@@ -11,6 +11,8 @@
     };
 
     bool showAddButton = !string.IsNullOrWhiteSpace(Model.Q) && Model.FilterBy != "playa";
+
+    var ultMovimientos = ViewBag.ultMovimientos as List<MovimientoPlayero>;
 }
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
@@ -261,6 +263,89 @@
         </tbody>
     </table>
 
+
+    <!-- Tabla ultimos movimientos general -->
+    <div class="card shadow-sm mt-5">
+        <div class="card-header bg-light fw-bold text-center fs-5">
+            Últimos movimientos
+        </div>
+
+        <div class="d-flex justify-content-between gap-3 card-body pb-0">
+            <!-- Botón para mostrar/ocultar filtros -->
+            <div class="text-end mb-3">
+                <button class="btn btn-outline-secondary btn-sm" style="" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosCollapse" aria-expanded="false" aria-controls="filtrosCollapse">
+                    Mostrar filtros
+                    <i class="fa-solid fa-caret-down"></i>
+                </button>
+            </div>
+
+            <!-- Filtros -->
+            <div class="collapse flex-fill" id="filtrosCollapse">
+                <form class="d-flex gap-5 justify-content-center align-items-end mb-3 px-3 py-2" id="filtrosForm" style="background-color: #f5f5f5; border-radius: 5px;">
+                    <div class="">
+                        <label for="filtroFechaDesde" class="form-label mb-1 fs-6">Fecha desde</label>
+                        <input type="date" id="filtroFechaDesde" class="form-control form-control-sm" style="width: max-content" />
+                    </div>
+                    <div class="">
+                        <label for="filtroFechaHasta" class="form-label mb-1 fs-6">Fecha hasta</label>
+                        <input type="date" id="filtroFechaHasta" class="form-control form-control-sm" style="width: max-content" />
+                    </div>
+                    <div class="">
+                        <label for="filtroPlaya" class="form-label mb-1 fs-6">Playa</label>
+                        <input type="text" id="filtroPlaya" class="form-control form-control-sm" style="width: max-content" placeholder="Nombre de playa" />
+                    </div>
+                    <div class="">
+                        <label for="filtroPlayero" class="form-label mb-1 fs-6">Playero</label>
+                        <input type="text" id="filtroPlayero" class="form-control form-control-sm" style="width: max-content" placeholder="Nombre de playero" />
+                    </div>
+
+                    <div class="text-end mt-2">
+                        <button id="btnLimpiarMov" type="button" class="btn btn-outline-secondary btn-sm">Limpiar filtros</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            @if (ultMovimientos is { Count: > 0 })
+            {
+                <ul id="listaMovimientos" class="list-group list-group-flush">
+                    @foreach (var m in ultMovimientos)
+                    {
+                        string textoTipoMov = m.TipoMov switch
+                        {
+                            TipoMovimiento.IngresoVehiculo => $"ingresó el vehículo <span class='fw-semibold'>{m.VehPtnt}</span> a la plaza",
+                            TipoMovimiento.EgresoVehiculo => $"egresó el vehículo <span class='fw-semibold'>{m.VehPtnt}</span> de la plaza",
+                            TipoMovimiento.ReubicacionVehiculo => $"movió el vehículo <span class='fw-semibold'>{m.VehPtnt}</span> a la plaza",
+                            _ => "realizó un movimiento"
+                        };
+
+                        <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-start py-3 px-4 border-0 border-bottom movimiento"
+                            data-fecha="@m.FechaMov.ToString("yyyy-MM-dd")"
+                            data-playa="@m.Playa?.PlyNom"
+                            data-playero="@m.Playero?.UsuNyA">
+                            <div>
+                                <span class="fw-semibold">@m.Playero?.UsuNyA</span>
+                                <span>@Html.Raw(textoTipoMov)</span>
+                                <span class="fw-semibold">@m.PlzNum</span>
+                            </div>
+                            <small class="text-muted mt-2 mt-md-0">@m.Playa?.PlyNom - @m.FechaMov.ToString("dd/MM/yyyy HH:mm")</small>
+                        </li>
+                    }
+                </ul>
+
+                <div id="pagination-controls" class="d-flex justify-content-center my-3"></div>
+            }
+            else
+            {
+                <div class="text-center text-muted p-4">
+                    No hay movimientos recientes.
+                </div>
+            }
+        </div>
+    </div>
+
+
     <!-- Modal de confirmación para desvincular playero de todas las playas -->
     <div class="modal fade" id="confirmUnlinkModal" tabindex="-1" aria-labelledby="confirmUnlinkModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -475,6 +560,107 @@
                     unassignPlayaIdInput.value = playaId;
                 });
             }
+
+            @* Script filtros movimientos *@
+            const fechaDesdeInput = document.getElementById('filtroFechaDesde');
+            const fechaHastaInput = document.getElementById('filtroFechaHasta');
+            const playaInput = document.getElementById('filtroPlaya');
+            const playeroInput = document.getElementById('filtroPlayero');
+            const limpiarBtn = document.getElementById('btnLimpiarMov');
+            const movimientos = Array.from(document.querySelectorAll('.movimiento'));
+
+            // parsea 'yyyy-mm-dd' a Date
+            function parseIsoDate(value) {
+                if (!value) return null;
+                const parts = value.split('-');
+                if (parts.length !== 3) return null;
+                return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            }
+
+            function fechaEnRango(fechaStr, desdeDate, hastaDate) {
+                if (!fechaStr) return true;
+                const itemDate = parseIsoDate(fechaStr);
+                if (!itemDate) return true;
+                if (desdeDate && itemDate < desdeDate) return false;
+                if (hastaDate) {
+                    // incluir todo el día
+                    hastaDate.setHours(23, 59, 59, 999);
+                    if (itemDate > hastaDate) return false;
+                }
+                return true;
+            }
+
+            function filtrar() {
+                const fechaDesdeVal = fechaDesdeInput.value;
+                const fechaHastaVal = fechaHastaInput.value;
+                const playaVal = (playaInput.value || '').trim().toLowerCase();
+                const playeroVal = (playeroInput.value || '').trim().toLowerCase();
+
+                const desdeDate = parseIsoDate(fechaDesdeVal);
+                const hastaDate = parseIsoDate(fechaHastaVal);
+
+                movimientos.forEach(m => {
+                    const mFecha = (m.dataset.fecha || '').trim();
+                    const textoCompleto = m.textContent.toLowerCase(); // toma todo el texto visible del <li>
+
+                    const okFecha = fechaEnRango(mFecha, desdeDate, hastaDate);
+                    const okPlaya = !playaVal || textoCompleto.includes(playaVal.toLowerCase());
+                    const okPlayero = !playeroVal || textoCompleto.includes(playeroVal.toLowerCase());
+
+                    m.style.display = (okFecha && okPlaya && okPlayero) ? '' : 'none';
+                });
+
+                // mensaje "no hay movimientos"
+                const anyVisible = movimientos.some(m => m.style.display !== 'none');
+                const lista = document.getElementById('listaMovimientos');
+                if (lista) {
+                    let noItemsEl = document.getElementById('noMovimientosMsg');
+                    if (!anyVisible) {
+                        if (!noItemsEl) {
+                            noItemsEl = document.createElement('div');
+                            noItemsEl.id = 'noMovimientosMsg';
+                            noItemsEl.className = 'text-center text-muted p-4';
+                            noItemsEl.textContent = 'No hay movimientos que coincidan con los filtros.';
+                            lista.parentNode.insertBefore(noItemsEl, lista.nextSibling);
+                        }
+                        lista.style.display = 'none';
+                    } else {
+                        if (noItemsEl) noItemsEl.remove();
+                        lista.style.display = '';
+                    }
+                }
+            }
+
+            // listeners
+            [fechaDesdeInput, fechaHastaInput, playaInput, playeroInput].forEach(el => {
+                if (!el) return;
+                el.addEventListener('input', filtrar);
+            });
+
+            // bloquear fechas anteriores en fechaHasta
+            fechaDesdeInput.addEventListener('input', () => {
+                if (fechaHastaInput) {
+                    fechaHastaInput.min = fechaDesdeInput.value || '';
+                    // si la fechaHasta actual es menor que fechaDesde, ajustarla
+                    if (fechaHastaInput.value && fechaHastaInput.value < fechaDesdeInput.value) {
+                        fechaHastaInput.value = fechaDesdeInput.value;
+                    }
+                }
+                filtrar();
+            });
+
+            if (limpiarBtn) {
+                limpiarBtn.addEventListener('click', () => {
+                    fechaDesdeInput.value = '';
+                    fechaHastaInput.value = '';
+                    playaInput.value = '';
+                    playeroInput.value = '';
+                    if (fechaHastaInput) fechaHastaInput.min = '';
+                    filtrar();
+                });
+            }
+
+            filtrar();
         });
 
         // Event listeners para el formulario de filtros
@@ -511,6 +697,162 @@
 
         // Inicializar la UI
         updateFilterUI();
+    </script>
+
+    @* // Script paginacion *@
+    <script>
+        $(document).ready(function() {
+            const itemsPerPage = 10; // Usamos 2 para la prueba
+            const $list = $('#listaMovimientos');
+            // Usaremos esta variable global para almacenar la función showPage
+            let showPageFunction; 
+
+            function initializePagination() {
+                // Re-selecciona los items, ya que la visibilidad pudo haber cambiado por filtros
+                const $items = $list.find('.movimiento'); 
+                const totalItems = $items.length;
+                const totalPages = Math.ceil(totalItems / itemsPerPage);
+                let currentPage = 1;
+                const displayType = 'flex'; // d-flex
+
+                // ---------------------------------------------------
+                // LÓGICA DE PAGINACIÓN INTERNA
+                // ---------------------------------------------------
+                function showPage(page) {
+                    currentPage = page;
+                    const start = (page - 1) * itemsPerPage;
+                    const end = start + itemsPerPage;
+
+                    // Paso CRÍTICO: Oculta TODOS explícitamente
+                    $items.attr('style', 'display: none !important'); 
+
+                    // Muestra el subconjunto
+                    const $itemsToShow = $items.slice(start, end);
+
+                    // Paso CRÍTICO: Muestra el subconjunto explícitamente
+                    $itemsToShow.attr('style', 'display: flex !important');
+
+                    updatePaginationControls(totalPages, currentPage, showPage);
+                }
+                
+                // Re-ejecutar la inicialización si hay suficientes items
+                if (totalItems > itemsPerPage) {
+                    showPageFunction = showPage; // Almacenamos la función para uso externo
+                    showPage(1); // Muestra la primera página del nuevo conjunto filtrado
+                } else {
+                    // Si no hay suficiente para paginar, solo muéstralos y limpia los controles
+                    $items.attr('style', 'display: flex !important'); 
+                    $('#pagination-controls').empty();
+                    showPageFunction = null; // Reiniciamos la referencia
+                }
+
+                // --- Solo la lógica de generación de controles (refactorizada) ---
+                function updatePaginationControls(totalPages, currentPage, showPage) {
+                    const $controls = $('#pagination-controls');
+                    $controls.empty(); 
+                    if (totalPages <= 1) return;
+
+                    const $ul = $('<ul class="pagination pagination-sm"></ul>');
+                    
+                    // --- Botón 'Anterior' ---
+                    const $prevLi = $('<li class="page-item"></li>');
+                    const $prevLink = $('<a class="page-link" href="#">Anterior</a>')
+                        .toggleClass('disabled', currentPage === 1)
+                        .on('click', function(e) {
+                            e.preventDefault();
+                            if (currentPage > 1) {
+                                showPage(currentPage - 1);
+                            }
+                        });
+                    $prevLi.append($prevLink);
+                    $ul.append($prevLi);
+
+                    // --- Botones de número de página ---
+                    for (let i = 1; i <= totalPages; i++) {
+                        const $li = $('<li class="page-item"></li>');
+                        const $link = $('<a class="page-link" href="#"></a>').text(i)
+                            .toggleClass('active', i === currentPage)
+                            .on('click', (function(pageNumber) {
+                                return function(e) {
+                                    e.preventDefault();
+                                    showPage(pageNumber);
+                                };
+                            })(i));
+                        $li.append($link);
+                        $ul.append($li);
+                    }
+
+                    // --- Botón 'Siguiente' ---
+                    const $nextLi = $('<li class="page-item"></li>');
+                    const $nextLink = $('<a class="page-link" href="#">Siguiente</a>')
+                        .toggleClass('disabled', currentPage === totalPages)
+                        .on('click', function(e) {
+                            e.preventDefault();
+                            if (currentPage < totalPages) {
+                                showPage(currentPage + 1);
+                            }
+                        });
+                    $nextLi.append($nextLink);
+                    $ul.append($nextLi);
+
+                    $controls.append($ul);
+                }
+            }
+
+            // ---------------------------------------------------
+            // 3. INTEGRACIÓN CON FILTROS
+            // ---------------------------------------------------
+            // Asumiendo que esta función es la que aplica todos tus filtros
+            function applyMovementFilters() {
+                // Lógica de filtrado: Obtener valores de los filtros (fechas, playa, playero)
+                const fechaDesde = $('#filtroFechaDesde').val();
+                const fechaHasta = $('#filtroFechaHasta').val();
+                const playa = $('#filtroPlaya').val().toLowerCase();
+                const playero = $('#filtroPlayero').val().toLowerCase();
+
+                // Iterar sobre todos los movimientos y aplicar el filtro de visibilidad
+                $('#listaMovimientos').find('.movimiento').each(function() {
+                    const $mov = $(this);
+                    const movFecha = $mov.data('fecha');
+                    const movPlaya = $mov.data('playa').toLowerCase();
+                    const movPlayero = $mov.data('playero').toLowerCase();
+                    let show = true;
+
+                    // Lógica de filtrado (debes completarla según tus necesidades)
+                    if (fechaDesde && movFecha < fechaDesde) { show = false; }
+                    if (fechaHasta && movFecha > fechaHasta) { show = false; }
+                    if (playa && movPlaya.indexOf(playa) === -1) { show = false; }
+                    if (playero && movPlayero.indexOf(playero) === -1) { show = false; }
+
+                    // El movimiento cumple con los filtros, lo marcamos como 'visible'
+                    // OJO: Aquí NO usamos .show()/.hide(), solo manipulamos la clase
+                    $mov.toggleClass('filtered-hidden', !show); 
+                });
+
+                // Después de que el filtrado cambia la visibilidad, REINICIAMOS LA PAGINACIÓN
+                initializePagination();
+            }
+
+            // Asocia la función de filtrado a los eventos de los inputs
+            $('#filtrosForm input').on('change keyup', function() {
+                applyMovementFilters();
+            });
+
+            // Asocia el botón Limpiar filtros
+            $('#btnLimpiarMov').on('click', function() {
+                // Lógica para limpiar los inputs
+                $('#filtrosForm input').val('');
+
+                // Y luego aplicar el filtro (que ahora mostrará todo)
+                applyMovementFilters();
+            });
+
+            // ---------------------------------------------------
+            // 4. INICIALIZACIÓN INICIAL
+            // ---------------------------------------------------
+            // Primera carga de la página
+            initializePagination(); 
+        });
     </script>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
