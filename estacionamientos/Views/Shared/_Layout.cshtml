@@ -189,7 +189,7 @@
         {
             <div class="sidebar-footer">
                 <button class="btn-logout" onclick="document.getElementById('logoutForm').submit();">
-                    <i class="bi bi-box-arrow-right"></i>
+                    <i class="bi bi-box-arrow-right me-2"></i>
                     <span>Cerrar sesión</span>
                 </button>
             </div>
@@ -322,9 +322,11 @@
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
                                     <li>
-                                        <a class="dropdown-item" href="#"
-                                           onclick="document.getElementById('logoutForm').submit(); return false;">
-                                            <i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión
+                                        <a href="#"
+                                        onclick="event.preventDefault(); document.getElementById('logoutForm').submit();"
+                                        class="text-decoration-none d-flex align-items-center justify-content-center gap-1 text-primary">
+                                            <i class="bi bi-box-arrow-right me-1"></i>
+                                            <span>Cerrar sesión</span>
                                         </a>
                                     </li>
                                 </ul>
