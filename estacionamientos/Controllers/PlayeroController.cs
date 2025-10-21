@@ -167,6 +167,15 @@ namespace estacionamientos.Controllers
 
             ViewBag.PlayasDelDuenio = playasDelDuenio;
 
+
+            var movimientos = await _context.MovimientosPlayeros
+                .Include(m => m.Playa)
+                .Include(m => m.Playero)
+                .Where(m => misPlyIds.Contains(m.PlyID))
+                .ToListAsync();
+
+            ViewBag.ultMovimientos = movimientos;
+
             return View(vm);
         }
 
