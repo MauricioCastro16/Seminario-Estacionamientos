@@ -20,6 +20,12 @@ public class HomeController : Controller
 
     public async Task<IActionResult> Index()
     {
+        // Redirigir conductores al mapa
+        if (User.IsInRole("Conductor"))
+        {
+            return RedirectToAction("Mapa", "Conductor");
+        }
+
         // Por defecto
         ViewBag.TurnoAbierto = null;
 

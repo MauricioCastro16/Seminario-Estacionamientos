@@ -61,5 +61,144 @@ namespace estacionamientos.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
+
+        // Método para mostrar el mapa del conductor
+        public async Task<IActionResult> Mapa()
+        {
+            try
+            {
+                // Obtener todas las playas con coordenadas para mostrar en el mapa
+                var playas = await _context.Playas
+                    .Include(p => p.Horarios)
+                        .ThenInclude(h => h.ClasificacionDias)
+                    .Include(p => p.Plazas)
+                    .Where(p => p.PlyLat.HasValue && p.PlyLon.HasValue)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                ViewBag.PlayasCount = playas.Count;
+                return View(playas);
+            }
+            catch (Exception ex)
+            {
+                ViewBag.Error = ex.Message;
+                return View(new List<PlayaEstacionamiento>());
+            }
+        }
+
+        // API endpoint para obtener playas cercanas
+        [HttpGet]
+        public async Task<IActionResult> GetPlayasCercanas(decimal lat, decimal lon, int radioKm = 10)
+        {
+            try
+            {
+                var playas = await _context.Playas
+                    .Include(p => p.Horarios)
+                        .ThenInclude(h => h.ClasificacionDias)
+                    .Include(p => p.Plazas)
+                    .Where(p => p.PlyLat.HasValue && p.PlyLon.HasValue)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                // Para debug: show all playas without distance filter
+                var playasCercanas = playas
+                    .Select(p => new
+                    {
+                        p.PlyID,
+                        p.PlyNom,
+                        p.PlyDir,
+                        p.PlyTipoPiso,
+                        p.PlyValProm,
+                        p.PlyLat,
+                        p.PlyLon,
+                        Distancia = CalcularDistancia(lat, lon, p.PlyLat!.Value, p.PlyLon!.Value),
+                        Disponibilidad = CalcularDisponibilidad(p),
+                        EstaAbierto = EstaAbierto(p)
+                    })
+                    .ToList();
+
+                return Json(playasCercanas);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        // API endpoint para obtener detalles de una playa específica
+        [HttpGet]
+        public async Task<IActionResult> GetDetallePlaya(int id)
+        {
+            try
+            {
+                var playa = await _context.Playas
+                    .Include(p => p.Plazas)
+                    .FirstOrDefaultAsync(p => p.PlyID == id);
+
+                if (playa == null)
+                    return Json(new { error = "Playa no encontrada" });
+
+                return Json(new
+                {
+                    playa.PlyID,
+                    playa.PlyNom,
+                    playa.PlyDir,
+                    playa.PlyTipoPiso,
+                    playa.PlyValProm,
+                    playa.PlyLat,
+                    playa.PlyLon,
+                    Disponibilidad = CalcularDisponibilidad(playa),
+                    EstaAbierto = EstaAbierto(playa)
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        // Métodos auxiliares
+        private static double CalcularDistancia(decimal lat1, decimal lon1, decimal lat2, decimal lon2)
+        {
+            const double R = 6371; // Radio de la Tierra en km
+            var dLat = ToRadians((double)(lat2 - lat1));
+            var dLon = ToRadians((double)(lon2 - lon1));
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(ToRadians((double)lat1)) * Math.Cos(ToRadians((double)lat2)) *
+                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+            return R * c;
+        }
+
+        private static double ToRadians(double degrees) => degrees * (Math.PI / 180);
+
+        private static int CalcularDisponibilidad(PlayaEstacionamiento playa)
+        {
+            if (!playa.Plazas.Any()) return 0;
+            var totalPlazas = playa.Plazas.Count;
+            var plazasDisponibles = playa.Plazas.Count(p => p.PlzHab && !p.PlzOcupada);
+            return (int)Math.Round((double)plazasDisponibles / totalPlazas * 100);
+        }
+
+        private static bool EstaAbierto(PlayaEstacionamiento playa)
+        {
+            var ahora = DateTime.Now.TimeOfDay;
+            var diaActual = DateTime.Now.DayOfWeek;
+            
+            // Mapear DayOfWeek a números (0 = Domingo, 1 = Lunes, etc.)
+            var diaNumero = diaActual == DayOfWeek.Sunday ? 0 : (int)diaActual;
+            
+            var horarioHoy = playa.Horarios
+                .FirstOrDefault(h => h.ClasificacionDias?.ClaDiasTipo == 
+                    (diaNumero >= 1 && diaNumero <= 5 ? "Entre semana" : "Fin de semana"));
+
+            if (horarioHoy == null) return false;
+
+            // Convertir DateTime a TimeOfDay para comparar
+            var horaInicio = horarioHoy.HorFyhIni.TimeOfDay;
+            var horaFin = horarioHoy.HorFyhFin?.TimeOfDay ?? TimeSpan.FromDays(1);
+
+            return ahora >= horaInicio && ahora <= horaFin;
+        }
     }
 }

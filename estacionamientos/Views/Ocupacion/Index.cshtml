@@ -75,7 +75,7 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var item in Model)
+        @foreach (var item in Model ?? new List<Ocupacion>())
         {
             <tr>
                 <td>@item.PlzNum</td>

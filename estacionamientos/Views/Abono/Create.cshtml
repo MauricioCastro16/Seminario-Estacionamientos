@@ -101,9 +101,9 @@
                                 <div class="card shadow border-0 rounded-4">
                                     <div class="card-body p-3">
                                         <h5 class="fw-semibold mb-3"><i class="bi bi-geo-alt me-1"></i> Seleccionar plaza para el abono</h5>
-                                        @if (ViewData.ModelState.ContainsKey("SelectedPlzNum") && ViewData.ModelState["SelectedPlzNum"].Errors.Count > 0)
+                                        @if (ViewData.ModelState.ContainsKey("SelectedPlzNum") && ViewData.ModelState["SelectedPlzNum"]?.Errors.Count > 0)
                                         {
-                                            <span class="text-danger small">@ViewData.ModelState["SelectedPlzNum"].Errors[0].ErrorMessage</span>
+                                            <span class="text-danger small">@ViewData.ModelState["SelectedPlzNum"]?.Errors[0]?.ErrorMessage</span>
                                         }
 
                                         <!-- Clasificación de vehículo (única para el abono) -->

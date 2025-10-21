@@ -1,0 +1,1174 @@
+@model IEnumerable<estacionamientos.Models.PlayaEstacionamiento>
+
+@{
+    ViewData["Title"] = "Mapa de Estacionamientos";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #mapContainer {
+            position: fixed;
+            top: 60px; /* Dejar espacio para el header */
+            left: 0;
+            width: 100vw;
+            height: calc(100vh - 60px); /* Restar altura del header */
+            z-index: 1;
+            pointer-events: auto;
+        }
+
+        /* Ocultar footer en mobile cuando está en el mapa */
+        @@media (max-width: 768px) {
+            .main-footer {
+                display: none !important;
+            }
+            
+            #mapContainer {
+                height: 100vh !important;
+                top: 0 !important;
+            }
+        }
+
+        /* Ajustar el contenido principal para que no interfiera con el mapa */
+        .main-content {
+            background: transparent;
+            padding-top: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Asegurar que el header tenga fondo */
+        .main-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Asegurar que el layout esté visible por encima del mapa */
+        .main-header, .main-content, 
+        .mobile-sidebar, .sidebar-overlay,
+        .navbar, .sidebar {
+            position: relative !important;
+            z-index: 1000 !important;
+        }
+
+        /* Footer con z-index más bajo que el menú de detalles */
+        .main-footer, .footer {
+            position: relative !important;
+            z-index: 100 !important;
+        }
+
+        /* Asegurar que el header completo sea visible y clickeable */
+        .main-header {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 10000 !important;
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px) !important;
+            height: 60px !important;
+            pointer-events: auto !important;
+        }
+
+        /* Asegurar que el navbar sea visible y clickeable */
+        .navbar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 10000 !important;
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px) !important;
+            height: 60px !important;
+            pointer-events: auto !important;
+        }
+
+        /* Asegurar que todos los elementos del navbar sean clickeables */
+        .navbar * {
+            pointer-events: auto !important;
+        }
+
+        .mobile-sidebar {
+            position: fixed !important;
+            z-index: 10001 !important;
+            pointer-events: auto !important;
+        }
+
+        .sidebar-overlay {
+            position: fixed !important;
+            z-index: 10000 !important;
+            pointer-events: auto !important;
+        }
+
+        /* Asegurar que el botón del menú hamburguesa sea clickeable */
+        .btn-mobile-menu {
+            position: relative !important;
+            z-index: 10002 !important;
+            pointer-events: auto !important;
+        }
+
+        /* Asegurar que el sidebar sea visible cuando esté abierto */
+        .mobile-sidebar.show {
+            transform: translateX(0) !important;
+            z-index: 10001 !important;
+        }
+
+        /* Asegurar que los controles del mapa también estén visibles */
+        .controls {
+            z-index: 1001;
+        }
+
+        .controls {
+            position: fixed;
+            top: 80px; /* Mover más abajo para no tapar el layout */
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .search-bar {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 25px;
+            padding: 8px 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            width: 90%;
+            max-width: 600px;
+            min-width: 280px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            border: none;
+            outline: none;
+            background: transparent;
+            padding: 8px 12px;
+            font-size: 16px;
+            min-width: 0;
+            width: 100%;
+        }
+
+        .search-bar button {
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin-left: 8px;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .search-bar button:hover {
+            background: #2980b9;
+            transform: scale(1.05);
+        }
+
+        .search-bar .home-btn {
+            background: #6c757d;
+            margin-left: 5px;
+        }
+
+        .search-bar .home-btn:hover {
+            background: #5a6268;
+        }
+
+        .search-bar .clear-btn {
+            background: #6c757d;
+            margin-left: 5px;
+            display: none;
+        }
+
+        .search-bar .clear-btn:hover {
+            background: #5a6268;
+        }
+
+        .search-bar .clear-btn.show {
+            display: flex;
+        }
+
+        /* Responsive para tablets */
+        @@media (max-width: 768px) {
+            .search-bar {
+                width: 95%;
+                max-width: 500px;
+                padding: 6px 12px;
+                top: 70px;
+            }
+
+            .search-bar input {
+                font-size: 14px;
+                padding: 6px 10px;
+            }
+
+            .search-bar button {
+                width: 36px;
+                height: 36px;
+                margin-left: 6px;
+            }
+
+            .search-bar .home-btn {
+                margin-left: 4px;
+            }
+        }
+
+        /* Responsive para móviles pequeños */
+        @@media (max-width: 480px) {
+            .search-bar {
+                width: 98%;
+                max-width: none;
+                padding: 5px 10px;
+                top: 65px;
+                border-radius: 20px;
+            }
+
+            .search-bar input {
+                font-size: 13px;
+                padding: 5px 8px;
+            }
+
+            .search-bar button {
+                width: 32px;
+                height: 32px;
+                margin-left: 4px;
+            }
+
+            .search-bar .home-btn {
+                margin-left: 3px;
+            }
+        }
+
+        /* Responsive para móviles muy pequeños */
+        @@media (max-width: 360px) {
+            .search-bar {
+                width: 100%;
+                margin: 0 5px;
+                padding: 4px 8px;
+                top: 60px;
+            }
+
+            .search-bar input {
+                font-size: 12px;
+                padding: 4px 6px;
+            }
+
+            .search-bar button {
+                width: 28px;
+                height: 28px;
+                margin-left: 3px;
+            }
+
+            .search-bar button i {
+                font-size: 12px;
+            }
+        }
+
+        .control-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            min-width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .search-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 10px;
+        }
+
+        .search-input {
+            width: 200px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .search-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-left: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .search-btn:hover {
+            background: #2980b9;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1002;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @@keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #bottomMenu {
+            position: fixed;
+            bottom: -100%;
+            left: 10px;
+            right: 10px;
+            background: white;
+            border-radius: 20px 20px 0 0;
+            padding: 25px;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+            z-index: 10001; /* Mayor z-index para estar por encima del footer */
+            transition: bottom 0.3s ease;
+            max-height: 40vh; /* Desktop: Mitad de la altura */
+            overflow-y: auto;
+        }
+
+        #bottomMenu.show {
+            bottom: 0;
+        }
+
+        /* Ajustar el menú inferior en mobile */
+        @@media (max-width: 768px) {
+            #bottomMenu {
+                left: 5px;
+                right: 5px;
+                padding: 20px;
+                max-height: 80vh !important; /* Mobile: Más alto que desktop */
+                border-radius: 15px 15px 0 0;
+            }
+        }
+
+        /* Mobile: menú más pequeño y en línea */
+        @@media (max-width: 768px) {
+            #bottomMenu {
+                padding: 10px;
+                height: auto;
+                max-height: 120px;
+            }
+
+            .menu-header {
+                margin-bottom: 8px;
+            }
+
+            .menu-header h4 {
+                font-size: 16px;
+                margin: 0;
+            }
+
+            .info-row {
+                display: inline-block;
+                margin-right: 15px;
+                margin-bottom: 5px;
+                font-size: 12px;
+            }
+
+            .info-label {
+                font-weight: 600;
+                color: #333;
+                font-size: 11px;
+            }
+
+            .info-value {
+                color: #666;
+                font-size: 11px;
+            }
+
+            .status-badge {
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 10px;
+            }
+
+            .availability-bar {
+                width: 60px;
+                height: 4px;
+                margin: 2px 0;
+            }
+
+            .btn {
+                padding: 6px 12px;
+                font-size: 12px;
+                margin-top: 5px;
+            }
+        }
+
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .info-value {
+            color: #666;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.open {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.closed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .availability-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+
+        .availability-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);
+            transition: width 0.3s ease;
+        }
+
+        .custom-parking-icon {
+            background: #3498db;
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+        }
+
+        .custom-parking-icon.available {
+            background: #28a745;
+        }
+
+        .custom-parking-icon.closed {
+            background: #95a5a6;
+        }
+
+        .custom-parking-icon.search-result {
+            background: #dc3545; /* Rojo para resultados de búsqueda */
+        }
+
+        .search-location-marker {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        /* Escala de zoom personalizada */
+        .custom-scale {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #333;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        .scale-line {
+            height: 2px;
+            background: #333;
+            margin: 4px 0;
+            position: relative;
+        }
+
+        .scale-line::before,
+        .scale-line::after {
+            content: '';
+            position: absolute;
+            top: -3px;
+            width: 1px;
+            height: 8px;
+            background: #333;
+        }
+
+        .scale-line::before {
+            left: 0;
+        }
+
+        .scale-line::after {
+            right: 0;
+        }
+
+        .custom-parking-icon:hover {
+            transform: scale(1.2);
+            transition: transform 0.2s ease;
+        }
+
+        /* Estilo para mapa simplificado */
+        .simplified-map {
+            filter: grayscale(20%) contrast(1.1) brightness(1.1);
+        }
+
+        /* Ocultar elementos innecesarios del mapa */
+        .leaflet-control-container .leaflet-top.leaflet-left {
+            display: none;
+        }
+
+        .leaflet-control-container .leaflet-top.leaflet-right {
+            display: none;
+        }
+
+        .leaflet-control-container .leaflet-bottom.leaflet-left {
+            display: none;
+        }
+
+        .leaflet-control-container .leaflet-bottom.leaflet-right {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="mapContainer"></div>
+
+    <!-- Barra de búsqueda superior centrada -->
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Buscar dirección..." />
+        <button class="clear-btn" onclick="limpiarBusqueda()" title="Limpiar búsqueda" id="clearBtn">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <button onclick="buscarDireccion()" title="Buscar">
+            <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+        <button class="home-btn" onclick="centerOnConductor()" title="Volver al inicio">
+            <i class="fa-solid fa-house"></i>
+        </button>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        Cargando mapa...
+    </div>
+
+    <!-- Escala de zoom personalizada -->
+    <div class="custom-scale" id="customScale">
+        <div id="scaleText">1 km</div>
+        <div class="scale-line" id="scaleLine"></div>
+    </div>
+
+    <div id="bottomMenu">
+        <div class="menu-header">
+            <h4 id="playaNombre">Selecciona una playa</h4>
+            <button class="close-btn" onclick="closeMenu()">×</button>
+        </div>
+        
+        <div id="playaInfo" style="display: none;">
+            <div class="info-row">
+                <span class="info-label">Estado:</span>
+                <span class="status-badge" id="estadoBadge">Abierto</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="info-label">Ocupación:</span>
+                <span class="info-value" id="disponibilidadTexto">15% ocupado</span>
+            </div>
+            
+            <div class="availability-bar">
+                <div class="availability-fill" id="disponibilidadBarra" style="width: 85%"></div>
+            </div>
+            
+            <div class="info-row">
+                <span class="info-label">Tipo de piso:</span>
+                <span class="info-value" id="tipoPiso">Hormigón</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="info-label">Dirección:</span>
+                <span class="info-value" id="direccion">Av. Principal 123</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="info-label">Valor promedio:</span>
+                <span class="info-value" id="valorPromedio">$500/hora</span>
+            </div>
+            
+            <button class="btn btn-primary w-100 mt-3" onclick="abrirNavegacion()">
+                <i class="bi bi-navigation me-2"></i>Ver en Google Maps
+            </button>
+        </div>
+    </div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let map;
+        let playas = [];
+        let playaSeleccionada = null;
+        let conductorMarker;
+        let parkingMarkers = [];
+        let searchResults = [];
+        let isSearchMode = false;
+        let searchLocationMarker = null;
+        let customScale = null;
+
+        // Ubicación del conductor (se actualizará con geolocalización)
+        // UTN FRRe (fallback) - Resistencia, Chaco (igual que Create.cshtml)
+        let conductorLat = -27.451000;
+        let conductorLon = -58.986000;
+
+        $(document).ready(function() {
+            inicializarMapa();
+            
+            // Permitir buscar con Enter
+            $('#searchInput').keypress(function(e) {
+                if (e.which === 13) { // Enter
+                    buscarDireccion();
+                }
+            });
+
+            // Mostrar/ocultar botón de limpiar según el contenido
+            $('#searchInput').on('input', function() {
+                if ($(this).val().trim() !== '') {
+                    $('#clearBtn').addClass('show');
+                } else {
+                    $('#clearBtn').removeClass('show');
+                }
+            });
+        });
+
+        function inicializarMapa() {
+            // Inicializar el mapa con geolocalización como Create.cshtml
+            map = L.map('mapContainer', {
+                zoomControl: false,
+                scrollWheelZoom: true,
+                doubleClickZoom: true,
+                boxZoom: true,
+                keyboard: true,
+                dragging: true,
+                touchZoom: true,
+                attributionControl: false,
+                minZoom: 12 // Limitar zoom mínimo (aproximadamente 3km) - no puede alejarse más
+            });
+
+            // Usar el mismo tema que Create.cshtml (CartoDB Positron)
+            L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+                attribution: '&copy; OpenStreetMap & CARTO'
+            }).addTo(map);
+            
+            L.control.zoom({ position: 'topright' }).addTo(map);
+            // L.control.scale({ imperial: false }).addTo(map); // Ocultamos la escala por defecto
+
+            // Geolocalización del usuario
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lon = pos.coords.longitude;
+                        map.setView([lat, lon], 16);
+                        
+                        // Agregar marcador del conductor en ubicación real
+                        conductorMarker = L.marker([lat, lon], {
+                            icon: L.divIcon({
+                                className: 'conductor-marker',
+                                html: '<div style="background: #3498db; border: 3px solid white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">🚗</div>',
+                                iconSize: [40, 40],
+                                iconAnchor: [20, 20]
+                            })
+                        }).addTo(map);
+                        
+                        conductorMarker.bindPopup('<b>Tu ubicación</b><br>Ubicación detectada').openPopup();
+                        
+                        // Actualizar coordenadas del conductor
+                        conductorLat = lat;
+                        conductorLon = lon;
+                        
+                        // Cargar playas con la ubicación real
+                        cargarPlayas();
+                        
+                        // Inicializar escala personalizada después de que el mapa esté listo
+                        inicializarEscalaPersonalizada();
+                    },
+                    () => {
+                        // Fallback a Resistencia si falla la geolocalización
+                        map.setView([conductorLat, conductorLon], 14);
+                        conductorMarker = L.marker([conductorLat, conductorLon], {
+                            icon: L.divIcon({
+                                className: 'conductor-marker',
+                                html: '<div style="background: #3498db; border: 3px solid white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">🚗</div>',
+                                iconSize: [40, 40],
+                                iconAnchor: [20, 20]
+                            })
+                        }).addTo(map);
+                        
+                        conductorMarker.bindPopup('<b>Tu ubicación</b><br>Resistencia, Chaco').openPopup();
+                        
+                        // Cargar playas con ubicación por defecto
+                        cargarPlayas();
+                        
+                        // Inicializar escala personalizada después de que el mapa esté listo
+                        inicializarEscalaPersonalizada();
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            } else {
+                // Fallback si no hay geolocalización
+                map.setView([conductorLat, conductorLon], 14);
+                conductorMarker = L.marker([conductorLat, conductorLon], {
+                    icon: L.divIcon({
+                        className: 'conductor-marker',
+                        html: '<div style="background: #3498db; border: 3px solid white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">🚗</div>',
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
+                    })
+                }).addTo(map);
+                
+                conductorMarker.bindPopup('<b>Tu ubicación</b><br>Resistencia, Chaco').openPopup();
+                
+                // Cargar playas con ubicación por defecto
+                cargarPlayas();
+                
+                // Inicializar escala personalizada después de que el mapa esté listo
+                inicializarEscalaPersonalizada();
+            }
+
+            console.log('Mapa inicializado con geolocalización');
+        }
+
+        function cargarPlayas() {
+            $('#loading').show();
+            
+            $.get('/Conductor/GetPlayasCercanas', {
+                lat: conductorLat,
+                lon: conductorLon,
+                radioKm: 50 // Radio más amplio para mostrar más playas
+            })
+            .done(function(data) {
+                console.log('Playas cargadas:', data);
+                playas = data;
+                mostrarPlayasEnMapa();
+                $('#loading').hide();
+            })
+            .fail(function(xhr, status, error) {
+                console.error('Error al cargar playas:', error);
+                $('#loading').html('<div class="spinner"></div>Error al cargar playas: ' + error);
+            });
+        }
+
+        function mostrarPlayasEnMapa() {
+            // Limpiar marcadores existentes
+            parkingMarkers.forEach(marker => map.removeLayer(marker));
+            parkingMarkers = [];
+
+            // Usar playas de búsqueda si estamos en modo búsqueda
+            const playasAMostrar = isSearchMode ? searchResults : playas;
+
+            playasAMostrar.forEach(function(playa) {
+                // Validar que las coordenadas sean válidas
+                if (!playa.plyLat || !playa.plyLon || 
+                    isNaN(playa.plyLat) || isNaN(playa.plyLon) ||
+                    playa.plyLat === undefined || playa.plyLon === undefined) {
+                    console.warn(`Coordenadas inválidas para ${playa.plyNom}: lat=${playa.plyLat}, lon=${playa.plyLon}`);
+                    return; // Saltar esta playa
+                }
+
+                const icon = crearIconoPlaya(playa, isSearchMode);
+                
+                const marker = L.marker([playa.plyLat, playa.plyLon], {
+                    icon: icon
+                }).addTo(map);
+
+                // Agregar popup con información básica (SIN botón "Ver detalles")
+                marker.bindPopup(`
+                    <div style="min-width: 200px;">
+                        <h6 style="margin: 0 0 10px 0; color: #2c3e50;">${playa.plyNom}</h6>
+                        <p style="margin: 5px 0; font-size: 14px;"><strong>Dirección:</strong> ${playa.plyDir}</p>
+                        <p style="margin: 5px 0; font-size: 14px;"><strong>Disponibilidad:</strong> ${playa.disponibilidad}%</p>
+                        <p style="margin: 5px 0; font-size: 14px;"><strong>Estado:</strong> ${playa.estaAbierto ? 'Abierto' : 'Cerrado'}</p>
+                        ${isSearchMode ? `<p style="margin: 5px 0; font-size: 14px; color: #dc3545;"><strong>📍 Distancia:</strong> ${playa.distancia.toFixed(2)} km</p>` : ''}
+                        ${isSearchMode ? '<p style="margin: 5px 0; font-size: 12px; color: #dc3545; font-weight: bold;">🔍 Uno de los 3 más cercanos</p>' : ''}
+                    </div>
+                `);
+
+                // Evento click para seleccionar playa
+                marker.on('click', function() {
+                    seleccionarPlaya(playa);
+                });
+
+                parkingMarkers.push(marker);
+            });
+
+            if (isSearchMode) {
+                console.log(`Mostrando los 3 estacionamientos más cercanos a la dirección buscada`);
+                // Mostrar mensaje informativo
+                if (playasAMostrar.length > 0) {
+                    console.log(`📍 Ubicación buscada: ${$('#searchInput').val()}`);
+                    console.log(`🔍 Encontrados ${playasAMostrar.length} estacionamientos más cercanos:`);
+                    playasAMostrar.forEach((playa, index) => {
+                        console.log(`${index + 1}. ${playa.plyNom} - ${playa.distancia.toFixed(2)} km`);
+                    });
+                }
+            } else {
+                console.log(`Mostrando ${playasAMostrar.length} playas en el mapa`);
+            }
+        }
+
+        function crearIconoPlaya(playa, esResultadoBusqueda = false) {
+            let className = 'custom-parking-icon';
+            
+            if (esResultadoBusqueda) {
+                className += ' search-result'; // Rojo para resultados de búsqueda
+            } else if (!playa.estaAbierto) {
+                className += ' closed';
+            } else if (playa.disponibilidad > 50) {
+                className += ' available';
+            }
+
+            return L.divIcon({
+                className: className,
+                html: 'P',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+        }
+
+        function seleccionarPlaya(playa) {
+            playaSeleccionada = playa;
+            
+            // Centrar el mapa en la playa seleccionada
+            map.setView([playa.plyLat, playa.plyLon], 16);
+            
+            // Obtener detalles completos
+            $.get('/Conductor/GetDetallePlaya', { id: playa.plyID })
+            .done(function(detalle) {
+                mostrarDetallePlaya(detalle);
+                $('#bottomMenu').addClass('show');
+            })
+            .fail(function(xhr, status, error) {
+                console.error('Error al obtener detalles de la playa:', error);
+                // Mostrar información básica si falla la petición
+                mostrarDetallePlayaBasico(playa);
+                $('#bottomMenu').addClass('show');
+            });
+        }
+
+        function mostrarDetallePlaya(detalle) {
+            $('#playaNombre').text(detalle.plyNom);
+            $('#estadoBadge').text(detalle.estaAbierto ? 'Abierto' : 'Cerrado');
+            $('#estadoBadge').removeClass('open closed').addClass(detalle.estaAbierto ? 'open' : 'closed');
+            
+            // Mostrar ocupación en lugar de disponibilidad
+            const ocupacion = 100 - detalle.disponibilidad;
+            $('#disponibilidadTexto').text(ocupacion + '% ocupado');
+            $('#disponibilidadBarra').css('width', ocupacion + '%');
+            
+            $('#tipoPiso').text(detalle.plyTipoPiso);
+            $('#direccion').text(detalle.plyDir);
+            $('#valorPromedio').text('$' + detalle.plyValProm + '/hora');
+            
+            $('#playaInfo').show();
+        }
+
+        function mostrarDetallePlayaBasico(playa) {
+            $('#playaNombre').text(playa.plyNom);
+            $('#estadoBadge').text(playa.estaAbierto ? 'Abierto' : 'Cerrado');
+            $('#estadoBadge').removeClass('open closed').addClass(playa.estaAbierto ? 'open' : 'closed');
+            
+            // Mostrar ocupación en lugar de disponibilidad
+            const ocupacion = 100 - playa.disponibilidad;
+            $('#disponibilidadTexto').text(ocupacion + '% ocupado');
+            $('#disponibilidadBarra').css('width', ocupacion + '%');
+            
+            $('#tipoPiso').text(playa.plyTipoPiso);
+            $('#direccion').text(playa.plyDir);
+            $('#valorPromedio').text('$' + (playa.plyValProm || 0) + '/hora');
+            
+            $('#playaInfo').show();
+        }
+
+        function closeMenu() {
+            $('#bottomMenu').removeClass('show');
+            playaSeleccionada = null;
+        }
+
+        function centerOnConductor() {
+            map.setView([conductorLat, conductorLon], 15);
+        }
+
+        function abrirNavegacion() {
+            if (playaSeleccionada) {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${playaSeleccionada.plyLat},${playaSeleccionada.plyLon}`;
+                window.open(url, '_blank');
+            }
+        }
+
+        function buscarDireccion() {
+            const direccion = $('#searchInput').val().trim();
+            if (!direccion) {
+                alert('Por favor ingresa una dirección');
+                return;
+            }
+
+            // Mostrar botón de limpiar
+            $('#clearBtn').addClass('show');
+
+            // Usar geocoding para obtener coordenadas de la dirección
+            const geocodingUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion + ', Resistencia, Chaco')}&limit=1`;
+            
+            $('#loading').show();
+            
+            $.get(geocodingUrl)
+                .done(function(data) {
+                    if (data && data.length > 0) {
+                        const lat = parseFloat(data[0].lat);
+                        const lon = parseFloat(data[0].lon);
+                        
+                        // Centrar el mapa en la dirección buscada
+                        map.setView([lat, lon], 15);
+                        
+                        // Buscar playas cercanas a esa dirección
+                        buscarPlayasCercanas(lat, lon);
+                    } else {
+                        alert('No se encontró la dirección. Intenta con una dirección más específica.');
+                        $('#loading').hide();
+                    }
+                })
+                .fail(function() {
+                    alert('Error al buscar la dirección. Intenta nuevamente.');
+                    $('#loading').hide();
+                });
+        }
+
+        function buscarPlayasCercanas(lat, lon) {
+            $.get('/Conductor/GetPlayasCercanas', {
+                lat: lat,
+                lon: lon,
+                radioKm: 10 // Radio más amplio para obtener más opciones
+            })
+            .done(function(data) {
+                console.log('Playas cercanas encontradas:', data);
+                
+                // Ordenar por distancia y tomar solo los 3 más cercanos
+                searchResults = data.sort((a, b) => a.distancia - b.distancia).slice(0, 3);
+                
+                // Agregar marcador de ubicación buscada
+                if (searchLocationMarker) {
+                    map.removeLayer(searchLocationMarker);
+                }
+                
+                searchLocationMarker = L.marker([lat, lon], {
+                    icon: L.divIcon({
+                        className: 'search-location-marker',
+                        html: '<i class="fa-solid fa-location-dot" style="color: #dc3545; font-size: 24px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);"></i>',
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    })
+                }).addTo(map);
+                
+                searchLocationMarker.bindPopup('<b>Ubicación buscada</b><br>Dirección: ' + $('#searchInput').val()).openPopup();
+                
+                isSearchMode = true;
+                mostrarPlayasEnMapa();
+                $('#loading').hide();
+            })
+            .fail(function(xhr, status, error) {
+                console.error('Error al buscar playas cercanas:', error);
+                $('#loading').hide();
+            });
+        }
+
+        function volverAVistaNormal() {
+            isSearchMode = false;
+            searchResults = [];
+            $('#searchInput').val('');
+            $('#clearBtn').removeClass('show');
+            
+            // Remover marcador de ubicación buscada
+            if (searchLocationMarker) {
+                map.removeLayer(searchLocationMarker);
+                searchLocationMarker = null;
+            }
+            
+            cargarPlayas(); // Recargar todas las playas
+        }
+
+        function limpiarBusqueda() {
+            $('#searchInput').val('');
+            $('#clearBtn').removeClass('show');
+            volverAVistaNormal();
+        }
+
+        function inicializarEscalaPersonalizada() {
+            // Actualizar escala cuando cambie el zoom
+            map.on('zoomend', actualizarEscala);
+            map.on('moveend', actualizarEscala);
+            
+            // Actualizar escala inicial
+            actualizarEscala();
+        }
+
+        function actualizarEscala() {
+            // Verificar que el mapa esté inicializado
+            if (!map || !map.getCenter) {
+                return;
+            }
+            
+            try {
+                const center = map.getCenter();
+                const zoom = map.getZoom();
+                
+                // Calcular la distancia en metros para 100 píxeles
+                const point1 = map.containerPointToLatLng([0, 0]);
+                const point2 = map.containerPointToLatLng([100, 0]);
+                const distance = point1.distanceTo(point2);
+                
+                // Determinar la mejor unidad y valor
+                let scaleText, scaleWidth;
+                
+                if (distance >= 1000) {
+                    // Usar kilómetros
+                    const km = Math.round(distance / 1000);
+                    scaleText = km + ' km';
+                    scaleWidth = 100; // 100 píxeles
+                } else if (distance >= 100) {
+                    // Usar metros
+                    const m = Math.round(distance / 100) * 100;
+                    scaleText = m + ' m';
+                    scaleWidth = 100;
+                } else if (distance >= 10) {
+                    // Usar metros más pequeños
+                    const m = Math.round(distance / 10) * 10;
+                    scaleText = m + ' m';
+                    scaleWidth = 100;
+                } else {
+                    // Usar metros muy pequeños
+                    const m = Math.round(distance);
+                    scaleText = m + ' m';
+                    scaleWidth = 100;
+                }
+                
+                // Actualizar el texto y el ancho de la línea
+                $('#scaleText').text(scaleText);
+                $('#scaleLine').css('width', scaleWidth + 'px');
+            } catch (error) {
+                console.log('Escala no disponible aún:', error);
+                // Mostrar escala por defecto
+                $('#scaleText').text('1 km');
+                $('#scaleLine').css('width', '100px');
+            }
+        }
+
+        // Controles de teclado
+        $(document).keydown(function(e) {
+            switch(e.key) {
+                case 'Escape':
+                    closeMenu();
+                    break;
+                case 'c':
+                case 'C':
+                    centerOnConductor();
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
