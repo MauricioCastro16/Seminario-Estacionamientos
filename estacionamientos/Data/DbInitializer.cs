@@ -877,7 +877,7 @@ public static class DbInitializer
                     PagMonto = faker.Random.Decimal(100, 5000), // Monto del pago (ajustable según necesidades)
                     PagFyh = faker.Date.Between(DateTime.UtcNow.AddDays(-30), DateTime.UtcNow), // Fecha y hora de pago
                     Playa = playa, // Relación de navegación con Playa
-                    MetodoPago = metodoPago.MetodoPago, // Relación de navegación con MetodoPago
+                    MetodoPago = metodoPago.MetodoPago!, // Relación de navegación con MetodoPago
                     AceptaMetodoPago = metodoPago // Relación con AceptaMetodoPago
                 };
 
@@ -1290,7 +1290,7 @@ context.SaveChanges();
                             PagNum = pagNumPeriodo.Value,
                             MepID = metodoPago.MepID,
                             PagMonto = montoPorPeriodo,
-                            PagFyh = fechaPago.Value
+                            PagFyh = fechaPago!.Value
                             // No asignar propiedades de navegación para evitar conflictos de tracking
                         };
                         
@@ -1384,9 +1384,9 @@ context.SaveChanges();
             // Asignar propiedades de navegación después de guardar
             foreach (var abono in batch)
             {
-                abono.Plaza = context.Plazas.Find(abono.PlyID, abono.PlzNum);
-                abono.Abonado = context.Abonados.Find(abono.AboDNI);
-                abono.Pago = context.Pagos.Find(abono.PlyID, abono.PagNum);
+                abono.Plaza = context.Plazas.Find(abono.PlyID, abono.PlzNum)!;
+                abono.Abonado = context.Abonados.Find(abono.AboDNI)!;
+                abono.Pago = context.Pagos.Find(abono.PlyID, abono.PagNum)!;
             }
         }
         
@@ -1400,7 +1400,7 @@ context.SaveChanges();
             // Asignar propiedades de navegación después de guardar
             foreach (var periodo in batch)
             {
-                periodo.Abono = context.Abonos.Find(periodo.PlyID, periodo.PlzNum, periodo.AboFyhIni);
+                periodo.Abono = context.Abonos.Find(periodo.PlyID, periodo.PlzNum, periodo.AboFyhIni)!;
                 if (periodo.PagNum.HasValue)
                 {
                     periodo.Pago = context.Pagos.Find(periodo.PlyID, periodo.PagNum.Value);
@@ -1418,8 +1418,8 @@ context.SaveChanges();
             // Asignar propiedades de navegación después de guardar
             foreach (var vehiculoAbonado in batch)
             {
-                vehiculoAbonado.Abono = context.Abonos.Find(vehiculoAbonado.PlyID, vehiculoAbonado.PlzNum, vehiculoAbonado.AboFyhIni);
-                vehiculoAbonado.Vehiculo = context.Vehiculos.Find(vehiculoAbonado.VehPtnt);
+                vehiculoAbonado.Abono = context.Abonos.Find(vehiculoAbonado.PlyID, vehiculoAbonado.PlzNum, vehiculoAbonado.AboFyhIni)!;
+                vehiculoAbonado.Vehiculo = context.Vehiculos.Find(vehiculoAbonado.VehPtnt)!;
             }
         }
 

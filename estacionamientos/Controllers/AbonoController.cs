@@ -128,7 +128,7 @@ namespace estacionamientos.Controllers
 
 
 
-        public async Task<IActionResult> Create(string abonado = null, string dni = null, string vehiculos = null, int? plyID = null)
+        public async Task<IActionResult> Create(string? abonado = null, string? dni = null, string? vehiculos = null, int? plyID = null)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var model = new AbonoCreateVM { AboFyhIni = DateTime.UtcNow };
@@ -145,10 +145,10 @@ namespace estacionamientos.Controllers
                     try
                     {
                         var vehiculosData = JsonSerializer.Deserialize<List<VehiculoInfo>>(vehiculos);
-                        model.Vehiculos = vehiculosData.Select(v => new VehiculoVM
+                        model.Vehiculos = vehiculosData?.Select(v => new VehiculoVM
                         {
                             VehPtnt = v.patente
-                        }).ToList();
+                        }).ToList() ?? new List<VehiculoVM>();
                     }
                     catch (Exception ex)
                     {
@@ -648,8 +648,8 @@ namespace estacionamientos.Controllers
                 if (!ModelState.IsValid)
                 {
                     var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                    var fieldErrors = ModelState.Where(x => x.Value.Errors.Count > 0)
-                        .Select(x => $"{x.Key}: {string.Join(", ", x.Value.Errors.Select(e => e.ErrorMessage))}");
+                    var fieldErrors = ModelState.Where(x => x.Value.Errors?.Count > 0)
+                        .Select(x => $"{x.Key ?? "Unknown"}: {string.Join(", ", x.Value.Errors?.Select(e => e.ErrorMessage) ?? new List<string>())}");
                     
                     Console.WriteLine($"ModelState inválido - Errores generales: {string.Join(", ", errors)}");
                     Console.WriteLine($"ModelState inválido - Errores por campo: {string.Join("; ", fieldErrors)}");
@@ -724,7 +724,7 @@ namespace estacionamientos.Controllers
 
                 // 5. Crear o verificar vehículos y asociarlos al abono
                 Console.WriteLine($"Procesando {model.Vehiculos?.Count ?? 0} vehículos");
-                foreach (var vehiculoVM in model.Vehiculos)
+                foreach (var vehiculoVM in model.Vehiculos ?? new List<VehiculoVM>())
                 {
                     Console.WriteLine($"Procesando vehículo: {vehiculoVM.VehPtnt}");
                     
@@ -871,7 +871,7 @@ namespace estacionamientos.Controllers
             {
                 var metodosPago = await _ctx.AceptaMetodosPago
                     .Where(a => a.PlyID == plyId && a.AmpHab && a.MetodoPago != null)
-                    .Select(a => new { a.MetodoPago.MepID, a.MetodoPago.MepNom })
+                    .Select(a => new { a.MetodoPago!.MepID, a.MetodoPago!.MepNom })
                     .OrderBy(m => m.MepNom)
                     .ToListAsync();
 

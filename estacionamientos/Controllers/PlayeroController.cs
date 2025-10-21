@@ -551,7 +551,7 @@ namespace estacionamientos.Controllers
                     PlaNU = g.Key.PlaNU,
                     PlayeroNombre = g.Key.PlayeroNombre,
                     PlayeroEmail = g.Key.PlayeroEmail,
-                    PlayeroTelefono = g.Key.PlayeroTelefono,
+                    PlayeroTelefono = g.Key.PlayeroTelefono!,
                     Periodos = g.OrderByDescending(p => p.Vigente)
                                 .ThenByDescending(p => p.FechaInicio)
                                 .Select(p => new PeriodoVM

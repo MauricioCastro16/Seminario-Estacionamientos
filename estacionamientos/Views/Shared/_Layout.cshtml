@@ -150,6 +150,16 @@
                         </li>
                     }
                     
+                    @if (User.IsInRole("Conductor"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Conductor" asp-action="Mapa">
+                                <i class="bi bi-geo-alt-fill"></i>
+                                <span>Mapa</span>
+                            </a>
+                        </li>
+                    }
+
                     @if (User.IsInRole("Duenio"))
                     {
                         <li class="nav-item">

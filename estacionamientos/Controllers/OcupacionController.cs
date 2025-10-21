@@ -60,8 +60,8 @@ namespace estacionamientos.Controllers
             int plyID, int plzNum, string vehPtnt, DateTime ocufFyhIni, DateTime ocufFyhFin)
         {
             var ocupacion = await _ctx.Ocupaciones
-                .Include(o => o.Vehiculo).ThenInclude(v => v.Clasificacion)
-                .Include(o => o.Plaza).ThenInclude(p => p.Playa)
+                .Include(o => o.Vehiculo!).ThenInclude(v => v.Clasificacion!)
+                .Include(o => o.Plaza!).ThenInclude(p => p.Playa!)
                 .FirstOrDefaultAsync(o =>
                     o.PlyID == plyID &&
                     o.PlzNum == plzNum &&
@@ -79,7 +79,7 @@ namespace estacionamientos.Controllers
             var servicios = await _ctx.ServiciosProveidos
                 .Include(sp => sp.Servicio)
                 .Include(sp => sp.Tarifas.Where(t =>
-                    t.ClasVehID == ocupacion.Vehiculo.ClasVehID &&
+                    t.ClasVehID == ocupacion.Vehiculo!.ClasVehID &&
                     t.TasFecIni <= ocufFyhFin &&
                     (t.TasFecFin == null || t.TasFecFin >= ocufFyhIni)))
                 .Where(sp => sp.PlyID == plyID &&
@@ -92,7 +92,7 @@ namespace estacionamientos.Controllers
             foreach (var sp in servicios)
             {
                 var tarifa = sp.Tarifas
-                    .Where(t => t.ClasVehID == ocupacion.Vehiculo.ClasVehID &&
+                    .Where(t => t.ClasVehID == ocupacion.Vehiculo!.ClasVehID &&
                                 t.TasFecIni <= ocufFyhFin &&
                                 (t.TasFecFin == null || t.TasFecFin >= ocufFyhIni))
                     .OrderByDescending(t => t.TasFecIni)
@@ -211,8 +211,8 @@ namespace estacionamientos.Controllers
                 .Select(amp => new MetodoPagoVM
                 {
                     MepID = amp.MepID,
-                    MepNom = amp.MetodoPago.MepNom,
-                    MepDesc = amp.MetodoPago.MepDesc
+                    MepNom = amp.MetodoPago!.MepNom,
+                    MepDesc = amp.MetodoPago!.MepDesc
                 })
                 .ToListAsync();
 
@@ -223,9 +223,9 @@ namespace estacionamientos.Controllers
                 VehPtnt = vehPtnt,
                 OcufFyhIni = DateTime.SpecifyKind(ocufFyhIni, DateTimeKind.Utc),
                 OcufFyhFin = DateTime.SpecifyKind(ocufFyhFin, DateTimeKind.Utc),
-                ClasVehID = ocupacion.Vehiculo.ClasVehID,
-                ClasVehTipo = ocupacion.Vehiculo.Clasificacion?.ClasVehTipo ?? "",
-                PlayaNombre = ocupacion.Plaza.Playa.PlyNom,
+                ClasVehID = ocupacion.Vehiculo!.ClasVehID,
+                ClasVehTipo = ocupacion.Vehiculo!.Clasificacion?.ClasVehTipo ?? "",
+                PlayaNombre = ocupacion.Plaza!.Playa!.PlyNom,
                 TiempoOcupacion = tiempoOcupacion,
                 HorasOcupacion = horasOcupacion,
                 MinutosOcupacion = minutosOcupacion,
@@ -254,11 +254,11 @@ namespace estacionamientos.Controllers
         public async Task<IActionResult> Index()
         {   
             IQueryable<Ocupacion> query = _ctx.Ocupaciones
-                .Include(o => o.Plaza)
-                    .ThenInclude(p => p.Clasificaciones)
-                        .ThenInclude(pc => pc.Clasificacion)
-                .Include(o => o.Plaza).ThenInclude(p => p.Playa)
-                .Include(o => o.Vehiculo).ThenInclude(v => v.Clasificacion)
+                .Include(o => o.Plaza!)
+                    .ThenInclude(p => p.Clasificaciones!)
+                        .ThenInclude(pc => pc.Clasificacion!)
+                .Include(o => o.Plaza!).ThenInclude(p => p.Playa!)
+                .Include(o => o.Vehiculo!).ThenInclude(v => v.Clasificacion!)
                 .Include(o => o.Pago)
                 .AsNoTracking();
 
@@ -308,7 +308,7 @@ namespace estacionamientos.Controllers
 
             var movimientoPlayero = new MovimientoPlayero{
                 PlyID = plyID,
-                PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)),
+                PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0"),
                 TipoMov = TipoMovimiento.IngresoVehiculo,
                 FechaMov = DateTime.UtcNow,
                 VehPtnt = vehPtnt,
@@ -346,7 +346,7 @@ namespace estacionamientos.Controllers
             
             var movimientoPlayero = new MovimientoPlayero{
                 PlyID = plyID,
-                PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)),
+                PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0"),
                 TipoMov = TipoMovimiento.EgresoVehiculo,
                 FechaMov = DateTime.UtcNow,
                 VehPtnt = vehPtnt,
@@ -395,7 +395,7 @@ namespace estacionamientos.Controllers
                     .MaxAsync(p => (int?)p.PagNum) + 1 ?? 1;
                 
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                int plaNU = int.Parse(userId);
+                int plaNU = int.Parse(userId ?? "0");
 
                 var pago = new Pago
                 {
@@ -460,9 +460,9 @@ namespace estacionamientos.Controllers
         public async Task<IActionResult> Details(int plyID, int plzNum, string vehPtnt, DateTime ocufFyhIni)
         {
             var item = await _ctx.Ocupaciones
-                .Include(o => o.Plaza).ThenInclude(p => p.Playa)
-                .Include(o => o.Vehiculo)
-                .Include(o => o.Pago)
+                .Include(o => o.Plaza!).ThenInclude(p => p.Playa!)
+                .Include(o => o.Vehiculo!)
+                .Include(o => o.Pago!)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(o => o.PlyID == plyID && o.PlzNum == plzNum && o.VehPtnt == vehPtnt && o.OcufFyhIni == ocufFyhIni);
             return item is null ? NotFound() : View(item);
@@ -745,7 +745,7 @@ namespace estacionamientos.Controllers
             
             var movimientoPlayero = new MovimientoPlayero{
                 PlyID = model.PlyID,
-                PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)),
+                PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0"),
                 TipoMov = TipoMovimiento.IngresoVehiculo,
                 FechaMov = DateTime.UtcNow,
                 VehPtnt = model.VehPtnt,
@@ -801,9 +801,9 @@ namespace estacionamientos.Controllers
         public async Task<IActionResult> Delete(int plyID, int plzNum, string vehPtnt, DateTime ocufFyhIni)
         {
             var item = await _ctx.Ocupaciones
-                .Include(o => o.Plaza).ThenInclude(p => p.Playa)
-                .Include(o => o.Vehiculo)
-                .Include(o => o.Pago)
+                .Include(o => o.Plaza!).ThenInclude(p => p.Playa!)
+                .Include(o => o.Vehiculo!)
+                .Include(o => o.Pago!)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(o => o.PlyID == plyID && o.PlzNum == plzNum && o.VehPtnt == vehPtnt && o.OcufFyhIni == ocufFyhIni);
 
@@ -866,7 +866,7 @@ namespace estacionamientos.Controllers
                     return View("ReubicarVehiculo");
                 }
                 // Liberar la plaza
-                ocupacionActual.Plaza.PlzHab = true;
+                ocupacionActual.Plaza!.PlzHab = true;
 
                 // Borrar ocupación anterior (para insertar una nueva con misma clave pero distinta plaza)
                 _ctx.Ocupaciones.Remove(ocupacionActual);
@@ -886,7 +886,7 @@ namespace estacionamientos.Controllers
                 _ctx.Ocupaciones.Add(nuevaOcupacion);
 
                 //registrar el movimiento del playero
-                var usuNu = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                var usuNu = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
                 var movimientoPlayero = new MovimientoPlayero{
                     PlyID = nuevaOcupacion.PlyID,
                     PlaNU = usuNu,
@@ -917,13 +917,13 @@ namespace estacionamientos.Controllers
         {
             var ocupacionActual = ocupacion ?? await _ctx.Ocupaciones
                 .Where(o => o.PlyID == plyID && o.PlzNum == plzNum && o.VehPtnt == vehPtnt && o.OcufFyhFin == null)
-                .Include(o => o.Plaza)
-                    .ThenInclude(p => p.Clasificaciones)
-                        .ThenInclude(pc => pc.Clasificacion)
-                .Include(o => o.Plaza)
-                    .ThenInclude(p => p.Playa)
-                .Include(o => o.Vehiculo)
-                    .ThenInclude(v => v.Clasificacion)
+                .Include(o => o.Plaza!)
+                    .ThenInclude(p => p.Clasificaciones!)
+                        .ThenInclude(pc => pc.Clasificacion!)
+                .Include(o => o.Plaza!)
+                    .ThenInclude(p => p.Playa!)
+                .Include(o => o.Vehiculo!)
+                    .ThenInclude(v => v.Clasificacion!)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 

@@ -41,7 +41,7 @@
                             <div class="col-12 col-sm-6">
                                 <label class="form-label fw-medium">Piso</label>
                                 <select id="PisoSelect" class="form-select">
-                                    @foreach (var piso in listaPlazas.Select(p => p.Plaza.Piso).Distinct().OrderBy(p => p))
+                                    @foreach (var piso in (listaPlazas ?? new List<PlazaClasificacion>()).Select(p => p.Plaza?.Piso).Where(p => p.HasValue).Distinct().OrderBy(p => p))
                                     {
                                         var esSeleccionado = piso == ocupacionActual?.Plaza?.Piso;
                                         if (esSeleccionado)
@@ -77,6 +77,7 @@
                                 @foreach (var pc in listaPlazas)
                                 {
                                     var plaza = pc.Plaza;
+                                    if (plaza == null) continue;
                                     bool esActual = plaza.PlzNum == ocupacionActual?.PlzNum;
                                     bool ocupada = plaza.Ocupaciones.Any(o => o.OcufFyhFin == null); // Si hay ocupación activa
                                     bool inhabilitada = !plaza.PlzHab;

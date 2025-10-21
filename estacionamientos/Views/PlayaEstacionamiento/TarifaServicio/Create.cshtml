@@ -44,7 +44,7 @@
         @if (!ViewData.ModelState.IsValid && ViewData.ModelState[""]?.Errors.Count > 0)
         {
             <div class="alert alert-danger">
-                @foreach (var err in ViewData.ModelState[""].Errors)
+                @foreach (var err in ViewData.ModelState[""]?.Errors ?? new Microsoft.AspNetCore.Mvc.ModelBinding.ModelErrorCollection())
                 {
                     <p>@err.ErrorMessage</p>
                 }
