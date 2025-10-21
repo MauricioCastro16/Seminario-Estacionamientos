@@ -250,22 +250,60 @@ public static class DbInitializer
         var playas = new List<PlayaEstacionamiento>();
         var adminPlaya = new List<AdministraPlaya>();
 
+        // Direcciones reales de Resistencia, Chaco con coordenadas únicas
+        var direccionesResistencia = new List<(string direccion, decimal lat, decimal lon)>
+            {
+                ("C. French 414, H3500 Resistencia, Chaco", -27.451113m, -58.981598m),
+                ("Salta 574, H3500AWK Resistencia, Chaco", -27.448904m, -58.996563m),
+                ("C. Remedios de Escalada 394, H3500BPG Resistencia, Chaco", -27.445995m, -58.988259m),
+                ("C. Monteagudo 937, H3508EHD Resistencia, Chaco", -27.448259m, -58.991414m),
+                ("Jujuy 54, H3508AAE Resistencia, Chaco", -27.455284m, -58.994649m),
+                ("Av. Alberdi 1728, H3506 Resistencia, Chaco", -27.464810m, -59.020470m),
+                ("Fontana 872, H3504FWF Resistencia, Chaco", -27.452658m, -59.006280m),
+                ("Av. Sarmiento 1430, H3502COH Resistencia, Chaco", -27.439781m, -58.976084m),
+                ("La Rioja 20, H3500AMA Resistencia, Chaco", -27.446038m, -58.983884m),
+                ("Av. Edison 784, H3500BRK Resistencia, Chaco", -27.470304m, -58.996738m),
+                ("Av. Chaco 234, H3504FNC Resistencia, Chaco", -27.465268m, -58.977274m),
+                ("Ayacucho 133, H3504APW Resistencia, Chaco", -27.448931m, -58.984225m),
+                ("Julio Argentino Roca 1900, H3506AQU Resistencia, Chaco", -27.436754m, -59.022602m),
+                ("Sica 543, H3502 Resistencia, Chaco", -27.430217m, -59.000726m),
+                ("La Pampa 540, H3506AZQ Resistencia, Chaco", -27.453791m, -59.008025m),
+                ("Fray Bertaca 230, H3506 Resistencia, Chaco", -27.446563m, -59.020095m),
+                ("Villa Carlos Paz 20, H3514 Fontana, Chaco", -27.427225m, -59.016829m),
+                ("Av. San Martín 317, H3500CIQ Resistencia, Chaco", -27.453538m, -59.002622m),
+                ("España 430, W3400CIC Corrientes", -27.463291m, -58.831329m),
+                ("Salta 1430, W3400BLV Corrientes", -27.473455m, -58.842383m),
+                ("Gral. Paz 1600, W3410BBG Corrientes", -27.478882m, -58.834273m),
+                ("Las Heras 2934, Resistencia, Chaco", -27.481222m, -59.008056m),
+                ("Miguel Cane 840, H3503 Barranqueras, Chaco", -27.485053m, -58.951521m),
+                ("Dodero 2924, H3504BQG Resistencia, Chaco", -27.483940m, -58.973877m),
+                ("Vicente López y Planes 316, H3500 Resistencia, Chaco", -27.451034m, -58.983544m)
+            };
+
+
+        // Crear una lista de índices para tomar direcciones en orden
+        var indiceDireccion = 0;
+        
         foreach (var dueno in duenios)
         {
             for (int j = 0; j < 5; j++)
             {
+                // Tomar la siguiente dirección en orden (sin repetir)
+                var direccionSeleccionada = direccionesResistencia[indiceDireccion % direccionesResistencia.Count];
+                indiceDireccion++;
+                
                 var playa = new PlayaEstacionamiento
                 {
                     PlyID = nextPlyId++,
                     PlyNom = $"Playa {j + 1} de {dueno.UsuNyA.Split(' ')[0]}",
-                    PlyProv = faker.Address.State(),
-                    PlyCiu = faker.Address.City(),
-                    PlyDir = faker.Address.StreetAddress(),
+                    PlyProv = "Chaco",
+                    PlyCiu = "Resistencia",
+                    PlyDir = direccionSeleccionada.direccion,
                     PlyTipoPiso = faker.PickRandom("Hormigón", "Asfalto", "Tierra"),
                     PlyValProm = 0m,
                     PlyLlavReq = faker.Random.Bool(),
-                    PlyLat = decimal.Parse(faker.Address.Latitude().ToString("F6")),
-                    PlyLon = decimal.Parse(faker.Address.Longitude().ToString("F6"))
+                    PlyLat = direccionSeleccionada.lat,
+                    PlyLon = direccionSeleccionada.lon
                 };
                 playas.Add(playa);
 

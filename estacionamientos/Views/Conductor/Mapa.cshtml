@@ -14,6 +14,8 @@
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
     <style>
         body {
@@ -25,17 +27,20 @@
 
         #mapContainer {
             position: fixed;
-            top: 0;
+            top: 60px; /* Dejar espacio para el header */
             left: 0;
             width: 100vw;
-            height: 100vh;
+            height: calc(100vh - 60px); /* Restar altura del header */
             z-index: 1;
+            pointer-events: auto;
         }
 
         /* Ajustar el contenido principal para que no interfiera con el mapa */
         .main-content {
             background: transparent;
             padding-top: 0;
+            position: relative;
+            z-index: 1;
         }
 
         /* Asegurar que el header tenga fondo */
@@ -52,50 +57,60 @@
             z-index: 1000 !important;
         }
 
-        /* Forzar visibilidad del layout */
+        /* Asegurar que el header completo sea visible y clickeable */
         .main-header {
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
             right: 0 !important;
-            z-index: 1000 !important;
+            z-index: 10000 !important;
             background: rgba(255, 255, 255, 0.95) !important;
             backdrop-filter: blur(10px) !important;
+            height: 60px !important;
+            pointer-events: auto !important;
+        }
+
+        /* Asegurar que el navbar sea visible y clickeable */
+        .navbar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 10000 !important;
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px) !important;
+            height: 60px !important;
+            pointer-events: auto !important;
+        }
+
+        /* Asegurar que todos los elementos del navbar sean clickeables */
+        .navbar * {
+            pointer-events: auto !important;
         }
 
         .mobile-sidebar {
             position: fixed !important;
-            z-index: 1000 !important;
+            z-index: 10001 !important;
+            pointer-events: auto !important;
         }
 
         .sidebar-overlay {
             position: fixed !important;
-            z-index: 999 !important;
+            z-index: 10000 !important;
+            pointer-events: auto !important;
         }
 
-        /* Asegurar que el botón del menú hamburguesa sea visible */
-        .navbar-toggler {
-            position: fixed !important;
-            top: 15px !important;
-            left: 15px !important;
-            z-index: 1001 !important;
-            background: rgba(255, 255, 255, 0.9) !important;
-            border: none !important;
-            border-radius: 8px !important;
-            padding: 8px 12px !important;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+        /* Asegurar que el botón del menú hamburguesa sea clickeable */
+        .btn-mobile-menu {
+            position: relative !important;
+            z-index: 10002 !important;
+            pointer-events: auto !important;
         }
 
-        /* Asegurar que el logo/título también sea visible */
-        .navbar-brand {
-            position: fixed !important;
-            top: 15px !important;
-            left: 60px !important;
-            z-index: 1001 !important;
-            background: rgba(255, 255, 255, 0.9) !important;
-            padding: 8px 12px !important;
-            border-radius: 8px !important;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+        /* Asegurar que el sidebar sea visible cuando esté abierto */
+        .mobile-sidebar.show {
+            transform: translateX(0) !important;
+            z-index: 10001 !important;
         }
 
         /* Asegurar que los controles del mapa también estén visibles */
@@ -105,11 +120,67 @@
 
         .controls {
             position: fixed;
-            top: 20px;
+            top: 80px; /* Mover más abajo para no tapar el layout */
             right: 20px;
             z-index: 1000;
             display: flex;
+            flex-direction: column;
             gap: 10px;
+        }
+
+        .search-bar {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 25px;
+            padding: 8px 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            min-width: 400px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            border: none;
+            outline: none;
+            background: transparent;
+            padding: 8px 12px;
+            font-size: 16px;
+            min-width: 300px;
+        }
+
+        .search-bar button {
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .search-bar button:hover {
+            background: #2980b9;
+            transform: scale(1.05);
+        }
+
+        .search-bar .home-btn {
+            background: #6c757d;
+            margin-left: 5px;
+        }
+
+        .search-bar .home-btn:hover {
+            background: #5a6268;
         }
 
         .control-btn {
@@ -121,6 +192,42 @@
             font-size: 18px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             transition: all 0.3s ease;
+            min-width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .search-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 10px;
+        }
+
+        .search-input {
+            width: 200px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .search-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-left: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .search-btn:hover {
+            background: #2980b9;
         }
 
         .control-btn:hover {
@@ -173,6 +280,60 @@
 
         #bottomMenu.show {
             bottom: 0;
+        }
+
+        /* Mobile: menú más pequeño y en línea */
+        @@media (max-width: 768px) {
+            #bottomMenu {
+                padding: 10px;
+                height: auto;
+                max-height: 120px;
+            }
+
+            .menu-header {
+                margin-bottom: 8px;
+            }
+
+            .menu-header h4 {
+                font-size: 16px;
+                margin: 0;
+            }
+
+            .info-row {
+                display: inline-block;
+                margin-right: 15px;
+                margin-bottom: 5px;
+                font-size: 12px;
+            }
+
+            .info-label {
+                font-weight: 600;
+                color: #333;
+                font-size: 11px;
+            }
+
+            .info-value {
+                color: #666;
+                font-size: 11px;
+            }
+
+            .status-badge {
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 10px;
+            }
+
+            .availability-bar {
+                width: 60px;
+                height: 4px;
+                margin: 2px 0;
+            }
+
+            .btn {
+                padding: 6px 12px;
+                font-size: 12px;
+                margin-top: 5px;
+            }
         }
 
         .menu-header {
@@ -261,6 +422,15 @@
             background: #95a5a6;
         }
 
+        .custom-parking-icon.search-result {
+            background: #dc3545; /* Rojo para resultados de búsqueda */
+        }
+
+        .search-location-marker {
+            background: transparent !important;
+            border: none !important;
+        }
+
         .custom-parking-icon:hover {
             transform: scale(1.2);
             transition: transform 0.2s ease;
@@ -292,8 +462,15 @@
 <body>
     <div id="mapContainer"></div>
 
-    <div class="controls">
-        <button class="control-btn" onclick="centerOnConductor()" title="Centrar en conductor">⌂</button>
+    <!-- Barra de búsqueda superior centrada -->
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Buscar dirección..." />
+        <button onclick="buscarDireccion()" title="Buscar">
+            <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+        <button class="home-btn" onclick="centerOnConductor()" title="Volver al inicio">
+            <i class="fa-solid fa-house"></i>
+        </button>
     </div>
 
     <div class="loading" id="loading">
@@ -353,6 +530,9 @@
         let playaSeleccionada = null;
         let conductorMarker;
         let parkingMarkers = [];
+        let searchResults = [];
+        let isSearchMode = false;
+        let searchLocationMarker = null;
 
         // Ubicación del conductor (se actualizará con geolocalización)
         // UTN FRRe (fallback) - Resistencia, Chaco (igual que Create.cshtml)
@@ -361,6 +541,13 @@
 
         $(document).ready(function() {
             inicializarMapa();
+            
+            // Permitir buscar con Enter
+            $('#searchInput').keypress(function(e) {
+                if (e.which === 13) { // Enter
+                    buscarDireccion();
+                }
+            });
         });
 
         function inicializarMapa() {
@@ -476,7 +663,10 @@
             parkingMarkers.forEach(marker => map.removeLayer(marker));
             parkingMarkers = [];
 
-            playas.forEach(function(playa) {
+            // Usar playas de búsqueda si estamos en modo búsqueda
+            const playasAMostrar = isSearchMode ? searchResults : playas;
+
+            playasAMostrar.forEach(function(playa) {
                 // Validar que las coordenadas sean válidas
                 if (!playa.plyLat || !playa.plyLon || 
                     isNaN(playa.plyLat) || isNaN(playa.plyLon) ||
@@ -485,7 +675,7 @@
                     return; // Saltar esta playa
                 }
 
-                const icon = crearIconoPlaya(playa);
+                const icon = crearIconoPlaya(playa, isSearchMode);
                 
                 const marker = L.marker([playa.plyLat, playa.plyLon], {
                     icon: icon
@@ -498,6 +688,8 @@
                         <p style="margin: 5px 0; font-size: 14px;"><strong>Dirección:</strong> ${playa.plyDir}</p>
                         <p style="margin: 5px 0; font-size: 14px;"><strong>Disponibilidad:</strong> ${playa.disponibilidad}%</p>
                         <p style="margin: 5px 0; font-size: 14px;"><strong>Estado:</strong> ${playa.estaAbierto ? 'Abierto' : 'Cerrado'}</p>
+                        ${isSearchMode ? `<p style="margin: 5px 0; font-size: 14px; color: #dc3545;"><strong>📍 Distancia:</strong> ${playa.distancia.toFixed(2)} km</p>` : ''}
+                        ${isSearchMode ? '<p style="margin: 5px 0; font-size: 12px; color: #dc3545; font-weight: bold;">🔍 Uno de los 3 más cercanos</p>' : ''}
                     </div>
                 `);
 
@@ -509,12 +701,27 @@
                 parkingMarkers.push(marker);
             });
 
-            console.log(`Mostrando ${playas.length} playas en el mapa`);
+            if (isSearchMode) {
+                console.log(`Mostrando los 3 estacionamientos más cercanos a la dirección buscada`);
+                // Mostrar mensaje informativo
+                if (playasAMostrar.length > 0) {
+                    console.log(`📍 Ubicación buscada: ${$('#searchInput').val()}`);
+                    console.log(`🔍 Encontrados ${playasAMostrar.length} estacionamientos más cercanos:`);
+                    playasAMostrar.forEach((playa, index) => {
+                        console.log(`${index + 1}. ${playa.plyNom} - ${playa.distancia.toFixed(2)} km`);
+                    });
+                }
+            } else {
+                console.log(`Mostrando ${playasAMostrar.length} playas en el mapa`);
+            }
         }
 
-        function crearIconoPlaya(playa) {
+        function crearIconoPlaya(playa, esResultadoBusqueda = false) {
             let className = 'custom-parking-icon';
-            if (!playa.estaAbierto) {
+            
+            if (esResultadoBusqueda) {
+                className += ' search-result'; // Rojo para resultados de búsqueda
+            } else if (!playa.estaAbierto) {
                 className += ' closed';
             } else if (playa.disponibilidad > 50) {
                 className += ' available';
@@ -569,6 +776,92 @@
                 const url = `https://www.google.com/maps/dir/?api=1&destination=${playaSeleccionada.plyLat},${playaSeleccionada.plyLon}`;
                 window.open(url, '_blank');
             }
+        }
+
+        function buscarDireccion() {
+            const direccion = $('#searchInput').val().trim();
+            if (!direccion) {
+                alert('Por favor ingresa una dirección');
+                return;
+            }
+
+            // Usar geocoding para obtener coordenadas de la dirección
+            const geocodingUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion + ', Resistencia, Chaco')}&limit=1`;
+            
+            $('#loading').show();
+            
+            $.get(geocodingUrl)
+                .done(function(data) {
+                    if (data && data.length > 0) {
+                        const lat = parseFloat(data[0].lat);
+                        const lon = parseFloat(data[0].lon);
+                        
+                        // Centrar el mapa en la dirección buscada
+                        map.setView([lat, lon], 15);
+                        
+                        // Buscar playas cercanas a esa dirección
+                        buscarPlayasCercanas(lat, lon);
+                    } else {
+                        alert('No se encontró la dirección. Intenta con una dirección más específica.');
+                        $('#loading').hide();
+                    }
+                })
+                .fail(function() {
+                    alert('Error al buscar la dirección. Intenta nuevamente.');
+                    $('#loading').hide();
+                });
+        }
+
+        function buscarPlayasCercanas(lat, lon) {
+            $.get('/Conductor/GetPlayasCercanas', {
+                lat: lat,
+                lon: lon,
+                radioKm: 10 // Radio más amplio para obtener más opciones
+            })
+            .done(function(data) {
+                console.log('Playas cercanas encontradas:', data);
+                
+                // Ordenar por distancia y tomar solo los 3 más cercanos
+                searchResults = data.sort((a, b) => a.distancia - b.distancia).slice(0, 3);
+                
+                // Agregar marcador de ubicación buscada
+                if (searchLocationMarker) {
+                    map.removeLayer(searchLocationMarker);
+                }
+                
+                searchLocationMarker = L.marker([lat, lon], {
+                    icon: L.divIcon({
+                        className: 'search-location-marker',
+                        html: '<i class="fa-solid fa-location-dot" style="color: #dc3545; font-size: 24px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);"></i>',
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    })
+                }).addTo(map);
+                
+                searchLocationMarker.bindPopup('<b>Ubicación buscada</b><br>Dirección: ' + $('#searchInput').val()).openPopup();
+                
+                isSearchMode = true;
+                mostrarPlayasEnMapa();
+                $('#loading').hide();
+            })
+            .fail(function(xhr, status, error) {
+                console.error('Error al buscar playas cercanas:', error);
+                $('#loading').hide();
+            });
+        }
+
+        function volverAVistaNormal() {
+            isSearchMode = false;
+            searchResults = [];
+            $('#searchInput').val('');
+            
+            // Remover marcador de ubicación buscada
+            if (searchLocationMarker) {
+                map.removeLayer(searchLocationMarker);
+                searchLocationMarker = null;
+            }
+            
+            cargarPlayas(); // Recargar todas las playas
         }
 
         // Controles de teclado
