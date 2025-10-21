@@ -35,6 +35,18 @@
             pointer-events: auto;
         }
 
+        /* Ocultar footer en mobile cuando está en el mapa */
+        @@media (max-width: 768px) {
+            .main-footer {
+                display: none !important;
+            }
+            
+            #mapContainer {
+                height: 100vh !important;
+                top: 0 !important;
+            }
+        }
+
         /* Ajustar el contenido principal para que no interfiera con el mapa */
         .main-content {
             background: transparent;
@@ -50,11 +62,17 @@
         }
 
         /* Asegurar que el layout esté visible por encima del mapa */
-        .main-header, .main-content, .main-footer, 
+        .main-header, .main-content, 
         .mobile-sidebar, .sidebar-overlay,
-        .navbar, .sidebar, .footer {
+        .navbar, .sidebar {
             position: relative !important;
             z-index: 1000 !important;
+        }
+
+        /* Footer con z-index más bajo que el menú de detalles */
+        .main-footer, .footer {
+            position: relative !important;
+            z-index: 100 !important;
         }
 
         /* Asegurar que el header completo sea visible y clickeable */
@@ -141,7 +159,9 @@
             padding: 8px 15px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
-            min-width: 400px;
+            width: 90%;
+            max-width: 600px;
+            min-width: 280px;
         }
 
         .search-bar input {
@@ -151,7 +171,8 @@
             background: transparent;
             padding: 8px 12px;
             font-size: 16px;
-            min-width: 300px;
+            min-width: 0;
+            width: 100%;
         }
 
         .search-bar button {
@@ -165,8 +186,9 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            margin-left: 10px;
+            margin-left: 8px;
             transition: all 0.3s ease;
+            flex-shrink: 0;
         }
 
         .search-bar button:hover {
@@ -181,6 +203,96 @@
 
         .search-bar .home-btn:hover {
             background: #5a6268;
+        }
+
+        .search-bar .clear-btn {
+            background: #6c757d;
+            margin-left: 5px;
+            display: none;
+        }
+
+        .search-bar .clear-btn:hover {
+            background: #5a6268;
+        }
+
+        .search-bar .clear-btn.show {
+            display: flex;
+        }
+
+        /* Responsive para tablets */
+        @@media (max-width: 768px) {
+            .search-bar {
+                width: 95%;
+                max-width: 500px;
+                padding: 6px 12px;
+                top: 70px;
+            }
+
+            .search-bar input {
+                font-size: 14px;
+                padding: 6px 10px;
+            }
+
+            .search-bar button {
+                width: 36px;
+                height: 36px;
+                margin-left: 6px;
+            }
+
+            .search-bar .home-btn {
+                margin-left: 4px;
+            }
+        }
+
+        /* Responsive para móviles pequeños */
+        @@media (max-width: 480px) {
+            .search-bar {
+                width: 98%;
+                max-width: none;
+                padding: 5px 10px;
+                top: 65px;
+                border-radius: 20px;
+            }
+
+            .search-bar input {
+                font-size: 13px;
+                padding: 5px 8px;
+            }
+
+            .search-bar button {
+                width: 32px;
+                height: 32px;
+                margin-left: 4px;
+            }
+
+            .search-bar .home-btn {
+                margin-left: 3px;
+            }
+        }
+
+        /* Responsive para móviles muy pequeños */
+        @@media (max-width: 360px) {
+            .search-bar {
+                width: 100%;
+                margin: 0 5px;
+                padding: 4px 8px;
+                top: 60px;
+            }
+
+            .search-bar input {
+                font-size: 12px;
+                padding: 4px 6px;
+            }
+
+            .search-bar button {
+                width: 28px;
+                height: 28px;
+                margin-left: 3px;
+            }
+
+            .search-bar button i {
+                font-size: 12px;
+            }
         }
 
         .control-btn {
@@ -268,18 +380,31 @@
         #bottomMenu {
             position: fixed;
             bottom: -100%;
-            left: 0;
-            right: 0;
+            left: 10px;
+            right: 10px;
             background: white;
-            border-top: 1px solid #ddd;
-            padding: 20px;
+            border-radius: 20px 20px 0 0;
+            padding: 25px;
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
+            z-index: 10001; /* Mayor z-index para estar por encima del footer */
             transition: bottom 0.3s ease;
+            max-height: 40vh; /* Desktop: Mitad de la altura */
+            overflow-y: auto;
         }
 
         #bottomMenu.show {
             bottom: 0;
+        }
+
+        /* Ajustar el menú inferior en mobile */
+        @@media (max-width: 768px) {
+            #bottomMenu {
+                left: 5px;
+                right: 5px;
+                padding: 20px;
+                max-height: 80vh !important; /* Mobile: Más alto que desktop */
+                border-radius: 15px 15px 0 0;
+            }
         }
 
         /* Mobile: menú más pequeño y en línea */
@@ -431,6 +556,48 @@
             border: none !important;
         }
 
+        /* Escala de zoom personalizada */
+        .custom-scale {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #333;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        .scale-line {
+            height: 2px;
+            background: #333;
+            margin: 4px 0;
+            position: relative;
+        }
+
+        .scale-line::before,
+        .scale-line::after {
+            content: '';
+            position: absolute;
+            top: -3px;
+            width: 1px;
+            height: 8px;
+            background: #333;
+        }
+
+        .scale-line::before {
+            left: 0;
+        }
+
+        .scale-line::after {
+            right: 0;
+        }
+
         .custom-parking-icon:hover {
             transform: scale(1.2);
             transition: transform 0.2s ease;
@@ -465,6 +632,9 @@
     <!-- Barra de búsqueda superior centrada -->
     <div class="search-bar">
         <input type="text" id="searchInput" placeholder="Buscar dirección..." />
+        <button class="clear-btn" onclick="limpiarBusqueda()" title="Limpiar búsqueda" id="clearBtn">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
         <button onclick="buscarDireccion()" title="Buscar">
             <i class="fa-solid fa-magnifying-glass"></i>
         </button>
@@ -476,6 +646,12 @@
     <div class="loading" id="loading">
         <div class="spinner"></div>
         Cargando mapa...
+    </div>
+
+    <!-- Escala de zoom personalizada -->
+    <div class="custom-scale" id="customScale">
+        <div id="scaleText">1 km</div>
+        <div class="scale-line" id="scaleLine"></div>
     </div>
 
     <div id="bottomMenu">
@@ -491,8 +667,8 @@
             </div>
             
             <div class="info-row">
-                <span class="info-label">Disponibilidad:</span>
-                <span class="info-value" id="disponibilidadTexto">85%</span>
+                <span class="info-label">Ocupación:</span>
+                <span class="info-value" id="disponibilidadTexto">15% ocupado</span>
             </div>
             
             <div class="availability-bar">
@@ -533,6 +709,7 @@
         let searchResults = [];
         let isSearchMode = false;
         let searchLocationMarker = null;
+        let customScale = null;
 
         // Ubicación del conductor (se actualizará con geolocalización)
         // UTN FRRe (fallback) - Resistencia, Chaco (igual que Create.cshtml)
@@ -548,6 +725,15 @@
                     buscarDireccion();
                 }
             });
+
+            // Mostrar/ocultar botón de limpiar según el contenido
+            $('#searchInput').on('input', function() {
+                if ($(this).val().trim() !== '') {
+                    $('#clearBtn').addClass('show');
+                } else {
+                    $('#clearBtn').removeClass('show');
+                }
+            });
         });
 
         function inicializarMapa() {
@@ -560,7 +746,8 @@
                 keyboard: true,
                 dragging: true,
                 touchZoom: true,
-                attributionControl: false
+                attributionControl: false,
+                minZoom: 12 // Limitar zoom mínimo (aproximadamente 3km) - no puede alejarse más
             });
 
             // Usar el mismo tema que Create.cshtml (CartoDB Positron)
@@ -569,7 +756,7 @@
             }).addTo(map);
             
             L.control.zoom({ position: 'topright' }).addTo(map);
-            L.control.scale({ imperial: false }).addTo(map);
+            // L.control.scale({ imperial: false }).addTo(map); // Ocultamos la escala por defecto
 
             // Geolocalización del usuario
             if (navigator.geolocation) {
@@ -597,6 +784,9 @@
                         
                         // Cargar playas con la ubicación real
                         cargarPlayas();
+                        
+                        // Inicializar escala personalizada después de que el mapa esté listo
+                        inicializarEscalaPersonalizada();
                     },
                     () => {
                         // Fallback a Resistencia si falla la geolocalización
@@ -614,6 +804,9 @@
                         
                         // Cargar playas con ubicación por defecto
                         cargarPlayas();
+                        
+                        // Inicializar escala personalizada después de que el mapa esté listo
+                        inicializarEscalaPersonalizada();
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
@@ -633,6 +826,9 @@
                 
                 // Cargar playas con ubicación por defecto
                 cargarPlayas();
+                
+                // Inicializar escala personalizada después de que el mapa esté listo
+                inicializarEscalaPersonalizada();
             }
 
             console.log('Mapa inicializado con geolocalización');
@@ -746,6 +942,12 @@
             .done(function(detalle) {
                 mostrarDetallePlaya(detalle);
                 $('#bottomMenu').addClass('show');
+            })
+            .fail(function(xhr, status, error) {
+                console.error('Error al obtener detalles de la playa:', error);
+                // Mostrar información básica si falla la petición
+                mostrarDetallePlayaBasico(playa);
+                $('#bottomMenu').addClass('show');
             });
         }
 
@@ -753,11 +955,32 @@
             $('#playaNombre').text(detalle.plyNom);
             $('#estadoBadge').text(detalle.estaAbierto ? 'Abierto' : 'Cerrado');
             $('#estadoBadge').removeClass('open closed').addClass(detalle.estaAbierto ? 'open' : 'closed');
-            $('#disponibilidadTexto').text(detalle.disponibilidad + '%');
-            $('#disponibilidadBarra').css('width', detalle.disponibilidad + '%');
+            
+            // Mostrar ocupación en lugar de disponibilidad
+            const ocupacion = 100 - detalle.disponibilidad;
+            $('#disponibilidadTexto').text(ocupacion + '% ocupado');
+            $('#disponibilidadBarra').css('width', ocupacion + '%');
+            
             $('#tipoPiso').text(detalle.plyTipoPiso);
             $('#direccion').text(detalle.plyDir);
             $('#valorPromedio').text('$' + detalle.plyValProm + '/hora');
+            
+            $('#playaInfo').show();
+        }
+
+        function mostrarDetallePlayaBasico(playa) {
+            $('#playaNombre').text(playa.plyNom);
+            $('#estadoBadge').text(playa.estaAbierto ? 'Abierto' : 'Cerrado');
+            $('#estadoBadge').removeClass('open closed').addClass(playa.estaAbierto ? 'open' : 'closed');
+            
+            // Mostrar ocupación en lugar de disponibilidad
+            const ocupacion = 100 - playa.disponibilidad;
+            $('#disponibilidadTexto').text(ocupacion + '% ocupado');
+            $('#disponibilidadBarra').css('width', ocupacion + '%');
+            
+            $('#tipoPiso').text(playa.plyTipoPiso);
+            $('#direccion').text(playa.plyDir);
+            $('#valorPromedio').text('$' + (playa.plyValProm || 0) + '/hora');
             
             $('#playaInfo').show();
         }
@@ -784,6 +1007,9 @@
                 alert('Por favor ingresa una dirección');
                 return;
             }
+
+            // Mostrar botón de limpiar
+            $('#clearBtn').addClass('show');
 
             // Usar geocoding para obtener coordenadas de la dirección
             const geocodingUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion + ', Resistencia, Chaco')}&limit=1`;
@@ -854,6 +1080,7 @@
             isSearchMode = false;
             searchResults = [];
             $('#searchInput').val('');
+            $('#clearBtn').removeClass('show');
             
             // Remover marcador de ubicación buscada
             if (searchLocationMarker) {
@@ -862,6 +1089,72 @@
             }
             
             cargarPlayas(); // Recargar todas las playas
+        }
+
+        function limpiarBusqueda() {
+            $('#searchInput').val('');
+            $('#clearBtn').removeClass('show');
+            volverAVistaNormal();
+        }
+
+        function inicializarEscalaPersonalizada() {
+            // Actualizar escala cuando cambie el zoom
+            map.on('zoomend', actualizarEscala);
+            map.on('moveend', actualizarEscala);
+            
+            // Actualizar escala inicial
+            actualizarEscala();
+        }
+
+        function actualizarEscala() {
+            // Verificar que el mapa esté inicializado
+            if (!map || !map.getCenter) {
+                return;
+            }
+            
+            try {
+                const center = map.getCenter();
+                const zoom = map.getZoom();
+                
+                // Calcular la distancia en metros para 100 píxeles
+                const point1 = map.containerPointToLatLng([0, 0]);
+                const point2 = map.containerPointToLatLng([100, 0]);
+                const distance = point1.distanceTo(point2);
+                
+                // Determinar la mejor unidad y valor
+                let scaleText, scaleWidth;
+                
+                if (distance >= 1000) {
+                    // Usar kilómetros
+                    const km = Math.round(distance / 1000);
+                    scaleText = km + ' km';
+                    scaleWidth = 100; // 100 píxeles
+                } else if (distance >= 100) {
+                    // Usar metros
+                    const m = Math.round(distance / 100) * 100;
+                    scaleText = m + ' m';
+                    scaleWidth = 100;
+                } else if (distance >= 10) {
+                    // Usar metros más pequeños
+                    const m = Math.round(distance / 10) * 10;
+                    scaleText = m + ' m';
+                    scaleWidth = 100;
+                } else {
+                    // Usar metros muy pequeños
+                    const m = Math.round(distance);
+                    scaleText = m + ' m';
+                    scaleWidth = 100;
+                }
+                
+                // Actualizar el texto y el ancho de la línea
+                $('#scaleText').text(scaleText);
+                $('#scaleLine').css('width', scaleWidth + 'px');
+            } catch (error) {
+                console.log('Escala no disponible aún:', error);
+                // Mostrar escala por defecto
+                $('#scaleText').text('1 km');
+                $('#scaleLine').css('width', '100px');
+            }
         }
 
         // Controles de teclado

@@ -622,7 +622,7 @@ body.sidebar-open {
 .main-footer {
     background: linear-gradient(135deg, var(--dark-color), #343a40);
     color: white;
-    padding: 1.5rem 0;
+    padding: 0.75rem 0; /* Reducido a la mitad: de 1.5rem a 0.75rem */
     flex-shrink: 0;
 }
 
