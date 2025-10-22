@@ -158,6 +158,12 @@
                                 <span>Mapa</span>
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Conductor" asp-action="Vehiculos">
+                                <i class="bi bi-car-front"></i>
+                                <span>Vehículos</span>
+                            </a>
+                        </li>
                     }
 
                     @if (User.IsInRole("Duenio"))
@@ -274,6 +280,11 @@
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Conductor" asp-action="Mapa">
                                     <i class="bi bi-geo-alt-fill me-1"></i>Mapa
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Conductor" asp-action="Vehiculos">
+                                    <i class="bi bi-car-front me-1"></i>Vehículos
                                 </a>
                             </li>
                         }

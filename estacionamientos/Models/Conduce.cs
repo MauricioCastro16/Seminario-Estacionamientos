@@ -14,6 +14,9 @@ namespace estacionamientos.Models
         [Required, StringLength(10)]
         public string VehPtnt { get; set; } = string.Empty;
 
+        // Campo para marcar vehículo favorito
+        public bool Favorito { get; set; } = false;
+
         // Navegaciones
         public Conductor Conductor { get; set; } = default!;
         public Vehiculo Vehiculo { get; set; } = default!;

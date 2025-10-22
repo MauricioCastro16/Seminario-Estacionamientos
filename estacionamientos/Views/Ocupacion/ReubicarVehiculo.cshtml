@@ -74,12 +74,12 @@
                         <!-- Grilla -->
                         <div class="mt-3 plazas-grid-wrapper">
                             <div id="PlazasGrid" class="plazas-grid mb-3">
-                                @foreach (var pc in listaPlazas)
+                                @foreach (var pc in listaPlazas ?? new List<estacionamientos.Models.PlazaClasificacion>())
                                 {
                                     var plaza = pc.Plaza;
                                     if (plaza == null) continue;
                                     bool esActual = plaza.PlzNum == ocupacionActual?.PlzNum;
-                                    bool ocupada = plaza.Ocupaciones.Any(o => o.OcufFyhFin == null); // Si hay ocupación activa
+                                    bool ocupada = plaza.Ocupaciones?.Any(o => o.OcufFyhFin == null) ?? false; // Si hay ocupación activa
                                     bool inhabilitada = !plaza.PlzHab;
                                     bool compatible = pc.Clasificacion?.ClasVehID == ocupacionActual?.Vehiculo?.ClasVehID;
 
@@ -95,7 +95,7 @@
                                     }
                                     else if (ocupada)
                                     {
-                                        var ocupacion = plaza.Ocupaciones.FirstOrDefault(o => o.OcufFyhFin == null);
+                                        var ocupacion = plaza.Ocupaciones?.FirstOrDefault(o => o.OcufFyhFin == null);
                                         textoPlaza = ocupacion?.Vehiculo?.VehPtnt ?? "Ocupada";
                                     }
                                     else if (inhabilitada)

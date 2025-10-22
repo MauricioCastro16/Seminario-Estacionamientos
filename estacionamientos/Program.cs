@@ -5,6 +5,7 @@ using System.IO;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc.Razor;
 using estacionamientos.Seed;
+using Microsoft.Extensions.FileProviders;
 // using QuestPDF.Infrastructure;  
 
 
@@ -100,6 +101,14 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// Configurar archivos estáticos para la carpeta Resources
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "Resources")),
+    RequestPath = "/estacionamientos/Resources"
+});
 
 app.UseRouting();
 

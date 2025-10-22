@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
+using System.Security.Claims;
 
 namespace estacionamientos.Controllers
 {
@@ -83,6 +84,186 @@ namespace estacionamientos.Controllers
             {
                 ViewBag.Error = ex.Message;
                 return View(new List<PlayaEstacionamiento>());
+            }
+        }
+
+        // Método para mostrar vehículos del conductor
+        public async Task<IActionResult> Vehiculos()
+        {
+            try
+            {
+                // Obtener el ID del conductor actual desde las claims
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                {
+                    return RedirectToAction("Login", "Account");
+                }
+
+                var conductorId = int.Parse(userId);
+
+                // Debug: Log para verificar el conductorId
+                Console.WriteLine($"Conductor ID: {conductorId}");
+
+                // Obtener los vehículos del conductor actual
+                var conduces = await _context.Conduces
+                    .Include(c => c.Vehiculo)
+                        .ThenInclude(v => v.Clasificacion)
+                    .Where(c => c.ConNU == conductorId)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                // Debug: Log para verificar cuántos vehículos se encontraron
+                Console.WriteLine($"Vehículos encontrados: {conduces.Count}");
+                foreach (var conduce in conduces)
+                {
+                    Console.WriteLine($"Vehículo: {conduce.VehPtnt}");
+                }
+
+                // Obtener el vehículo favorito para preselección
+                var vehiculoFavorito = conduces.FirstOrDefault(c => c.Favorito)?.VehPtnt;
+
+                ViewBag.VehiculoFavorito = vehiculoFavorito;
+                ViewBag.Conduces = conduces;
+
+                return View(conduces.Select(c => c.Vehiculo).ToList());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error en Vehiculos: {ex.Message}");
+                ViewBag.Error = ex.Message;
+                return View(new List<Vehiculo>());
+            }
+        }
+
+        // API para obtener detalles de un vehículo específico
+        [HttpGet]
+        public async Task<IActionResult> GetVehiculoDetalle(string patente)
+        {
+            try
+            {
+                var vehiculo = await _context.Vehiculos
+                    .Include(v => v.Clasificacion)
+                    .FirstOrDefaultAsync(v => v.VehPtnt == patente);
+
+                if (vehiculo == null)
+                {
+                    return Json(new { error = "Vehículo no encontrado" });
+                }
+
+                return Json(new
+                {
+                    patente = vehiculo.VehPtnt,
+                    marca = vehiculo.VehMarc,
+                    tipo = vehiculo.Clasificacion?.ClasVehTipo ?? "Sin clasificación",
+                    descripcion = vehiculo.Clasificacion?.ClasVehDesc ?? "Sin descripción"
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        // API para obtener el vehículo favorito del conductor
+        [HttpGet]
+        public async Task<IActionResult> GetVehiculoFavorito()
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                {
+                    return Json(new { error = "Usuario no autenticado" });
+                }
+
+                var conductorId = int.Parse(userId);
+
+                // Obtener el vehículo favorito del conductor
+                var conduceFavorito = await _context.Conduces
+                    .Include(c => c.Vehiculo)
+                        .ThenInclude(v => v.Clasificacion)
+                    .Where(c => c.ConNU == conductorId && c.Favorito)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync();
+
+                if (conduceFavorito?.Vehiculo == null)
+                {
+                    return Json(new { error = "No hay vehículo favorito" });
+                }
+
+                return Json(new
+                {
+                    patente = conduceFavorito.Vehiculo.VehPtnt,
+                    marca = conduceFavorito.Vehiculo.VehMarc,
+                    tipo = conduceFavorito.Vehiculo.Clasificacion?.ClasVehTipo ?? "Sin clasificación"
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        // API para cambiar el vehículo favorito
+        [HttpPost]
+        public async Task<IActionResult> CambiarFavorito(string patente)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                {
+                    return Json(new { success = false, error = "Usuario no autenticado" });
+                }
+
+                var conductorId = int.Parse(userId);
+
+                // Obtener todos los vehículos del conductor
+                var conduces = await _context.Conduces
+                    .Where(c => c.ConNU == conductorId)
+                    .ToListAsync();
+
+                // Verificar si el vehículo ya es favorito
+                var conduceSeleccionado = conduces.FirstOrDefault(c => c.VehPtnt == patente);
+                bool yaEraFavorito = conduceSeleccionado?.Favorito ?? false;
+
+                // Quitar el favorito de todos los vehículos
+                foreach (var conduce in conduces)
+                {
+                    conduce.Favorito = false;
+                }
+
+                // Si no era favorito, marcarlo como favorito
+                if (!yaEraFavorito && conduceSeleccionado != null)
+                {
+                    conduceSeleccionado.Favorito = true;
+                }
+
+                await _context.SaveChangesAsync();
+
+                string mensaje = yaEraFavorito ? "Vehículo removido de favoritos" : "Vehículo marcado como favorito";
+                
+                // Obtener información del vehículo para el frontend
+                var vehiculoInfo = new { marca = "N/A", tipo = "N/A" };
+                if (!yaEraFavorito && conduceSeleccionado?.Vehiculo != null)
+                {
+                    vehiculoInfo = new { 
+                        marca = conduceSeleccionado.Vehiculo.VehMarc,
+                        tipo = conduceSeleccionado.Vehiculo.Clasificacion?.ClasVehTipo ?? "Sin clasificación"
+                    };
+                }
+                
+                return Json(new { 
+                    success = true, 
+                    message = mensaje,
+                    esFavorito = !yaEraFavorito,
+                    marca = vehiculoInfo.marca,
+                    tipo = vehiculoInfo.tipo
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
             }
         }
 
