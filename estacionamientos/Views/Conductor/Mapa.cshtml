@@ -106,6 +106,57 @@
             pointer-events: auto !important;
         }
 
+        /* Asegurar que el menú de usuario tenga z-index alto */
+        .dropdown-menu {
+            z-index: 10001 !important;
+            position: absolute !important;
+        }
+
+        .nav-item.dropdown {
+            z-index: 10001 !important;
+            position: relative !important;
+        }
+
+        .user-menu {
+            z-index: 10001 !important;
+            position: relative !important;
+        }
+
+        /* Forzar que el dropdown sea visible */
+        .dropdown.show .dropdown-menu {
+            display: block !important;
+            z-index: 10001 !important;
+        }
+
+        /* Asegurar que el contenedor del navbar tenga z-index alto */
+        .navbar-nav {
+            z-index: 10001 !important;
+        }
+
+        /* Asegurar que todos los elementos del menú de usuario sean clickeables */
+        .user-menu, .user-menu *, 
+        .dropdown-menu, .dropdown-menu *,
+        .nav-item.dropdown, .nav-item.dropdown * {
+            pointer-events: auto !important;
+            z-index: 10001 !important;
+        }
+
+        /* Forzar que el dropdown se muestre cuando está abierto */
+        .dropdown.show .dropdown-menu {
+            display: block !important;
+            z-index: 10001 !important;
+            position: absolute !important;
+            top: 100% !important;
+            left: 0 !important;
+            right: auto !important;
+        }
+
+        /* Asegurar que el menú de usuario esté por encima de todo */
+        .navbar .nav-item:last-child {
+            z-index: 10001 !important;
+            position: relative !important;
+        }
+
         .mobile-sidebar {
             position: fixed !important;
             z-index: 10001 !important;
@@ -715,9 +766,24 @@
         // UTN FRRe (fallback) - Resistencia, Chaco (igual que Create.cshtml)
         let conductorLat = -27.451000;
         let conductorLon = -58.986000;
+        let vehiculoFavorito = null;
 
         $(document).ready(function() {
+            // Obtener vehículo favorito del conductor
+            obtenerVehiculoFavorito();
             inicializarMapa();
+            
+            // Forzar que el dropdown del menú de usuario funcione
+            $('#userMenu').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).dropdown('toggle');
+            });
+            
+            // Prevenir que el mapa interfiera con el dropdown
+            $(document).on('click', '.dropdown-menu', function(e) {
+                e.stopPropagation();
+            });
             
             // Permitir buscar con Enter
             $('#searchInput').keypress(function(e) {
@@ -735,6 +801,54 @@
                 }
             });
         });
+
+        function obtenerVehiculoFavorito() {
+            // Primero verificar si hay vehículo favorito en sessionStorage
+            const vehiculoGuardado = sessionStorage.getItem('vehiculoFavorito');
+            if (vehiculoGuardado) {
+                vehiculoFavorito = JSON.parse(vehiculoGuardado);
+                console.log('Vehículo favorito cargado desde sesión:', vehiculoFavorito);
+                return;
+            }
+            
+            // Si no hay en sessionStorage, obtener del servidor
+            $.get('/Conductor/GetVehiculoFavorito')
+                .done(function(data) {
+                    vehiculoFavorito = data;
+                    // Guardar en sessionStorage para futuras navegaciones
+                    sessionStorage.setItem('vehiculoFavorito', JSON.stringify(data));
+                    console.log('Vehículo favorito obtenido del servidor:', vehiculoFavorito);
+                })
+                .fail(function() {
+                    console.log('No se pudo obtener el vehículo favorito');
+                    vehiculoFavorito = null;
+                });
+        }
+
+        function crearIconoConductor() {
+            let imagenUrl = '/estacionamientos/Resources/Map/auto.png'; // Imagen por defecto
+            
+            if (vehiculoFavorito && vehiculoFavorito.tipo) {
+                const tipoVehiculo = vehiculoFavorito.tipo.toLowerCase();
+                
+                if (tipoVehiculo.includes('automóvil') || tipoVehiculo.includes('auto')) {
+                    imagenUrl = '/estacionamientos/Resources/Map/auto.png';
+                } else if (tipoVehiculo.includes('camioneta') || tipoVehiculo.includes('suv')) {
+                    imagenUrl = '/estacionamientos/Resources/Map/camioneta.png';
+                } else if (tipoVehiculo.includes('motocicleta') || tipoVehiculo.includes('moto')) {
+                    imagenUrl = '/estacionamientos/Resources/Map/moto.png';
+                } else if (tipoVehiculo.includes('camión') || tipoVehiculo.includes('camion')) {
+                    imagenUrl = '/estacionamientos/Resources/Map/suv.png';
+                }
+            }
+            
+            return L.divIcon({
+                className: 'conductor-marker',
+                html: `<div style="background: white; border: 3px solid #3498db; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3); overflow: hidden;"><img src="${imagenUrl}" style="width: 40px; height: 40px; object-fit: contain;" alt="Vehículo"></div>`,
+                iconSize: [50, 50],
+                iconAnchor: [25, 25]
+            });
+        }
 
         function inicializarMapa() {
             // Inicializar el mapa con geolocalización como Create.cshtml
@@ -768,12 +882,7 @@
                         
                         // Agregar marcador del conductor en ubicación real
                         conductorMarker = L.marker([lat, lon], {
-                            icon: L.divIcon({
-                                className: 'conductor-marker',
-                                html: '<div style="background: #3498db; border: 3px solid white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">🚗</div>',
-                                iconSize: [40, 40],
-                                iconAnchor: [20, 20]
-                            })
+                            icon: crearIconoConductor()
                         }).addTo(map);
                         
                         conductorMarker.bindPopup('<b>Tu ubicación</b><br>Ubicación detectada').openPopup();
@@ -792,12 +901,7 @@
                         // Fallback a Resistencia si falla la geolocalización
                         map.setView([conductorLat, conductorLon], 14);
                         conductorMarker = L.marker([conductorLat, conductorLon], {
-                            icon: L.divIcon({
-                                className: 'conductor-marker',
-                                html: '<div style="background: #3498db; border: 3px solid white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">🚗</div>',
-                                iconSize: [40, 40],
-                                iconAnchor: [20, 20]
-                            })
+                            icon: crearIconoConductor()
                         }).addTo(map);
                         
                         conductorMarker.bindPopup('<b>Tu ubicación</b><br>Resistencia, Chaco').openPopup();
@@ -814,12 +918,7 @@
                 // Fallback si no hay geolocalización
                 map.setView([conductorLat, conductorLon], 14);
                 conductorMarker = L.marker([conductorLat, conductorLon], {
-                    icon: L.divIcon({
-                        className: 'conductor-marker',
-                        html: '<div style="background: #3498db; border: 3px solid white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">🚗</div>',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 20]
-                    })
+                    icon: crearIconoConductor()
                 }).addTo(map);
                 
                 conductorMarker.bindPopup('<b>Tu ubicación</b><br>Resistencia, Chaco').openPopup();

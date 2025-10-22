@@ -476,9 +476,9 @@ namespace estacionamientos.Controllers
             
             // Buscar la ocupación por los parámetros principales, permitiendo pequeñas diferencias de tiempo
             var ocupacion = await _ctx.Ocupaciones
-                .Include(o => o.Plaza).ThenInclude(p => p.Playa)
-                .Include(o => o.Vehiculo).ThenInclude(v => v.Clasificacion)
-                .Include(o => o.Pago).ThenInclude(p => p.MetodoPago)
+                .Include(o => o.Plaza!).ThenInclude(p => p.Playa!)
+                .Include(o => o.Vehiculo!).ThenInclude(v => v.Clasificacion!)
+                .Include(o => o.Pago!).ThenInclude(p => p.MetodoPago!)
                 .AsNoTracking()
                 .Where(o => o.PlyID == plyID && o.PlzNum == plzNum && o.VehPtnt == vehPtnt)
                 .Where(o => Math.Abs((o.OcufFyhIni - fechaInicioUTC).TotalMinutes) < 1) // Diferencia menor a 1 minuto

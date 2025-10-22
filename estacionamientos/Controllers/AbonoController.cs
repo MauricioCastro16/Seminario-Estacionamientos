@@ -648,8 +648,16 @@ namespace estacionamientos.Controllers
                 if (!ModelState.IsValid)
                 {
                     var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                    var fieldErrors = ModelState.Where(x => x.Value.Errors?.Count > 0)
-                        .Select(x => $"{x.Key ?? "Unknown"}: {string.Join(", ", x.Value.Errors?.Select(e => e.ErrorMessage) ?? new List<string>())}");
+                    var fieldErrors = new List<string>();
+                    foreach (var kvp in ModelState)
+                    {
+                        if (kvp.Value.Errors != null && kvp.Value.Errors.Count > 0)
+                        {
+                            var key = kvp.Key ?? "Unknown";
+                            var errorMessages = kvp.Value.Errors.Select(e => e.ErrorMessage);
+                            fieldErrors.Add($"{key}: {string.Join(", ", errorMessages)}");
+                        }
+                    }
                     
                     Console.WriteLine($"ModelState inválido - Errores generales: {string.Join(", ", errors)}");
                     Console.WriteLine($"ModelState inválido - Errores por campo: {string.Join("; ", fieldErrors)}");

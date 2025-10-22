@@ -223,6 +223,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // PK compuesta
             entity.HasKey(c => new { c.ConNU, c.VehPtnt });
 
+            // Campo Favorito con valor por defecto
+            entity.Property(c => c.Favorito)
+                  .HasDefaultValue(false);
+
             // Relación obligatoria con Conductor (1..* Conduce)
             entity.HasOne(c => c.Conductor)
                   .WithMany(x => x.Conducciones) // o .WithMany(x => x.Conducciones) si agregaste la colección en Conductor
