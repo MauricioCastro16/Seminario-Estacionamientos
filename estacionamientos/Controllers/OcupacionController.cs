@@ -266,17 +266,33 @@ namespace estacionamientos.Controllers
             if (User.IsInRole("Playero"))
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int plaNU = int.Parse(userId ?? "0"); // convertimos el userId a int
 
                 var turno = await _ctx.Turnos
-                    .Where(t => t.PlaNU.ToString() == userId && t.TurFyhFin == null)
+                    .Where(t => t.PlaNU == plaNU && t.TurFyhFin == null)
                     .Include(t => t.Playa)
                     .FirstOrDefaultAsync();
 
                 if (turno == null)
                     return View("NoTurno");
 
-                query = query.Where(o => o.PlyID == turno.PlyID);
-            }
+                var turnoFyhIni = turno.TurFyhIni;
+                var plyID = turno.PlyID;
+
+                // 🧩 Ocupaciones cobradas por el playero (pagos hechos por él)
+                var pagosHechosPorPlayero = await _ctx.Pagos
+                    .Where(p => p.PlaNU == plaNU && p.PlyID == plyID)
+                    .Select(p => p.PagNum)
+                    .ToListAsync();
+
+                // Filtrar:
+                // Ocupaciones iniciadas DURANTE el turno actual (por ese playero)
+                // Ocupaciones ACTIVAS (sin egreso) de la misma playa
+                    query = query.Where(o =>
+                        (o.OcufFyhIni >= turnoFyhIni && o.PlyID == plyID) ||
+                        (o.OcufFyhFin == null && o.PlyID == plyID) ||
+                        (o.PlyID == plyID && o.PagNum != null && pagosHechosPorPlayero.Contains(o.PagNum.Value)));
+                }
 
             // Ordenamiento: activos primero, luego por fecha de ingreso descendente
             query = query
