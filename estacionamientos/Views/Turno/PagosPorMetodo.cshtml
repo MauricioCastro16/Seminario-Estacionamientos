@@ -1,0 +1,66 @@
+@model IEnumerable<estacionamientos.ViewModels.InformeDetalleMetodoPagoGeneralItemVM>
+@{ Layout = null; }
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle border">
+        <thead class="table-light">
+            <tr>
+                <th style="width:90px;"><i class="fas fa-hashtag text-secondary me-1"></i> Pago</th>
+                <th style="width:170px;"><i class="fas fa-calendar-alt text-secondary me-1"></i> Fecha/Hora</th>
+                <th style="width:130px;" class="text-end"><i class="fas fa-dollar-sign text-secondary me-1"></i> Monto</th>
+                <th><i class="fas fa-car text-secondary me-1"></i> Vehículo</th>
+                <th>Servicios</th>
+            </tr>
+        </thead>
+
+        <tbody>
+        @if (!Model.Any())
+        {
+            <tr>
+                <td colspan="5" class="text-center py-4 text-muted">
+                    <i class="fas fa-receipt fa-2x mb-2"></i><br />
+                    No hay cobros con este método en el turno.
+                </td>
+            </tr>
+        }
+        else
+        {
+            foreach (var x in Model)
+            {
+                var vehiculos = x.OcupacionesVehiculos?.Any() == true
+                    ? string.Join(", ", x.OcupacionesVehiculos)
+                    : "<span class='text-muted'>—</span>";
+
+                var servicios = x.ServiciosExtrasNombres?.Any() == true
+                    ? string.Join(", ", x.ServiciosExtrasNombres)
+                    : "<span class='text-muted'>—</span>";
+
+                <tr>
+                    <td>@x.PagNum</td>
+                    <td>@x.FechaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    <td class="text-end">
+                        @x.Monto.ToString("C2", new System.Globalization.CultureInfo("es-AR"))
+                    </td>
+                    <td>@Html.Raw(vehiculos)</td>
+                    <td>@Html.Raw(servicios)</td>
+                </tr>
+            }
+        }
+        </tbody>
+
+        @if (Model.Any())
+        {
+            <tfoot class="fw-semibold">
+                <tr>
+                    <td colspan="2" class="text-end">Total</td>
+                    <td class="text-end text-success fw-bold">
+                        @((ViewBag.TotalMetodo as decimal? ?? 0m).ToString("C2", new System.Globalization.CultureInfo("es-AR")))
+                    </td>
+                    <td colspan="2" class="text-muted">
+                        (@(ViewBag.CantidadMetodo ?? 0) cobros)
+                    </td>
+                </tr>
+            </tfoot>
+        }
+    </table>
+</div>

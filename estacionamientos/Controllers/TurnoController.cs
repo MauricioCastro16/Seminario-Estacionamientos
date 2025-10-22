@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
 using System.Security.Claims;
+using estacionamientos.ViewModels;
+
 
 namespace estacionamientos.Controllers
 {
@@ -171,6 +173,7 @@ namespace estacionamientos.Controllers
                 .GroupBy(p => new { p.MepID, MetodoPago = p.MetodoPago?.MepNom ?? "Desconocido" })
                 .Select(g => new
                 {
+                    g.Key.MepID,
                     MetodoPago = g.Key.MetodoPago,
                     CantidadPagos = g.Count(),
                     MontoTotal = g.Sum(p => p.PagMonto)
@@ -435,5 +438,133 @@ namespace estacionamientos.Controllers
             TempData["Ok"] = " Turno eliminado.";
             return RedirectToAction(nameof(Index));
         }
+
+        [HttpGet]
+        public async Task<IActionResult> PagosPorMetodoTurno(int plyID, int plaNU, DateTime turFyhIni, int mepID)
+        {
+            // 📋 Log de entrada
+            System.Diagnostics.Debug.WriteLine($"➡ [PagosPorMetodoTurno] plyID={plyID}, plaNU={plaNU}, turFyhIni={turFyhIni:o}, mepID={mepID}");
+
+            // 🔐 Playero: sólo sus turnos
+            var currentPlaNU = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
+            if (User.IsInRole("Playero") && plaNU != currentPlaNU)
+                return Forbid();
+
+            // 🕓 Buscar el turno
+            var turno = await _ctx.Turnos
+                .AsNoTracking()
+                .Include(t => t.Playa)
+                .FirstOrDefaultAsync(t => t.PlyID == plyID && t.PlaNU == plaNU && t.TurFyhIni == turFyhIni);
+
+            if (turno is null)
+                return NotFound();
+
+            // 💰 Pagos del método seleccionado
+            var pagos = await _ctx.Pagos
+                .AsNoTracking()
+                .Include(p => p.Playa)
+                .Include(p => p.MetodoPago)
+                .Where(p => p.PlyID == plyID
+                        && p.PlaNU == plaNU
+                        && p.MepID == mepID
+                        && p.PagFyh >= turno.TurFyhIni
+                        && (turno.TurFyhFin == null || p.PagFyh <= turno.TurFyhFin))
+                .OrderByDescending(p => p.PagFyh)
+                .ToListAsync();
+
+            System.Diagnostics.Debug.WriteLine($"💰 Pagos encontrados: {pagos.Count}");
+
+            if (pagos.Count == 0)
+                return PartialView("PagosPorMetodo", new List<InformeDetalleMetodoPagoGeneralItemVM>());
+
+            // 🔑 Guardar claves de pagos
+            var clavesPagos = pagos
+                .Select(p => new { p.PlyID, p.PagNum })
+                .ToList();
+
+            // 🚗 Ocupaciones vinculadas
+            var ocupacionesPorPago = (await _ctx.Ocupaciones
+                .AsNoTracking()
+                .Where(o => o.PagNum != null)
+                .Select(o => new { o.PlyID, o.PagNum, o.VehPtnt })
+                .ToListAsync())
+                .Where(o => clavesPagos.Any(k => k.PlyID == o.PlyID && k.PagNum == o.PagNum))
+                .ToList();
+
+            var dicOcup = ocupacionesPorPago
+                .GroupBy(x => new { x.PlyID, x.PagNum })
+                .ToDictionary(
+                    g => (g.Key.PlyID, g.Key.PagNum!.Value),
+                    g => new { Count = g.Count(), Vehiculos = g.Select(v => v.VehPtnt).Distinct().ToList() }
+                );
+
+            // 💈 Servicios extras
+            var serviciosExtras = (await _ctx.ServiciosExtrasRealizados
+                .AsNoTracking()
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                .Where(s => s.PagNum != null)
+                .Select(s => new { s.PlyID, s.PagNum, SerNom = s.ServicioProveido.Servicio.SerNom })
+                .ToListAsync())
+                .Where(s => clavesPagos.Any(k => k.PlyID == s.PlyID && k.PagNum == s.PagNum))
+                .ToList();
+
+            // 🅿 Servicios base de estacionamiento (desde la Playa)
+            var serviciosBase = (await _ctx.Ocupaciones
+                .AsNoTracking()
+                .Include(o => o.Plaza!).ThenInclude(p => p.Playa!)
+                    .ThenInclude(pl => pl.ServiciosProveidos!)
+                        .ThenInclude(sp => sp.Servicio)
+                .Where(o => o.PagNum != null)
+                .Select(o => new
+                {
+                    o.PlyID,
+                    o.PagNum,
+                    SerNom = o.Plaza!.Playa!.ServiciosProveidos!
+                        .FirstOrDefault(sp => sp.Servicio.SerTipo == "Estacionamiento")!.Servicio.SerNom
+                })
+                .ToListAsync())
+                .Where(o => clavesPagos.Any(k => k.PlyID == o.PlyID && k.PagNum == o.PagNum))
+                .ToList();
+
+            // 🔗 Unimos servicios base + extras
+            var todosLosServicios = serviciosBase.Concat(serviciosExtras).ToList();
+
+            // 📚 Diccionario final de servicios agrupados
+            var dicServ = todosLosServicios
+                .GroupBy(x => new { x.PlyID, x.PagNum })
+                .ToDictionary(
+                    g => (g.Key.PlyID, g.Key.PagNum!.Value),
+                    g => new { Count = g.Count(), Nombres = g.Select(v => v.SerNom).Distinct().ToList() }
+                );
+
+            // 🧾 Construcción final del ViewModel
+            var vm = pagos.Select(p =>
+            {
+                var key = (p.PlyID, p.PagNum);
+                return new InformeDetalleMetodoPagoGeneralItemVM
+                {
+                    PlyID = p.PlyID,
+                    PlayaNombre = !string.IsNullOrWhiteSpace(p.Playa.PlyNom) ? p.Playa.PlyNom : $"Playa #{p.PlyID}",
+                    PagNum = p.PagNum,
+                    FechaUtc = p.PagFyh,
+                    Monto = p.PagMonto,
+                    Metodo = p.MetodoPago?.MepNom ?? $"Método #{p.MepID}",
+                    OcupacionesCount = dicOcup.TryGetValue(key, out var oc) ? oc.Count : 0,
+                    ServiciosExtrasCount = dicServ.TryGetValue(key, out var se) ? se.Count : 0,
+                    OcupacionesVehiculos = dicOcup.TryGetValue(key, out var oc2) ? oc2.Vehiculos : new List<string>(),
+                    ServiciosExtrasNombres = dicServ.TryGetValue(key, out var se2) ? se2.Nombres : new List<string>()
+                };
+            }).ToList();
+
+            // 🔢 Totales
+            ViewBag.TotalMetodo = vm.Sum(x => x.Monto);
+            ViewBag.CantidadMetodo = vm.Count;
+
+            System.Diagnostics.Debug.WriteLine($"📊 Registros finales: {vm.Count}, Total ${ViewBag.TotalMetodo}");
+
+            return PartialView("PagosPorMetodo", vm);
+        }
+
+  
     }
 }

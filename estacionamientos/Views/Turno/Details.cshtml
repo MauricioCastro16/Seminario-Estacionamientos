@@ -208,13 +208,18 @@
                                             <th class="text-center"><i class></i>Cantidad</th>
                                             <th class="text-end"><i class></i>Monto Total</th>
                                             <th class="text-center"><i class></i>Porcentaje</th>
+                                            <th class="text-end"><span class="visually-hidden">Acciones</span></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach (var item in desglosePagos)
                                         {
+                                            int mepId = 0;
+                                            try { mepId = (int)item.MepID; } catch { mepId = 0; }
+
                                             var porcentaje = totalPagos > 0 ? (item.MontoTotal / totalPagos * 100) : 0;
-                                            var iconClass = item.MetodoPago.ToString().ToLower() switch
+                                            var metodoStr = (string)(item.MetodoPago?.ToString() ?? "Método");
+                                            var iconClass = metodoStr.ToLower() switch
                                             {
                                                 var x when x.Contains("efectivo") => "fas fa-money-bill-wave text-secondary",
                                                 var x when x.Contains("crédito") => "fas fa-credit-card text-secondary",
@@ -245,6 +250,17 @@
                                                         </div>
                                                     </div>
                                                 </td>
+                                                <td class="text-end">
+                                                    <a href="#"
+                                                       class="btn btn-sm btn-outline-primary ver-detalle-mep"
+                                                       title="Ver detalle de cobros"
+                                                       data-plyid="@Model.PlyID"
+                                                       data-planu="@Model.PlaNU"
+                                                       data-tur="@Model.TurFyhIni.ToString("o")"
+                                                       data-mep="@mepId">
+                                                       <i class="fas fa-list me-1"></i>
+                                                    </a>
+                                                </td>
                                             </tr>
                                         }
                                     </tbody>
@@ -265,3 +281,57 @@
         </div>
     </div>
 </div>
+@* ➕ Modal para los detalles por método *@
+<div class="modal fade" id="modalPagosMetodo" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+            Cobros en: <span id="lblMetodo"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" id="modalPagosMetodoBody">
+        <div class="text-center text-muted">Cargando...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+<script>
+document.addEventListener('click', async (ev) => {
+  const a = ev.target.closest('.ver-detalle-mep');
+  if (!a) return;
+  ev.preventDefault();
+
+  const plyID = a.dataset.plyid;
+  const plaNU = a.dataset.planu;
+  const turFyhIni = a.dataset.tur;
+  const mepID = a.dataset.mep;
+
+  // nombre del método en el título del modal
+  const metodoTxt = a.closest('tr').querySelector('td:first-child')?.innerText?.trim() || '';
+  document.getElementById('lblMetodo').textContent = metodoTxt;
+
+    const url = '@Url.Action("PagosPorMetodoTurno","Turno")'
+            + `?plyID=${encodeURIComponent(plyID)}`
+            + `&plaNU=${encodeURIComponent(plaNU)}`
+            + `&turFyhIni=${encodeURIComponent(turFyhIni)}`
+            + `&mepID=${encodeURIComponent(mepID)}`;
+
+  const body = document.getElementById('modalPagosMetodoBody');
+  body.innerHTML = '<div class="text-center text-muted">Cargando...</div>';
+
+  try {
+    const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+    const html = await resp.text();
+    body.innerHTML = html;
+  } catch (e) {
+    body.innerHTML = '<div class="alert alert-danger">No se pudo cargar el detalle.</div>';
+  }
+
+  new bootstrap.Modal(document.getElementById('modalPagosMetodo')).show();
+});
+</script>
+}
