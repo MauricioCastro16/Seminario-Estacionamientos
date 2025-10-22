@@ -554,7 +554,9 @@ namespace estacionamientos.Controllers
                     OcupacionesVehiculos = dicOcup.TryGetValue(key, out var oc2) ? oc2.Vehiculos : new List<string>(),
                     ServiciosExtrasNombres = dicServ.TryGetValue(key, out var se2) ? se2.Nombres : new List<string>()
                 };
-            }).ToList();
+            })
+            .OrderByDescending(x => x.FechaUtc)
+            .ToList();
 
             // 🔢 Totales
             ViewBag.TotalMetodo = vm.Sum(x => x.Monto);

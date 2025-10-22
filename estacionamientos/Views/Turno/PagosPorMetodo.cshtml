@@ -3,13 +3,13 @@
 
 <div class="table-responsive">
     <table class="table table-hover align-middle border">
-        <thead class="table-light">
+        <thead class="table-light"></thead>
             <tr>
-                <th style="width:90px;"><i class="fas fa-hashtag text-secondary me-1"></i> Pago</th>
-                <th style="width:170px;"><i class="fas fa-calendar-alt text-secondary me-1"></i> Fecha/Hora</th>
-                <th style="width:130px;" class="text-end"><i class="fas fa-dollar-sign text-secondary me-1"></i> Monto</th>
-                <th><i class="fas fa-car text-secondary me-1"></i> Vehículo</th>
-                <th>Servicios</th>
+                <th style="width:70px;">#</th>
+                <th style="width:160px;"><i class="fas fa-calendar-alt text-secondary me-1"></i> Fecha / Hora</th>
+                <th style="width:140px;" class="text-end"><i class="fas fa-dollar-sign text-secondary me-1"></i> Monto</th>
+                <th style="width:160px;"><i class="fas fa-car text-secondary me-1"></i> Vehículo</th>
+                <th><i class="fas fa-concierge-bell text-secondary me-1"></i> Servicios</th>
             </tr>
         </thead>
 
@@ -50,13 +50,13 @@
 
         @if (Model.Any())
         {
-            <tfoot class="fw-semibold">
+            <tfoot class="table-light border-top">
                 <tr>
-                    <td colspan="2" class="text-end">Total</td>
-                    <td class="text-end text-success fw-bold">
+                    <td colspan="3" class="text-end fw-bold text-success">
+                        Total: 
                         @((ViewBag.TotalMetodo as decimal? ?? 0m).ToString("C2", new System.Globalization.CultureInfo("es-AR")))
                     </td>
-                    <td colspan="2" class="text-muted">
+                    <td colspan="2" class="text-end text-muted small align-middle">
                         (@(ViewBag.CantidadMetodo ?? 0) cobros)
                     </td>
                 </tr>
