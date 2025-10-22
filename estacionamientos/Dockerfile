@@ -31,4 +31,7 @@ EXPOSE 8080
 
 COPY --from=build /app/publish ./
 
+# Copiar la carpeta Resources que contiene las imágenes
+COPY ./Resources ./Resources
+
 ENTRYPOINT ["dotnet", "estacionamientos.dll"]
