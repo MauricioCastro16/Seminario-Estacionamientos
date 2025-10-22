@@ -55,6 +55,16 @@ namespace estacionamientos.Controllers
                 return View(model);
             }
 
+            // Verificar si es el primer vehículo del conductor
+            var vehiculosExistentes = await _context.Conducciones
+                .CountAsync(c => c.ConNU == model.ConNU);
+
+            // Si es el primer vehículo, marcarlo como favorito
+            if (vehiculosExistentes == 0)
+            {
+                model.Favorito = true;
+            }
+
             _context.Conducciones.Add(model);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));

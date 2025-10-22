@@ -53,6 +53,15 @@ builder.Services
 // ★ Autorización (políticas/roles si luego las usás)
 builder.Services.AddAuthorization();
 
+// ★ Configuración de sesiones
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(8); // Mismo tiempo que la autenticación
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
 var app = builder.Build();
 
 // Configuración de base de datos según el entorno
@@ -115,6 +124,9 @@ app.UseRouting();
 // ★ MUY IMPORTANTE: primero autenticación, luego autorización
 app.UseAuthentication(); // ★
 app.UseAuthorization();
+
+// ★ Configurar sesiones
+app.UseSession();
 
 app.MapControllerRoute(
     name: "default",

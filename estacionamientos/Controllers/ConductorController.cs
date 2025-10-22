@@ -122,8 +122,19 @@ namespace estacionamientos.Controllers
                 // Obtener el vehículo favorito para preselección
                 var vehiculoFavorito = conduces.FirstOrDefault(c => c.Favorito)?.VehPtnt;
 
+                // Obtener clasificaciones de vehículos para el modal
+                var clasificaciones = await _context.ClasificacionesVehiculo
+                    .OrderBy(c => c.ClasVehTipo)
+                    .Select(c => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                    {
+                        Value = c.ClasVehID.ToString(),
+                        Text = c.ClasVehTipo
+                    })
+                    .ToListAsync();
+
                 ViewBag.VehiculoFavorito = vehiculoFavorito;
                 ViewBag.Conduces = conduces;
+                ViewBag.ClasVehID = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(clasificaciones, "Value", "Text");
 
                 return View(conduces.Select(c => c.Vehiculo).ToList());
             }
@@ -204,6 +215,311 @@ namespace estacionamientos.Controllers
             }
         }
 
+        // API para obtener el vehículo seleccionado en la sesión (o favorito si no hay selección)
+        [HttpGet]
+        public async Task<IActionResult> GetVehiculoSeleccionado()
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                {
+                    return Json(new { error = "Usuario no autenticado" });
+                }
+
+                var conductorId = int.Parse(userId);
+
+                // Primero verificar si hay un vehículo seleccionado en la sesión
+                var vehiculoSeleccionado = HttpContext.Session.GetString("vehiculoSeleccionado");
+                
+                if (!string.IsNullOrEmpty(vehiculoSeleccionado))
+                {
+                    // Buscar el vehículo seleccionado
+                    var conduceSeleccionado = await _context.Conduces
+                        .Include(c => c.Vehiculo)
+                            .ThenInclude(v => v.Clasificacion)
+                        .Where(c => c.ConNU == conductorId && c.VehPtnt == vehiculoSeleccionado)
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync();
+
+                    if (conduceSeleccionado?.Vehiculo != null)
+                    {
+                        return Json(new
+                        {
+                            patente = conduceSeleccionado.Vehiculo.VehPtnt,
+                            marca = conduceSeleccionado.Vehiculo.VehMarc,
+                            tipo = conduceSeleccionado.Vehiculo.Clasificacion?.ClasVehTipo ?? "Sin clasificación",
+                            esFavorito = conduceSeleccionado.Favorito
+                        });
+                    }
+                }
+
+                // Si no hay vehículo seleccionado en sesión, usar el favorito
+                var conduceFavorito = await _context.Conduces
+                    .Include(c => c.Vehiculo)
+                        .ThenInclude(v => v.Clasificacion)
+                    .Where(c => c.ConNU == conductorId && c.Favorito)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync();
+
+                if (conduceFavorito?.Vehiculo == null)
+                {
+                    return Json(new { error = "No hay vehículo disponible" });
+                }
+
+                // Guardar el favorito como seleccionado en la sesión
+                HttpContext.Session.SetString("vehiculoSeleccionado", conduceFavorito.Vehiculo.VehPtnt);
+
+                return Json(new
+                {
+                    patente = conduceFavorito.Vehiculo.VehPtnt,
+                    marca = conduceFavorito.Vehiculo.VehMarc,
+                    tipo = conduceFavorito.Vehiculo.Clasificacion?.ClasVehTipo ?? "Sin clasificación",
+                    esFavorito = true
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        // API para seleccionar un vehículo en la sesión
+        [HttpPost]
+        public async Task<IActionResult> SeleccionarVehiculo(string patente)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                {
+                    return Json(new { error = "Usuario no autenticado" });
+                }
+
+                var conductorId = int.Parse(userId);
+
+                // Verificar que el conductor tenga acceso a este vehículo
+                var conduce = await _context.Conduces
+                    .Include(c => c.Vehiculo)
+                        .ThenInclude(v => v.Clasificacion)
+                    .Where(c => c.ConNU == conductorId && c.VehPtnt == patente)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync();
+
+                if (conduce?.Vehiculo == null)
+                {
+                    return Json(new { error = "Vehículo no encontrado o sin acceso" });
+                }
+
+                // Guardar en la sesión
+                HttpContext.Session.SetString("vehiculoSeleccionado", patente);
+
+                return Json(new
+                {
+                    success = true,
+                    patente = conduce.Vehiculo.VehPtnt,
+                    marca = conduce.Vehiculo.VehMarc,
+                    tipo = conduce.Vehiculo.Clasificacion?.ClasVehTipo ?? "Sin clasificación",
+                    esFavorito = conduce.Favorito
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        // API para desvincular un vehículo del conductor
+        [HttpPost]
+        public async Task<IActionResult> DesvincularVehiculo(string patente)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                {
+                    return Json(new { success = false, error = "Usuario no autenticado" });
+                }
+
+                var conductorId = int.Parse(userId);
+
+                // Buscar la relación conductor-vehículo
+                var conduce = await _context.Conduces
+                    .Include(c => c.Vehiculo)
+                    .FirstOrDefaultAsync(c => c.ConNU == conductorId && c.VehPtnt == patente);
+
+                if (conduce == null)
+                {
+                    return Json(new { success = false, error = "Vehículo no encontrado o sin acceso" });
+                }
+
+                // Contar vehículos antes de desvincular
+                var totalVehiculos = await _context.Conduces
+                    .CountAsync(c => c.ConNU == conductorId);
+
+                bool eraFavorito = conduce.Favorito;
+
+                // Remover la relación
+                _context.Conduces.Remove(conduce);
+                await _context.SaveChangesAsync();
+
+                // Si era favorito o si queda solo un vehículo, marcar el restante como favorito
+                var vehiculosRestantes = await _context.Conduces
+                    .CountAsync(c => c.ConNU == conductorId);
+                
+                if (eraFavorito || vehiculosRestantes == 1)
+                {
+                    var nuevoFavorito = await _context.Conduces
+                        .FirstOrDefaultAsync(c => c.ConNU == conductorId);
+                    
+                    if (nuevoFavorito != null)
+                    {
+                        nuevoFavorito.Favorito = true;
+                        await _context.SaveChangesAsync();
+                        
+                        // Actualizar la sesión con el nuevo favorito
+                        HttpContext.Session.SetString("vehiculoSeleccionado", nuevoFavorito.VehPtnt);
+                    }
+                }
+
+                // Limpiar la sesión si el vehículo desvinculado era el seleccionado
+                var vehiculoSeleccionado = HttpContext.Session.GetString("vehiculoSeleccionado");
+                if (vehiculoSeleccionado == patente)
+                {
+                    HttpContext.Session.Remove("vehiculoSeleccionado");
+                }
+
+                return Json(new { 
+                    success = true, 
+                    message = "Vehículo desvinculado correctamente",
+                    eraFavorito = eraFavorito
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        // API para crear un nuevo vehículo y asociarlo al conductor
+        [HttpPost]
+        public async Task<IActionResult> CrearVehiculo(string patente, string marca, int clasificacionId)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                {
+                    return Json(new { success = false, error = "Usuario no autenticado" });
+                }
+
+                var conductorId = int.Parse(userId);
+
+                // Verificar que la patente no esté vacía
+                if (string.IsNullOrWhiteSpace(patente))
+                {
+                    return Json(new { success = false, error = "La patente es requerida" });
+                }
+
+                // Verificar que la marca no esté vacía
+                if (string.IsNullOrWhiteSpace(marca))
+                {
+                    return Json(new { success = false, error = "La marca es requerida" });
+                }
+
+                // Verificar que la clasificación existe
+                var clasificacion = await _context.ClasificacionesVehiculo
+                    .FirstOrDefaultAsync(c => c.ClasVehID == clasificacionId);
+
+                if (clasificacion == null)
+                {
+                    return Json(new { success = false, error = "Clasificación de vehículo no válida" });
+                }
+
+                // Verificar si el vehículo ya existe
+                var vehiculoExistente = await _context.Vehiculos
+                    .FirstOrDefaultAsync(v => v.VehPtnt == patente);
+
+                if (vehiculoExistente != null)
+                {
+                    // Si el vehículo ya existe, verificar si ya está asociado a este conductor
+                    var yaAsociado = await _context.Conduces
+                        .AnyAsync(c => c.ConNU == conductorId && c.VehPtnt == patente);
+
+                    if (yaAsociado)
+                    {
+                        return Json(new { success = false, error = "Ya tienes este vehículo asociado" });
+                    }
+
+                    // Si existe pero no está asociado, crear la relación
+                    var nuevaRelacion = new Conduce
+                    {
+                        ConNU = conductorId,
+                        VehPtnt = patente,
+                        Favorito = false // Se marcará como favorito si es el primero
+                    };
+
+                    _context.Conduces.Add(nuevaRelacion);
+                }
+                else
+                {
+                    // Crear nuevo vehículo
+                    var nuevoVehiculo = new Vehiculo
+                    {
+                        VehPtnt = patente,
+                        VehMarc = marca,
+                        ClasVehID = clasificacionId
+                    };
+
+                    _context.Vehiculos.Add(nuevoVehiculo);
+
+                    // Crear la relación conductor-vehículo
+                    var nuevaRelacion = new Conduce
+                    {
+                        ConNU = conductorId,
+                        VehPtnt = patente,
+                        Favorito = false // Se marcará como favorito si es el primero
+                    };
+
+                    _context.Conduces.Add(nuevaRelacion);
+                }
+
+                await _context.SaveChangesAsync();
+
+                // Si es el primer vehículo del conductor, marcarlo como favorito
+                var totalVehiculos = await _context.Conduces
+                    .CountAsync(c => c.ConNU == conductorId);
+
+                if (totalVehiculos == 1)
+                {
+                    var primerVehiculo = await _context.Conduces
+                        .FirstOrDefaultAsync(c => c.ConNU == conductorId);
+                    
+                    if (primerVehiculo != null)
+                    {
+                        primerVehiculo.Favorito = true;
+                        await _context.SaveChangesAsync();
+                        
+                        // Seleccionarlo en la sesión
+                        HttpContext.Session.SetString("vehiculoSeleccionado", patente);
+                    }
+                }
+
+                return Json(new { 
+                    success = true, 
+                    message = "Vehículo agregado correctamente",
+                    patente = patente,
+                    marca = marca,
+                    clasificacion = clasificacion.ClasVehTipo
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+
         // API para cambiar el vehículo favorito
         [HttpPost]
         public async Task<IActionResult> CambiarFavorito(string patente)
@@ -242,6 +558,12 @@ namespace estacionamientos.Controllers
                 await _context.SaveChangesAsync();
 
                 string mensaje = yaEraFavorito ? "Vehículo removido de favoritos" : "Vehículo marcado como favorito";
+                
+                // Si se marcó como favorito, también seleccionarlo en la sesión
+                if (!yaEraFavorito && conduceSeleccionado != null)
+                {
+                    HttpContext.Session.SetString("vehiculoSeleccionado", patente);
+                }
                 
                 // Obtener información del vehículo para el frontend
                 var vehiculoInfo = new { marca = "N/A", tipo = "N/A" };

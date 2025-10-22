@@ -769,9 +769,21 @@
         let vehiculoFavorito = null;
 
         $(document).ready(function() {
-            // Obtener vehículo favorito del conductor
-            obtenerVehiculoFavorito();
+            // Obtener vehículo seleccionado del conductor
+            obtenerVehiculoSeleccionado();
             inicializarMapa();
+            
+            // Escuchar cambios en sessionStorage para actualizar el vehículo en el mapa
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'vehiculoSeleccionado' && e.newValue) {
+                    vehiculoFavorito = JSON.parse(e.newValue);
+                    console.log('Vehículo actualizado desde otra pestaña:', vehiculoFavorito);
+                    // Actualizar el icono del conductor si ya está creado
+                    if (conductorMarker) {
+                        conductorMarker.setIcon(crearIconoConductor());
+                    }
+                }
+            });
             
             // Forzar que el dropdown del menú de usuario funcione
             $('#userMenu').on('click', function(e) {
@@ -802,25 +814,31 @@
             });
         });
 
-        function obtenerVehiculoFavorito() {
-            // Primero verificar si hay vehículo favorito en sessionStorage
-            const vehiculoGuardado = sessionStorage.getItem('vehiculoFavorito');
+        function obtenerVehiculoSeleccionado() {
+            // Primero verificar si hay vehículo seleccionado en sessionStorage
+            const vehiculoGuardado = sessionStorage.getItem('vehiculoSeleccionado');
             if (vehiculoGuardado) {
                 vehiculoFavorito = JSON.parse(vehiculoGuardado);
-                console.log('Vehículo favorito cargado desde sesión:', vehiculoFavorito);
+                console.log('Vehículo seleccionado cargado desde sesión:', vehiculoFavorito);
                 return;
             }
             
             // Si no hay en sessionStorage, obtener del servidor
-            $.get('/Conductor/GetVehiculoFavorito')
+            $.get('/Conductor/GetVehiculoSeleccionado')
                 .done(function(data) {
+                    if (data.error) {
+                        console.log('No se pudo obtener el vehículo seleccionado:', data.error);
+                        vehiculoFavorito = null;
+                        return;
+                    }
+                    
                     vehiculoFavorito = data;
                     // Guardar en sessionStorage para futuras navegaciones
-                    sessionStorage.setItem('vehiculoFavorito', JSON.stringify(data));
-                    console.log('Vehículo favorito obtenido del servidor:', vehiculoFavorito);
+                    sessionStorage.setItem('vehiculoSeleccionado', JSON.stringify(data));
+                    console.log('Vehículo seleccionado obtenido del servidor:', vehiculoFavorito);
                 })
                 .fail(function() {
-                    console.log('No se pudo obtener el vehículo favorito');
+                    console.log('No se pudo obtener el vehículo seleccionado');
                     vehiculoFavorito = null;
                 });
         }
