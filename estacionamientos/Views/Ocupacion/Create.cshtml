@@ -281,9 +281,22 @@
             return;
         }
 
+        // Buscar la primera plaza disponible para preselección automática
+        let primeraPlazaDisponible = null;
+        
+        plazas.forEach(p => {
+            const esSeleccionable = (p.hab !== false) && !p.ocupada && (p.compatible !== false);
+            if (esSeleccionable && primeraPlazaDisponible === null) {
+                primeraPlazaDisponible = p;
+            }
+        });
+
+        const cardsMap = new Map(); // Mapa para asociar plazas con sus cards
+
         plazas.forEach(p => {
             const card = document.createElement("div");
             card.className = "plaza-card";
+            card.setAttribute("data-plz-num", p.plzNum); // Agregar atributo para identificarlo
 
             if (p.hab === false) card.classList.add("inhabilitada");
             else if (p.ocupada) card.classList.add("ocupada");
@@ -310,24 +323,55 @@
             }
 
             grid.appendChild(card);
+            if (esSeleccionable) {
+                cardsMap.set(p.plzNum, card);
+            }
         });
+
+        // Auto-seleccionar la primera plaza disponible si existe
+        if (primeraPlazaDisponible !== null) {
+            const primeraCard = cardsMap.get(primeraPlazaDisponible.plzNum);
+            if (primeraCard) {
+                primeraCard.classList.add("selected");
+                hiddenPlz.value = primeraPlazaDisponible.plzNum;
+                btn.disabled = false;
+            }
+        }
     }
 
     async function fetchPlazasYPrepararPisos() {
         limpiarSeleccion();
 
-        // Si faltan clas/techada, no hago fetch y dejo Piso deshabilitado
-        if (!requisitosBasicosElegidos()) {
+        // Si falta la clasificación, no hacer nada
+        if (!selClas.value) {
             selPiso.disabled = true;
             selPiso.value = "";
             pisoActual = "";
             allPlazas = [];
-            showPrompt("Elegí clasificación y si la plaza es techada o no para habilitar el piso.");
+            showPrompt("Elegí clasificación del vehículo para comenzar.");
+            return;
+        }
+
+        // Auto-seleccionar techada si no está seleccionada (por defecto "false" = no techada)
+        if (getTechada() === "") {
+            const radioNoTechada = document.getElementById("techadaNo");
+            if (radioNoTechada) {
+                radioNoTechada.checked = true;
+            }
+        }
+
+        // Si aún falta techada después del intento, no continuar
+        if (getTechada() === "") {
+            selPiso.disabled = true;
+            selPiso.value = "";
+            pisoActual = "";
+            allPlazas = [];
+            showPrompt("Elegí si la plaza es techada o no.");
             return;
         }
 
         try {
-            showPrompt("Cargando opciones de piso...");
+            showPrompt("Cargando plazas...");
             const clasVehID = selClas.value;
             const techada = getTechada();
             const url = `/Ocupacion/GetPlazasDisponibles?plyID=${encodeURIComponent(plyID)}&clasVehID=${encodeURIComponent(clasVehID)}&techada=${techada}`;
@@ -349,7 +393,16 @@
             if (selPiso.disabled) {
                 showPrompt("No hay pisos disponibles para esos filtros.");
             } else if (!selPiso.value) {
-                showPrompt("Elegí un piso para ver las plazas.");
+                // Auto-seleccionar el primer piso disponible
+                const opcionesPiso = Array.from(selPiso.options).filter(opt => opt.value !== "");
+                if (opcionesPiso.length > 0) {
+                    // Seleccionar el primer piso disponible
+                    selPiso.value = opcionesPiso[0].value;
+                    pisoActual = opcionesPiso[0].value;
+                    renderGrid();
+                } else {
+                    showPrompt("No hay pisos disponibles.");
+                }
             } else {
                 renderGrid();
             }

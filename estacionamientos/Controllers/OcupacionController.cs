@@ -279,19 +279,12 @@ namespace estacionamientos.Controllers
                 var turnoFyhIni = turno.TurFyhIni;
                 var plyID = turno.PlyID;
 
-                // 🧩 Ocupaciones cobradas por el playero (pagos hechos por él)
-                var pagosHechosPorPlayero = await _ctx.Pagos
-                    .Where(p => p.PlaNU == plaNU && p.PlyID == plyID)
-                    .Select(p => p.PagNum)
-                    .ToListAsync();
-
-                // Filtrar:
-                // Ocupaciones iniciadas DURANTE el turno actual (por ese playero)
-                // Ocupaciones ACTIVAS (sin egreso) de la misma playa
-                    query = query.Where(o =>
-                        (o.OcufFyhIni >= turnoFyhIni && o.PlyID == plyID) ||
-                        (o.OcufFyhFin == null && o.PlyID == plyID) ||
-                        (o.PlyID == plyID && o.PagNum != null && pagosHechosPorPlayero.Contains(o.PagNum.Value)));
+                // Filtrar solo ocupaciones del turno actual:
+                // 1. Ocupaciones iniciadas DURANTE el turno actual en la playa del turno
+                // 2. Ocupaciones PENDIENTES DE COBRO (sin egreso) en la playa del turno
+                query = query.Where(o =>
+                    o.PlyID == plyID &&
+                    ((o.OcufFyhIni >= turnoFyhIni) || (o.OcufFyhFin == null)));
                 }
 
             // Ordenamiento: activos primero, luego por fecha de ingreso descendente
