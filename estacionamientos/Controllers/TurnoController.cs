@@ -160,12 +160,15 @@ namespace estacionamientos.Controllers
             }
             
             // Obtener desglose de pagos por método de pago durante ESE turno específico
+            // Incluye TODOS los pagos de la playa durante el turno:
+            // - Pagos de estacionamiento (Ocupaciones)
+            // - Pagos de abonos
             var desglosePagos = await _ctx.Pagos
                 .Include(p => p.MetodoPago)
                 .Where(p => p.PlyID == plyID 
-                        && p.PlaNU == plaNU 
                         && p.PagFyh >= turno.TurFyhIni 
-                        && (turno.TurFyhFin == null || p.PagFyh <= turno.TurFyhFin))
+                        && (turno.TurFyhFin == null || p.PagFyh <= turno.TurFyhFin)
+                        && p.PagMonto > 0)  // 🔹 Excluir pagos de $0.00
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -320,15 +323,18 @@ namespace estacionamientos.Controllers
             ViewBag.NowLocal = DateTime.Now;
             
             // 🔹 Calcular efectivo esperado para mostrar en la vista
+            // Incluye TODOS los pagos de efectivo de la playa durante el turno:
+            // - Pagos de estacionamiento (Ocupaciones)
+            // - Pagos de abonos
             if (User.IsInRole("Playero"))
             {
                 var esperado = await _ctx.Pagos
                     .Include(p => p.MetodoPago)
                     .Where(p => p.PlyID == item.PlyID
-                            && p.PlaNU == item.PlaNU
                             && p.PagFyh >= item.TurFyhIni
                             && (item.TurFyhFin == null || p.PagFyh <= item.TurFyhFin)
-                            && p.MetodoPago.MepNom == "Efectivo")
+                            && p.MetodoPago.MepNom == "Efectivo"
+                            && p.PagMonto > 0)  // 🔹 Excluir pagos de $0.00
                     .SumAsync(p => (decimal?)p.PagMonto) ?? 0m;
 
                 ViewBag.EfectivoEsperado = esperado;
@@ -460,15 +466,18 @@ namespace estacionamientos.Controllers
                 return NotFound();
 
             // 💰 Pagos del método seleccionado
+            // Incluye TODOS los pagos de la playa durante el turno:
+            // - Pagos de estacionamiento (Ocupaciones)
+            // - Pagos de abonos
             var pagos = await _ctx.Pagos
                 .AsNoTracking()
                 .Include(p => p.Playa)
                 .Include(p => p.MetodoPago)
                 .Where(p => p.PlyID == plyID
-                        && p.PlaNU == plaNU
                         && p.MepID == mepID
                         && p.PagFyh >= turno.TurFyhIni
-                        && (turno.TurFyhFin == null || p.PagFyh <= turno.TurFyhFin))
+                        && (turno.TurFyhFin == null || p.PagFyh <= turno.TurFyhFin)
+                        && p.PagMonto > 0)  // 🔹 Excluir pagos de $0.00
                 .OrderByDescending(p => p.PagFyh)
                 .ToListAsync();
 
@@ -503,7 +512,7 @@ namespace estacionamientos.Controllers
                 .AsNoTracking()
                 .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
                 .Where(s => s.PagNum != null)
-                .Select(s => new { s.PlyID, s.PagNum, SerNom = s.ServicioProveido.Servicio.SerNom })
+                .Select(s => new { s.PlyID, PagNum = s.PagNum!.Value, SerNom = s.ServicioProveido.Servicio.SerNom })
                 .ToListAsync())
                 .Where(s => clavesPagos.Any(k => k.PlyID == s.PlyID && k.PagNum == s.PagNum))
                 .ToList();
@@ -518,7 +527,7 @@ namespace estacionamientos.Controllers
                 .Select(o => new
                 {
                     o.PlyID,
-                    o.PagNum,
+                    PagNum = o.PagNum!.Value,
                     SerNom = o.Plaza!.Playa!.ServiciosProveidos!
                         .FirstOrDefault(sp => sp.Servicio.SerTipo == "Estacionamiento")!.Servicio.SerNom
                 })
@@ -526,14 +535,36 @@ namespace estacionamientos.Controllers
                 .Where(o => clavesPagos.Any(k => k.PlyID == o.PlyID && k.PagNum == o.PagNum))
                 .ToList();
 
-            // 🔗 Unimos servicios base + extras
-            var todosLosServicios = serviciosBase.Concat(serviciosExtras).ToList();
+            // 🔹 Servicios de abonos (Abonos y períodos de abono)
+            var serviciosAbonos = (await _ctx.Abonos
+                .AsNoTracking()
+                .Where(a => a.PagNum > 0)
+                .ToListAsync())
+                .Where(a => clavesPagos.Any(k => k.PlyID == a.PlyID && k.PagNum == a.PagNum))
+                .Select(a => new { a.PlyID, PagNum = a.PagNum, SerNom = "Abono" })
+                .ToList();
+
+            // También incluir períodos de abono pagados que tengan PagNum
+            var serviciosPeriodosAbono = (await _ctx.PeriodosAbono
+                .AsNoTracking()
+                .Where(p => p.PagNum != null && p.PeriodoPagado)
+                .Select(p => new { p.PlyID, PagNum = p.PagNum!.Value, SerNom = "Período de Abono" })
+                .ToListAsync())
+                .Where(p => clavesPagos.Any(k => k.PlyID == p.PlyID && k.PagNum == p.PagNum))
+                .ToList();
+
+            // 🔗 Unimos servicios base + extras + abonos
+            var todosLosServicios = serviciosBase
+                .Concat(serviciosExtras)
+                .Concat(serviciosAbonos)
+                .Concat(serviciosPeriodosAbono)
+                .ToList();
 
             // 📚 Diccionario final de servicios agrupados
             var dicServ = todosLosServicios
                 .GroupBy(x => new { x.PlyID, x.PagNum })
                 .ToDictionary(
-                    g => (g.Key.PlyID, g.Key.PagNum!.Value),
+                    g => (g.Key.PlyID, g.Key.PagNum),
                     g => new { Count = g.Count(), Nombres = g.Select(v => v.SerNom).Distinct().ToList() }
                 );
 

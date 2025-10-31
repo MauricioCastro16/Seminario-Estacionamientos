@@ -396,13 +396,34 @@ namespace estacionamientos.Controllers
 
             // 5. Crear Pago (siempre se paga al generar el abono)
             var nextPagNum = (_ctx.Pagos.Where(p => p.PlyID == model.PlyID).Select(p => (int?)p.PagNum).Max() ?? 0) + 1;
+            
+            // 🔹 Obtener PlaNU: si es playero, usar el del usuario actual; si no, buscar turno activo en la playa
+            int plaNU = 0;
+            if (User.IsInRole("Playero"))
+            {
+                plaNU = int.TryParse(userId, out var pla) ? pla : 0;
+            }
+            else
+            {
+                // Si es administrador, intentar obtener el turno activo de algún playero en esa playa
+                var turnoActivo = await _ctx.Turnos
+                    .Where(t => t.PlyID == model.PlyID && t.TurFyhFin == null)
+                    .OrderByDescending(t => t.TurFyhIni)
+                    .FirstOrDefaultAsync();
+                if (turnoActivo != null)
+                {
+                    plaNU = turnoActivo.PlaNU;
+                }
+            }
+            
             var pago = new Pago
             {
                 PlyID = model.PlyID,
                 PagNum = nextPagNum,
                 MepID = model.MepID,
                 PagMonto = abono.AboMonto,
-                PagFyh = DateTime.UtcNow
+                PagFyh = DateTime.UtcNow,
+                PlaNU = plaNU
             };
             _ctx.Pagos.Add(pago);
             await _ctx.SaveChangesAsync();
@@ -701,13 +722,34 @@ namespace estacionamientos.Controllers
                 }
 
                 // 3. Crear el registro de pago
+                // 🔹 Obtener PlaNU: buscar turno activo en la playa para asignar el playero
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int plaNU = 0;
+                if (User.IsInRole("Playero"))
+                {
+                    plaNU = int.TryParse(userId, out var pla) ? pla : 0;
+                }
+                else
+                {
+                    // Si es administrador, intentar obtener el turno activo de algún playero en esa playa
+                    var turnoActivo = await _ctx.Turnos
+                        .Where(t => t.PlyID == model.PlyID && t.TurFyhFin == null)
+                        .OrderByDescending(t => t.TurFyhIni)
+                        .FirstOrDefaultAsync();
+                    if (turnoActivo != null)
+                    {
+                        plaNU = turnoActivo.PlaNU;
+                    }
+                }
+                
                 var pago = new Pago
                 {
                     PlyID = model.PlyID,
                     PagNum = nuevoPagNum,
                     MepID = model.MepID,
                     PagMonto = model.MontoPagar,
-                    PagFyh = DateTime.UtcNow
+                    PagFyh = DateTime.UtcNow,
+                    PlaNU = plaNU
                 };
                 _ctx.Pagos.Add(pago);
                 await _ctx.SaveChangesAsync();
@@ -968,13 +1010,35 @@ namespace estacionamientos.Controllers
                         .Select(p => (int?)p.PagNum)
                         .Max() ?? 0) + 1;
 
+                    // 🔹 Obtener PlaNU del playero que creó el abono original
+                    // Si no está disponible en el modelo, intentar obtenerlo del turno activo
+                    int plaNU = 0;
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    if (User.IsInRole("Playero"))
+                    {
+                        plaNU = int.TryParse(userId, out var pla) ? pla : 0;
+                    }
+                    else
+                    {
+                        // Si es administrador, intentar obtener el turno activo de algún playero en esa playa
+                        var turnoActivo = await _ctx.Turnos
+                            .Where(t => t.PlyID == model.PlyID && t.TurFyhFin == null)
+                            .OrderByDescending(t => t.TurFyhIni)
+                            .FirstOrDefaultAsync();
+                        if (turnoActivo != null)
+                        {
+                            plaNU = turnoActivo.PlaNU;
+                        }
+                    }
+
                     var pagoPeriodo = new Pago
                     {
                         PlyID = model.PlyID,
                         PagNum = nextPagNum,
                         MepID = model.MepID,
                         PagMonto = montoPorPeriodo,
-                        PagFyh = DateTime.UtcNow
+                        PagFyh = DateTime.UtcNow,
+                        PlaNU = plaNU
                     };
 
                     _ctx.Pagos.Add(pagoPeriodo);
@@ -1337,13 +1401,34 @@ namespace estacionamientos.Controllers
                     ? request.FechaPago 
                     : DateTime.SpecifyKind(request.FechaPago, DateTimeKind.Utc);
                 
+                // 🔹 Obtener PlaNU: buscar turno activo en la playa para asignar el playero
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int plaNU = 0;
+                if (User.IsInRole("Playero"))
+                {
+                    plaNU = int.TryParse(userId, out var pla) ? pla : 0;
+                }
+                else
+                {
+                    // Si es administrador, intentar obtener el turno activo de algún playero en esa playa
+                    var turnoActivo = await _ctx.Turnos
+                        .Where(t => t.PlyID == request.PlyID && t.TurFyhFin == null)
+                        .OrderByDescending(t => t.TurFyhIni)
+                        .FirstOrDefaultAsync();
+                    if (turnoActivo != null)
+                    {
+                        plaNU = turnoActivo.PlaNU;
+                    }
+                }
+                
                 var pago = new Pago
                 {
                     PlyID = request.PlyID,
                     PagNum = nextPagNum,
                     PagFyh = fechaPagoUtc,
                     PagMonto = request.TotalPagar,
-                    MepID = request.MetodoPago
+                    MepID = request.MetodoPago,
+                    PlaNU = plaNU
                 };
 
                 _ctx.Pagos.Add(pago);
