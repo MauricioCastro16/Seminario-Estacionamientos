@@ -132,6 +132,12 @@
                                 <span>Abonos</span>
                             </a>
                         </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="ServicioExtraRealizado" asp-action="Index" asp-route-plyID="@plyID">
+                                    <i class="bi bi-tools"></i>
+                                    <span>Servicios extra</span>
+                                </a>
+                            </li>
                     }
 
                     @if (User.IsInRole("Administrador"))
@@ -257,6 +263,11 @@
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Abono" asp-action="Index">
                                     <i class="bi bi-credit-card me-1"></i>Abonos
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="ServicioExtraRealizado" asp-action="Index">
+                                    <i class="bi bi-tools me-1"></i>Servicios extra
                                 </a>
                             </li>
                         }

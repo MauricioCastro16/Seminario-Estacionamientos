@@ -3,215 +3,265 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace estacionamientos.Controllers
 {
+    [Authorize(Roles = "Playero")]
     public class ServicioExtraRealizadoController : Controller
     {
         private readonly AppDbContext _ctx;
         public ServicioExtraRealizadoController(AppDbContext ctx) => _ctx = ctx;
 
-        // -------- Helpers (combos) --------
-        private async Task LoadPlayas(int? plySel = null)
+        // 🔹 Cargar clasificaciones de vehículo
+        private async Task LoadClasificacionesVehiculo(int? selected = null)
         {
-            var playas = await _ctx.Playas.AsNoTracking()
-                .OrderBy(p => p.PlyCiu).ThenBy(p => p.PlyDir)
-                .Select(p => new { p.PlyID, Nombre = p.PlyCiu + " - " + p.PlyDir })
+            var clasificaciones = await _ctx.ClasificacionesVehiculo
+                .OrderBy(c => c.ClasVehTipo)
+                .AsNoTracking()
+                .Select(c => new
+                {
+                    c.ClasVehID,
+                    c.ClasVehTipo,
+                    c.ClasVehDesc
+                })
                 .ToListAsync();
-            ViewBag.PlyID = new SelectList(playas, "PlyID", "Nombre", plySel);
+
+            ViewBag.ClasVehID = new SelectList(clasificaciones, "ClasVehID", "ClasVehTipo", selected);
+            ViewBag.ClasificacionesDetalle = clasificaciones;
         }
 
+        // 🔹 Cargar servicios extra habilitados para una playa
         private async Task LoadServiciosHabilitados(int plyID, int? serSel = null)
         {
             var servicios = await _ctx.ServiciosProveidos
-                .Where(sp => sp.PlyID == plyID && sp.SerProvHab)
                 .Include(sp => sp.Servicio)
+                .Where(sp => sp.PlyID == plyID &&
+                             sp.SerProvHab &&
+                             sp.Servicio.SerTipo == "ServicioExtra")
                 .AsNoTracking()
                 .OrderBy(sp => sp.Servicio.SerNom)
-                .Select(sp => new { sp.SerID, sp.Servicio.SerNom })
+                .Select(sp => new
+                {
+                    sp.SerID,
+                    sp.Servicio.SerNom,
+                    sp.Servicio.SerDesc
+                })
                 .ToListAsync();
 
             ViewBag.SerID = new SelectList(servicios, "SerID", "SerNom", serSel);
+            ViewBag.ServiciosDetalle = servicios;
         }
 
+        // 🔹 Cargar lista de vehículos por patente
         private async Task LoadVehiculos(string? selected = null)
         {
             var vehs = await _ctx.Vehiculos.AsNoTracking()
                 .OrderBy(v => v.VehPtnt)
                 .Select(v => v.VehPtnt)
                 .ToListAsync();
+
             ViewBag.VehPtnt = new SelectList(vehs, selected);
+            ViewBag.VehiculosList = vehs;
         }
 
-        private async Task LoadPagosDePlaya(int plyID, int? pagSel = null)
+        // 🔹 Validar que exista tarifa vigente para la combinación playa + servicio + tipo vehículo
+        private async Task<bool> ValidarTarifaVigente(int plyID, int serID, int clasVehID)
         {
-            var pagos = await _ctx.Pagos.AsNoTracking()
-                .Where(p => p.PlyID == plyID)
-                .OrderByDescending(p => p.PagFyh)
-                .Select(p => new { p.PagNum, Texto = p.PagNum + " - " + p.PagFyh.ToString("g") })
-                .ToListAsync();
+            var ahora = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
 
-            ViewBag.PagNum = new SelectList(pagos, "PagNum", "Texto", pagSel);
+            return await _ctx.TarifasServicio
+                .Include(t => t.ServicioProveido)
+                .AnyAsync(t =>
+                    t.PlyID == plyID &&
+                    t.SerID == serID &&
+                    t.ClasVehID == clasVehID &&
+                    (t.TasFecFin == null || t.TasFecFin > ahora) &&
+                    t.TasFecIni <= ahora &&
+                    t.ServicioProveido.SerProvHab);
         }
 
-        private Task<bool> ServicioHabilitadoEnPlaya(int plyID, int serID)
-            => _ctx.ServiciosProveidos.AnyAsync(sp => sp.PlyID == plyID && sp.SerID == serID && sp.SerProvHab);
+        // 🔹 Verificación asíncrona desde AJAX
+        [HttpGet]
+        public async Task<IActionResult> VerificarTarifaVigente(int plyID, int serID, int clasVehID)
+        {
+            var valido = await ValidarTarifaVigente(plyID, serID, clasVehID);
+            return Json(valido);
+        }
 
-        private Task<bool> PagoExisteEnPlaya(int plyID, int? pagNum)
-            => pagNum is null
-                ? Task.FromResult(true)
-                : _ctx.Pagos.AnyAsync(p => p.PlyID == plyID && p.PagNum == pagNum.Value);
+        // 🔹 GET: Create
+        public async Task<IActionResult> Create(int? plyID = null)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var plaNU))
+                return BadRequest("ID de usuario inválido");
 
-        // -------- CRUD --------
+            // Turno activo del playero
+            var turno = await _ctx.Turnos
+                .FirstOrDefaultAsync(t => t.PlaNU == plaNU && t.TurFyhFin == null);
+
+            if (turno == null)
+            {
+                TempData["Error"] = "Debe tener un turno activo para registrar servicios extra.";
+                return RedirectToAction("Index", "Ocupacion");
+            }
+
+            // Cargar servicios extra habilitados para la playa del turno
+            await LoadServiciosHabilitados(turno.PlyID);
+
+            // Obtener nombre de la playa
+            var playaNombre = await _ctx.Playas
+                .Where(p => p.PlyID == turno.PlyID)
+                .Select(p => p.PlyNom)
+                .FirstOrDefaultAsync();
+
+            ViewBag.SelectedPlyID = turno.PlyID;
+            ViewBag.SelectedPlyNombre = playaNombre;
+
+            await LoadVehiculos();
+            await LoadClasificacionesVehiculo();
+
+            return View(new ServicioExtraRealizado
+            {
+                ServExFyHIni = DateTime.Now,
+                PlyID = turno.PlyID
+            });
+        }
+
+        // 🔹 POST: Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(ServicioExtraRealizado model, int ClasVehID)
+        {
+            if (!ModelState.IsValid)
+            {
+                await LoadServiciosHabilitados(model.PlyID);
+                await LoadVehiculos(model.VehPtnt);
+                await LoadClasificacionesVehiculo(ClasVehID);
+                return View(model);
+            }
+
+            // Validar tarifa vigente
+            var existeTarifa = await ValidarTarifaVigente(model.PlyID, model.SerID, ClasVehID);
+            if (!existeTarifa)
+            {
+                ModelState.AddModelError("", "No existe una tarifa vigente para el servicio y tipo de vehículo seleccionados.");
+                await LoadServiciosHabilitados(model.PlyID);
+                await LoadVehiculos(model.VehPtnt);
+                await LoadClasificacionesVehiculo(ClasVehID);
+                return View(model);
+            }
+
+            // 🔹 Verificar que el servicio provisto exista
+            var existeServicio = await _ctx.ServiciosProveidos
+                .AnyAsync(sp => sp.PlyID == model.PlyID && sp.SerID == model.SerID && sp.SerProvHab);
+
+            if (!existeServicio)
+            {
+                ModelState.AddModelError("", "La playa no ofrece este servicio.");
+                await LoadServiciosHabilitados(model.PlyID);
+                await LoadVehiculos(model.VehPtnt);
+                await LoadClasificacionesVehiculo(ClasVehID);
+                return View(model);
+            }
+
+            // 🔹 Verificar que el vehículo exista; si no, crear un registro mínimo con marca por defecto
+            var existeVeh = await _ctx.Vehiculos.AnyAsync(v => v.VehPtnt == model.VehPtnt);
+            if (!existeVeh)
+            {
+                var nuevoVeh = new Vehiculo
+                {
+                    VehPtnt = model.VehPtnt,
+                    VehMarc = "No especificado",
+                    ClasVehID = ClasVehID
+                };
+
+                try
+                {
+                    _ctx.Vehiculos.Add(nuevoVeh);
+                    await _ctx.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", $"No se pudo crear el vehículo automáticamente: {ex.Message}");
+                    await LoadServiciosHabilitados(model.PlyID);
+                    await LoadVehiculos(model.VehPtnt);
+                    await LoadClasificacionesVehiculo(ClasVehID);
+                    return View(model);
+                }
+            }
+
+            // 🔹 Definir estado inicial y hora
+            model.ServExFyHIni = DateTime.UtcNow;
+            model.ServExEstado = "Pendiente";
+
+            // ⚠️ Importante: NO asignar objetos de navegación, solo las FK
+            model.ServicioProveido = null;
+            model.Vehiculo = null;
+
+            try
+            {
+                model.ServExFyHIni = DateTime.UtcNow;
+                model.ServExEstado = string.IsNullOrEmpty(model.ServExEstado) ? "Pendiente" : model.ServExEstado;
+
+                _ctx.Entry(model).State = EntityState.Added;
+                await _ctx.SaveChangesAsync();
+
+                TempData["Saved"] = true;
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", $"Error al guardar el registro: {ex.Message}");
+                await LoadServiciosHabilitados(model.PlyID);
+                await LoadVehiculos(model.VehPtnt);
+                await LoadClasificacionesVehiculo(ClasVehID);
+                return View(model);
+            }
+
+        }
+
+        // 🔹 INDEX: lista los servicios extra del turno activo del playero
         public async Task<IActionResult> Index()
         {
-            var q = _ctx.ServiciosExtrasRealizados
-                .Include(se => se.ServicioProveido).ThenInclude(sp => sp.Servicio)
-                .Include(se => se.ServicioProveido).ThenInclude(sp => sp.Playa)
-                .Include(se => se.Vehiculo)
-                .Include(se => se.Pago)
-                .AsNoTracking();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var plaNU))
+                return BadRequest("ID de usuario inválido");
 
-            return View(await q.ToListAsync());
-        }
+            // Buscar turno activo del playero
+            var turno = await _ctx.Turnos
+                .Include(t => t.Playa)
+                .FirstOrDefaultAsync(t => t.PlaNU == plaNU && t.TurFyhFin == null);
 
-        public async Task<IActionResult> Details(int plyID, int serID, string vehPtnt, DateTime servExFyHIni)
-        {
-            var item = await _ctx.ServiciosExtrasRealizados
-                .Include(se => se.ServicioProveido).ThenInclude(sp => sp.Servicio)
-                .Include(se => se.ServicioProveido).ThenInclude(sp => sp.Playa)
-                .Include(se => se.Vehiculo)
-                .Include(se => se.Pago)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(se =>
-                    se.PlyID == plyID && se.SerID == serID &&
-                    se.VehPtnt == vehPtnt && se.ServExFyHIni == servExFyHIni);
-
-            return item is null ? NotFound() : View(item);
-        }
-
-        public async Task<IActionResult> Create()
-        {
-            await LoadPlayas();
-            ViewBag.SerID = new SelectList(Enumerable.Empty<SelectListItem>()); // hasta elegir playa
-            await LoadVehiculos();
-            ViewBag.PagNum = new SelectList(Enumerable.Empty<SelectListItem>());
-            return View(new ServicioExtraRealizado { ServExFyHIni = DateTime.Now });
-        }
-
-        [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(ServicioExtraRealizado model)
-        {
-            if (!await ServicioHabilitadoEnPlaya(model.PlyID, model.SerID))
-                ModelState.AddModelError(nameof(model.SerID), "La playa no ofrece este servicio o no está habilitado.");
-
-            if (!await PagoExisteEnPlaya(model.PlyID, model.PagNum))
-                ModelState.AddModelError(nameof(model.PagNum), "El pago no existe en esta playa.");
-
-            if (!ModelState.IsValid)
+            if (turno == null)
             {
-                await LoadPlayas(model.PlyID);
-                await LoadServiciosHabilitados(model.PlyID, model.SerID);
-                await LoadVehiculos(model.VehPtnt);
-                await LoadPagosDePlaya(model.PlyID, model.PagNum);
-                return View(model);
+                TempData["Error"] = "Debe tener un turno activo para ver los servicios extra realizados.";
+                return RedirectToAction("Index", "Ocupacion");
             }
 
-            _ctx.ServiciosExtrasRealizados.Add(model);
-            await _ctx.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        public async Task<IActionResult> Edit(int plyID, int serID, string vehPtnt, DateTime servExFyHIni)
-        {
-            var item = await _ctx.ServiciosExtrasRealizados.FindAsync(plyID, serID, vehPtnt, servExFyHIni);
-            if (item is null) return NotFound();
-
-            await LoadPlayas(item.PlyID);
-            await LoadServiciosHabilitados(item.PlyID, item.SerID);
-            await LoadVehiculos(item.VehPtnt);
-            await LoadPagosDePlaya(item.PlyID, item.PagNum);
-            return View(item);
-        }
-
-        [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int plyID, int serID, string vehPtnt, DateTime servExFyHIni, ServicioExtraRealizado model)
-        {
-            // PK fija: si querés permitir cambiarla, hacé delete+create
-            if (plyID != model.PlyID || serID != model.SerID || vehPtnt != model.VehPtnt || servExFyHIni != model.ServExFyHIni)
-                return BadRequest();
-
-            if (!await ServicioHabilitadoEnPlaya(model.PlyID, model.SerID))
-                ModelState.AddModelError(nameof(model.SerID), "La playa no ofrece este servicio o no está habilitado.");
-
-            if (!await PagoExisteEnPlaya(model.PlyID, model.PagNum))
-                ModelState.AddModelError(nameof(model.PagNum), "El pago no existe en esta playa.");
-
-            if (!ModelState.IsValid)
+            try
             {
-                await LoadPlayas(model.PlyID);
-                await LoadServiciosHabilitados(model.PlyID, model.SerID);
-                await LoadVehiculos(model.VehPtnt);
-                await LoadPagosDePlaya(model.PlyID, model.PagNum);
-                return View(model);
+                var lista = await _ctx.ServiciosExtrasRealizados
+                    .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                    .Include(s => s.Vehiculo)
+                    .AsNoTracking()
+                    .Where(s => s.PlyID == turno.PlyID)
+                    .OrderByDescending(s => s.ServExFyHIni)
+                    .ToListAsync();
+
+                ViewBag.PlayaNombre = turno.Playa.PlyNom;
+                ViewBag.TurnoInicio = turno.TurFyhIni;
+
+                return View(lista);
             }
-
-            _ctx.Entry(model).State = EntityState.Modified;
-            await _ctx.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            catch (Exception ex)
+            {
+                Console.WriteLine($"💥 Error en Index: {ex.Message}");
+                TempData["Error"] = $"Error al cargar los servicios extra: {ex.Message}";
+                return View(new List<ServicioExtraRealizado>());
+            }
         }
 
-        public async Task<IActionResult> Delete(int plyID, int serID, string vehPtnt, DateTime servExFyHIni)
-        {
-            var item = await _ctx.ServiciosExtrasRealizados
-                .Include(se => se.ServicioProveido).ThenInclude(sp => sp.Servicio)
-                .Include(se => se.ServicioProveido).ThenInclude(sp => sp.Playa)
-                .Include(se => se.Vehiculo)
-                .Include(se => se.Pago)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(se =>
-                    se.PlyID == plyID && se.SerID == serID &&
-                    se.VehPtnt == vehPtnt && se.ServExFyHIni == servExFyHIni);
-
-            return item is null ? NotFound() : View(item);
-        }
-
-        [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int plyID, int serID, string vehPtnt, DateTime servExFyHIni)
-        {
-            var item = await _ctx.ServiciosExtrasRealizados.FindAsync(plyID, serID, vehPtnt, servExFyHIni);
-            if (item is null) return NotFound();
-
-            _ctx.ServiciosExtrasRealizados.Remove(item);
-            await _ctx.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        // -------- AJAX helpers --------
-
-        // GET: /ServicioExtraRealizado/ServiciosPorPlaya?plyID=1
-        public async Task<IActionResult> ServiciosPorPlaya(int plyID)
-        {
-            var servicios = await _ctx.ServiciosProveidos
-                .Where(sp => sp.PlyID == plyID && sp.SerProvHab)
-                .Include(sp => sp.Servicio)
-                .OrderBy(sp => sp.Servicio.SerNom)
-                .Select(sp => new { sp.SerID, sp.Servicio.SerNom })
-                .ToListAsync();
-
-            return Json(servicios);
-        }
-
-        // GET: /ServicioExtraRealizado/PagosPorPlaya?plyID=1
-        public async Task<IActionResult> PagosPorPlaya(int plyID)
-        {
-            var pagos = await _ctx.Pagos
-                .Where(p => p.PlyID == plyID)
-                .OrderByDescending(p => p.PagFyh)
-                .Select(p => new { p.PagNum, Texto = p.PagNum + " - " + p.PagFyh.ToString("g") })
-                .ToListAsync();
-
-            return Json(pagos);
-        }
     }
 }

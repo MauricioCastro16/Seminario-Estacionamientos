@@ -1,0 +1,108 @@
+@model estacionamientos.Models.ServicioExtraRealizado
+@{
+    ViewData["Title"] = "Registrar Servicio Extra";
+}
+
+<h2>Registrar Servicio Extra</h2>
+
+<!-- 🔹 Bloque de errores -->
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger">
+        @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <div>@error.ErrorMessage</div>
+        }
+    </div>
+}
+
+<form asp-action="Create" method="post">
+    @Html.AntiForgeryToken()
+
+    <div class="mb-3">
+        <label class="form-label">Playa</label>
+        @if (User.IsInRole("Playero") && ViewBag.SelectedPlyID != null)
+        {
+            <input type="text" class="form-control" value="@ViewBag.SelectedPlyNombre" disabled />
+            <!-- usar asp-for para asegurar el binding correcto -->
+            <input type="hidden" asp-for="PlyID" />
+        }
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="SerID" class="form-label">Servicio</label>
+        <select asp-for="SerID" class="form-select" asp-items="(SelectList)ViewBag.SerID">
+            <option value="">Seleccione un servicio...</option>
+        </select>
+        <small id="servicioDesc" class="text-muted d-block mt-1"></small>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="VehPtnt" class="form-label">Patente</label>
+        <input asp-for="VehPtnt" class="form-control" autocomplete="off" />
+    </div>
+
+    <div class="mb-3">
+        <label for="ClasVehID" class="form-label">Tipo de Vehículo</label>
+        <select id="ClasVehID" name="ClasVehID" class="form-select" asp-items="(SelectList)ViewBag.ClasVehID">
+            <option value="">Seleccione un tipo de vehículo...</option>
+        </select>
+    </div>
+
+    <!-- 🔹 Contenedor para mensaje de error -->
+    <div id="tarifaError" class="text-danger mt-3 d-none"></div>
+
+    <div class="mb-3">
+        <label asp-for="ServExComp" class="form-label">Comentario (opcional)</label>
+        <textarea asp-for="ServExComp" class="form-control"></textarea>
+    </div>
+
+    <!-- dejar que el model binder maneje el valor; el controlador sobreescribe con UTC en POST -->
+    <input type="hidden" asp-for="ServExFyHIni" />
+
+
+    <button type="submit" class="btn btn-primary">Registrar</button>
+    <a asp-action="Index" class="btn btn-secondary ms-2">Volver</a>
+
+</form>
+
+@section Scripts {
+<script>
+$(function () {
+    const $submitBtn = $('form').find('button[type=submit]');
+    const $tarifaError = $('#tarifaError');
+
+    function verificarTarifa() {
+        const serID = $('#SerID').val();
+        const clasVehID = $('#ClasVehID').val();
+        const plyID = $('input[name="PlyID"]').val();
+
+        // Limpia cualquier mensaje previo
+        $tarifaError.text('').addClass('d-none');
+        $submitBtn.prop('disabled', false);
+
+        if (!serID || !clasVehID || !plyID) return;
+
+        $.getJSON('@Url.Action("VerificarTarifaVigente", "ServicioExtraRealizado")', {
+            plyID: plyID,
+            serID: serID,
+            clasVehID: clasVehID
+        })
+        .done(function (tieneTarifa) {
+            if (!tieneTarifa) {
+                $tarifaError
+                    .text(' No hay tarifas vigentes para el servicio y tipo de vehículo seleccionados.')
+                    .removeClass('d-none');
+                $submitBtn.prop('disabled', true);
+            }
+        })
+    }
+
+    // 🔹 Verificar cada vez que cambia servicio o tipo de vehículo
+    $('#SerID, #ClasVehID').on('change', verificarTarifa);
+
+    // 🔹 Verificación inicial por si ya hay algo seleccionado
+    verificarTarifa();
+});
+</script>
+}

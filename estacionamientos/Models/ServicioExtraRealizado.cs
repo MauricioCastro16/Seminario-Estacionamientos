@@ -18,9 +18,13 @@ namespace estacionamientos.Models
         // Pago (opcional) — FK compuesta a Pago
         public int? PagNum { get; set; }
 
-        // Navs
-        public ServicioProveido ServicioProveido { get; set; } = default!;
-        public Vehiculo Vehiculo { get; set; } = default!;
+    // Navs (nullable to avoid MVC treating them as required on POST)
+    public ServicioProveido? ServicioProveido { get; set; }
+    public Vehiculo? Vehiculo { get; set; }
         public Pago? Pago { get; set; }
+
+        [StringLength(20)]
+        public string ServExEstado { get; set; } = "Pendiente";
+
     }
 }
