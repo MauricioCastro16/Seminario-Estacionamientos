@@ -263,5 +263,67 @@ namespace estacionamientos.Controllers
             }
         }
 
+        // 🔹 GET: Detalles de un servicio extra realizado
+        public async Task<IActionResult> Details(int plyID, int serID, string vehPtnt, DateTime servExFyHIni)
+        {
+            var item = await _ctx.ServiciosExtrasRealizados
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                .Include(s => s.Vehiculo)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.PlyID == plyID && s.SerID == serID && s.VehPtnt == vehPtnt && s.ServExFyHIni == servExFyHIni);
+
+            if (item == null) return NotFound();
+
+            return View(item);
+        }
+
+        // 🔹 POST: Cambiar estado de un servicio extra (Playero)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CambiarEstado(int plyID, int serID, string vehPtnt, DateTime servExFyHIni, string nuevoEstado)
+        {
+            // Verificar turno activo del playero y que corresponda a la misma playa
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var plaNU))
+                return BadRequest("ID de usuario inválido");
+
+            var turno = await _ctx.Turnos.FirstOrDefaultAsync(t => t.PlaNU == plaNU && t.TurFyhFin == null);
+            if (turno == null || turno.PlyID != plyID)
+                return Forbid();
+
+            var key = new object[] { plyID, serID, vehPtnt, servExFyHIni };
+            var item = await _ctx.ServiciosExtrasRealizados.FindAsync(key);
+            if (item == null)
+                return NotFound();
+
+            // Sólo permitir transiciones conocidas
+            if (nuevoEstado == "En curso")
+            {
+                item.ServExEstado = "En curso";
+            }
+            else if (nuevoEstado == "Finalizado" || nuevoEstado == "Completado")
+            {
+                item.ServExEstado = "Completado";
+                item.ServExFyHFin = DateTime.UtcNow;
+            }
+            else
+            {
+                return BadRequest("Estado no permitido");
+            }
+
+            try
+            {
+                _ctx.Entry(item).State = EntityState.Modified;
+                await _ctx.SaveChangesAsync();
+                TempData["Saved"] = true;
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"No se pudo cambiar el estado: {ex.Message}";
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
     }
 }

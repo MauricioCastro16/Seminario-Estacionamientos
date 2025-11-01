@@ -28,6 +28,7 @@
             <th>Patente</th>
             <th>Estado</th>
             <th>Comentario</th>
+            <th>Acciones</th>
         </tr>
     </thead>
     <tbody>
@@ -53,6 +54,10 @@
                         {
                             <span class="badge bg-warning text-dark">Pendiente</span>
                         }
+                        else if (s.ServExEstado == "En curso")
+                        {
+                            <span class="badge bg-info text-dark">En curso</span>
+                        }
                         else if (s.ServExEstado == "Completado")
                         {
                             <span class="badge bg-success">Completado</span>
@@ -67,6 +72,44 @@
                         }
                     </td>
                     <td>@s.ServExComp</td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <!-- Botón Detalles siempre visible en la columna Acciones -->
+                            <a asp-action="Details" class="btn btn-sm btn-outline-info" 
+                               asp-route-plyID="@s.PlyID" asp-route-serID="@s.SerID" asp-route-vehPtnt="@s.VehPtnt" asp-route-servExFyHIni="@s.ServExFyHIni.ToString("o")">
+                                Detalles
+                            </a>
+
+                            @if (s.ServExEstado == "Pendiente")
+                            {
+                                <form asp-action="CambiarEstado" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="plyID" value="@s.PlyID" />
+                                    <input type="hidden" name="serID" value="@s.SerID" />
+                                    <input type="hidden" name="vehPtnt" value="@s.VehPtnt" />
+                                    <input type="hidden" name="servExFyHIni" value="@s.ServExFyHIni.ToString("o")" />
+                                    <input type="hidden" name="nuevoEstado" value="En curso" />
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Iniciar</button>
+                                </form>
+                            }
+                            else if (s.ServExEstado == "En curso")
+                            {
+                                <form asp-action="CambiarEstado" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="plyID" value="@s.PlyID" />
+                                    <input type="hidden" name="serID" value="@s.SerID" />
+                                    <input type="hidden" name="vehPtnt" value="@s.VehPtnt" />
+                                    <input type="hidden" name="servExFyHIni" value="@s.ServExFyHIni.ToString("o")" />
+                                    <input type="hidden" name="nuevoEstado" value="Finalizado" />
+                                    <button type="submit" class="btn btn-sm btn-outline-success">Finalizar</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-secondary" disabled>Sin acciones</button>
+                            }
+                        </div>
+                    </td>
                 </tr>
             }
         }
