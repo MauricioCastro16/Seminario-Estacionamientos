@@ -255,6 +255,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Bloquear todos los inputs visibles
                 habilitarCampos(false);
 
+                // Si ya existe un vehículo abonado, permitir el ingreso de otro como normal
+                if (data.existeOtroVehiculo) {
+                    msg.textContent = "Este abonado ya tiene un vehículo ingresado. Puede ingresar otro vehículo en otra plaza, pero se le cobrará la tarifa correspondiente.";
+                    // Permitir seleccionar plaza sin restricciones de abonado
+                    window.esAbonado = false;
+                    habilitarCampos(true);  // Habilitar los campos para un vehículo normal
+                }
+
                 // Prellenar valores
                 if (data.clasVehID) selClas.value = data.clasVehID;
                 if (data.techada === true) document.getElementById("techadaSi").checked = true;
@@ -534,7 +542,7 @@ document.addEventListener("DOMContentLoaded", () => {
         renderGrid();
     });
 
-    // Estado inicial: solo mostrar mensaje guía si NO es abonado
+    // Estado inicial: solo mostrar mensaje si NO es abonado
     if (!window.esAbonado && !inputPatente.value.trim()) {
         selPiso.disabled = true;
         showPrompt("Elegí clasificación, si es techada o no y luego el piso para ver las plazas.");

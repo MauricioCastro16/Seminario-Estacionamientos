@@ -77,6 +77,11 @@ namespace estacionamientos.Controllers
             var plazaNum = plaza?.PlzNum ?? 0;
             var plazaNombre = plaza?.PlzNombre ?? "(sin nombre)";
 
+            var existeOtroVehiculo = await _ctx.VehiculosAbonados
+                .AsNoTracking()
+                .AnyAsync(v => v.Abono.PlyID == vehiculoAbonado.Abono.PlyID && v.Abono.PlzNum == vehiculoAbonado.Abono.PlzNum && v.VehPtnt != vehiculoAbonado.VehPtnt);
+
+
             return Json(new
             {
                 success = true,
@@ -86,7 +91,8 @@ namespace estacionamientos.Controllers
                 techada,
                 piso,
                 plaza = plazaNum,
-                esAbonado = true
+                esAbonado = true,
+                existeOtroVehiculo
             });
         }
     }
