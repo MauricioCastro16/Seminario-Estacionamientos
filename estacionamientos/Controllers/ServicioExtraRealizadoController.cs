@@ -102,10 +102,9 @@ namespace estacionamientos.Controllers
                 .FirstOrDefaultAsync(t => t.PlaNU == plaNU && t.TurFyhFin == null);
 
             if (turno == null)
-            {
-                TempData["Error"] = "Debe tener un turno activo para registrar servicios extra.";
-                return RedirectToAction("Index", "Ocupacion");
-            }
+                // Forzar la vista específica de este controller para evitar colisiones con otras
+                // vistas "NoTurno" en otros controllers (p. ej. Ocupacion/NoTurno).
+                return View("~/Views/ServicioExtraRealizado/NoTurno.cshtml");
 
             // Cargar servicios extra habilitados para la playa del turno
             await LoadServiciosHabilitados(turno.PlyID);
@@ -235,10 +234,8 @@ namespace estacionamientos.Controllers
                 .FirstOrDefaultAsync(t => t.PlaNU == plaNU && t.TurFyhFin == null);
 
             if (turno == null)
-            {
-                TempData["Error"] = "Debe tener un turno activo para ver los servicios extra realizados.";
-                return RedirectToAction("Index", "Ocupacion");
-            }
+                return View("~/Views/ServicioExtraRealizado/NoTurno.cshtml");
+            
 
             try
             {

@@ -13,7 +13,7 @@
             <dd class="col-sm-9">@Model.PlyID</dd>
 
             <dt class="col-sm-3">Servicio</dt>
-            <dd class="col-sm-9">@Model.ServicioProveido?.Servicio?.SerNom ?? "-"</dd>
+            <dd class="col-sm-9">@Model.ServicioProveido?.Servicio?.SerNom</dd>
 
             <dt class="col-sm-3">Patente</dt>
             <dd class="col-sm-9">@Model.VehPtnt</dd>
@@ -21,10 +21,10 @@
             <dt class="col-sm-3">Estado</dt>
             <dd class="col-sm-9">@Model.ServExEstado</dd>
 
-            <dt class="col-sm-3">Inicio (ServExFyHIni)</dt>
+            <dt class="col-sm-3">Inicio</dt>
             <dd class="col-sm-9">@Model.ServExFyHIni.ToLocalTime().ToString("g")</dd>
 
-            <dt class="col-sm-3">Fin (ServExFyHFin)</dt>
+            <dt class="col-sm-3">Fin</dt>
             <dd class="col-sm-9">@(Model.ServExFyHFin.HasValue ? Model.ServExFyHFin.Value.ToLocalTime().ToString("g") : "(no finalizado)")</dd>
 
             <dt class="col-sm-3">Comentario</dt>

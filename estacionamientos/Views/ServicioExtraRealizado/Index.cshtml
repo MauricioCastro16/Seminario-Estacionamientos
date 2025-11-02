@@ -6,36 +6,46 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">Servicios Extra</h2>
-    <a asp-action="Create" class="btn btn-primary">
+    <a asp-action="Create" class="btn btn-primary shadow-sm">
         <i class="bi bi-plus-circle"></i> Registrar nuevo servicio
     </a>
 </div>
 
-
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">@TempData["Error"]</div>
+    <div class="alert alert-danger shadow-sm">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+        @TempData["Error"]
+    </div>
 }
 
-<p class="text-muted">
-    Playa: <strong>@ViewBag.PlayaNombre</strong><br />
-</p>
+<div class="mb-3">
+    <p class="text-muted mb-0">
+        <i class="fa-solid fa-location-dot me-1 text-primary"></i>
+        Playa: <strong>@ViewBag.PlayaNombre</strong>
+    </p>
+</div>
 
-<table class="table table-striped align-middle">
-    <thead>
-        <tr>
-            <th>Servicio</th>
-            <th>Patente</th>
-            <th>Estado</th>
-            <th>Comentario</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
+<!-- TABLA -->
+<div class="table-responsive mt-3">
+    <table class="table table-striped table-hover table-sm align-middle text-center shadow-sm">
+        <thead class="table-light">
+            <tr>
+                <th class="text-center">Servicio</th>
+                <th class="text-center">Patente</th>
+                <th class="text-center">Estado</th>
+                <th class="text-center">Comentario</th>
+                <th class="text-center">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
         @if (!Model.Any())
         {
             <tr>
-                <td colspan="5" class="text-center text-muted">No hay servicios registrados en este turno.</td>
+                <td colspan="5" class="text-center text-muted py-4">
+                    <i class="fa-regular fa-circle-xmark me-1"></i>
+                    No hay servicios registrados en este turno.
+                </td>
             </tr>
         }
         else
@@ -44,41 +54,30 @@
             {
                 <tr>
                     <td>@s.ServicioProveido?.Servicio?.SerNom</td>
-                    <td>@s.VehPtnt</td>
+                    <td><span class="fw-semibold">@s.VehPtnt</span></td>
                     <td>
-                        @if (string.IsNullOrEmpty(s.ServExEstado))
+                        @switch (s.ServExEstado)
                         {
-                            <span class="badge bg-secondary">Sin estado</span>
-                        }
-                        else if (s.ServExEstado == "Pendiente")
-                        {
-                            <span class="badge bg-warning text-dark">Pendiente</span>
-                        }
-                        else if (s.ServExEstado == "En curso")
-                        {
-                            <span class="badge bg-info text-dark">En curso</span>
-                        }
-                        else if (s.ServExEstado == "Completado")
-                        {
-                            <span class="badge bg-success">Completado</span>
-                        }
-                        else if (s.ServExEstado == "Cancelado")
-                        {
-                            <span class="badge bg-danger">Cancelado</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary">@s.ServExEstado</span>
+                            case "Pendiente":
+                                <span class="text-warning fw-bold">Pendiente</span>;                                
+                                break;
+                            case "En curso":
+                                <span class="text-info fw-bold">En curso</span>;
+                                break;
+                            case "Completado":
+                                <span class="text-success fw-bold",>Completado</span>;
+                                break;
+                            case "Cancelado":
+                                <span class="text-danger fw-bold">Cancelado</span>;
+                                break;
+                            default:
+                                <span class="badge bg-secondary px-3 py-2 shadow-sm">Sin estado</span>;
+                                break;
                         }
                     </td>
-                    <td>@s.ServExComp</td>
-                    <td>
-                        <div class="d-flex gap-2">
-                            <!-- Botón Detalles siempre visible en la columna Acciones -->
-                            <a asp-action="Details" class="btn btn-sm btn-outline-info" 
-                               asp-route-plyID="@s.PlyID" asp-route-serID="@s.SerID" asp-route-vehPtnt="@s.VehPtnt" asp-route-servExFyHIni="@s.ServExFyHIni.ToString("o")">
-                                Detalles
-                            </a>
+                    <td class="text-muted small">@s.ServExComp</td>
+                    <td class="text-center">
+                        <div class="d-flex justify-content-center gap-2">
 
                             @if (s.ServExEstado == "Pendiente")
                             {
@@ -89,7 +88,9 @@
                                     <input type="hidden" name="vehPtnt" value="@s.VehPtnt" />
                                     <input type="hidden" name="servExFyHIni" value="@s.ServExFyHIni.ToString("o")" />
                                     <input type="hidden" name="nuevoEstado" value="En curso" />
-                                    <button type="submit" class="btn btn-sm btn-outline-primary">Iniciar</button>
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Iniciar servicio">
+                                        <i class="fa-solid fa-play"></i>
+                                    </button>
                                 </form>
                             }
                             else if (s.ServExEstado == "En curso")
@@ -101,18 +102,34 @@
                                     <input type="hidden" name="vehPtnt" value="@s.VehPtnt" />
                                     <input type="hidden" name="servExFyHIni" value="@s.ServExFyHIni.ToString("o")" />
                                     <input type="hidden" name="nuevoEstado" value="Finalizado" />
-                                    <button type="submit" class="btn btn-sm btn-outline-success">Finalizar</button>
+                                    <button type="submit" class="btn btn-outline-success btn-sm" title="Finalizar servicio">
+                                        <i class="fa-solid fa-check"></i>
+                                    </button>
                                 </form>
                             }
                             else
                             {
-                                <button class="btn btn-sm btn-secondary" disabled>Sin acciones</button>
+                                <button class="btn btn-outline-secondary btn-sm" disabled title="Sin acciones disponibles">
+                                    <i class="fa-solid fa-ban"></i>
+                                </button>
                             }
+
+                            <!-- Detalles -->
+                            <a asp-action="Details"
+                               asp-route-plyID="@s.PlyID"
+                               asp-route-serID="@s.SerID"
+                               asp-route-vehPtnt="@s.VehPtnt"
+                               asp-route-servExFyHIni="@s.ServExFyHIni.ToString("o")"
+                               class="btn btn-outline-primary btn-sm"
+                               title="Ver detalles">
+                                <i class="fa-solid fa-eye"></i>
+                            </a>
+
                         </div>
                     </td>
                 </tr>
             }
         }
         </tbody>
-
-</table>
+    </table>
+</div>
