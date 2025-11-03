@@ -104,6 +104,10 @@ namespace estacionamientos.Controllers
                 }
             }
 
+            var esAbonado = await _ctx.Abonos
+                .Include(a => a.Vehiculos)
+                .AnyAsync(a => a.Vehiculos.Any(v => v.VehPtnt == vehPtnt));
+
             // Buscar referencias a fracción (30min) y hora (60min)
             var fraccion = tarifas.FirstOrDefault(t => t.minutos == 30);
             var hora = tarifas.FirstOrDefault(t => t.minutos == 60);
@@ -203,6 +207,14 @@ namespace estacionamientos.Controllers
                     }
                 }
             }
+
+            // Si el vehículo pertenece a un abonado, el total de cobro es 0
+            if (esAbonado)
+            {
+                totalCobro = 0;
+            }
+
+            ViewBag.EsAbonado = esAbonado;
 
             // Métodos de pago
             var metodosPago = await _ctx.AceptaMetodosPago
@@ -398,30 +410,36 @@ namespace estacionamientos.Controllers
 
             try
             {
-                // Crear el pago primero
-                var proximoNumeroPago = await _ctx.Pagos
-                    .Where(p => p.PlyID == model.PlyID)
-                    .MaxAsync(p => (int?)p.PagNum) + 1 ?? 1;
-                
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                int plaNU = int.Parse(userId ?? "0");
+                var esAbonado = model.TotalCobro == 0;
 
-                var pago = new Pago
+                if (!esAbonado)
                 {
-                    PlyID = model.PlyID,
-                    PlaNU = plaNU, 
-                    PagNum = proximoNumeroPago,
-                    MepID = model.MepID,
-                    PagMonto = model.TotalCobro,
-                    PagFyh = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
-                };
+                    // Crear el pago primero
+                    var proximoNumeroPago = await _ctx.Pagos
+                        .Where(p => p.PlyID == model.PlyID)
+                        .MaxAsync(p => (int?)p.PagNum) + 1 ?? 1;
+                    
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    int plaNU = int.Parse(userId ?? "0");
 
-                _ctx.Pagos.Add(pago);
-                await _ctx.SaveChangesAsync();
+                    var pago = new Pago
+                    {
+                        PlyID = model.PlyID,
+                        PlaNU = plaNU, 
+                        PagNum = proximoNumeroPago,
+                        MepID = model.MepID,
+                        PagMonto = model.TotalCobro,
+                        PagFyh = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
+                    };
+
+                    _ctx.Pagos.Add(pago);
+                    await _ctx.SaveChangesAsync();
+
+                    ocup.PagNum = pago.PagNum;
+                }
 
                 // Actualizar la ocupación con la fecha de fin y asociar el pago
                 ocup.OcufFyhFin = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
-                ocup.PagNum = pago.PagNum;
                 _ctx.Ocupaciones.Update(ocup);
                 await _ctx.SaveChangesAsync();
 
@@ -458,7 +476,8 @@ namespace estacionamientos.Controllers
             catch (Exception ex)
             {
                 await tx.RollbackAsync();
-                TempData["Error"] = $"Error al procesar el egreso: {ex.Message}";
+                var innerMessage = ex.InnerException?.Message ?? ex.Message;
+                TempData["Error"] = $"Error al procesar el egreso: {innerMessage}";
                 return RedirectToAction(nameof(Index));
             }
         }
