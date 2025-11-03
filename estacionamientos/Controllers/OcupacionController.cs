@@ -365,17 +365,6 @@ namespace estacionamientos.Controllers
             var fechaEgreso = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             var cobroVM = await CalcularCobro(plyID, plzNum, vehPtnt, ocup.OcufFyhIni, fechaEgreso);
             
-            var movimientoPlayero = new MovimientoPlayero{
-                PlyID = plyID,
-                PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0"),
-                TipoMov = TipoMovimiento.EgresoVehiculo,
-                FechaMov = DateTime.UtcNow,
-                VehPtnt = vehPtnt,
-                PlzNum = plzNum,
-            };
-
-            _ctx.MovimientosPlayeros.Add(movimientoPlayero);
-            await _ctx.SaveChangesAsync();
             return View("CobroEgreso", cobroVM);
         }
 
@@ -405,6 +394,18 @@ namespace estacionamientos.Controllers
                 TempData["Error"] = "No se encontró la ocupación especificada.";
                 return RedirectToAction(nameof(Index));
             }
+
+            var movimientoPlayero = new MovimientoPlayero{
+                PlyID = model.PlyID,
+                PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0"),
+                TipoMov = TipoMovimiento.EgresoVehiculo,
+                FechaMov = DateTime.UtcNow,
+                VehPtnt = model.VehPtnt,
+                PlzNum = model.PlzNum,
+            };
+
+            _ctx.MovimientosPlayeros.Add(movimientoPlayero);
+            await _ctx.SaveChangesAsync();
 
             await using var tx = await _ctx.Database.BeginTransactionAsync();
 
