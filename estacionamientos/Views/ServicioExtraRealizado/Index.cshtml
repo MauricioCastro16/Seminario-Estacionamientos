@@ -79,6 +79,14 @@
                     <td class="text-center">
                         <div class="d-flex justify-content-center gap-2">
 
+                            @{
+                                var servicioKey = $"{s.PlyID}_{s.SerID}_{s.VehPtnt}_{s.ServExFyHIni:o}";
+                                var tieneOcupacion = ViewBag.ServiciosConOcupacion != null && 
+                                                    ((Dictionary<string, bool>)ViewBag.ServiciosConOcupacion).ContainsKey(servicioKey) &&
+                                                    ((Dictionary<string, bool>)ViewBag.ServiciosConOcupacion)[servicioKey];
+                                var puedeRetirar = !tieneOcupacion && s.ServExEstado == "Completado" && s.PagNum == null;
+                            }
+
                             @if (s.ServExEstado == "Pendiente")
                             {
                                 <form asp-action="CambiarEstado" method="post" class="d-inline">
@@ -111,6 +119,47 @@
                             {
                                 <button class="btn btn-outline-secondary btn-sm" disabled title="Sin acciones disponibles">
                                     <i class="fa-solid fa-ban"></i>
+                                </button>
+                            }
+
+                            <!-- Botón Retirar - siempre visible, cambia según estado -->
+                            @if (s.PagNum != null)
+                            {
+                                <button type="button" 
+                                        class="btn btn-success btn-sm" 
+                                        title="Ya retirado y cobrado"
+                                        disabled>
+                                    <i class="fa-solid fa-check-circle"></i> Retirado
+                                </button>
+                            }
+                            else if (tieneOcupacion && s.ServExEstado == "Completado")
+                            {
+                                <button type="button" 
+                                        class="btn btn-info btn-sm" 
+                                        title="Se cobrará junto con la ocupación al momento del egreso"
+                                        disabled>
+                                    <i class="fa-solid fa-info-circle"></i> Pendiente
+                                </button>
+                            }
+                            else if (puedeRetirar)
+                            {
+                                <a asp-action="Retirar"
+                                   asp-route-plyID="@s.PlyID"
+                                   asp-route-serID="@s.SerID"
+                                   asp-route-vehPtnt="@s.VehPtnt"
+                                   asp-route-servExFyHIni="@s.ServExFyHIni.ToString("o")"
+                                   class="btn btn-outline-warning btn-sm"
+                                   title="Retirar y cobrar">
+                                    <i class="fa-solid fa-money-bill-wave"></i> Retirar
+                                </a>
+                            }
+                            else
+                            {
+                                <button type="button" 
+                                        class="btn btn-outline-warning btn-sm disabled" 
+                                        title="Debe estar completado para retirar"
+                                        disabled>
+                                    <i class="fa-solid fa-money-bill-wave"></i> Retirar
                                 </button>
                             }
 

@@ -204,6 +204,46 @@ namespace estacionamientos.Controllers
                 }
             }
 
+            // 🔹 Agregar servicios extra pendientes de cobro (sin PagNum)
+            var serviciosExtras = await _ctx.ServiciosExtrasRealizados
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                .Where(s => s.VehPtnt == vehPtnt &&
+                           s.PlyID == plyID &&
+                           s.PagNum == null &&
+                           s.ServExEstado == "Completado")
+                .ToListAsync();
+
+            var ahora = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            foreach (var servicioExtra in serviciosExtras)
+            {
+                // Buscar tarifa vigente para el servicio extra
+                var tarifaServExtra = await _ctx.TarifasServicio
+                    .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                    .Where(t => t.PlyID == plyID &&
+                               t.SerID == servicioExtra.SerID &&
+                               t.ClasVehID == ocupacion.Vehiculo!.ClasVehID &&
+                               (t.TasFecFin == null || t.TasFecFin > ahora) &&
+                               t.TasFecIni <= ahora &&
+                               t.ServicioProveido.SerProvHab)
+                    .OrderByDescending(t => t.TasFecIni)
+                    .FirstOrDefaultAsync();
+
+                if (tarifaServExtra != null)
+                {
+                    serviciosAplicables.Add(new ServicioCobroVM
+                    {
+                        SerID = servicioExtra.SerID,
+                        SerNom = servicioExtra.ServicioProveido!.Servicio!.SerNom,
+                        SerTipo = servicioExtra.ServicioProveido.Servicio.SerTipo,
+                        TarifaVigente = tarifaServExtra.TasMonto,
+                        Cantidad = 1,
+                        Subtotal = tarifaServExtra.TasMonto,
+                        EsEstacionamiento = false
+                    });
+                    totalCobro += tarifaServExtra.TasMonto;
+                }
+            }
+
             // Métodos de pago
             var metodosPago = await _ctx.AceptaMetodosPago
                 .Include(amp => amp.MetodoPago)
@@ -354,6 +394,22 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // 🔹 Validar que no haya servicios extra sin completar
+            var serviciosExtraPendientes = await _ctx.ServiciosExtrasRealizados
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                .Where(s => s.VehPtnt == vehPtnt &&
+                           s.PlyID == plyID &&
+                           s.ServExEstado != "Completado" &&
+                           s.ServExEstado != "Cancelado")
+                .ToListAsync();
+
+            if (serviciosExtraPendientes.Any())
+            {
+                var serviciosNombres = string.Join(", ", serviciosExtraPendientes.Select(s => s.ServicioProveido?.Servicio?.SerNom ?? "Servicio desconocido"));
+                TempData["Error"] = $"No se puede egresar el vehículo. Tiene servicios extra pendientes de completar: {serviciosNombres}. Los servicios deben estar completados antes del egreso.";
+                return RedirectToAction(nameof(Index));
+            }
+
             // Calcular el cobro antes de confirmar el egreso
             var fechaEgreso = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             var cobroVM = await CalcularCobro(plyID, plzNum, vehPtnt, ocup.OcufFyhIni, fechaEgreso);
@@ -399,6 +455,22 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // 🔹 Validar que no haya servicios extra sin completar (validación adicional por seguridad)
+            var serviciosExtraPendientes = await _ctx.ServiciosExtrasRealizados
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                .Where(s => s.VehPtnt == model.VehPtnt &&
+                           s.PlyID == model.PlyID &&
+                           s.ServExEstado != "Completado" &&
+                           s.ServExEstado != "Cancelado")
+                .ToListAsync();
+
+            if (serviciosExtraPendientes.Any())
+            {
+                var serviciosNombres = string.Join(", ", serviciosExtraPendientes.Select(s => s.ServicioProveido?.Servicio?.SerNom ?? "Servicio desconocido"));
+                TempData["Error"] = $"No se puede egresar el vehículo. El servicio {serviciosNombres} debe finalizar antes del egreso.";
+                return RedirectToAction(nameof(Index));
+            }
+
             await using var tx = await _ctx.Database.BeginTransactionAsync();
 
             try
@@ -429,6 +501,26 @@ namespace estacionamientos.Controllers
                 ocup.PagNum = pago.PagNum;
                 _ctx.Ocupaciones.Update(ocup);
                 await _ctx.SaveChangesAsync();
+
+                // 🔹 Asociar servicios extra pendientes con el mismo pago
+                var serviciosExtras = await _ctx.ServiciosExtrasRealizados
+                    .Where(s => s.VehPtnt == model.VehPtnt &&
+                               s.PlyID == model.PlyID &&
+                               s.PagNum == null &&
+                               s.ServExEstado == "Completado")
+                    .ToListAsync();
+
+                foreach (var servicioExtra in serviciosExtras)
+                {
+                    servicioExtra.PagNum = pago.PagNum;
+                    servicioExtra.ServExFyHFin = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+                    _ctx.ServiciosExtrasRealizados.Update(servicioExtra);
+                }
+
+                if (serviciosExtras.Any())
+                {
+                    await _ctx.SaveChangesAsync();
+                }
 
                 // Si no quedan ocupaciones activas en esa plaza, marcarla como libre
                 var sigueOcupada = await _ctx.Ocupaciones.AnyAsync(o =>

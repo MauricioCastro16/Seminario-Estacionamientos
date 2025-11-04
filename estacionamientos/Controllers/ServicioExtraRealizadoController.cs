@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
+using estacionamientos.Models.ViewModels;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 
@@ -328,8 +329,21 @@ namespace estacionamientos.Controllers
                     .OrderByDescending(s => s.ServExFyHIni)
                     .ToListAsync();
 
+                // Verificar ocupación activa para cada servicio extra
+                var serviciosConOcupacion = new Dictionary<string, bool>();
+                foreach (var servicio in lista)
+                {
+                    var key = $"{servicio.PlyID}_{servicio.SerID}_{servicio.VehPtnt}_{servicio.ServExFyHIni:o}";
+                    var tieneOcupacion = await _ctx.Ocupaciones
+                        .AnyAsync(o => o.VehPtnt == servicio.VehPtnt &&
+                                      o.PlyID == servicio.PlyID &&
+                                      o.OcufFyhFin == null);
+                    serviciosConOcupacion[key] = tieneOcupacion;
+                }
+
                 ViewBag.PlayaNombre = turno.Playa.PlyNom;
                 ViewBag.TurnoInicio = turno.TurFyhIni;
+                ViewBag.ServiciosConOcupacion = serviciosConOcupacion;
 
                 return View(lista);
             }
@@ -401,6 +415,238 @@ namespace estacionamientos.Controllers
             }
 
             return RedirectToAction(nameof(Index));
+        }
+
+        // 🔹 GET: Retirar servicio extra (solo para servicios sin ocupación activa)
+        [HttpGet]
+        public async Task<IActionResult> Retirar(int plyID, int serID, string vehPtnt, DateTime servExFyHIni)
+        {
+            // Verificar turno activo del playero
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var plaNU))
+                return BadRequest("ID de usuario inválido");
+
+            var turno = await _ctx.Turnos.FirstOrDefaultAsync(t => t.PlaNU == plaNU && t.TurFyhFin == null);
+            if (turno == null || turno.PlyID != plyID)
+                return Forbid();
+
+            // Buscar el servicio extra
+            var servicio = await _ctx.ServiciosExtrasRealizados
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                .Include(s => s.Vehiculo).ThenInclude(v => v.Clasificacion)
+                .FirstOrDefaultAsync(s => s.PlyID == plyID && 
+                                         s.SerID == serID && 
+                                         s.VehPtnt == vehPtnt && 
+                                         s.ServExFyHIni == servExFyHIni);
+
+            if (servicio == null)
+                return NotFound();
+
+            // Verificar que no tenga ocupación activa
+            var tieneOcupacion = await _ctx.Ocupaciones
+                .AnyAsync(o => o.VehPtnt == vehPtnt &&
+                              o.PlyID == plyID &&
+                              o.OcufFyhFin == null);
+
+            if (tieneOcupacion)
+            {
+                TempData["Error"] = "Este servicio extra se cobrará junto con la ocupación al momento del egreso.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Verificar que el servicio esté completado
+            if (servicio.ServExEstado != "Completado")
+            {
+                TempData["Error"] = "El servicio debe estar completado para poder retirar.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Verificar que no haya sido retirado ya (PagNum != null)
+            if (servicio.PagNum != null)
+            {
+                TempData["Error"] = "Este servicio ya ha sido retirado y cobrado.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Calcular el cobro
+            var fechaRetiro = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var cobroVM = await CalcularCobroServicioExtra(plyID, serID, vehPtnt, servExFyHIni, fechaRetiro);
+
+            return View("CobroServicioExtra", cobroVM);
+        }
+
+        // 🔹 Calcular cobro para servicio extra sin ocupación activa
+        private async Task<CobroServicioExtraVM> CalcularCobroServicioExtra(
+            int plyID, int serID, string vehPtnt, DateTime servExFyHIni, DateTime servExFyHFin)
+        {
+            var servicio = await _ctx.ServiciosExtrasRealizados
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                .Include(s => s.Vehiculo).ThenInclude(v => v.Clasificacion)
+                .FirstOrDefaultAsync(s => s.PlyID == plyID &&
+                                         s.SerID == serID &&
+                                         s.VehPtnt == vehPtnt &&
+                                         s.ServExFyHIni == servExFyHIni);
+
+            if (servicio == null || servicio.Vehiculo == null)
+                throw new InvalidOperationException("Servicio extra o vehículo no encontrado");
+
+            var playa = await _ctx.Playas.FindAsync(plyID);
+            if (playa == null)
+                throw new InvalidOperationException("Playa no encontrada");
+
+            // Buscar tarifa vigente para el servicio extra y tipo de vehículo
+            var ahora = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var tarifa = await _ctx.TarifasServicio
+                .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                .Where(t => t.PlyID == plyID &&
+                           t.SerID == serID &&
+                           t.ClasVehID == servicio.Vehiculo.ClasVehID &&
+                           (t.TasFecFin == null || t.TasFecFin > ahora) &&
+                           t.TasFecIni <= ahora &&
+                           t.ServicioProveido.SerProvHab)
+                .OrderByDescending(t => t.TasFecIni)
+                .FirstOrDefaultAsync();
+
+            if (tarifa == null)
+                throw new InvalidOperationException("No se encontró una tarifa vigente para este servicio y tipo de vehículo");
+
+            var serviciosAplicables = new List<ServicioCobroVM>
+            {
+                new ServicioCobroVM
+                {
+                    SerID = serID,
+                    SerNom = servicio.ServicioProveido!.Servicio!.SerNom,
+                    SerTipo = servicio.ServicioProveido.Servicio.SerTipo,
+                    TarifaVigente = tarifa.TasMonto,
+                    Cantidad = 1,
+                    Subtotal = tarifa.TasMonto,
+                    EsEstacionamiento = false
+                }
+            };
+
+            // Métodos de pago
+            var metodosPago = await _ctx.AceptaMetodosPago
+                .Include(amp => amp.MetodoPago)
+                .Where(amp => amp.PlyID == plyID && amp.AmpHab)
+                .Select(amp => new MetodoPagoVM
+                {
+                    MepID = amp.MepID,
+                    MepNom = amp.MetodoPago!.MepNom,
+                    MepDesc = amp.MetodoPago!.MepDesc
+                })
+                .ToListAsync();
+
+            return new CobroServicioExtraVM
+            {
+                PlyID = plyID,
+                SerID = serID,
+                VehPtnt = vehPtnt,
+                ServExFyHIni = servExFyHIni,
+                ServExFyHFin = servExFyHFin,
+                ClasVehID = servicio.Vehiculo.ClasVehID,
+                ClasVehTipo = servicio.Vehiculo.Clasificacion?.ClasVehTipo ?? "",
+                PlayaNombre = playa.PlyNom,
+                ServicioNombre = servicio.ServicioProveido!.Servicio!.SerNom,
+                ServiciosAplicables = serviciosAplicables,
+                TotalCobro = tarifa.TasMonto,
+                MetodosPagoDisponibles = metodosPago
+            };
+        }
+
+        // 🔹 POST: Confirmar retiro y cobro de servicio extra
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ConfirmarRetiro(CobroServicioExtraVM model)
+        {
+            // Verificar turno activo del playero
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userId, out var plaNU))
+                return BadRequest("ID de usuario inválido");
+
+            var turno = await _ctx.Turnos.FirstOrDefaultAsync(t => t.PlaNU == plaNU && t.TurFyhFin == null);
+            if (turno == null || turno.PlyID != model.PlyID)
+                return Forbid();
+
+            if (!ModelState.IsValid)
+            {
+                // Recargar el modelo con los datos originales
+                var cobroVM = await CalcularCobroServicioExtra(model.PlyID, model.SerID, model.VehPtnt,
+                    model.ServExFyHIni, model.ServExFyHFin);
+                cobroVM.MepID = model.MepID; // Mantener la selección del usuario
+                return View("CobroServicioExtra", cobroVM);
+            }
+
+            // Buscar el servicio extra
+            var servicio = await _ctx.ServiciosExtrasRealizados
+                .FirstOrDefaultAsync(s => s.PlyID == model.PlyID &&
+                                         s.SerID == model.SerID &&
+                                         s.VehPtnt == model.VehPtnt &&
+                                         s.ServExFyHIni == model.ServExFyHIni);
+
+            if (servicio == null)
+            {
+                TempData["Error"] = "No se encontró el servicio especificado.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Verificar que no tenga ocupación activa
+            var tieneOcupacion = await _ctx.Ocupaciones
+                .AnyAsync(o => o.VehPtnt == model.VehPtnt &&
+                              o.PlyID == model.PlyID &&
+                              o.OcufFyhFin == null);
+
+            if (tieneOcupacion)
+            {
+                TempData["Error"] = "Este servicio extra se cobrará junto con la ocupación al momento del egreso.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Verificar que no haya sido retirado ya
+            if (servicio.PagNum != null)
+            {
+                TempData["Error"] = "Este servicio ya ha sido retirado y cobrado.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            await using var tx = await _ctx.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Crear el pago
+                var proximoNumeroPago = await _ctx.Pagos
+                    .Where(p => p.PlyID == model.PlyID)
+                    .MaxAsync(p => (int?)p.PagNum) + 1 ?? 1;
+
+                var pago = new Pago
+                {
+                    PlyID = model.PlyID,
+                    PlaNU = plaNU,
+                    PagNum = proximoNumeroPago,
+                    MepID = model.MepID,
+                    PagMonto = model.TotalCobro,
+                    PagFyh = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
+                };
+
+                _ctx.Pagos.Add(pago);
+                await _ctx.SaveChangesAsync();
+
+                // Actualizar el servicio extra con el pago
+                servicio.PagNum = pago.PagNum;
+                servicio.ServExFyHFin = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+                _ctx.ServiciosExtrasRealizados.Update(servicio);
+                await _ctx.SaveChangesAsync();
+
+                await tx.CommitAsync();
+
+                TempData["Success"] = $"Servicio extra retirado y cobrado exitosamente. Total: ${model.TotalCobro:F2}";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                TempData["Error"] = $"Error al procesar el retiro: {ex.Message}";
+                return RedirectToAction(nameof(Index));
+            }
         }
 
     }

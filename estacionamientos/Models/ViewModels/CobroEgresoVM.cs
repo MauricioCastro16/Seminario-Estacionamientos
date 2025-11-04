@@ -54,5 +54,37 @@ namespace estacionamientos.Models.ViewModels
         public string MepNom { get; set; } = "";
         public string? MepDesc { get; set; }
     }
+    
+    // ViewModel para cobro de servicio extra sin ocupación activa
+    public class CobroServicioExtraVM
+    {
+        // Datos del servicio extra
+        public int PlyID { get; set; }
+        public int SerID { get; set; }
+        public string VehPtnt { get; set; } = "";
+        public DateTime ServExFyHIni { get; set; }
+        public DateTime ServExFyHFin { get; set; }
+        
+        // Datos del vehículo
+        public int ClasVehID { get; set; }
+        public string ClasVehTipo { get; set; } = "";
+        
+        // Datos de la playa
+        public string PlayaNombre { get; set; } = "";
+        public string ServicioNombre { get; set; } = "";
+        
+        // Servicios aplicables (solo el servicio extra)
+        public List<ServicioCobroVM> ServiciosAplicables { get; set; } = new List<ServicioCobroVM>();
+        
+        // Total a cobrar
+        public decimal TotalCobro { get; set; }
+        
+        // Método de pago seleccionado
+        [Required(ErrorMessage = "Debe seleccionar un método de pago")]
+        public int MepID { get; set; }
+        
+        // Métodos de pago disponibles
+        public List<MetodoPagoVM> MetodosPagoDisponibles { get; set; } = new List<MetodoPagoVM>();
+    }
 }
 
