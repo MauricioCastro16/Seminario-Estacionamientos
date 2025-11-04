@@ -90,6 +90,28 @@ namespace estacionamientos.Controllers
             return Json(valido);
         }
 
+        // 🔹 Verificar si hay ocupación activa para la patente (AJAX)
+        [HttpGet]
+        public async Task<IActionResult> VerificarOcupacionActiva(int plyID, string vehPtnt)
+        {
+            if (string.IsNullOrWhiteSpace(vehPtnt))
+                return Json(new { tieneOcupacion = false });
+
+            var ocupacion = await _ctx.Ocupaciones
+                .Include(o => o.Vehiculo)
+                .FirstOrDefaultAsync(o => o.VehPtnt == vehPtnt &&
+                                         o.PlyID == plyID &&
+                                         o.OcufFyhFin == null);
+
+            if (ocupacion == null || ocupacion.Vehiculo == null)
+                return Json(new { tieneOcupacion = false });
+
+            return Json(new { 
+                tieneOcupacion = true,
+                clasVehID = ocupacion.Vehiculo.ClasVehID
+            });
+        }
+
         // 🔹 GET: Create
         public async Task<IActionResult> Create(int? plyID = null)
         {
@@ -138,6 +160,22 @@ namespace estacionamientos.Controllers
                 await LoadServiciosHabilitados(model.PlyID);
                 await LoadVehiculos(model.VehPtnt);
                 await LoadClasificacionesVehiculo(ClasVehID);
+                
+                // Verificar ocupación activa para mostrar en el badge
+                if (!string.IsNullOrWhiteSpace(model.VehPtnt))
+                {
+                    var ocupacion = await _ctx.Ocupaciones
+                        .Include(o => o.Vehiculo)
+                        .FirstOrDefaultAsync(o => o.VehPtnt == model.VehPtnt &&
+                                                  o.PlyID == model.PlyID &&
+                                                  o.OcufFyhFin == null);
+                    ViewBag.TieneOcupacionActiva = ocupacion != null;
+                    if (ocupacion?.Vehiculo != null)
+                    {
+                        ViewBag.ClasVehIDOcupacion = ocupacion.Vehiculo.ClasVehID;
+                    }
+                }
+                
                 return View(model);
             }
 
@@ -149,6 +187,22 @@ namespace estacionamientos.Controllers
                 await LoadServiciosHabilitados(model.PlyID);
                 await LoadVehiculos(model.VehPtnt);
                 await LoadClasificacionesVehiculo(ClasVehID);
+                
+                // Verificar ocupación activa para mostrar en el badge
+                if (!string.IsNullOrWhiteSpace(model.VehPtnt))
+                {
+                    var ocupacion = await _ctx.Ocupaciones
+                        .Include(o => o.Vehiculo)
+                        .FirstOrDefaultAsync(o => o.VehPtnt == model.VehPtnt &&
+                                                  o.PlyID == model.PlyID &&
+                                                  o.OcufFyhFin == null);
+                    ViewBag.TieneOcupacionActiva = ocupacion != null;
+                    if (ocupacion?.Vehiculo != null)
+                    {
+                        ViewBag.ClasVehIDOcupacion = ocupacion.Vehiculo.ClasVehID;
+                    }
+                }
+                
                 return View(model);
             }
 
@@ -162,8 +216,35 @@ namespace estacionamientos.Controllers
                 await LoadServiciosHabilitados(model.PlyID);
                 await LoadVehiculos(model.VehPtnt);
                 await LoadClasificacionesVehiculo(ClasVehID);
+                
+                // Verificar ocupación activa para mostrar en el badge
+                if (!string.IsNullOrWhiteSpace(model.VehPtnt))
+                {
+                    var ocupacion = await _ctx.Ocupaciones
+                        .Include(o => o.Vehiculo)
+                        .FirstOrDefaultAsync(o => o.VehPtnt == model.VehPtnt &&
+                                                  o.PlyID == model.PlyID &&
+                                                  o.OcufFyhFin == null);
+                    ViewBag.TieneOcupacionActiva = ocupacion != null;
+                    if (ocupacion?.Vehiculo != null)
+                    {
+                        ViewBag.ClasVehIDOcupacion = ocupacion.Vehiculo.ClasVehID;
+                    }
+                }
+                
                 return View(model);
             }
+
+            // 🔹 Verificar si existe ocupación activa para diferenciar escenarios de cobro:
+            // - Con ocupación activa: cobrar estacionamiento + servicio extra
+            // - Sin ocupación activa: cobrar solo servicio extra
+            var ocupacionActiva = await _ctx.Ocupaciones
+                .FirstOrDefaultAsync(o => o.VehPtnt == model.VehPtnt &&
+                                         o.PlyID == model.PlyID &&
+                                         o.OcufFyhFin == null);
+            
+            // La información de si hay o no ocupación activa estará disponible 
+            // para la lógica de cobro posterior
 
             // 🔹 Verificar que el vehículo exista; si no, crear un registro mínimo con marca por defecto
             var existeVeh = await _ctx.Vehiculos.AnyAsync(v => v.VehPtnt == model.VehPtnt);

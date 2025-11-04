@@ -39,7 +39,10 @@
 
     <div class="mb-3">
         <label asp-for="VehPtnt" class="form-label">Patente</label>
-        <input asp-for="VehPtnt" class="form-control" autocomplete="off" />
+        <input asp-for="VehPtnt" class="form-control" autocomplete="off" id="VehPtnt" />
+        <div id="ocupacionBadge" class="mt-2" style="display: none;">
+            <span class="badge" id="badgeOcupacion"></span>
+        </div>
     </div>
 
     <div class="mb-3">
@@ -47,6 +50,8 @@
         <select id="ClasVehID" name="ClasVehID" class="form-select" asp-items="(SelectList)ViewBag.ClasVehID">
             <option value="">Seleccione un tipo de vehículo...</option>
         </select>
+        <!-- Campo oculto para mantener el valor cuando el select está deshabilitado -->
+        <input type="hidden" id="ClasVehID_Hidden" name="ClasVehID" />
     </div>
 
     <!-- 🔹 Contenedor para mensaje de error -->
@@ -71,6 +76,8 @@
 $(function () {
     const $submitBtn = $('form').find('button[type=submit]');
     const $tarifaError = $('#tarifaError');
+    const $ocupacionBadge = $('#ocupacionBadge');
+    const $badgeOcupacion = $('#badgeOcupacion');
 
     function verificarTarifa() {
         const serID = $('#SerID').val();
@@ -98,11 +105,115 @@ $(function () {
         })
     }
 
+    function verificarOcupacion() {
+        const vehPtnt = $('#VehPtnt').val();
+        const plyID = $('input[name="PlyID"]').val();
+        const $clasVehSelect = $('#ClasVehID');
+        const $clasVehAutocompletado = $('#clasVehAutocompletado');
+
+        if (!vehPtnt || !plyID) {
+            $ocupacionBadge.hide();
+            $clasVehSelect.prop('disabled', false);
+            $clasVehAutocompletado.hide();
+            return;
+        }
+
+        $.getJSON('@Url.Action("VerificarOcupacionActiva", "ServicioExtraRealizado")', {
+            plyID: plyID,
+            vehPtnt: vehPtnt
+        })
+        .done(function (data) {
+            if (data.tieneOcupacion) {
+                $badgeOcupacion
+                    .removeClass('bg-danger bg-secondary')
+                    .addClass('bg-success')
+                    .text('Con ocupación activa');
+                
+                // Autocompletar el tipo de vehículo según la ocupación activa
+                if (data.clasVehID) {
+                    $clasVehSelect.val(data.clasVehID);
+                    // Sincronizar con el campo hidden y deshabilitar el select
+                    $('#ClasVehID_Hidden').val(data.clasVehID);
+                    $clasVehSelect.prop('disabled', true);
+                    // Remover el name del select para que no se envíe, usar el hidden
+                    $clasVehSelect.removeAttr('name');
+                    $clasVehAutocompletado.show();
+                    // Verificar tarifa después de autocompletar
+                    verificarTarifa();
+                }
+            } else {
+                $badgeOcupacion
+                    .removeClass('bg-success bg-secondary')
+                    .addClass('bg-danger')
+                    .text('Sin ocupación activa');
+                
+                // Habilitar el campo para selección manual
+                $clasVehSelect.prop('disabled', false);
+                // Restaurar el name del select y limpiar el hidden
+                $clasVehSelect.attr('name', 'ClasVehID');
+                $('#ClasVehID_Hidden').val('');
+                $clasVehAutocompletado.hide();
+            }
+            $ocupacionBadge.show();
+        })
+        .fail(function () {
+            $ocupacionBadge.hide();
+            $clasVehSelect.prop('disabled', false);
+            $clasVehSelect.attr('name', 'ClasVehID');
+            $('#ClasVehID_Hidden').val('');
+            $clasVehAutocompletado.hide();
+        });
+    }
+
     // 🔹 Verificar cada vez que cambia servicio o tipo de vehículo
     $('#SerID, #ClasVehID').on('change', verificarTarifa);
 
+    // 🔹 Verificar ocupación cuando cambia la patente (con debounce)
+    let ocupacionTimeout;
+    $('#VehPtnt').on('input', function () {
+        clearTimeout(ocupacionTimeout);
+        ocupacionTimeout = setTimeout(verificarOcupacion, 500);
+    });
+
     // 🔹 Verificación inicial por si ya hay algo seleccionado
     verificarTarifa();
+    
+    // 🔹 Verificar ocupación inicial si hay patente en el modelo (después de error de validación)
+    @if (ViewBag.TieneOcupacionActiva != null && !string.IsNullOrWhiteSpace(Model.VehPtnt))
+    {
+        <text>
+        if ($('#VehPtnt').val()) {
+            const tieneOcupacion = @((ViewBag.TieneOcupacionActiva as bool?) == true ? "true" : "false");
+            if (tieneOcupacion) {
+                $badgeOcupacion
+                    .removeClass('bg-danger bg-secondary')
+                    .addClass('bg-success')
+                    .text('Con ocupación activa');
+                
+                // Autocompletar el tipo de vehículo si está disponible
+                @if (ViewBag.ClasVehIDOcupacion != null)
+                {
+                    <text>
+                    const clasVehID = @ViewBag.ClasVehIDOcupacion;
+                    if (clasVehID) {
+                        $clasVehSelect.val(clasVehID);
+                        $('#ClasVehID_Hidden').val(clasVehID);
+                        $clasVehSelect.prop('disabled', true);
+                        $clasVehSelect.removeAttr('name');
+                        $clasVehAutocompletado.show();
+                    }
+                    </text>
+                }
+            } else {
+                $badgeOcupacion
+                    .removeClass('bg-success bg-secondary')
+                    .addClass('bg-danger')
+                    .text('Sin ocupación activa');
+            }
+            $ocupacionBadge.show();
+        }
+        </text>
+    }
 });
 </script>
 }
