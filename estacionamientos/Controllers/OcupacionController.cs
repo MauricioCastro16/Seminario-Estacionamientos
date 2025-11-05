@@ -104,6 +104,10 @@ namespace estacionamientos.Controllers
                 }
             }
 
+            var esAbonado = await _ctx.Abonos
+                .Include(a => a.Vehiculos)
+                .AnyAsync(a => a.Vehiculos.Any(v => v.VehPtnt == vehPtnt));
+
             // Buscar referencias a fracción (30min) y hora (60min)
             var fraccion = tarifas.FirstOrDefault(t => t.minutos == 30);
             var hora = tarifas.FirstOrDefault(t => t.minutos == 60);
@@ -204,6 +208,14 @@ namespace estacionamientos.Controllers
                 }
             }
 
+            // Si el vehículo pertenece a un abonado, el total de cobro es 0
+            if (esAbonado)
+            {
+                totalCobro = 0;
+            }
+
+            ViewBag.EsAbonado = esAbonado;
+
             // Métodos de pago
             var metodosPago = await _ctx.AceptaMetodosPago
                 .Include(amp => amp.MetodoPago)
@@ -279,19 +291,12 @@ namespace estacionamientos.Controllers
                 var turnoFyhIni = turno.TurFyhIni;
                 var plyID = turno.PlyID;
 
-                // 🧩 Ocupaciones cobradas por el playero (pagos hechos por él)
-                var pagosHechosPorPlayero = await _ctx.Pagos
-                    .Where(p => p.PlaNU == plaNU && p.PlyID == plyID)
-                    .Select(p => p.PagNum)
-                    .ToListAsync();
-
-                // Filtrar:
-                // Ocupaciones iniciadas DURANTE el turno actual (por ese playero)
-                // Ocupaciones ACTIVAS (sin egreso) de la misma playa
-                    query = query.Where(o =>
-                        (o.OcufFyhIni >= turnoFyhIni && o.PlyID == plyID) ||
-                        (o.OcufFyhFin == null && o.PlyID == plyID) ||
-                        (o.PlyID == plyID && o.PagNum != null && pagosHechosPorPlayero.Contains(o.PagNum.Value)));
+                // Filtrar solo ocupaciones del turno actual:
+                // 1. Ocupaciones iniciadas DURANTE el turno actual en la playa del turno
+                // 2. Ocupaciones PENDIENTES DE COBRO (sin egreso) en la playa del turno
+                query = query.Where(o =>
+                    o.PlyID == plyID &&
+                    ((o.OcufFyhIni >= turnoFyhIni) || (o.OcufFyhFin == null)));
                 }
 
             // Ordenamiento: activos primero, luego por fecha de ingreso descendente
@@ -360,17 +365,6 @@ namespace estacionamientos.Controllers
             var fechaEgreso = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             var cobroVM = await CalcularCobro(plyID, plzNum, vehPtnt, ocup.OcufFyhIni, fechaEgreso);
             
-            var movimientoPlayero = new MovimientoPlayero{
-                PlyID = plyID,
-                PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0"),
-                TipoMov = TipoMovimiento.EgresoVehiculo,
-                FechaMov = DateTime.UtcNow,
-                VehPtnt = vehPtnt,
-                PlzNum = plzNum,
-            };
-
-            _ctx.MovimientosPlayeros.Add(movimientoPlayero);
-            await _ctx.SaveChangesAsync();
             return View("CobroEgreso", cobroVM);
         }
 
@@ -401,34 +395,52 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            var movimientoPlayero = new MovimientoPlayero{
+                PlyID = model.PlyID,
+                PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0"),
+                TipoMov = TipoMovimiento.EgresoVehiculo,
+                FechaMov = DateTime.UtcNow,
+                VehPtnt = model.VehPtnt,
+                PlzNum = model.PlzNum,
+            };
+
+            _ctx.MovimientosPlayeros.Add(movimientoPlayero);
+            await _ctx.SaveChangesAsync();
+
             await using var tx = await _ctx.Database.BeginTransactionAsync();
 
             try
             {
-                // Crear el pago primero
-                var proximoNumeroPago = await _ctx.Pagos
-                    .Where(p => p.PlyID == model.PlyID)
-                    .MaxAsync(p => (int?)p.PagNum) + 1 ?? 1;
-                
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                int plaNU = int.Parse(userId ?? "0");
+                var esAbonado = model.TotalCobro == 0;
 
-                var pago = new Pago
+                if (!esAbonado)
                 {
-                    PlyID = model.PlyID,
-                    PlaNU = plaNU, 
-                    PagNum = proximoNumeroPago,
-                    MepID = model.MepID,
-                    PagMonto = model.TotalCobro,
-                    PagFyh = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
-                };
+                    // Crear el pago primero
+                    var proximoNumeroPago = await _ctx.Pagos
+                        .Where(p => p.PlyID == model.PlyID)
+                        .MaxAsync(p => (int?)p.PagNum) + 1 ?? 1;
+                    
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    int plaNU = int.Parse(userId ?? "0");
 
-                _ctx.Pagos.Add(pago);
-                await _ctx.SaveChangesAsync();
+                    var pago = new Pago
+                    {
+                        PlyID = model.PlyID,
+                        PlaNU = plaNU, 
+                        PagNum = proximoNumeroPago,
+                        MepID = model.MepID,
+                        PagMonto = model.TotalCobro,
+                        PagFyh = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
+                    };
+
+                    _ctx.Pagos.Add(pago);
+                    await _ctx.SaveChangesAsync();
+
+                    ocup.PagNum = pago.PagNum;
+                }
 
                 // Actualizar la ocupación con la fecha de fin y asociar el pago
                 ocup.OcufFyhFin = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
-                ocup.PagNum = pago.PagNum;
                 _ctx.Ocupaciones.Update(ocup);
                 await _ctx.SaveChangesAsync();
 
@@ -465,7 +477,8 @@ namespace estacionamientos.Controllers
             catch (Exception ex)
             {
                 await tx.RollbackAsync();
-                TempData["Error"] = $"Error al procesar el egreso: {ex.Message}";
+                var innerMessage = ex.InnerException?.Message ?? ex.Message;
+                TempData["Error"] = $"Error al procesar el egreso: {innerMessage}";
                 return RedirectToAction(nameof(Index));
             }
         }
