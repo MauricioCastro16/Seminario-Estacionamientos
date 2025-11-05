@@ -104,6 +104,87 @@ namespace estacionamientos.Controllers
                 }
             }
 
+            // Verificar si el vehículo pertenece a un abono activo Y está en la plaza del abono
+            // Un abono es válido si: no está cancelado, no está finalizado, y está dentro del rango de fechas
+            var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var fechaActualDate = fechaActual.Date;
+            
+            // Normalizar la patente para comparación case-insensitive
+            var vehPtntNormalized = (vehPtnt?.Trim().ToUpperInvariant() ?? string.Empty);
+            
+            // Primero filtrar los abonos por fecha y plaza, luego verificar la patente en memoria
+            var abonosFiltrados = await _ctx.Abonos
+                .Include(a => a.Vehiculos)
+                .Where(a => a.EstadoPago != EstadoPago.Cancelado &&
+                           a.EstadoPago != EstadoPago.Finalizado &&
+                           // Verificar que la fecha actual esté dentro del rango del abono
+                           a.AboFyhIni.Date <= fechaActualDate &&
+                           (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate) &&
+                           a.PlyID == plyID &&
+                           a.PlzNum == plzNum) // Verificar que está en la plaza del abono
+                .ToListAsync();
+            
+            // Comparar patentes de forma case-insensitive en memoria
+            var esAbonado = abonosFiltrados.Any(a => 
+                a.Vehiculos.Any(v => v.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized));
+
+            // Extender beneficio por período de gracia de ABONO (diario/semanal/mensual) si corresponde
+            if (!esAbonado)
+            {
+                // Candidatos fuera de rango de fechas pero en la misma plaza
+                var candidatos = await _ctx.Abonos
+                    .Include(a => a.Vehiculos)
+                    .Include(a => a.Periodos)
+                    .Where(a => a.EstadoPago != EstadoPago.Cancelado &&
+                                a.PlyID == plyID &&
+                                a.PlzNum == plzNum)
+                    .ToListAsync();
+
+                // Identificar servicios de abono por nombre
+                var serviciosAbono = await _ctx.Servicios
+                    .Where(s => s.SerNom == "Abono por 1 día" || s.SerNom == "Abono por 1 semana" || s.SerNom == "Abono por 1 mes")
+                    .Select(s => new { s.SerID, s.SerNom })
+                    .ToListAsync();
+
+                foreach (var ab in candidatos)
+                {
+                    var pertenece = ab.Vehiculos.Any(v => v.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized);
+                    if (!pertenece) continue;
+
+                    // Determinar duración típica del abono a partir del primer período
+                    var primerPeriodo = ab.Periodos.OrderBy(p => p.PeriodoNumero).FirstOrDefault();
+                    if (primerPeriodo == null) continue;
+                    var diasPeriodo = Math.Max(1, (int)(primerPeriodo.PeriodoFechaFin.Date - primerPeriodo.PeriodoFechaInicio.Date).TotalDays);
+                    string etiquetaAbono = diasPeriodo switch { <= 1 => "Abono por 1 día", <= 7 => "Abono por 1 semana", _ => "Abono por 1 mes" };
+                    var ser = serviciosAbono.FirstOrDefault(s => s.SerNom == etiquetaAbono);
+                    if (ser == null) continue;
+
+                    // Buscar la tarifa vigente por servicio (gracia común para todas las clases)
+                    var tarifa = await _ctx.TarifasServicio
+                        .Where(t => t.PlyID == plyID && t.SerID == ser.SerID)
+                        .OrderByDescending(t => t.TasFecIni)
+                        .FirstOrDefaultAsync();
+
+                    if (tarifa == null || !tarifa.TasGraciaValor.HasValue || string.IsNullOrWhiteSpace(tarifa.TasGraciaUnidad))
+                        continue;
+
+                    // Calcular ventana de gracia desde el fin del abono (o fin del último período)
+                    var baseFin = (ab.AboFyhFin?.Date) ?? ab.Periodos.Max(p => p.PeriodoFechaFin.Date);
+                    DateTime finGracia = tarifa.TasGraciaUnidad switch
+                    {
+                        "minutos" => baseFin.AddMinutes(tarifa.TasGraciaValor.Value),
+                        "horas" => baseFin.AddHours(tarifa.TasGraciaValor.Value),
+                        _ => baseFin.AddDays(tarifa.TasGraciaValor.Value)
+                    };
+
+                    if (fechaActualDate <= finGracia.Date)
+                    {
+                        esAbonado = true; // dentro del período de gracia del abono
+                        break;
+                    }
+                }
+            }
+
             // Buscar referencias a fracción (30min) y hora (60min)
             var fraccion = tarifas.FirstOrDefault(t => t.minutos == 30);
             var hora = tarifas.FirstOrDefault(t => t.minutos == 60);
@@ -214,17 +295,16 @@ namespace estacionamientos.Controllers
                 .ToListAsync();
 
             var ahora = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+
             foreach (var servicioExtra in serviciosExtras)
             {
-                // Buscar tarifa vigente para el servicio extra
                 var tarifaServExtra = await _ctx.TarifasServicio
                     .Include(t => t.ServicioProveido).ThenInclude(sp => sp.Servicio)
                     .Where(t => t.PlyID == plyID &&
                                t.SerID == servicioExtra.SerID &&
                                t.ClasVehID == ocupacion.Vehiculo!.ClasVehID &&
-                               (t.TasFecFin == null || t.TasFecFin > ahora) &&
                                t.TasFecIni <= ahora &&
-                               t.ServicioProveido.SerProvHab)
+                               (t.TasFecFin == null || t.TasFecFin >= ahora))
                     .OrderByDescending(t => t.TasFecIni)
                     .FirstOrDefaultAsync();
 
@@ -232,9 +312,8 @@ namespace estacionamientos.Controllers
                 {
                     serviciosAplicables.Add(new ServicioCobroVM
                     {
-                        SerID = servicioExtra.SerID,
-                        SerNom = servicioExtra.ServicioProveido!.Servicio!.SerNom,
-                        SerTipo = servicioExtra.ServicioProveido.Servicio.SerTipo,
+                        SerID = servicioExtra.ServicioProveido!.Servicio!.SerID,
+                        SerNom = servicioExtra.ServicioProveido.Servicio.SerNom,
                         TarifaVigente = tarifaServExtra.TasMonto,
                         Cantidad = 1,
                         Subtotal = tarifaServExtra.TasMonto,
@@ -242,6 +321,12 @@ namespace estacionamientos.Controllers
                     });
                     totalCobro += tarifaServExtra.TasMonto;
                 }
+            }
+
+            // Si el vehículo pertenece a un abonado, el total de cobro es 0
+            if (esAbonado)
+            {
+                totalCobro = 0;
             }
 
             // Métodos de pago
@@ -414,17 +499,6 @@ namespace estacionamientos.Controllers
             var fechaEgreso = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             var cobroVM = await CalcularCobro(plyID, plzNum, vehPtnt, ocup.OcufFyhIni, fechaEgreso);
             
-            var movimientoPlayero = new MovimientoPlayero{
-                PlyID = plyID,
-                PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0"),
-                TipoMov = TipoMovimiento.EgresoVehiculo,
-                FechaMov = DateTime.UtcNow,
-                VehPtnt = vehPtnt,
-                PlzNum = plzNum,
-            };
-
-            _ctx.MovimientosPlayeros.Add(movimientoPlayero);
-            await _ctx.SaveChangesAsync();
             return View("CobroEgreso", cobroVM);
         }
 
@@ -455,71 +529,78 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // 🔹 Validar que no haya servicios extra sin completar (validación adicional por seguridad)
-            var serviciosExtraPendientes = await _ctx.ServiciosExtrasRealizados
-                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
-                .Where(s => s.VehPtnt == model.VehPtnt &&
-                           s.PlyID == model.PlyID &&
-                           s.ServExEstado != "Completado" &&
-                           s.ServExEstado != "Cancelado")
-                .ToListAsync();
-
-            if (serviciosExtraPendientes.Any())
-            {
-                var serviciosNombres = string.Join(", ", serviciosExtraPendientes.Select(s => s.ServicioProveido?.Servicio?.SerNom ?? "Servicio desconocido"));
-                TempData["Error"] = $"No se puede egresar el vehículo. El servicio {serviciosNombres} debe finalizar antes del egreso.";
-                return RedirectToAction(nameof(Index));
-            }
-
             await using var tx = await _ctx.Database.BeginTransactionAsync();
 
             try
             {
-                // Crear el pago primero
-                var proximoNumeroPago = await _ctx.Pagos
-                    .Where(p => p.PlyID == model.PlyID)
-                    .MaxAsync(p => (int?)p.PagNum) + 1 ?? 1;
-                
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                int plaNU = int.Parse(userId ?? "0");
+                var esAbonado = model.TotalCobro == 0;
+                Pago? pago = null;
 
-                var pago = new Pago
+                if (!esAbonado)
+                {
+                    // Crear el pago primero
+                    var proximoNumeroPago = await _ctx.Pagos
+                        .Where(p => p.PlyID == model.PlyID)
+                        .MaxAsync(p => (int?)p.PagNum) + 1 ?? 1;
+                    
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    int plaNU = int.Parse(userId ?? "0");
+
+                    pago = new Pago
+                    {
+                        PlyID = model.PlyID,
+                        PlaNU = plaNU, 
+                        PagNum = proximoNumeroPago,
+                        MepID = model.MepID,
+                        PagMonto = model.TotalCobro,
+                        PagFyh = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
+                    };
+
+                    _ctx.Pagos.Add(pago);
+                    await _ctx.SaveChangesAsync();
+
+                    ocup.PagNum = pago.PagNum;
+                }
+
+                // Registrar movimiento de playero para egreso
+                var movimientoPlayero = new MovimientoPlayero
                 {
                     PlyID = model.PlyID,
-                    PlaNU = plaNU, 
-                    PagNum = proximoNumeroPago,
-                    MepID = model.MepID,
-                    PagMonto = model.TotalCobro,
-                    PagFyh = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
+                    PlaNU = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0"),
+                    TipoMov = TipoMovimiento.EgresoVehiculo,
+                    FechaMov = DateTime.UtcNow,
+                    VehPtnt = model.VehPtnt,
+                    PlzNum = model.PlzNum,
                 };
 
-                _ctx.Pagos.Add(pago);
-                await _ctx.SaveChangesAsync();
+                _ctx.MovimientosPlayeros.Add(movimientoPlayero);
 
                 // Actualizar la ocupación con la fecha de fin y asociar el pago
                 ocup.OcufFyhFin = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
-                ocup.PagNum = pago.PagNum;
                 _ctx.Ocupaciones.Update(ocup);
                 await _ctx.SaveChangesAsync();
 
-                // 🔹 Asociar servicios extra pendientes con el mismo pago
-                var serviciosExtras = await _ctx.ServiciosExtrasRealizados
-                    .Where(s => s.VehPtnt == model.VehPtnt &&
-                               s.PlyID == model.PlyID &&
-                               s.PagNum == null &&
-                               s.ServExEstado == "Completado")
-                    .ToListAsync();
-
-                foreach (var servicioExtra in serviciosExtras)
+                // 🔹 Asociar servicios extra pendientes con el mismo pago (solo si hay pago)
+                if (pago != null)
                 {
-                    servicioExtra.PagNum = pago.PagNum;
-                    servicioExtra.ServExFyHFin = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
-                    _ctx.ServiciosExtrasRealizados.Update(servicioExtra);
-                }
+                    var serviciosExtras = await _ctx.ServiciosExtrasRealizados
+                        .Where(s => s.VehPtnt == model.VehPtnt &&
+                                   s.PlyID == model.PlyID &&
+                                   s.PagNum == null &&
+                                   s.ServExEstado == "Completado")
+                        .ToListAsync();
 
-                if (serviciosExtras.Any())
-                {
-                    await _ctx.SaveChangesAsync();
+                    foreach (var servicioExtra in serviciosExtras)
+                    {
+                        servicioExtra.PagNum = pago.PagNum;
+                        servicioExtra.ServExFyHFin = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+                        _ctx.ServiciosExtrasRealizados.Update(servicioExtra);
+                    }
+
+                    if (serviciosExtras.Any())
+                    {
+                        await _ctx.SaveChangesAsync();
+                    }
                 }
 
                 // Si no quedan ocupaciones activas en esa plaza, marcarla como libre
@@ -555,7 +636,8 @@ namespace estacionamientos.Controllers
             catch (Exception ex)
             {
                 await tx.RollbackAsync();
-                TempData["Error"] = $"Error al procesar el egreso: {ex.Message}";
+                var innerMessage = ex.InnerException?.Message ?? ex.Message;
+                TempData["Error"] = $"Error al procesar el egreso: {innerMessage}";
                 return RedirectToAction(nameof(Index));
             }
         }
@@ -776,15 +858,69 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var yaOcupada = await _ctx.Ocupaciones.AnyAsync(o =>
-                o.PlyID == model.PlyID &&
-                o.PlzNum == model.PlzNum!.Value &&
-                o.OcufFyhFin == null);
+            // Verificar si la plaza está ocupada
+            var ocupacionActual = await _ctx.Ocupaciones
+                .Where(o => o.PlyID == model.PlyID &&
+                           o.PlzNum == model.PlzNum!.Value &&
+                           o.OcufFyhFin == null)
+                .FirstOrDefaultAsync();
 
-            if (yaOcupada)
+            if (ocupacionActual != null)
             {
-                TempData["Error"] = "La plaza ya está ocupada.";
-                return RedirectToAction(nameof(Index));
+                // Verificar si el vehículo que está ocupando la plaza pertenece a un abono activo
+                var vehiculoOcupante = ocupacionActual.VehPtnt;
+                var abonoOcupante = await _ctx.VehiculosAbonados
+                    .Include(va => va.Abono)
+                    .Where(va => va.VehPtnt == vehiculoOcupante &&
+                               va.Abono.EstadoPago != EstadoPago.Cancelado &&
+                               va.Abono.EstadoPago != EstadoPago.Finalizado &&
+                               (va.Abono.AboFyhFin == null || va.Abono.AboFyhFin >= DateTime.UtcNow))
+                    .Select(va => new { va.PlyID, va.PlzNum, va.AboFyhIni })
+                    .FirstOrDefaultAsync();
+
+                // Verificar si el vehículo que intenta ingresar pertenece a un abono activo
+                var abonoVehiculoIngreso = await _ctx.VehiculosAbonados
+                    .Include(va => va.Abono)
+                    .Where(va => va.VehPtnt == model.VehPtnt &&
+                               va.Abono.EstadoPago != EstadoPago.Cancelado &&
+                               va.Abono.EstadoPago != EstadoPago.Finalizado &&
+                               (va.Abono.AboFyhFin == null || va.Abono.AboFyhFin >= DateTime.UtcNow))
+                    .Select(va => new { va.PlyID, va.PlzNum, va.AboFyhIni })
+                    .FirstOrDefaultAsync();
+
+                // Si ambos vehículos pertenecen al mismo abono activo, permitir cambiar de plaza
+                if (abonoOcupante != null && abonoVehiculoIngreso != null &&
+                    abonoOcupante.PlyID == abonoVehiculoIngreso.PlyID &&
+                    abonoOcupante.PlzNum == abonoVehiculoIngreso.PlzNum &&
+                    abonoOcupante.AboFyhIni == abonoVehiculoIngreso.AboFyhIni)
+                {
+                    // Son del mismo abono activo, permitir cambiar de plaza
+                    ModelState.AddModelError("PlzNum", 
+                        $"La plaza {model.PlzNum} está ocupada por otro vehículo del mismo abono. " +
+                        $"Por favor, seleccione otra plaza disponible para este vehículo.");
+                    
+                    await LoadSelects(model.PlyID, null, model.VehPtnt);
+                    ViewBag.Clasificaciones = new SelectList(
+                        await _ctx.ClasificacionesVehiculo
+                            .OrderBy(c => c.ClasVehTipo)
+                            .ToListAsync(),
+                        "ClasVehID", "ClasVehTipo", ClasVehID
+                    );
+                    ViewBag.PlayaNombre = await _ctx.Playas
+                        .Where(p => p.PlyID == model.PlyID)
+                        .Select(p => p.PlyNom)
+                        .FirstOrDefaultAsync();
+                    
+                    // Limpiar la plaza seleccionada para que el usuario elija otra
+                    model.PlzNum = null;
+                    return View(model);
+                }
+                else
+                {
+                    // La plaza está ocupada por otro vehículo (no del mismo abono o uno de los vehículos no tiene abono activo)
+                    TempData["Error"] = "La plaza ya está ocupada por otro vehículo.";
+                    return RedirectToAction(nameof(Index));
+                }
             }
 
             if (model.PlzNum.HasValue && !await PlazaExiste(model.PlyID, model.PlzNum.Value))

@@ -226,6 +226,41 @@
     </div>
 </div>
 
+<!-- Modal de confirmación para desvincular vehículo -->
+<div class="modal fade" id="modalDesvincularVehiculo" tabindex="-1" aria-labelledby="modalDesvincularVehiculoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalDesvincularVehiculoLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirmar Desvinculación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">¿Estás seguro de que quieres desvincular este vehículo?</p>
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <p class="mb-0">
+                            <strong>Patente:</strong> <span id="patenteDesvincular" class="badge bg-primary"></span>
+                        </p>
+                    </div>
+                </div>
+                <p class="text-muted mt-3 mb-0">
+                    <small>Esta acción no se puede deshacer. El vehículo será eliminado de tu lista.</small>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarDesvincular">
+                    <i class="bi bi-check-circle me-1"></i>Confirmar Desvinculación
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     .card {
         transition: transform 0.2s ease-in-out;
@@ -320,6 +355,12 @@
         
         .modal-footer {
             padding: 0.75rem 1rem;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .modal-footer .btn {
+            width: 100%;
         }
     }
 </style>
@@ -522,10 +563,26 @@
         }, 3000);
     }
 
+    let patenteDesvincular = null;
+
     function desvincularVehiculo(patente) {
-        if (!confirm(`¿Estás seguro de que quieres desvincular el vehículo ${patente}?`)) {
+        patenteDesvincular = patente;
+        document.getElementById('patenteDesvincular').textContent = patente;
+        
+        const modal = new bootstrap.Modal(document.getElementById('modalDesvincularVehiculo'));
+        modal.show();
+    }
+
+    function confirmarDesvincularVehiculo() {
+        if (!patenteDesvincular) {
             return;
         }
+
+        const patente = patenteDesvincular;
+        
+        // Cerrar la modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalDesvincularVehiculo'));
+        modal.hide();
 
         fetch('/Conductor/DesvincularVehiculo', {
             method: 'POST',
@@ -537,6 +594,7 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                mostrarNotificacion('Vehículo desvinculado correctamente', 'success');
                 
                 // Si el vehículo desvinculado era el seleccionado, limpiar la selección
                 if (vehiculoActual && vehiculoActual.patente === patente) {
@@ -567,8 +625,11 @@
         });
     }
 
-    // Preseleccionar vehículo al cargar la página
+    // Configurar el botón de confirmar desvinculación
     document.addEventListener('DOMContentLoaded', function() {
+        // Configurar el evento del botón de confirmar desvinculación
+        document.getElementById('btnConfirmarDesvincular').addEventListener('click', confirmarDesvincularVehiculo);
+
         // Primero verificar sessionStorage para vehículo seleccionado
         const vehiculoSeleccionado = sessionStorage.getItem('vehiculoSeleccionado');
         if (vehiculoSeleccionado) {
