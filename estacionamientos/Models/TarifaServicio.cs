@@ -17,6 +17,11 @@ namespace estacionamientos.Models
         [Required]
         public decimal TasMonto { get; set; }
 
+        // Tiempo de gracia configurable para abonos
+        public int? TasGraciaValor { get; set; }           // cantidad
+        public string? TasGraciaUnidad { get; set; }       // "minutos" | "horas" | "dias"
+        public string? TasGraciaDesc { get; set; }         // descripción opcional
+
         // Navs
         [ValidateNever]
         public ServicioProveido ServicioProveido { get; set; } = default!;

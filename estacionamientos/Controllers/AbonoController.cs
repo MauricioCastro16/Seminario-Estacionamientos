@@ -386,6 +386,25 @@ namespace estacionamientos.Controllers
                 abono.AboFyhIni = inicioUtc;
                 abono.AboFyhFin = finUtc;
 
+                // ✅ Nueva validación: impedir superposición con el PRÓXIMO abono programado en la misma plaza
+                if (model.SelectedPlzNum.HasValue && abono.AboFyhFin.HasValue)
+                {
+                    var proximoAbono = await _ctx.Abonos
+                        .Where(a => a.PlyID == model.PlyID
+                                    && a.PlzNum == model.SelectedPlzNum.Value
+                                    && a.EstadoPago != EstadoPago.Cancelado
+                                    && a.AboFyhIni > abono.AboFyhIni)
+                        .OrderBy(a => a.AboFyhIni)
+                        .FirstOrDefaultAsync();
+
+                    if (proximoAbono != null && abono.AboFyhFin.Value >= proximoAbono.AboFyhIni)
+                    {
+                        TempData["Error"] = $"No se puede registrar el abono. La plaza tiene un abono programado a partir del {proximoAbono.AboFyhIni:dd/MM/yyyy}.";
+                        await LoadSelects(model.PlyID);
+                        return View(model);
+                    }
+                }
+
                 var montoUnitario = tarifa?.TasMonto ?? 0m;
                 abono.AboMonto = montoUnitario * periodos;
             }
@@ -861,6 +880,8 @@ namespace estacionamientos.Controllers
                 // Convertir fechas a UTC para PostgreSQL
                 var fechaIniUTC = DateTime.SpecifyKind(fechaIni, DateTimeKind.Utc);
                 var fechaFinUTC = DateTime.SpecifyKind(fechaFin, DateTimeKind.Utc);
+                var iniDate = fechaIniUTC.Date;
+                var finDate = fechaFinUTC.Date;
                 
                 Console.WriteLine($"Verificando disponibilidad: PlyID={plyId}, PlzNum={plzNum}, FechaIni={fechaIniUTC:yyyy-MM-dd HH:mm:ss}, FechaFin={fechaFinUTC:yyyy-MM-dd HH:mm:ss}");
 
@@ -869,7 +890,8 @@ namespace estacionamientos.Controllers
                     .Where(a => a.PlyID == plyId && 
                                a.PlzNum == plzNum && 
                                a.EstadoPago != EstadoPago.Cancelado &&
-                               ((a.AboFyhIni <= fechaFinUTC && (a.AboFyhFin == null || a.AboFyhFin >= fechaIniUTC))));
+                               // Solapamiento por día (tolerante a diferencias de hora)
+                               (a.AboFyhIni.Date <= finDate && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= iniDate)));
                 
                 // Excluir el abono especificado si se proporciona
                 if (excluirAbono.HasValue)
@@ -879,6 +901,7 @@ namespace estacionamientos.Controllers
                 }
                 
                 var abonosExistentes = await query
+                    .OrderBy(a => a.AboFyhIni)
                     .Select(a => new { 
                         a.AboFyhIni, 
                         a.AboFyhFin, 
@@ -930,6 +953,148 @@ namespace estacionamientos.Controllers
             catch (Exception)
             {
                 return Json(new List<object>());
+            }
+        }
+
+        // Buscar abonado por DNI y devolver sus datos y vehículos
+        [HttpGet]
+        public async Task<IActionResult> GetAbonadoPorDNI(string dni)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(dni) || dni.Length < 7)
+                {
+                    return Json(new { success = false, message = "DNI inválido" });
+                }
+
+                var dniNormalizado = dni.Trim().ToUpperInvariant();
+
+                // Buscar el abonado por DNI
+                var abonado = await _ctx.Abonados
+                    .Include(a => a.Conductor)
+                        .ThenInclude(c => c.Conducciones)
+                            .ThenInclude(cond => cond.Vehiculo)
+                                .ThenInclude(v => v.Clasificacion)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.AboDNI == dniNormalizado);
+
+                if (abonado == null)
+                {
+                    return Json(new { success = false, encontrado = false });
+                }
+
+                // Obtener vehículos del abonado (a través del conductor si existe)
+                var vehiculosConductor = new List<object>();
+                
+                if (abonado.ConNU.HasValue && abonado.Conductor != null)
+                {
+                    vehiculosConductor = abonado.Conductor.Conducciones
+                        .Select(c => new
+                        {
+                            patente = c.VehPtnt,
+                            tipo = c.Vehiculo != null && c.Vehiculo.Clasificacion != null 
+                                ? c.Vehiculo.Clasificacion.ClasVehTipo 
+                                : "Sin clasificación",
+                            clasificacionId = c.Vehiculo != null ? c.Vehiculo.ClasVehID : 0
+                        })
+                        .Cast<object>()
+                        .ToList();
+                }
+
+                // También buscar vehículos de abonos previos del mismo abonado
+                var vehiculosAbonosPrevios = await _ctx.VehiculosAbonados
+                    .Include(va => va.Vehiculo)
+                        .ThenInclude(v => v.Clasificacion)
+                    .Where(va => va.Abono.AboDNI == dniNormalizado)
+                    .Select(va => new
+                    {
+                        patente = va.VehPtnt,
+                        tipo = va.Vehiculo != null && va.Vehiculo.Clasificacion != null 
+                            ? va.Vehiculo.Clasificacion.ClasVehTipo 
+                            : "Sin clasificación",
+                        clasificacionId = va.Vehiculo != null ? va.Vehiculo.ClasVehID : 0
+                    })
+                    .Distinct()
+                    .ToListAsync();
+
+                // Combinar vehículos únicos (sin duplicados por patente)
+                var diccionarioVehiculos = new Dictionary<string, object>();
+                
+                // Agregar vehículos del conductor
+                foreach (var veh in vehiculosConductor)
+                {
+                    var patente = ((dynamic)veh).patente.ToString();
+                    if (!diccionarioVehiculos.ContainsKey(patente))
+                    {
+                        diccionarioVehiculos[patente] = veh;
+                    }
+                }
+                
+                // Agregar vehículos de abonos previos
+                foreach (var veh in vehiculosAbonosPrevios)
+                {
+                    var patente = veh.patente;
+                    if (!diccionarioVehiculos.ContainsKey(patente))
+                    {
+                        diccionarioVehiculos[patente] = new
+                        {
+                            patente = veh.patente,
+                            tipo = veh.tipo,
+                            clasificacionId = veh.clasificacionId
+                        };
+                    }
+                }
+
+                var todosVehiculos = diccionarioVehiculos.Values.ToList();
+
+                return Json(new
+                {
+                    success = true,
+                    encontrado = true,
+                    nombre = abonado.AboNom,
+                    dni = abonado.AboDNI,
+                    tieneVehiculos = todosVehiculos.Any(),
+                    vehiculos = todosVehiculos
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error buscando abonado: {ex.Message}" });
+            }
+        }
+
+        // Devuelve el PRÓXIMO abono (no cancelado) programado para la plaza a partir de una fecha dada
+        [HttpGet]
+        public async Task<IActionResult> GetProximaOcupacion(int plyId, int plzNum, DateTime desde)
+        {
+            try
+            {
+                var desdeUtc = DateTime.SpecifyKind(desde, DateTimeKind.Utc);
+
+                var proximo = await _ctx.Abonos
+                    .Where(a => a.PlyID == plyId
+                                && a.PlzNum == plzNum
+                                && a.EstadoPago != EstadoPago.Cancelado
+                                && a.AboFyhIni > desdeUtc)
+                    .OrderBy(a => a.AboFyhIni)
+                    .Select(a => new { a.AboFyhIni, a.AboFyhFin, abonado = a.Abonado.AboNom })
+                    .FirstOrDefaultAsync();
+
+                if (proximo == null)
+                    return Json(new { success = true, existe = false });
+
+                return Json(new
+                {
+                    success = true,
+                    existe = true,
+                    inicio = proximo.AboFyhIni,
+                    fin = proximo.AboFyhFin,
+                    abonado = proximo.abonado
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
             }
         }
 
@@ -1598,6 +1763,27 @@ namespace estacionamientos.Controllers
                     default:
                         fechaFinExtension = fechaInicioExtension.AddDays(request.cantidadPeriodos + 1);
                         break;
+                }
+
+                // ✅ Nueva validación: no permitir que la extensión choque con un abono FUTURO programado para la misma plaza
+                // Buscamos el próximo abono (no cancelado) cuya fecha de inicio sea posterior al inicio de la extensión
+                var proximoAbono = await _ctx.Abonos
+                    .Where(a => a.PlyID == request.plyID
+                                && a.PlzNum == request.plzNum
+                                && a.EstadoPago != EstadoPago.Cancelado
+                                && a.AboFyhIni > fechaInicioExtension)
+                    .OrderBy(a => a.AboFyhIni)
+                    .FirstOrDefaultAsync();
+
+                if (proximoAbono != null && fechaFinExtension >= proximoAbono.AboFyhIni)
+                {
+                    var fechaMax = proximoAbono.AboFyhIni.AddDays(-1);
+                    return Json(new
+                    {
+                        success = false,
+                        message = $"No se puede extender hasta {fechaFinExtension:dd/MM/yyyy}. La plaza tiene un abono programado a partir del {proximoAbono.AboFyhIni:dd/MM/yyyy}.",
+                        fechaMaximaPermitida = fechaMax.ToString("dd/MM/yyyy")
+                    });
                 }
 
                 // 🔹 Verificar disponibilidad de la plaza (excluyendo el abono actual)

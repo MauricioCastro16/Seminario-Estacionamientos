@@ -272,6 +272,118 @@ namespace estacionamientos.Controllers
             return View(vm);
         }
 
+        // === Tiempo de gracia: obtener configuración vigente por combinación (compat) ===
+        [Authorize(Roles = "Duenio")]
+        [HttpGet]
+        public async Task<IActionResult> GetTiempoGracia(int plyID, int serID, int clasVehID)
+        {
+            var vigente = await _ctx.TarifasServicio
+                .Where(t => t.PlyID == plyID && t.SerID == serID && t.ClasVehID == clasVehID)
+                .OrderByDescending(t => t.TasFecIni)
+                .FirstOrDefaultAsync();
+
+            if (vigente == null) return Json(new { success = false, message = "No se encontró la tarifa." });
+
+            return Json(new
+            {
+                success = true,
+                valor = vigente.TasGraciaValor,
+                unidad = vigente.TasGraciaUnidad,
+                descripcion = vigente.TasGraciaDesc
+            });
+        }
+
+        // === Tiempo de gracia: guardar configuración en la tarifa vigente por combinación (compat) ===
+        [Authorize(Roles = "Duenio")]
+        [HttpPost]
+        public async Task<IActionResult> SaveTiempoGracia([FromBody] SaveGraciaRequest req)
+        {
+            if (req is null) return Json(new { success = false, message = "Solicitud inválida." });
+            if (req.Valor.HasValue && req.Valor.Value < 0) return Json(new { success = false, message = "El valor debe ser mayor o igual a 0." });
+            if (req.Valor.HasValue && string.IsNullOrWhiteSpace(req.Unidad)) return Json(new { success = false, message = "Seleccione unidad de tiempo." });
+
+            var vigente = await _ctx.TarifasServicio
+                .Where(t => t.PlyID == req.PlyID && t.SerID == req.SerID && t.ClasVehID == req.ClasVehID)
+                .OrderByDescending(t => t.TasFecIni)
+                .FirstOrDefaultAsync();
+
+            if (vigente == null) return Json(new { success = false, message = "No se encontró la tarifa." });
+
+            vigente.TasGraciaValor = req.Valor;
+            vigente.TasGraciaUnidad = string.IsNullOrWhiteSpace(req.Unidad) ? null : req.Unidad.Trim().ToLowerInvariant();
+            vigente.TasGraciaDesc = req.Descripcion;
+
+            await _ctx.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        // === Tiempo de gracia POR SERVICIO (todas las clases) ===
+        [Authorize(Roles = "Duenio")]
+        [HttpGet]
+        public async Task<IActionResult> GetTiempoGraciaAbono(int plyID, int serID)
+        {
+            var alguna = await _ctx.TarifasServicio
+                .Where(t => t.PlyID == plyID && t.SerID == serID)
+                .OrderByDescending(t => t.TasFecIni)
+                .FirstOrDefaultAsync();
+
+            if (alguna == null)
+                return Json(new { success = false, message = "No se encontraron tarifas para ese servicio." });
+
+            return Json(new
+            {
+                success = true,
+                valor = alguna.TasGraciaValor,
+                unidad = alguna.TasGraciaUnidad,
+                descripcion = alguna.TasGraciaDesc
+            });
+        }
+
+        [Authorize(Roles = "Duenio")]
+        [HttpPost]
+        public async Task<IActionResult> SaveTiempoGraciaAbono([FromBody] SaveGraciaAbonoRequest req)
+        {
+            if (req is null) return Json(new { success = false, message = "Solicitud inválida." });
+            if (req.Valor.HasValue && req.Valor.Value < 0) return Json(new { success = false, message = "El valor debe ser mayor o igual a 0." });
+            if (req.Valor.HasValue && string.IsNullOrWhiteSpace(req.Unidad)) return Json(new { success = false, message = "Seleccione unidad de tiempo." });
+
+            var tarifas = await _ctx.TarifasServicio
+                .Where(t => t.PlyID == req.PlyID && t.SerID == req.SerID)
+                .ToListAsync();
+
+            if (!tarifas.Any())
+                return Json(new { success = false, message = "No se encontraron tarifas para ese servicio." });
+
+            foreach (var t in tarifas)
+            {
+                t.TasGraciaValor = req.Valor;
+                t.TasGraciaUnidad = string.IsNullOrWhiteSpace(req.Unidad) ? null : req.Unidad.Trim().ToLowerInvariant();
+                t.TasGraciaDesc = req.Descripcion;
+            }
+
+            await _ctx.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        public class SaveGraciaRequest
+        {
+            public int PlyID { get; set; }
+            public int SerID { get; set; }
+            public int ClasVehID { get; set; }
+            public int? Valor { get; set; }
+            public string? Unidad { get; set; } // minutos|horas|dias
+            public string? Descripcion { get; set; }
+        }
+
+        public class SaveGraciaAbonoRequest
+        {
+            public int PlyID { get; set; }
+            public int SerID { get; set; }
+            public int? Valor { get; set; }
+            public string? Unidad { get; set; }
+            public string? Descripcion { get; set; }
+        }
+
         // DETAILS
         [Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Details(int plyID, int serID, int clasVehID, DateTime tasFecIni)

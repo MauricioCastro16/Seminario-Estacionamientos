@@ -200,6 +200,30 @@
                         </div>
                     </form>
 
+                    <!-- Modal: Reutilizar vehículos del abonado -->
+                    <div class="modal fade" id="reutilizarVehiculosModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title"><i class="bi bi-car-front-fill me-2"></i>Autocompletar vehículos</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="mb-2">El abonado ya tiene vehículo(s) registrado(s).</p>
+                                    <p class="mb-3">¿Desea autocompletar las patentes y tipos de vehículo?</p>
+                                    <div class="border rounded p-2 bg-light">
+                                        <div class="small text-secondary mb-1">Vehículos encontrados:</div>
+                                        <ul id="listaVehiculosReutilizar" class="mb-0 ps-3"></ul>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="button" class="btn btn-primary btn-aceptar">Aceptar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Modal de Gestión de Pagos -->
                     <div class="modal fade" id="pagoAbonoModal" tabindex="-1" aria-labelledby="pagoAbonoModalLabel" aria-hidden="true">
                         <div class="modal-dialog modal-lg">
@@ -628,6 +652,43 @@
                     montoHidden.value = montoCalculado; // Valor numérico para el servidor
                     montoInput.value = montoCalculado.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }); // Formato visual
                 }
+
+                // 🔹 Si hay plaza seleccionada, limitar por el próximo abono programado en la misma plaza
+                const hiddenPlz = document.getElementById('PlzNumAbono');
+                if (hiddenPlz && hiddenPlz.value && hiddenPlz.value !== '0') {
+                    try {
+                        const urlProx = `/Abono/GetProximaOcupacion?plyId=${plyId}&plzNum=${hiddenPlz.value}&desde=${encodeURIComponent(ini.toISOString())}`;
+                        const rProx = await fetch(urlProx);
+                        const dProx = await rProx.json();
+                        if (dProx?.success && dProx.existe && dProx.inicio) {
+                            const nextStart = new Date(dProx.inicio);
+                            const maxFin = new Date(nextStart);
+                            maxFin.setDate(maxFin.getDate() - 1);
+
+                            if (fin >= nextStart) {
+                                if (finInput) finInput.value = formatDateInput(maxFin);
+                                const periodosInput = document.getElementById('Periodos');
+                                if (periodosInput && (data.duracionDias || 0) > 0) {
+                                    const maxDias = Math.max(0, Math.floor((maxFin - ini) / (1000*60*60*24)));
+                                    const nuevaCant = Math.max(1, Math.floor(maxDias / (data.duracionDias || 1)));
+                                    const actual = parseInt(periodosInput.value || '1', 10);
+                                    if (nuevaCant < actual) {
+                                        periodosInput.value = String(nuevaCant);
+                                        const periodosHelp = document.getElementById('periodosHelp');
+                                        if (periodosHelp) periodosHelp.textContent = `Duración: ${nuevaCant} ${getPlural(tipoActual, nuevaCant)}`;
+                                    }
+                                }
+                                const aviso = document.getElementById('periodosMaxAviso') || document.createElement('div');
+                                aviso.id = 'periodosMaxAviso';
+                                aviso.className = 'form-text text-warning';
+                                const nextStr = formatDateDisplay(formatDateInput(nextStart));
+                                aviso.textContent = `Límite por abono programado desde ${nextStr}. Se ajustó la duración al máximo permitido.`;
+                                const cont = document.getElementById('Periodos')?.parentElement;
+                                if (cont && !cont.querySelector('#periodosMaxAviso')) cont.appendChild(aviso);
+                            }
+                        }
+                    } catch { /* noop */ }
+                }
             } catch (error) {
                 console.error('Error calculando monto:', error);
             }
@@ -916,6 +977,15 @@
                             // 🔹 Limitar el mínimo a la fecha en que la plaza se desocupa
                             fechaIniInput.min = fechaSugeridaStr;
                             // 🔹 (No se desactiva el campo, solo se limita el rango)
+                            // 🔹 Agregar control: si el usuario intenta elegir por debajo del mínimo, forzar al mínimo
+                            fechaIniInput.addEventListener('change', () => {
+                                if (fechaIniInput.min && fechaIniInput.value < fechaIniInput.min) {
+                                    fechaIniInput.value = fechaIniInput.min;
+                                    fechaIniInput.title = `No se pueden seleccionar fechas anteriores al ${formatDateDisplay(fechaIniInput.min)}.`;
+                                    showPrompt(`Fecha ajustada al ${formatDateDisplay(fechaIniInput.min)} por ocupación previa de la plaza.`, 'warning');
+                                    updateAbonoFields();
+                                }
+                            }, { once: true });
                         }
 
                         // Recalcular fechas y monto en base a esa fecha
@@ -1876,6 +1946,162 @@
         }
 
 
+         
+         // Helper: Modal para preguntar si reutilizar vehículos del abonado
+         async function preguntarReutilizarVehiculos(vehiculos) {
+             return new Promise((resolve) => {
+                 const modalEl = document.getElementById('reutilizarVehiculosModal');
+                 const lista = modalEl.querySelector('#listaVehiculosReutilizar');
+                 lista.innerHTML = '';
+                 (vehiculos || []).forEach((v, i) => {
+                     const li = document.createElement('li');
+                     const patente = (v.patente || '').toString().toUpperCase();
+                     const tipo = v.tipo || 'Sin clasificación';
+                     li.textContent = `${i + 1}. ${patente} (${tipo})`;
+                     lista.appendChild(li);
+                 });
+                 const aceptarBtn = modalEl.querySelector('.btn-aceptar');
+                 const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                 const onAceptar = () => {
+                     // Cerrar modal y resolver como aceptación
+                     aceptarBtn.removeEventListener('click', onAceptar);
+                     modalEl.removeEventListener('hidden.bs.modal', onHidden);
+                     bsModal.hide();
+                     resolve(true);
+                 };
+                 const onHidden = () => {
+                     // Si se cierra sin aceptar, resolver como cancelación
+                     aceptarBtn.removeEventListener('click', onAceptar);
+                     modalEl.removeEventListener('hidden.bs.modal', onHidden);
+                     resolve(false);
+                 };
+                 aceptarBtn.addEventListener('click', onAceptar);
+                 modalEl.addEventListener('hidden.bs.modal', onHidden);
+                 bsModal.show();
+             });
+         }
+
+         // === AUTocompletar abonado por DNI ===
+         let buscandoAbonado = false;
+         let abonadoEncontrado = null;
+         
+         const dniInput = document.querySelector('input[name="AboDNI"]');
+         const nombreInput = document.querySelector('input[name="AboNom"]');
+         
+         if (dniInput) {
+             let timeoutDNI = null;
+             
+             dniInput.addEventListener('input', function() {
+                 const dni = this.value.trim();
+                 
+                 // Limpiar error si existe
+                 const errorExistente = this.parentNode.querySelector('.error-campo-individual');
+                 if (errorExistente) {
+                     errorExistente.remove();
+                 }
+                 
+                 // Cancelar búsqueda previa si el usuario sigue escribiendo
+                 if (timeoutDNI) {
+                     clearTimeout(timeoutDNI);
+                 }
+                 
+                 // Si el DNI tiene al menos 7 caracteres, buscar después de 500ms de inactividad
+                 if (dni.length >= 7 && !buscandoAbonado) {
+                     timeoutDNI = setTimeout(async () => {
+                         try {
+                             buscandoAbonado = true;
+                             const url = `/Abono/GetAbonadoPorDNI?dni=${encodeURIComponent(dni)}`;
+                             const response = await fetch(url);
+                             const data = await response.json();
+                             
+                             if (data.success && data.encontrado) {
+                                 abonadoEncontrado = data;
+                                 
+                                 // Autocompletar nombre automáticamente (si está vacío)
+                                 if (nombreInput && !nombreInput.value.trim()) {
+                                     nombreInput.value = data.nombre;
+                                 }
+                                 
+                                 // Si tiene vehículos, preguntar si quiere reutilizarlos
+                                 if (data.tieneVehiculos && data.vehiculos && data.vehiculos.length > 0) {
+                                     const vehiculosList = document.getElementById('vehiculos-list');
+                                     const vehiculosActuales = vehiculosList.querySelectorAll('.vehiculo-item').length;
+                                     
+                                     // Solo preguntar si no hay vehículos ya agregados
+                                    if (vehiculosActuales === 0) {
+                                        const quiereReutilizar = await preguntarReutilizarVehiculos(data.vehiculos);
+                                         
+                                         if (quiereReutilizar) {
+                                             // Agregar cada vehículo a la lista
+                                             data.vehiculos.forEach((veh, idx) => {
+                                                 const list = document.getElementById('vehiculos-list');
+                                                 const index = list.querySelectorAll('.vehiculo-item').length;
+                                                 
+                                                 const empty = document.getElementById('vehiculos-empty');
+                                                 if (empty) empty.remove();
+                                                 
+                                                 // Obtener patente de forma segura
+                                                 const patente = (veh.patente || '').toString().toUpperCase();
+                                                 
+                                                 const row = document.createElement('div');
+                                                 row.classList.add('row', 'g-2', 'mb-2', 'vehiculo-item');
+                                                 row.innerHTML = `
+                                                     <div class="col-10">
+                                                         <input name="Vehiculos[${index}].VehPtnt" class="form-control" placeholder="Patente" value="${patente}" />
+                                                     </div>
+                                                     <div class="col-2 d-flex align-items-center">
+                                                         <button type="button" class="btn btn-outline-danger btn-sm remove-vehiculo" title="Eliminar vehículo">
+                                                             <i class="bi bi-x"></i>
+                                                         </button>
+                                                     </div>`;
+                                                 
+                                                 list.appendChild(row);
+                                             });
+                                             
+                                             // Si hay vehículos, establecer la clasificación del primer vehículo
+                                             if (data.vehiculos.length > 0) {
+                                                 const primerVehiculo = data.vehiculos[0];
+                                                 const clasificacionId = primerVehiculo.clasificacionId || 0;
+                                                 if (clasificacionId > 0) {
+                                                     const clasSelect = document.getElementById('ClasVehID');
+                                                     if (clasSelect && !clasSelect.value) {
+                                                         clasSelect.value = clasificacionId;
+                                                         // Disparar evento change para actualizar campos
+                                                         clasSelect.dispatchEvent(new Event('change'));
+                                                         if (typeof updateAbonoFields === 'function') {
+                                                             updateAbonoFields();
+                                                         }
+                                                     }
+                                                 }
+                                             }
+                                             
+                                             // Actualizar campos del abono
+                                             if (typeof updateAbonoFields === 'function') {
+                                                 updateAbonoFields();
+                                             }
+                                         }
+                                     }
+                                 }
+                             }
+                         } catch (error) {
+                             console.error('Error buscando abonado:', error);
+                         } finally {
+                             buscandoAbonado = false;
+                         }
+                     }, 500);
+                 }
+             });
+             
+             // Limpiar datos si el usuario borra el DNI
+             dniInput.addEventListener('blur', function() {
+                 const dni = this.value.trim();
+                 if (dni.length < 7 && nombreInput.value && abonadoEncontrado && nombreInput.value === abonadoEncontrado.nombre) {
+                     // Si el usuario borró el DNI y el nombre coincide con el encontrado, limpiar también
+                     nombreInput.value = '';
+                     abonadoEncontrado = null;
+                 }
+             });
+         }
          
          // Event listeners para limpiar errores cuando el usuario interactúe con los campos
          document.addEventListener('input', function(e) {

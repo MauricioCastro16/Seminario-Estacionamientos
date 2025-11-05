@@ -741,6 +741,15 @@
                 <span class="info-value" id="valorPromedio">$500/hora</span>
             </div>
             
+            <div class="info-row mt-3" id="horariosSection" style="display: none;">
+                <span class="info-label">Horarios de atención:</span>
+                <div class="info-value" id="horariosInfo" style="font-size: 0.9em;"></div>
+            </div>
+            
+            <div class="info-row mt-2" id="debugInfoSection" style="display: none; font-size: 0.8em; color: #666;">
+                <div id="debugInfo"></div>
+            </div>
+            
             <button class="btn btn-primary w-100 mt-3" onclick="abrirNavegacion()">
                 <i class="bi bi-navigation me-2"></i>Ver en Google Maps
             </button>
@@ -960,7 +969,14 @@
                 radioKm: 50 // Radio más amplio para mostrar más playas
             })
             .done(function(data) {
-                console.log('Playas cargadas:', data);
+                console.log('=== DEBUG: Playas cargadas ===');
+                console.log('Total playas:', data.length);
+                if (data.length > 0) {
+                    console.log('Primera playa:', data[0]);
+                    console.log('Estado primera playa:', data[0].estaAbierto ? 'ABIERTO' : 'CERRADO');
+                }
+                console.log('Todas las playas:', data);
+                console.log('==============================');
                 playas = data;
                 mostrarPlayasEnMapa();
                 $('#loading').hide();
@@ -995,7 +1011,7 @@
                 }).addTo(map);
 
                 // Agregar popup con información básica (SIN botón "Ver detalles")
-                marker.bindPopup(`
+                const popupContent = `
                     <div style="min-width: 200px;">
                         <h6 style="margin: 0 0 10px 0; color: #2c3e50;">${playa.plyNom}</h6>
                         <p style="margin: 5px 0; font-size: 14px;"><strong>Dirección:</strong> ${playa.plyDir}</p>
@@ -1003,12 +1019,24 @@
                         <p style="margin: 5px 0; font-size: 14px;"><strong>Estado:</strong> ${playa.estaAbierto ? 'Abierto' : 'Cerrado'}</p>
                         ${isSearchMode ? `<p style="margin: 5px 0; font-size: 14px; color: #dc3545;"><strong>📍 Distancia:</strong> ${playa.distancia.toFixed(2)} km</p>` : ''}
                         ${isSearchMode ? '<p style="margin: 5px 0; font-size: 12px; color: #dc3545; font-weight: bold;">🔍 Uno de los 3 más cercanos</p>' : ''}
+                        <button class="btn btn-sm btn-primary mt-2 w-100" onclick="window.seleccionarPlayaDesdePopup(${playa.plyID})" style="cursor: pointer;">
+                            Ver detalles
+                        </button>
                     </div>
-                `);
+                `;
+                
+                marker.bindPopup(popupContent);
 
                 // Evento click para seleccionar playa
-                marker.on('click', function() {
+                marker.on('click', function(e) {
+                    console.log('🖱️ CLIC EN MARCADOR:', playa.plyNom);
+                    console.log('Evento:', e);
                     seleccionarPlaya(playa);
+                });
+                
+                // También capturar cuando se abre el popup
+                marker.on('popupopen', function() {
+                    console.log('📋 Popup abierto para:', playa.plyNom);
                 });
 
                 parkingMarkers.push(marker);
@@ -1048,7 +1076,23 @@
             });
         }
 
+        // Función auxiliar para llamar desde el popup
+        window.seleccionarPlayaDesdePopup = function(plyID) {
+            console.log('🔘 Botón "Ver detalles" presionado para playa ID:', plyID);
+            const playa = playas.find(p => p.plyID === plyID);
+            if (playa) {
+                seleccionarPlaya(playa);
+            } else {
+                console.error('❌ No se encontró la playa con ID:', plyID);
+            }
+        };
+
         function seleccionarPlaya(playa) {
+            console.log('🎯 FUNCIÓN seleccionarPlaya EJECUTADA');
+            console.log('Playa recibida:', playa);
+            console.log('Playa ID:', playa.plyID);
+            console.log('Estado actual:', playa.estaAbierto);
+            
             playaSeleccionada = playa;
             
             // Centrar el mapa en la playa seleccionada
@@ -1057,6 +1101,19 @@
             // Obtener detalles completos
             $.get('/Conductor/GetDetallePlaya', { id: playa.plyID })
             .done(function(detalle) {
+                // 🔍 DEBUG: Mostrar información de depuración en consola
+                console.log('=== DEBUG HORARIOS PLAYA ===');
+                console.log('Playa ID:', detalle.plyID);
+                console.log('Estado calculado:', detalle.estaAbierto ? 'ABIERTO' : 'CERRADO');
+                if (detalle.debug) {
+                    console.log('Hora actual:', detalle.debug.horaActual);
+                    console.log('Día actual:', detalle.debug.diaActual);
+                    console.log('Total horarios:', detalle.debug.totalHorarios);
+                    console.log('Horarios detalle:', detalle.debug.horariosDetalle);
+                }
+                console.log('Respuesta completa:', detalle);
+                console.log('===========================');
+                
                 mostrarDetallePlaya(detalle);
                 $('#bottomMenu').addClass('show');
             })
@@ -1080,7 +1137,40 @@
             
             $('#tipoPiso').text(detalle.plyTipoPiso);
             $('#direccion').text(detalle.plyDir);
-            $('#valorPromedio').text('$' + detalle.plyValProm + '/hora');
+            // Formatear valor promedio a 2 decimales
+            var valorFormateado = parseFloat(detalle.plyValProm || 0).toFixed(2);
+            $('#valorPromedio').text('$' + valorFormateado + '/hora');
+            
+            // Mostrar horarios - solo "Lunes a Viernes" y "Sábado Domingo"
+            let horariosHtml = '<div style="margin-top: 5px;">';
+            let tieneHorarios = false;
+            
+            if (detalle.horariosLunesViernes && detalle.horariosLunesViernes.length > 0) {
+                tieneHorarios = true;
+                horariosHtml += '<div style="margin-bottom: 5px;"><strong>Lunes a Viernes:</strong> ';
+                let rangos = detalle.horariosLunesViernes.map(h => `${h.horaInicio} - ${h.horaFin}`).join(', ');
+                horariosHtml += rangos + '</div>';
+            }
+            
+            if (detalle.horariosFinSemana && detalle.horariosFinSemana.length > 0) {
+                tieneHorarios = true;
+                horariosHtml += '<div style="margin-bottom: 5px;"><strong>Sábado Domingo:</strong> ';
+                let rangos = detalle.horariosFinSemana.map(h => `${h.horaInicio} - ${h.horaFin}`).join(', ');
+                horariosHtml += rangos + '</div>';
+            }
+            
+            horariosHtml += '</div>';
+            
+            if (tieneHorarios) {
+                $('#horariosInfo').html(horariosHtml);
+                $('#horariosSection').show();
+            } else {
+                $('#horariosInfo').html('<span style="color: #dc3545;">No hay horarios configurados</span>');
+                $('#horariosSection').show();
+            }
+            
+            // Ocultar sección de debug
+            $('#debugInfoSection').hide();
             
             $('#playaInfo').show();
         }
@@ -1097,7 +1187,9 @@
             
             $('#tipoPiso').text(playa.plyTipoPiso);
             $('#direccion').text(playa.plyDir);
-            $('#valorPromedio').text('$' + (playa.plyValProm || 0) + '/hora');
+            // Formatear valor promedio a 2 decimales
+            var valorFormateado = parseFloat(playa.plyValProm || 0).toFixed(2);
+            $('#valorPromedio').text('$' + valorFormateado + '/hora');
             
             $('#playaInfo').show();
         }

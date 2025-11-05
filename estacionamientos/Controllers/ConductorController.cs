@@ -600,31 +600,87 @@ namespace estacionamientos.Controllers
                         .ThenInclude(h => h.ClasificacionDias)
                     .Include(p => p.Plazas)
                     .Where(p => p.PlyLat.HasValue && p.PlyLon.HasValue)
-                    .AsNoTracking()
-                    .ToListAsync();
+                    .ToListAsync(); // Removido AsNoTracking para asegurar que las relaciones se carguen
 
-                // Para debug: show all playas without distance filter
-                var playasCercanas = playas
-                    .Select(p => new
+                // Calcular promedio de tarifas por hora para cada playa
+                var playasCercanas = new List<object>();
+                foreach (var p in playas)
+                {
+                    // Forzar carga explícita de horarios si no están cargados
+                    if (p.Horarios == null)
+                    {
+                        await _context.Entry(p)
+                            .Collection(pl => pl.Horarios)
+                            .Query()
+                            .Include(h => h.ClasificacionDias)
+                            .LoadAsync();
+                    }
+                    
+                    var valorPromedioHora = await CalcularPromedioTarifaHora(p.PlyID);
+                    var estaAbierto = EstaAbierto(p);
+                    playasCercanas.Add(new
                     {
                         p.PlyID,
-                        p.PlyNom,
-                        p.PlyDir,
-                        p.PlyTipoPiso,
-                        p.PlyValProm,
-                        p.PlyLat,
-                        p.PlyLon,
-                        Distancia = CalcularDistancia(lat, lon, p.PlyLat!.Value, p.PlyLon!.Value),
-                        Disponibilidad = CalcularDisponibilidad(p),
-                        EstaAbierto = EstaAbierto(p)
-                    })
-                    .ToList();
+                        plyNom = p.PlyNom,
+                        plyDir = p.PlyDir,
+                        plyTipoPiso = p.PlyTipoPiso,
+                        plyValProm = valorPromedioHora,
+                        plyLat = p.PlyLat,
+                        plyLon = p.PlyLon,
+                        distancia = CalcularDistancia(lat, lon, p.PlyLat!.Value, p.PlyLon!.Value),
+                        disponibilidad = CalcularDisponibilidad(p),
+                        estaAbierto = estaAbierto
+                    });
+                }
 
                 return Json(playasCercanas);
             }
             catch (Exception ex)
             {
                 return Json(new { error = ex.Message });
+            }
+        }
+
+        // Endpoint temporal para debug de horarios
+        [HttpGet]
+        public async Task<IActionResult> DebugHorariosPlaya(int id)
+        {
+            try
+            {
+                var playa = await _context.Playas
+                    .Include(p => p.Horarios)
+                        .ThenInclude(h => h.ClasificacionDias)
+                    .FirstOrDefaultAsync(p => p.PlyID == id);
+
+                if (playa == null)
+                    return Json(new { error = "Playa no encontrada" });
+
+                var ahora = DateTime.Now;
+                var tipoDia = (ahora.DayOfWeek >= DayOfWeek.Monday && ahora.DayOfWeek <= DayOfWeek.Friday) 
+                    ? "Hábil" 
+                    : "Fin de semana";
+
+                return Json(new
+                {
+                    playaID = playa.PlyID,
+                    playaNombre = playa.PlyNom,
+                    horaActual = ahora.ToString("HH:mm:ss"),
+                    diaActual = ahora.DayOfWeek.ToString(),
+                    tipoDiaBuscado = tipoDia,
+                    totalHorarios = playa.Horarios?.Count ?? 0,
+                    horarios = playa.Horarios?.Select(h => new
+                    {
+                        tipoDia = h.ClasificacionDias?.ClaDiasTipo ?? "NULL",
+                        horaInicio = h.HorFyhIni.TimeOfDay.ToString(@"hh\:mm"),
+                        horaFin = h.HorFyhFin?.TimeOfDay.ToString(@"hh\:mm") ?? "NULL",
+                        coincide = h.ClasificacionDias?.ClaDiasTipo?.Equals(tipoDia, StringComparison.OrdinalIgnoreCase) == true
+                    }).ToList(),
+                    estaAbierto = EstaAbierto(playa)
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message, stackTrace = ex.StackTrace });
             }
         }
 
@@ -636,22 +692,79 @@ namespace estacionamientos.Controllers
             {
                 var playa = await _context.Playas
                     .Include(p => p.Plazas)
+                    .Include(p => p.Horarios)
+                        .ThenInclude(h => h.ClasificacionDias)
                     .FirstOrDefaultAsync(p => p.PlyID == id);
+                    
+                // Asegurar que los horarios estén cargados
+                if (playa != null && playa.Horarios == null)
+                {
+                    await _context.Entry(playa)
+                        .Collection(p => p.Horarios)
+                        .Query()
+                        .Include(h => h.ClasificacionDias)
+                        .LoadAsync();
+                }
 
                 if (playa == null)
                     return Json(new { error = "Playa no encontrada" });
 
+                // Calcular promedio de tarifas por hora
+                var valorPromedioHora = await CalcularPromedioTarifaHora(playa.PlyID);
+
+                // Preparar información de horarios - solo "Lunes a Viernes" y "Sábado Domingo"
+                var horariosLunesViernes = new List<object>();
+                var horariosFinSemana = new List<object>();
+                
+                if (playa.Horarios != null)
+                {
+                    foreach (var h in playa.Horarios)
+                    {
+                        var tipoDia = h.ClasificacionDias?.ClaDiasTipo ?? "";
+                        
+                        // Convertir a hora local antes de extraer TimeOfDay
+                        DateTime inicioLocal = h.HorFyhIni.Kind == DateTimeKind.Utc 
+                            ? h.HorFyhIni.ToLocalTime() 
+                            : h.HorFyhIni;
+                        DateTime? finLocal = h.HorFyhFin.HasValue
+                            ? (h.HorFyhFin.Value.Kind == DateTimeKind.Utc 
+                                ? h.HorFyhFin.Value.ToLocalTime() 
+                                : h.HorFyhFin.Value)
+                            : null;
+                        
+                        var horarioInfo = new
+                        {
+                            horaInicio = inicioLocal.TimeOfDay.ToString(@"hh\:mm"),
+                            horaFin = finLocal?.TimeOfDay.ToString(@"hh\:mm") ?? "Sin fin"
+                        };
+                        
+                        if (tipoDia.Equals("Hábil", StringComparison.OrdinalIgnoreCase))
+                        {
+                            horariosLunesViernes.Add(horarioInfo);
+                        }
+                        else if (tipoDia.Equals("Fin de semana", StringComparison.OrdinalIgnoreCase))
+                        {
+                            horariosFinSemana.Add(horarioInfo);
+                        }
+                    }
+                }
+
+                // Calcular estado abierto/cerrado
+                var estaAbierto = EstaAbierto(playa);
+
                 return Json(new
                 {
-                    playa.PlyID,
-                    playa.PlyNom,
-                    playa.PlyDir,
-                    playa.PlyTipoPiso,
-                    playa.PlyValProm,
-                    playa.PlyLat,
-                    playa.PlyLon,
-                    Disponibilidad = CalcularDisponibilidad(playa),
-                    EstaAbierto = EstaAbierto(playa)
+                    plyID = playa.PlyID,
+                    plyNom = playa.PlyNom,
+                    plyDir = playa.PlyDir,
+                    plyTipoPiso = playa.PlyTipoPiso,
+                    plyValProm = valorPromedioHora,
+                    plyLat = playa.PlyLat,
+                    plyLon = playa.PlyLon,
+                    disponibilidad = CalcularDisponibilidad(playa),
+                    estaAbierto = estaAbierto,
+                    horariosLunesViernes = horariosLunesViernes,
+                    horariosFinSemana = horariosFinSemana
                 });
             }
             catch (Exception ex)
@@ -685,23 +798,129 @@ namespace estacionamientos.Controllers
 
         private static bool EstaAbierto(PlayaEstacionamiento playa)
         {
-            var ahora = DateTime.Now.TimeOfDay;
-            var diaActual = DateTime.Now.DayOfWeek;
-            
-            // Mapear DayOfWeek a números (0 = Domingo, 1 = Lunes, etc.)
-            var diaNumero = diaActual == DayOfWeek.Sunday ? 0 : (int)diaActual;
-            
-            var horarioHoy = playa.Horarios
-                .FirstOrDefault(h => h.ClasificacionDias?.ClaDiasTipo == 
-                    (diaNumero >= 1 && diaNumero <= 5 ? "Entre semana" : "Fin de semana"));
+            try
+            {
+                // Verificar que existan horarios
+                if (playa.Horarios == null || !playa.Horarios.Any())
+                {
+                    return false;
+                }
 
-            if (horarioHoy == null) return false;
+                // Hora actual del sistema (local)
+                var ahora = DateTime.Now;
+                var ahoraTimeOfDay = ahora.TimeOfDay;
+                var diaActual = ahora.DayOfWeek;
+                
+                // Determinar tipo de día según la base de datos
+                // "Hábil" = Lunes a Viernes (1-5)
+                // "Fin de semana" = Sábado y Domingo (0, 6)
+                string tipoDiaBuscado = (diaActual >= DayOfWeek.Monday && diaActual <= DayOfWeek.Friday) 
+                    ? "Hábil" 
+                    : "Fin de semana";
+                
+                // Buscar horarios del día actual - asegurarse de que ClasificacionDias esté cargado
+                var horariosRelevantes = playa.Horarios
+                    .Where(h => h.ClasificacionDias != null && 
+                               !string.IsNullOrWhiteSpace(h.ClasificacionDias.ClaDiasTipo) &&
+                               h.ClasificacionDias.ClaDiasTipo.Equals(tipoDiaBuscado, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
 
-            // Convertir DateTime a TimeOfDay para comparar
-            var horaInicio = horarioHoy.HorFyhIni.TimeOfDay;
-            var horaFin = horarioHoy.HorFyhFin?.TimeOfDay ?? TimeSpan.FromDays(1);
+                if (!horariosRelevantes.Any())
+                {
+                    return false;
+                }
 
-            return ahora >= horaInicio && ahora <= horaFin;
+                // Verificar si la hora actual está dentro de algún rango horario
+                foreach (var horario in horariosRelevantes)
+                {
+                    // Los horarios están guardados con fecha base 2000-01-01 en UTC
+                    // Pero pueden tener timezone offset. Necesitamos extraer solo la hora local
+                    // Convertir a hora local si está en UTC
+                    DateTime horarioInicioLocal = horario.HorFyhIni.Kind == DateTimeKind.Utc 
+                        ? horario.HorFyhIni.ToLocalTime() 
+                        : horario.HorFyhIni;
+                    
+                    DateTime? horarioFinLocal = horario.HorFyhFin.HasValue
+                        ? (horario.HorFyhFin.Value.Kind == DateTimeKind.Utc 
+                            ? horario.HorFyhFin.Value.ToLocalTime() 
+                            : horario.HorFyhFin.Value)
+                        : null;
+                    
+                    // Extraer solo la parte de hora (TimeOfDay)
+                    var horaInicio = horarioInicioLocal.TimeOfDay;
+                    var horaFin = horarioFinLocal?.TimeOfDay;
+                    
+                    // Si no hay hora fin, asumir que cierra a las 23:59:59
+                    if (!horaFin.HasValue)
+                    {
+                        horaFin = new TimeSpan(23, 59, 59);
+                    }
+                    
+                    // Comparar hora actual con rango de horario
+                    // Horario normal: inicio <= ahora <= fin
+                    bool estaDentro = ahoraTimeOfDay >= horaInicio && ahoraTimeOfDay <= horaFin.Value;
+                    
+                    // Si el horario cruza medianoche (inicio > fin), usar lógica especial
+                    if (horaInicio > horaFin.Value)
+                    {
+                        // Horario que cruza medianoche (ej: 22:00 - 02:00)
+                        // Está abierto si: ahora >= inicio O ahora <= fin
+                        estaDentro = ahoraTimeOfDay >= horaInicio || ahoraTimeOfDay <= horaFin.Value;
+                    }
+                    
+                    if (estaDentro)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                // Log del error para debug
+                System.Diagnostics.Debug.WriteLine($"Error en EstaAbierto para playa {playa.PlyID}: {ex.Message}");
+                return false;
+            }
+        }
+
+        private async Task<decimal> CalcularPromedioTarifaHora(int plyID)
+        {
+            try
+            {
+                // Buscar servicios de tipo "Estacionamiento" con duración de 60 minutos (1 hora)
+                var serviciosHora = await _context.ServiciosProveidos
+                    .Include(sp => sp.Servicio)
+                    .Where(sp => sp.PlyID == plyID &&
+                                sp.SerProvHab &&
+                                sp.Servicio.SerTipo == "Estacionamiento" &&
+                                sp.Servicio.SerDuracionMinutos == 60)
+                    .Select(sp => sp.SerID)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (!serviciosHora.Any())
+                    return 0;
+
+                // Obtener todas las tarifas vigentes por hora para esta playa
+                var ahora = DateTime.UtcNow;
+                var tarifasHora = await _context.TarifasServicio
+                    .Where(t => t.PlyID == plyID &&
+                               serviciosHora.Contains(t.SerID) &&
+                               t.TasFecIni <= ahora &&
+                               (t.TasFecFin == null || t.TasFecFin >= ahora))
+                    .Select(t => t.TasMonto)
+                    .ToListAsync();
+
+                if (!tarifasHora.Any())
+                    return 0;
+
+                return Math.Round(tarifasHora.Average(), 2);
+            }
+            catch
+            {
+                return 0;
+            }
         }
     }
 }

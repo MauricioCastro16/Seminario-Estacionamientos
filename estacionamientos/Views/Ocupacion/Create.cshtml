@@ -232,6 +232,10 @@ document.addEventListener("DOMContentLoaded", () => {
             msg.textContent = "";
             habilitarCampos(true);
             limpiarCampos();
+            // Limpiar variables globales
+            window.esAbonado = false;
+            window.plazaAbonoID = null;
+            window.plazaAbonoNum = null;
             return;
         }
 
@@ -240,47 +244,89 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await resp.json();
 
             if (data.success) {
-                // ES ABONADO
-                window.esAbonado = true;
+                // Guardar información de la plaza del abono
+                window.plazaAbonoID = data.plazaAbonoID;
+                window.plazaAbonoNum = data.plazaAbonoNum;
 
-                msg.textContent = data.message;
-                msg.style.display = "block";
-                msg.className = "alert alert-success mt-3";
-                msg.style.textAlign = "center";
-                msg.style.backgroundColor = "#d1e7dd";
-                msg.style.color = "#0f5132";
-                msg.style.border = "1px solid #badbcc";
-                msg.style.borderRadius = "8px";
+                // Verificar si la plaza del abono está ocupada
+                if (data.plazaOcupada) {
+                    // La plaza está ocupada, permitir seleccionar otra plaza
+                    window.esAbonado = false; // No cobrar como abono, cobrar normalmente
+                    
+                    msg.textContent = `${data.message} La plaza está ocupada por otro vehículo. Por favor, seleccione otra plaza disponible. Se cobrará la tarifa correspondiente.`;
+                    msg.style.display = "block";
+                    msg.className = "alert alert-warning mt-3";
+                    msg.style.textAlign = "center";
+                    msg.style.backgroundColor = "#fff3cd";
+                    msg.style.color = "#856404";
+                    msg.style.border = "1px solid #ffc107";
+                    msg.style.borderRadius = "8px";
 
-                // Bloquear todos los inputs visibles
-                habilitarCampos(false);
+                    // Habilitar campos para seleccionar otra plaza
+                    habilitarCampos(true);
 
-                @* // Si ya existe un vehículo abonado, permitir el ingreso de otro como normal
-                if (data.existeOtroVehiculo) {
-                    msg.textContent = "Este abonado ya tiene un vehículo ingresado. Puede ingresar otro vehículo en otra plaza, pero se le cobrará la tarifa correspondiente.";
-                    // Permitir seleccionar plaza sin restricciones de abonado
-                    window.esAbonado = false;
-                    habilitarCampos(true);  // Habilitar los campos para un vehículo normal
-                } *@
+                    // Prellenar valores
+                    if (data.clasVehID) selClas.value = data.clasVehID;
+                    if (data.techada === true) document.getElementById("techadaSi").checked = true;
+                    else document.getElementById("techadaNo").checked = true;
+                    if (data.piso !== null) selPiso.innerHTML = `<option value="${data.piso}">Piso ${data.piso}</option>`;
 
-                // Prellenar valores
-                if (data.clasVehID) selClas.value = data.clasVehID;
-                if (data.techada === true) document.getElementById("techadaSi").checked = true;
-                else document.getElementById("techadaNo").checked = true;
-                if (data.piso !== null) selPiso.innerHTML = `<option value="${data.piso}">Piso ${data.piso}</option>`;
+                    // Setear hidden para POST
+                    document.getElementById("HiddenClasVehID").value = data.clasVehID;
+                    document.getElementById("HiddenTechada").value = data.techada;
+                    document.getElementById("HiddenPiso").value = data.piso;
+                    
+                    // NO setear la plaza del abono, dejar que el usuario seleccione otra
+                    document.getElementById("HiddenPlaza").value = "";
+                    hiddenPlz.value = "";
 
-                // Setear hidden para POST
-                document.getElementById("HiddenClasVehID").value = data.clasVehID;
-                document.getElementById("HiddenTechada").value = data.techada;
-                document.getElementById("HiddenPiso").value = data.piso;
-                document.getElementById("HiddenPlaza").value = data.plaza;
-                hiddenPlz.value = data.plaza;
+                    // Deshabilitar botón hasta que seleccione una plaza
+                    btn.disabled = true;
+                    
+                    // Cargar plazas disponibles después de un pequeño delay para asegurar que los campos estén configurados
+                    setTimeout(() => {
+                        // Usar la función global si está disponible
+                        if (typeof window.fetchPlazasYPrepararPisos === 'function') {
+                            window.fetchPlazasYPrepararPisos(false, null);
+                        }
+                    }, 200);
+                } else {
+                    // La plaza del abono está disponible, usar como abonado
+                    window.esAbonado = true;
 
-                // Habilitar botón confirmar
-                btn.disabled = false;
+                    msg.textContent = data.message;
+                    msg.style.display = "block";
+                    msg.className = "alert alert-success mt-3";
+                    msg.style.textAlign = "center";
+                    msg.style.backgroundColor = "#d1e7dd";
+                    msg.style.color = "#0f5132";
+                    msg.style.border = "1px solid #badbcc";
+                    msg.style.borderRadius = "8px";
+
+                    // Bloquear todos los inputs visibles
+                    habilitarCampos(false);
+
+                    // Prellenar valores
+                    if (data.clasVehID) selClas.value = data.clasVehID;
+                    if (data.techada === true) document.getElementById("techadaSi").checked = true;
+                    else document.getElementById("techadaNo").checked = true;
+                    if (data.piso !== null) selPiso.innerHTML = `<option value="${data.piso}">Piso ${data.piso}</option>`;
+
+                    // Setear hidden para POST
+                    document.getElementById("HiddenClasVehID").value = data.clasVehID;
+                    document.getElementById("HiddenTechada").value = data.techada;
+                    document.getElementById("HiddenPiso").value = data.piso;
+                    document.getElementById("HiddenPlaza").value = data.plaza;
+                    hiddenPlz.value = data.plaza;
+
+                    // Habilitar botón confirmar
+                    btn.disabled = false;
+                }
             } else {
                 // NO ES ABONADO
                 window.esAbonado = false;
+                window.plazaAbonoID = null;
+                window.plazaAbonoNum = null;
                 msg.textContent = "";
                 msg.style.display = "none";
                 habilitarCampos(true);
@@ -288,6 +334,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (e) {
             console.error("Error al verificar patente:", e);
+            window.esAbonado = false;
+            window.plazaAbonoID = null;
+            window.plazaAbonoNum = null;
             msg.textContent = "";
             habilitarCampos(true);
             limpiarCampos();
@@ -324,6 +373,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const hiddenPlz = document.getElementById("PlzNum");
     const btn = document.getElementById("btnSubmit");
     const radiosTechada = document.querySelectorAll("input[name='techada']");
+    
+    // Hacer la función accesible globalmente
+    window.fetchPlazasYPrepararPisos = null;
 
     /** Estado en memoria **/
     let allPlazas = []; // plazas completas del fetch (no se muestran hasta elegir piso)
@@ -450,7 +502,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    async function fetchPlazasYPrepararPisos(esAbonado = false, plazaPreseleccionada = null) {
+    window.fetchPlazasYPrepararPisos = async function(esAbonado = false, plazaPreseleccionada = null) {
         limpiarSeleccion();
 
         if (!esAbonado && !selClas.value) {

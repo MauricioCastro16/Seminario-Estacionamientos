@@ -81,6 +81,12 @@ namespace estacionamientos.Controllers
                 .AsNoTracking()
                 .AnyAsync(v => v.Abono.PlyID == vehiculoAbonado.Abono.PlyID && v.Abono.PlzNum == vehiculoAbonado.Abono.PlzNum && v.VehPtnt != vehiculoAbonado.VehPtnt);
 
+            // Verificar si la plaza del abono está ocupada actualmente
+            var plazaOcupada = await _ctx.Ocupaciones
+                .AsNoTracking()
+                .AnyAsync(o => o.PlyID == vehiculoAbonado.Abono.PlyID &&
+                              o.PlzNum == vehiculoAbonado.Abono.PlzNum &&
+                              o.OcufFyhFin == null);
 
             return Json(new
             {
@@ -92,7 +98,10 @@ namespace estacionamientos.Controllers
                 piso,
                 plaza = plazaNum,
                 esAbonado = true,
-                existeOtroVehiculo
+                existeOtroVehiculo,
+                plazaOcupada = plazaOcupada,
+                plazaAbonoID = vehiculoAbonado.Abono.PlyID,
+                plazaAbonoNum = vehiculoAbonado.Abono.PlzNum
             });
         }
     }

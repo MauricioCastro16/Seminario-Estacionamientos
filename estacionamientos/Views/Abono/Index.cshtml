@@ -91,11 +91,18 @@
                         _ => "fa-solid fa-car"
                     };
 
+                    // Verificar si el abono ya finalizó (fecha de fin es anterior a la fecha actual)
+                    bool abonoFinalizado = item.AboFyhFin.HasValue && item.AboFyhFin.Value < DateTime.Now;
+                    bool deshabilitado = item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado || abonoFinalizado;
+                    string tituloDeshabilitado = abonoFinalizado ? "Abono finalizado" : (item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "Abono cancelado" : "");
                 }
-                <a href="#" class="text-decoration-none position-relative border border-secondary rounded px-2 py-1 d-inline-block" data-bs-toggle="modal" data-bs-target="#vehiculosModal" 
+                <a href="#" class="text-decoration-none position-relative border border-secondary rounded px-2 py-1 d-inline-block" 
+                   data-bs-toggle="modal" data-bs-target="#vehiculosModal" 
                    data-clasificacion="@clasificacion" data-patentes="@string.Join(",", patentes)" data-plaza="@item.PlzNum"
                    data-plyid="@item.PlyID" data-plznum="@item.PlzNum" data-abofyhini="@item.AboFyhIni.ToString("yyyy-MM-ddTHH:mm:ss")"
-                   data-abonado="@item.Abonado.AboNom" data-estado="@item.EstadoPago">
+                   data-abofyhfin="@(item.AboFyhFin?.ToString("yyyy-MM-ddTHH:mm:ss") ?? "")"
+                   data-abonado="@item.Abonado.AboNom" data-estado="@item.EstadoPago"
+                   title="Ver vehículos">
                     <i class="@icono me-1 text-primary"></i>
                     <span class="fw-medium">@clasificacion</span>
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
@@ -120,33 +127,33 @@
                     <i class="fa fa-eye"></i>
                 </a>
 
-                <button type="button" class="btn btn-outline-secondary btn-sm gestionar-pagos-btn @(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "disabled" : "")" 
-                        title="@(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "Abono cancelado" : "Gestionar pagos")"
+                <button type="button" class="btn btn-outline-secondary btn-sm gestionar-pagos-btn @(deshabilitado ? "disabled" : "")" 
+                        title="@(deshabilitado ? tituloDeshabilitado : "Gestionar pagos")"
                         data-plyid="@item.PlyID"
                         data-plznum="@item.PlzNum"
                         data-abofyhini="@item.AboFyhIni.ToString("yyyy-MM-ddTHH:mm:ss")"
                         data-bs-toggle="modal" data-bs-target="#gestionarPagosModal"
-                        @(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "disabled" : "")>
+                        @(deshabilitado ? "disabled" : "")>
                     <i class="fa-solid fa-receipt"></i>
                 </button>
                 <button type="button"
-                    class="btn btn-outline-success btn-sm extender-abono-btn @(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "disabled" : "")"
-                    title="@(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "Abono cancelado" : "Extender abono")"
+                    class="btn btn-outline-success btn-sm extender-abono-btn @(deshabilitado ? "disabled" : "")"
+                    title="@(deshabilitado ? tituloDeshabilitado : "Extender abono")"
                     data-bs-toggle="modal"
                     data-bs-target="#extenderAbonoModal"
                     data-plyid="@item.PlyID"
                     data-plznum="@item.PlzNum"
                     data-abofyhini="@item.AboFyhIni.ToString("yyyy-MM-ddTHH:mm:ss")"
-                    @(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "disabled" : "")>
+                    @(deshabilitado ? "disabled" : "")>
                     <i class="fa fa-calendar-plus"></i>
                 </button>
-                <button type="button" class="btn btn-outline-danger btn-sm cancelar-abono-btn @(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "disabled" : "")" 
-                        title="@(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "Abono cancelado" : "Cancelar abono")"
+                <button type="button" class="btn btn-outline-danger btn-sm cancelar-abono-btn @(deshabilitado ? "disabled" : "")" 
+                        title="@(deshabilitado ? tituloDeshabilitado : "Cancelar abono")"
                         data-plyid="@item.PlyID"
                         data-plznum="@item.PlzNum"
                         data-abofyhini="@item.AboFyhIni.ToString("yyyy-MM-ddTHH:mm:ss")"
                         data-abonado="@item.Abonado.AboNom"
-                        @(item.EstadoPago == estacionamientos.Models.EstadoPago.Cancelado ? "disabled" : "")>
+                        @(deshabilitado ? "disabled" : "")>
                     <i class="fa fa-ban"></i>
                 </button>
             </td>
@@ -798,6 +805,15 @@
 
         // Función para cambiar a modo edición
         function cambiarAModoEdicion() {
+            // Verificar si el abono está cancelado o finalizado
+            const abonoFinalizado = currentAbonoData.aboFyhFin && new Date(currentAbonoData.aboFyhFin) < new Date();
+            const deshabilitado = currentAbonoData.estado === 'Cancelado' || abonoFinalizado;
+            
+            if (deshabilitado) {
+                // Prevenir entrar a modo edición si el abono está finalizado o cancelado
+                return;
+            }
+
             // 🔹 Hacer una copia de seguridad de los vehículos actuales
             vehiculosBackup = JSON.parse(JSON.stringify(vehiculosList));
 
@@ -844,6 +860,7 @@
             const plyID = button.getAttribute('data-plyid');
             const plzNum = button.getAttribute('data-plznum');
             const aboFyhIni = button.getAttribute('data-abofyhini');
+            const aboFyhFin = button.getAttribute('data-abofyhfin');
             const abonado = button.getAttribute('data-abonado');
             const estado = button.getAttribute('data-estado');
             
@@ -854,7 +871,8 @@
                 clasificacion: clasificacion,
                 plaza: plaza,
                 patentes: patentes.filter(p => p.trim() !== ''),
-                estado: estado
+                estado: estado,
+                aboFyhFin: aboFyhFin
             };
 
             // Actualizar información en la modal
@@ -863,17 +881,26 @@
             modalPlaza.textContent = 'Plaza ' + plaza;
 
             vehiculosList = currentAbonoData.patentes.map(patente => ({
-                patente: patente.trim(),
+                patente: patente.trim().toUpperCase(),
                 esNuevo: false
             }));
 
-            // Verificar si el abono está cancelado
-            if (estado === 'Cancelado') {
-                // Ocultar el botón de modificar si está cancelado
+            // Verificar si el abono está cancelado o ya finalizó
+            const abonoFinalizado = aboFyhFin && new Date(aboFyhFin) < new Date();
+            const deshabilitado = estado === 'Cancelado' || abonoFinalizado;
+
+            if (deshabilitado) {
+                // Ocultar el botón de modificar si está cancelado o finalizado (solo lectura)
                 modificarVehiculosBtn.style.display = 'none';
+                // Asegurar que los botones de edición estén deshabilitados por si acaso
+                addVehiculoBtn.disabled = true;
+                guardarVehiculosBtn.disabled = true;
             } else {
-                // Mostrar el botón de modificar si no está cancelado
+                // Mostrar y habilitar los botones si no está cancelado ni finalizado
                 modificarVehiculosBtn.style.display = 'block';
+                modificarVehiculosBtn.disabled = false;
+                addVehiculoBtn.disabled = false;
+                guardarVehiculosBtn.disabled = false;
             }
 
             cambiarAModoVisualizacion();
@@ -903,11 +930,13 @@
             }
         });
 
-        // Event listener para cambios en patentes
+        // Event listener para cambios en patentes (forzar MAYÚSCULAS y sin espacios)
             vehiculosListContainer.addEventListener('input', function(e) {
                 if (e.target.type === 'text') {
                     const index = parseInt(e.target.getAttribute('data-index'));
-                    vehiculosList[index].patente = e.target.value.trim();
+                    const upper = (e.target.value || '').toUpperCase().replace(/\s/g, '');
+                    e.target.value = upper;
+                    vehiculosList[index].patente = upper.trim();
 
                     // Si se empieza a escribir o agregar algo, ocultar el error
                     const msg = document.getElementById('vehiculosErrorMsg');
