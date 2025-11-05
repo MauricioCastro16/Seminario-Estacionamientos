@@ -35,7 +35,7 @@
                 <th class="text-center">Patente</th>
                 <th class="text-center">Estado</th>
                 <th class="text-center">Comentario</th>
-                <th class="text-center">Acciones</th>
+                <th class="text-center" style="width: 280px; min-width: 280px;">Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -77,7 +77,7 @@
                     </td>
                     <td class="text-muted small">@s.ServExComp</td>
                     <td class="text-center">
-                        <div class="d-flex justify-content-center gap-2">
+                        <div class="d-flex justify-content-center gap-2 align-items-center" style="min-height: 38px;">
 
                             @{
                                 var servicioKey = $"{s.PlyID}_{s.SerID}_{s.VehPtnt}_{s.ServExFyHIni:o}";
@@ -96,7 +96,7 @@
                                     <input type="hidden" name="vehPtnt" value="@s.VehPtnt" />
                                     <input type="hidden" name="servExFyHIni" value="@s.ServExFyHIni.ToString("o")" />
                                     <input type="hidden" name="nuevoEstado" value="En curso" />
-                                    <button type="submit" class="btn btn-outline-secondary btn-sm" title="Iniciar servicio">
+                                    <button type="submit" class="btn btn-outline-primary btn-sm" title="Iniciar servicio" style="min-width: 38px;">
                                         <i class="fa-solid fa-play"></i>
                                     </button>
                                 </form>
@@ -110,14 +110,14 @@
                                     <input type="hidden" name="vehPtnt" value="@s.VehPtnt" />
                                     <input type="hidden" name="servExFyHIni" value="@s.ServExFyHIni.ToString("o")" />
                                     <input type="hidden" name="nuevoEstado" value="Finalizado" />
-                                    <button type="submit" class="btn btn-outline-success btn-sm" title="Finalizar servicio">
+                                    <button type="submit" class="btn btn-outline-success btn-sm" title="Finalizar servicio" style="min-width: 38px;">
                                         <i class="fa-solid fa-check"></i>
                                     </button>
                                 </form>
                             }
                             else
                             {
-                                <button class="btn btn-outline-secondary btn-sm" disabled title="Sin acciones disponibles">
+                                <button class="btn btn-outline-secondary btn-sm" disabled title="Sin acciones disponibles" style="min-width: 38px;">
                                     <i class="fa-solid fa-ban"></i>
                                 </button>
                             }
@@ -128,7 +128,8 @@
                                 <button type="button" 
                                         class="btn btn-success btn-sm" 
                                         title="Ya retirado y cobrado"
-                                        disabled>
+                                        disabled
+                                        style="min-width: 100px;">
                                     <i class="fa-solid fa-check-circle"></i> Retirado
                                 </button>
                             }
@@ -137,7 +138,8 @@
                                 <button type="button" 
                                         class="btn btn-info btn-sm" 
                                         title="Se cobrará junto con la ocupación al momento del egreso"
-                                        disabled>
+                                        disabled
+                                        style="min-width: 100px;">
                                     <i class="fa-solid fa-info-circle"></i> Pendiente
                                 </button>
                             }
@@ -148,8 +150,9 @@
                                    asp-route-serID="@s.SerID"
                                    asp-route-vehPtnt="@s.VehPtnt"
                                    asp-route-servExFyHIni="@s.ServExFyHIni.ToString("o")"
-                                   class="btn btn-outline-warning btn-sm"
-                                   title="Retirar y cobrar">
+                                   class="btn btn-outline-primary btn-sm"
+                                   title="Retirar y cobrar"
+                                   style="min-width: 100px;">
                                     <i class="fa-solid fa-money-bill-wave"></i> Retirar
                                 </a>
                             }
@@ -158,7 +161,8 @@
                                 <button type="button" 
                                         class="btn btn-outline-warning btn-sm disabled" 
                                         title="Debe estar completado para retirar"
-                                        disabled>
+                                        disabled
+                                        style="min-width: 100px;">
                                     <i class="fa-solid fa-money-bill-wave"></i> Retirar
                                 </button>
                             }
@@ -170,7 +174,8 @@
                                asp-route-vehPtnt="@s.VehPtnt"
                                asp-route-servExFyHIni="@s.ServExFyHIni.ToString("o")"
                                class="btn btn-outline-primary btn-sm"
-                               title="Ver detalles">
+                               title="Ver detalles"
+                               style="min-width: 38px;">
                                 <i class="fa-solid fa-eye"></i>
                             </a>
 
