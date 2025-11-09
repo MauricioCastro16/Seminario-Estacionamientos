@@ -63,15 +63,15 @@
                 </div>
             </div>
 
-            @if (ViewBag.EsAbonado == true)
+            @if (Model.EsAbonado)
             {
                 <div class="alert alert-success text-center d-flex justify-content-center align-items-center" role="alert">
                     <i class="fas fa-check-circle me-2"></i>
-                    <div>Este vehículo pertenece a un abono activo. Sin costo de egreso.</div>
+                    <div>Este vehículo pertenece a un abono activo. @(Model.TotalCobro > 0 ? "Solo se cobrarán los servicios extras." : "Sin costo de egreso.")</div>
                 </div>
             }
 
-            @if (ViewBag.EsAbonado != true)
+            @if (!Model.EsAbonado || Model.ServiciosAplicables.Any())
             {
                 <!-- Cálculo de tarifas -->
                 <div class="mb-4">
@@ -135,8 +135,9 @@
                 @Html.HiddenFor(m => m.OcufFyhIni)
                 @Html.HiddenFor(m => m.OcufFyhFin)
                 @Html.HiddenFor(m => m.TotalCobro)
+                @Html.HiddenFor(m => m.EsAbonado)
 
-                @if (ViewBag.EsAbonado != true)
+                @if (Model.TotalCobro > 0)
                 {
                     <div class="row g-4 mb-4">
                         <div class="col-md-6">
@@ -161,7 +162,7 @@
                     </a>
                     <button type="submit" 
                             class="btn btn-primary px-4" 
-                            @((ViewBag.EsAbonado == true || Model.TotalCobro > 0) ? "" : "disabled")>
+                            @((Model.EsAbonado || Model.TotalCobro > 0) ? "" : "disabled")>
                         <i class="fas fa-check me-1"></i> Confirmar egreso
                     </button>
                 </div>

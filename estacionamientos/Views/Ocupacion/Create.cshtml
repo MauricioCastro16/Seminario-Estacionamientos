@@ -181,6 +181,14 @@
         color: #7a1a1a;
     }
 
+    .plaza-card.abonada {
+        background: #fff3cd;
+        border-color: #ffc107;
+        color: #856404;
+        cursor: not-allowed;
+        opacity: 0.85;
+    }
+
     .plaza-card.selected {
         outline: 3px solid #0d6efd;
         background: #e7f1ff;
@@ -448,7 +456,8 @@ document.addEventListener("DOMContentLoaded", () => {
         let primeraPlazaDisponible = null;
         
         plazas.forEach(p => {
-            const esSeleccionable = (p.hab !== false) && !p.ocupada && (p.compatible !== false);
+            // Una plaza es seleccionable si está habilitada, no ocupada, es compatible y está disponible (incluyendo validación de abono)
+            const esSeleccionable = (p.hab !== false) && !p.ocupada && (p.compatible !== false) && (p.disponible !== false);
             if (esSeleccionable && primeraPlazaDisponible === null) {
                 primeraPlazaDisponible = p;
             }
@@ -463,6 +472,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (p.hab === false) card.classList.add("inhabilitada");
             else if (p.ocupada) card.classList.add("ocupada");
+            else if (p.tieneAbonoActivo && !p.disponible) card.classList.add("abonada"); // Nueva clase para plazas abonadas
             else if (p.compatible === false) card.classList.add("incompatible");
             else card.classList.add("disponible");
 
@@ -471,9 +481,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${p.ocupada ? '<div class="small text-muted mt-1">Ocupada</div>' : ''}
                 ${p.hab === false ? '<div class="small text-muted mt-1">Inhabilitada</div>' : ''}
                 ${(p.hab !== false && !p.ocupada && p.compatible === false) ? '<div class="small mt-1">No compatible</div>' : ''}
+                ${(p.tieneAbonoActivo && !p.disponible) ? '<div class="small text-warning mt-1">Reservada para abonados</div>' : ''}
             `;
 
-            const esSeleccionable = (p.hab !== false) && !p.ocupada && (p.compatible !== false);
+            // Una plaza es seleccionable si está habilitada, no ocupada, es compatible y está disponible (incluyendo validación de abono)
+            const esSeleccionable = (p.hab !== false) && !p.ocupada && (p.compatible !== false) && (p.disponible !== false);
             if (esSeleccionable) {
                 card.addEventListener("click", () => {
                     grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
@@ -517,7 +529,10 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const clasVehID = selClas.value;
             const techada = getTechada();
-            const url = `/Ocupacion/GetPlazasDisponibles?plyID=${encodeURIComponent(plyID)}&clasVehID=${encodeURIComponent(clasVehID)}&techada=${techada}`;
+            // Obtener la patente del input para pasarla al endpoint
+            const inputPatente = document.querySelector("input[name='VehPtnt']");
+            const vehPtnt = inputPatente ? inputPatente.value.trim() : "";
+            const url = `/Ocupacion/GetPlazasDisponibles?plyID=${encodeURIComponent(plyID)}&clasVehID=${encodeURIComponent(clasVehID)}&techada=${techada}${vehPtnt ? `&vehPtnt=${encodeURIComponent(vehPtnt)}` : ''}`;
             const r = await fetch(url);
             if (!r.ok) throw new Error("Error HTTP " + r.status);
             const data = await r.json();
@@ -528,7 +543,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 hab: (x.hab ?? true),
                 ocupada: !!x.ocupada,
                 compatible: (x.compatible ?? true),
-                nombre: x.nombre ?? null
+                nombre: x.nombre ?? null,
+                tieneAbonoActivo: !!x.tieneAbonoActivo,
+                disponible: x.disponible !== false
             }));
 
             renderPisos(allPlazas, esAbonado);

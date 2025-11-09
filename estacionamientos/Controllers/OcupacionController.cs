@@ -59,6 +59,10 @@ namespace estacionamientos.Controllers
         private async Task<CobroEgresoVM> CalcularCobro(
             int plyID, int plzNum, string vehPtnt, DateTime ocufFyhIni, DateTime ocufFyhFin)
         {
+            // Normalizar fechas a UTC para comparación
+            var ocufFyhIniUtc = DateTime.SpecifyKind(ocufFyhIni, DateTimeKind.Utc);
+            
+            // Primero intentar buscar por fecha exacta
             var ocupacion = await _ctx.Ocupaciones
                 .Include(o => o.Vehiculo!).ThenInclude(v => v.Clasificacion!)
                 .Include(o => o.Plaza!).ThenInclude(p => p.Playa!)
@@ -66,7 +70,26 @@ namespace estacionamientos.Controllers
                     o.PlyID == plyID &&
                     o.PlzNum == plzNum &&
                     o.VehPtnt == vehPtnt &&
-                    o.OcufFyhIni == ocufFyhIni);
+                    o.OcufFyhIni == ocufFyhIniUtc);
+
+            // Si no se encuentra por fecha exacta, buscar la ocupación activa (sin fecha de fin)
+            if (ocupacion == null)
+            {
+                ocupacion = await _ctx.Ocupaciones
+                    .Include(o => o.Vehiculo!).ThenInclude(v => v.Clasificacion!)
+                    .Include(o => o.Plaza!).ThenInclude(p => p.Playa!)
+                    .FirstOrDefaultAsync(o =>
+                        o.PlyID == plyID &&
+                        o.PlzNum == plzNum &&
+                        o.VehPtnt == vehPtnt &&
+                        o.OcufFyhFin == null);
+                
+                // Si encontramos la ocupación activa, usar su fecha real de inicio
+                if (ocupacion != null)
+                {
+                    ocufFyhIni = ocupacion.OcufFyhIni;
+                }
+            }
 
             if (ocupacion == null)
                 throw new InvalidOperationException("Ocupación no encontrada");
@@ -194,8 +217,9 @@ namespace estacionamientos.Controllers
 
             // ======================
             // Reglas especiales cortas
+            // Solo agregar servicios de estacionamiento si NO es abonado
             // ======================
-            if (minutosOcupacion <= 30 && fraccion.sp != null)
+            if (!esAbonado && minutosOcupacion <= 30 && fraccion.sp != null)
             {
                 serviciosAplicables.Add(new ServicioCobroVM
                 {
@@ -208,7 +232,7 @@ namespace estacionamientos.Controllers
                 });
                 totalCobro = fraccion.monto;
             }
-            else if (minutosOcupacion <= 60 && hora.sp != null)
+            else if (!esAbonado && minutosOcupacion <= 60 && hora.sp != null)
             {
                 serviciosAplicables.Add(new ServicioCobroVM
                 {
@@ -221,7 +245,7 @@ namespace estacionamientos.Controllers
                 });
                 totalCobro = hora.monto;
             }
-            else
+            else if (!esAbonado)
             {
                 // ======================
                 // Algoritmo greedy para el resto
@@ -286,6 +310,7 @@ namespace estacionamientos.Controllers
             }
 
             // 🔹 Agregar servicios extra pendientes de cobro (sin PagNum)
+            // Estos servicios SIEMPRE se agregan, incluso si es abonado
             var serviciosExtras = await _ctx.ServiciosExtrasRealizados
                 .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
                 .Where(s => s.VehPtnt == vehPtnt &&
@@ -323,10 +348,17 @@ namespace estacionamientos.Controllers
                 }
             }
 
-            // Si el vehículo pertenece a un abonado, el total de cobro es 0
+            // Si es abonado, filtrar los servicios de estacionamiento de la lista
+            // pero mantener los servicios extras
             if (esAbonado)
             {
-                totalCobro = 0;
+                // Remover servicios de estacionamiento de la lista de servicios aplicables
+                serviciosAplicables = serviciosAplicables
+                    .Where(s => !s.EsEstacionamiento)
+                    .ToList();
+                
+                // Recalcular el total solo con servicios extras
+                totalCobro = serviciosAplicables.Sum(s => s.Subtotal);
             }
 
             // Métodos de pago
@@ -356,7 +388,8 @@ namespace estacionamientos.Controllers
                 MinutosOcupacion = minutosOcupacion,
                 ServiciosAplicables = serviciosAplicables,
                 TotalCobro = totalCobro,
-                MetodosPagoDisponibles = metodosPago
+                MetodosPagoDisponibles = metodosPago,
+                EsAbonado = esAbonado
             };
         }
 
@@ -434,6 +467,35 @@ namespace estacionamientos.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RegistrarIngreso(int plyID, int plzNum, string vehPtnt)
         {
+            // Validar que si la plaza tiene un abono activo, solo permita vehículos abonados de esa plaza
+            var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var fechaActualDate = fechaActual.Date;
+            var vehPtntNormalized = vehPtnt?.Trim().ToUpperInvariant() ?? string.Empty;
+
+            // Verificar si la plaza tiene un abono activo
+            var abonoActivo = await _ctx.Abonos
+                .Include(a => a.Vehiculos)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.PlyID == plyID
+                                          && a.PlzNum == plzNum
+                                          && a.EstadoPago != EstadoPago.Cancelado
+                                          && a.EstadoPago != EstadoPago.Finalizado
+                                          && a.AboFyhIni.Date <= fechaActualDate
+                                          && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate));
+
+            if (abonoActivo != null)
+            {
+                // La plaza tiene abono activo, verificar que el vehículo pertenezca a ese abono
+                var vehiculoPerteneceAbono = abonoActivo.Vehiculos
+                    .Any(v => v.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized);
+
+                if (!vehiculoPerteneceAbono)
+                {
+                    TempData["Error"] = $"La plaza {plzNum} está reservada para vehículos abonados. Este vehículo no está asociado al abono de esta plaza.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+
             var ocup = new Ocupacion
             {
                 PlyID = plyID,
@@ -506,37 +568,49 @@ namespace estacionamientos.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ConfirmarEgreso(CobroEgresoVM model)
         {
-            // Normalizar fechas a UTC
-            model.OcufFyhIni = NormalizarFechaUTC(model.OcufFyhIni);
-            model.OcufFyhFin = NormalizarFechaUTC(model.OcufFyhFin);
-
-            if (!ModelState.IsValid)
-            {
-                // Recargar el modelo con los datos originales
-                var cobroVM = await CalcularCobro(model.PlyID, model.PlzNum, model.VehPtnt, 
-                    model.OcufFyhIni, model.OcufFyhFin);
-                cobroVM.MepID = model.MepID; // Mantener la selección del usuario
-                return View("CobroEgreso", cobroVM);
-            }
-
-            // Buscar la ocupación activa (sin fecha de fin) en lugar de por fecha exacta
+            // Buscar primero la ocupación activa para obtener las fechas reales
             var ocup = await _ctx.Ocupaciones
                 .FirstOrDefaultAsync(o => o.PlyID == model.PlyID && o.PlzNum == model.PlzNum && o.VehPtnt == model.VehPtnt && o.OcufFyhFin == null);
 
             if (ocup == null)
             {
-                TempData["Error"] = "No se encontró la ocupación especificada.";
+                TempData["Error"] = "No se encontró la ocupación activa especificada.";
                 return RedirectToAction(nameof(Index));
             }
+
+            // Usar las fechas reales de la ocupación y la fecha actual para el egreso
+            var fechaEgreso = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var fechaInicioReal = ocup.OcufFyhIni;
+
+            // Recalcular el modelo para obtener EsAbonado actualizado usando las fechas reales
+            var cobroVM = await CalcularCobro(model.PlyID, model.PlzNum, model.VehPtnt, 
+                fechaInicioReal, fechaEgreso);
+            cobroVM.MepID = model.MepID; // Mantener la selección del usuario
+            
+            // Validar que el método de pago esté seleccionado solo si hay algo que cobrar
+            if (cobroVM.TotalCobro > 0 && cobroVM.MepID == 0)
+            {
+                ModelState.AddModelError(nameof(CobroEgresoVM.MepID), "Debe seleccionar un método de pago cuando hay un monto a cobrar.");
+            }
+
+            // Validar otros campos requeridos
+            if (!ModelState.IsValid)
+            {
+                return View("CobroEgreso", cobroVM);
+            }
+
+            // La ocupación ya fue buscada arriba, no necesitamos buscarla de nuevo
 
             await using var tx = await _ctx.Database.BeginTransactionAsync();
 
             try
             {
-                var esAbonado = model.TotalCobro == 0;
+                // Usar el valor de EsAbonado del modelo recalculado
+                var esAbonado = cobroVM.EsAbonado;
                 Pago? pago = null;
 
-                if (!esAbonado)
+                // Solo crear pago si hay algo que cobrar
+                if (cobroVM.TotalCobro > 0)
                 {
                     // Crear el pago primero
                     var proximoNumeroPago = await _ctx.Pagos
@@ -551,8 +625,8 @@ namespace estacionamientos.Controllers
                         PlyID = model.PlyID,
                         PlaNU = plaNU, 
                         PagNum = proximoNumeroPago,
-                        MepID = model.MepID,
-                        PagMonto = model.TotalCobro,
+                        MepID = cobroVM.MepID,
+                        PagMonto = cobroVM.TotalCobro,
                         PagFyh = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc)
                     };
 
@@ -715,8 +789,14 @@ namespace estacionamientos.Controllers
         // API para la grilla de plazas
         // ===========================
         [HttpGet]
-        public async Task<JsonResult> GetPlazasDisponibles(int plyID, int? clasVehID, string? techada = "all")
+        public async Task<JsonResult> GetPlazasDisponibles(int plyID, int? clasVehID, string? techada = "all", string? vehPtnt = null)
         {
+            var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var fechaActualDate = fechaActual.Date;
+            
+            // Normalizar patente si viene
+            var vehPtntNormalized = string.IsNullOrWhiteSpace(vehPtnt) ? null : vehPtnt.Trim().ToUpperInvariant();
+
             // Traemos TODAS las plazas y calculamos flags para que el front pueda pintar/filtrar
             var baseQuery = _ctx.Plazas.AsNoTracking()
                 .Where(p => p.PlyID == plyID)
@@ -733,7 +813,15 @@ namespace estacionamientos.Controllers
 
                     ocupada = _ctx.Ocupaciones.Any(o => o.PlyID == p.PlyID
                                                         && o.PlzNum == p.PlzNum
-                                                        && o.OcufFyhFin == null)
+                                                        && o.OcufFyhFin == null),
+                    
+                    // Verificar si tiene un abono activo
+                    tieneAbonoActivo = _ctx.Abonos.Any(a => a.PlyID == p.PlyID
+                                                            && a.PlzNum == p.PlzNum
+                                                            && a.EstadoPago != EstadoPago.Cancelado
+                                                            && a.EstadoPago != EstadoPago.Finalizado
+                                                            && a.AboFyhIni.Date <= fechaActualDate
+                                                            && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate))
                 });
 
             // Filtro de techada si vino
@@ -745,15 +833,62 @@ namespace estacionamientos.Controllers
                 .OrderBy(x => x.piso).ThenBy(x => x.plzNum)
                 .ToListAsync();
 
-            // Normalizamos nombre y ocultamos "techada" (la vista no lo usa)
-            var payload = data.Select(x => new
+            // Verificar si el vehículo es abonado y a qué plaza pertenece
+            int? plazaAbonoID = null;
+            int? plazaAbonoNum = null;
+            bool esAbonadoVehiculo = false;
+            
+            if (!string.IsNullOrWhiteSpace(vehPtntNormalized))
             {
-                x.plzNum,
-                nombre = string.IsNullOrWhiteSpace(x.nombre) ? $"P{x.plzNum}" : x.nombre,
-                x.piso,
-                x.hab,
-                x.compatible,
-                x.ocupada
+                var vehiculoAbonado = await _ctx.VehiculosAbonados
+                    .Include(v => v.Abono)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(v => v.VehPtnt.ToUpper() == vehPtntNormalized
+                                              && v.Abono.EstadoPago != EstadoPago.Cancelado
+                                              && v.Abono.EstadoPago != EstadoPago.Finalizado
+                                              && v.Abono.AboFyhIni.Date <= fechaActualDate
+                                              && (v.Abono.AboFyhFin == null || v.Abono.AboFyhFin.Value.Date >= fechaActualDate));
+                
+                if (vehiculoAbonado != null)
+                {
+                    esAbonadoVehiculo = true;
+                    plazaAbonoID = vehiculoAbonado.Abono.PlyID;
+                    plazaAbonoNum = vehiculoAbonado.Abono.PlzNum;
+                }
+            }
+
+            // Normalizamos nombre y agregamos flag de disponible según abono
+            var payload = data.Select(x => 
+            {
+                // Si la plaza tiene abono activo, solo está disponible si:
+                // 1. El vehículo es abonado Y pertenece a esa plaza específica
+                // 2. O si no hay vehículo especificado (para mostrar visualmente)
+                bool disponiblePorAbono = true;
+                if (x.tieneAbonoActivo)
+                {
+                    if (esAbonadoVehiculo)
+                    {
+                        // Solo disponible si es la plaza del abono del vehículo
+                        disponiblePorAbono = (plazaAbonoID == x.PlyID && plazaAbonoNum == x.plzNum);
+                    }
+                    else
+                    {
+                        // Si no es abonado, la plaza no está disponible
+                        disponiblePorAbono = false;
+                    }
+                }
+
+                return new
+                {
+                    x.plzNum,
+                    nombre = string.IsNullOrWhiteSpace(x.nombre) ? $"P{x.plzNum}" : x.nombre,
+                    x.piso,
+                    x.hab,
+                    x.compatible,
+                    x.ocupada,
+                    tieneAbonoActivo = x.tieneAbonoActivo,
+                    disponible = !x.ocupada && disponiblePorAbono && x.hab && x.compatible
+                };
             });
 
             return Json(payload);

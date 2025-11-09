@@ -30,11 +30,14 @@ namespace estacionamientos.Models.ViewModels
         public decimal TotalCobro { get; set; }
         
         // Método de pago seleccionado
-        [Required(ErrorMessage = "Debe seleccionar un método de pago")]
+        // Solo requerido si hay un total a cobrar (TotalCobro > 0), validación manual en el controlador
         public int MepID { get; set; }
         
         // Métodos de pago disponibles
         public List<MetodoPagoVM> MetodosPagoDisponibles { get; set; } = new List<MetodoPagoVM>();
+        
+        // Indica si el vehículo pertenece a un abono activo
+        public bool EsAbonado { get; set; }
     }
     
     public class ServicioCobroVM
