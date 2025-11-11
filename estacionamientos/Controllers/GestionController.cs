@@ -140,9 +140,19 @@ public class GestionController(AppDbContext ctx) : Controller
             .ToListAsync();
 
         var plazasOcupadas = ocupacionesActivas.Count;
-        var llaves = ocupacionesActivas.Count(o => o.OcuLlavDej);
-        var promedioActiva = ocupacionesActivas.Any()
-            ? ocupacionesActivas.Average(o => (ahoraUtc - o.OcufFyhIni).TotalMinutes)
+        var ocupacionesHoyCompletas = await _ctx.Ocupaciones
+            .AsNoTracking()
+            .Where(o => playasIds.Contains(o.PlyID)
+                        && o.OcufFyhIni >= hoyInicioUtc
+                        && o.OcufFyhIni <= hoyFinUtc
+                        && o.OcufFyhFin != null
+                        && o.OcufFyhFin >= hoyInicioUtc
+                        && o.OcufFyhFin <= hoyFinUtc)
+            .Select(o => new { o.OcufFyhIni, o.OcufFyhFin })
+            .ToListAsync();
+
+        var promedioActiva = ocupacionesHoyCompletas.Any()
+            ? ocupacionesHoyCompletas.Average(o => (o.OcufFyhFin!.Value - o.OcufFyhIni).TotalMinutes)
             : 0d;
 
         var playerosActivos = await _ctx.Turnos
@@ -152,35 +162,19 @@ public class GestionController(AppDbContext ctx) : Controller
             .Distinct()
             .CountAsync();
 
-        var serviciosPendientesRaw = await _ctx.ServiciosExtrasRealizados
+        var serviciosDisponibles = await _ctx.ServiciosProveidos
             .AsNoTracking()
-            .Include(s => s.ServicioProveido)
-            .ThenInclude(sp => sp.Servicio)
-            .Where(s => playasIds.Contains(s.PlyID) && s.ServExFyHFin == null)
-            .Select(s => new
+            .Include(sp => sp.Servicio)
+            .Where(sp => playasIds.Contains(sp.PlyID))
+            .Select(sp => new GestionServicioCatalogoVM
             {
-                s.VehPtnt,
-                s.ServExFyHIni,
-                Servicio = s.ServicioProveido.Servicio.SerNom,
-                Duracion = s.ServicioProveido.Servicio.SerDuracionMinutos
+                Servicio = sp.Servicio.SerNom,
+                Habilitado = sp.SerProvHab
             })
+            .OrderBy(sp => sp.Servicio)
             .ToListAsync();
 
-        var serviciosPendientes = serviciosPendientesRaw
-            .Select(s => new GestionServicioDetalleVM
-            {
-                Servicio = s.Servicio,
-                Vehiculo = s.VehPtnt,
-                InicioUtc = s.ServExFyHIni,
-                DuracionEstimadaMin = s.Duracion,
-                MinutosTranscurridos = (ahoraUtc - DateTime.SpecifyKind(s.ServExFyHIni, DateTimeKind.Utc)).TotalMinutes,
-                Atrasado = s.Duracion.HasValue &&
-                           (ahoraUtc - DateTime.SpecifyKind(s.ServExFyHIni, DateTimeKind.Utc)).TotalMinutes > s.Duracion.Value
-            })
-            .OrderByDescending(s => s.MinutosTranscurridos)
-            .ToList();
-
-        var serviciosActivos = serviciosPendientes.Count;
+        var serviciosActivos = serviciosDisponibles.Count(sp => sp.Habilitado);
 
         var entradasHoy = await _ctx.Ocupaciones
             .AsNoTracking()
@@ -208,17 +202,6 @@ public class GestionController(AppDbContext ctx) : Controller
             })
             .OrderByDescending(g => g.Conteo)
             .ToListAsync();
-
-        var ocupacionPorPiso = plazasTotales
-            .GroupBy(p => p.Piso)
-            .Select(g => new GestionNivelOcupacionVM
-            {
-                Piso = g.Key,
-                PlazasHabilitadas = g.Count(p => p.PlzHab),
-                PlazasOcupadas = ocupacionesActivas.Count(o => o.PlzNum.HasValue && g.Any(p => p.PlzNum == o.PlzNum && p.PlyID == o.PlyID))
-            })
-            .OrderBy(g => g.Piso)
-            .ToList();
 
         var vehiculosActuales = ocupacionesActivas.Select(o => o.VehPtnt).Distinct().ToList();
 
@@ -268,19 +251,6 @@ public class GestionController(AppDbContext ctx) : Controller
             })
             .OrderByDescending(c => c.Value)
             .ToList();
-
-        var topPatentes = await _ctx.Ocupaciones
-            .AsNoTracking()
-            .Where(o => playasIds.Contains(o.PlyID) && o.OcufFyhIni >= hoyInicioUtc && o.OcufFyhIni <= ahoraUtc)
-            .GroupBy(o => o.VehPtnt)
-            .Select(g => new GestionSerieValorVM
-            {
-                Label = g.Key,
-                Value = g.Count()
-            })
-            .OrderByDescending(g => g.Value)
-            .Take(5)
-            .ToListAsync();
 
         var valoracionesRecientes = new List<GestionValoracionRecienteVM>();
         if (playasIds.Count == 1)
@@ -335,14 +305,11 @@ public class GestionController(AppDbContext ctx) : Controller
             EgresosHoy = egresosHoy,
             RotacionesUltimaHora = rotacionesHora,
             DuracionPromedioActivaMin = Math.Round(promedioActiva, 1),
-            LlavesEnCustodia = llaves,
             VehiculosAbonadosActuales = vehiculosAbonadosActuales,
             VehiculosOcasionalesActuales = vehiculosOcasionales,
             ClasificacionVehiculos = clasificacionVehiculos,
-            TopPatentesHoy = topPatentes,
-            OcupacionPorPiso = ocupacionPorPiso,
             PlazasNoHabilitadas = plazasNoHab,
-            ServiciosPendientes = serviciosPendientes,
+            ServiciosDisponibles = serviciosDisponibles,
             MovimientosUltimaHora = movimientosHora,
             ValoracionesRecientes = valoracionesRecientes
         };

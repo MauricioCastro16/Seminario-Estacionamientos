@@ -98,7 +98,7 @@
                         <div>
                             <div class="card-label">Ocupación (playa)</div>
                             <div class="card-value">@ocupacionPorcentaje.ToString("0.#")%</div>
-                            <small class="text-muted">@Model.EnVivo.PlazasOcupadas/@Model.EnVivo.PlazasHabilitadas plazas</small>
+                            <div class="card-extra">@Model.EnVivo.PlazasOcupadas/@Model.EnVivo.PlazasHabilitadas</div>
                         </div>
                     </div>
                 </div>
@@ -108,7 +108,7 @@
                         <div>
                             <div class="card-label">Playeros activos</div>
                             <div class="card-value">@Model.EnVivo.PlayerosActivos</div>
-                            <small class="text-muted">@(Model.EnVivo.AlertaSinPlayeros ? "Sin personal en turno" : "Turnos en progreso")</small>
+                            <div class="card-extra">@(!Model.EnVivo.AlertaSinPlayeros ? "En turno" : "Sin turno")</div>
                         </div>
                     </div>
                 </div>
@@ -116,9 +116,9 @@
                     <div class="gestion-card shadow-sm">
                         <div class="card-icon bg-primary-subtle text-primary"><i class="fas fa-screwdriver-wrench"></i></div>
                         <div>
-                            <div class="card-label">Servicios extra (hoy)</div>
-                            <div class="card-value">@Model.EnVivo.ServiciosExtrasActivos</div>
-                            <small class="text-muted">Pendientes de finalizar</small>
+                            <div class="card-label">Servicios extra</div>
+                            <div class="card-value">@Model.EnVivo.ServiciosDisponibles.Count</div>
+                            <div class="card-extra">@Model.EnVivo.ServiciosExtrasActivos habilitados</div>
                         </div>
                     </div>
                 </div>
@@ -128,7 +128,7 @@
                         <div>
                             <div class="card-label">Estado</div>
                             <div class="card-value">@Model.EnVivo.EstadoOperativo</div>
-                            <small class="text-muted">Plazas fuera de servicio: @Model.EnVivo.PlazasFueraServicio</small>
+                            <div class="card-extra">@Model.EnVivo.PlazasFueraServicio fuera</div>
                         </div>
                     </div>
                 </div>
@@ -138,7 +138,6 @@
                         <div>
                             <div class="card-label">Valoración promedio</div>
                             <div class="card-value">@Model.EnVivo.ValoracionPromedio.ToString("0.00")</div>
-                            <small class="text-muted">Actualizada con feedback de conductores</small>
                         </div>
                     </div>
                 </div>
@@ -148,7 +147,6 @@
                         <div>
                             <div class="card-label">Abonos activos</div>
                             <div class="card-value">@Model.EnVivo.AbonosActivos</div>
-                            <small class="text-muted">Vehículos abonados en plaza</small>
                         </div>
                     </div>
                 </div>
@@ -164,7 +162,7 @@
                         <div>
                             <div class="card-label">Disponibilidad</div>
                             <div class="card-value">@disponibilidadPorcentaje.ToString("0.#")%</div>
-                            <small class="text-muted">@Model.EnVivo.PlazasHabilitadas - Model.EnVivo.PlazasOcupadas libres</small>
+                            <div class="card-extra">@Model.EnVivo.PlazasHabilitadas - @Model.EnVivo.PlazasOcupadas</div>
                         </div>
                     </div>
                 </div>
@@ -174,7 +172,7 @@
                         <div>
                             <div class="card-label">Entradas (hoy)</div>
                             <div class="card-value">@Model.EnVivo.EntradasHoy</div>
-                            <small class="text-muted">Rotaciones última hora: @Model.EnVivo.RotacionesUltimaHora</small>
+                            <div class="card-extra">@Model.EnVivo.RotacionesUltimaHora última hora</div>
                         </div>
                     </div>
                 </div>
@@ -184,7 +182,6 @@
                         <div>
                             <div class="card-label">Egresos (hoy)</div>
                             <div class="card-value">@Model.EnVivo.EgresosHoy</div>
-                            <small class="text-muted">Compará vs entradas para ver balance</small>
                         </div>
                     </div>
                 </div>
@@ -194,7 +191,6 @@
                         <div>
                             <div class="card-label">Duración prom. activa</div>
                             <div class="card-value">@Model.EnVivo.DuracionPromedioActivaMin.ToString("0.0") min</div>
-                            <small class="text-muted">Llaves en custodia: @Model.EnVivo.LlavesEnCustodia</small>
                         </div>
                     </div>
                 </div>
@@ -206,9 +202,8 @@
             <div class="row g-3">
                 <div class="col-12 col-lg-6">
                     <div class="card shadow-sm h-100">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span><i class="fas fa-chart-pie me-2 text-primary"></i>Clasificación actual</span>
-                            <span class="badge bg-primary-subtle text-primary">Vehículos @Model.EnVivo.VehiculosAbonadosActuales + @Model.EnVivo.VehiculosOcasionalesActuales</span>
+                        <div class="card-header">
+                            <i class="fas fa-chart-pie me-2 text-primary"></i>Clasificación actual
                         </div>
                         <div class="card-body">
                             @if (Model.EnVivo.ClasificacionVehiculos.Any())
@@ -222,6 +217,7 @@
                                         </li>
                                     }
                                 </ul>
+                                <div class="pt-3 fw-semibold text-end">Total @Model.EnVivo.ClasificacionVehiculos.Sum(x => x.Value)</div>
                             }
                             else
                             {
@@ -233,25 +229,10 @@
                 <div class="col-12 col-lg-6">
                     <div class="card shadow-sm h-100">
                         <div class="card-header">
-                            <i class="fas fa-crown me-2 text-warning"></i>Top patentes de hoy
+                            <i class="fas fa-chart-pie me-2 text-secondary"></i>Distribución visual
                         </div>
-                        <div class="card-body">
-                            @if (Model.EnVivo.TopPatentesHoy.Any())
-                            {
-                                <ul class="list-group list-group-flush">
-                                    @foreach (var item in Model.EnVivo.TopPatentesHoy)
-                                    {
-                                        <li class="list-group-item d-flex justify-content-between">
-                                            <span class="fw-semibold">@item.Label</span>
-                                            <span class="badge bg-secondary-subtle text-secondary">@item.Value visitas</span>
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                            else
-                            {
-                                <div class="text-muted">Aún no hay movimiento registrado para hoy.</div>
-                            }
+                        <div class="card-body pie-chart-wrapper d-flex align-items-center justify-content-center">
+                            <canvas id="chartVehiculosActuales"></canvas>
                         </div>
                     </div>
                 </div>
@@ -259,80 +240,38 @@
         </section>
 
         <section class="mb-4">
-            <h5 class="section-title">Servicios y llaves</h5>
-            <div class="row g-3">
-                <div class="col-12 col-lg-7">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span><i class="fas fa-clock me-2 text-primary"></i>Servicios extra activos</span>
-                            <span class="badge bg-danger-subtle text-danger">@Model.EnVivo.ServiciosPendientes.Count</span>
-                        </div>
-                        <div class="card-body">
-                            @if (Model.EnVivo.ServiciosPendientes.Any())
-                            {
-                                <div class="table-responsive">
-                                    <table class="table table-sm align-middle mb-0">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Servicio</th>
-                                                <th>Vehículo</th>
-                                                <th>Inicio</th>
-                                                <th>Duración</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var s in Model.EnVivo.ServiciosPendientes.Take(6))
-                                            {
-                                                var inicioLocal = DateTime.SpecifyKind(s.InicioUtc, DateTimeKind.Utc).ToLocalTime();
-                                                <tr class="@(s.Atrasado ? "table-warning" : "")">
-                                                    <td>@s.Servicio</td>
-                                                    <td>@s.Vehiculo</td>
-                                                    <td>@inicioLocal.ToString("HH:mm")</td>
-                                                    <td>
-                                                        @s.MinutosTranscurridos.ToString("0") min
-                                                        @if (s.DuracionEstimadaMin.HasValue)
-                                                        {
-                                                            <span class="text-muted"> / @s.DuracionEstimadaMin.Value min</span>
-                                                        }
-                                                    </td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="text-muted">No hay servicios adicionales en ejecución.</div>
-                            }
-                        </div>
-                    </div>
+            <h5 class="section-title">Servicios disponibles</h5>
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <i class="fas fa-list me-2 text-primary"></i>Catálogo
                 </div>
-                <div class="col-12 col-lg-5">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header">
-                            <i class="fas fa-key me-2 text-info"></i>Llaves en custodia por piso
-                        </div>
-                        <div class="card-body">
-                            @if (Model.EnVivo.OcupacionPorPiso.Any())
-                            {
-                                <ul class="list-group list-group-flush">
-                                    @foreach (var piso in Model.EnVivo.OcupacionPorPiso)
+                <div class="card-body">
+                    @if (Model.EnVivo.ServiciosDisponibles.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Servicio</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.EnVivo.ServiciosDisponibles)
                                     {
-                                        var pisoLabel = piso.Piso.HasValue ? $"Piso {piso.Piso}" : "Sin piso";
-                                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                                            <span>@pisoLabel</span>
-                                            <span class="badge bg-primary-subtle text-primary">@piso.PlazasOcupadas/@piso.PlazasHabilitadas ocupadas</span>
-                                        </li>
+                                        <tr>
+                                            <td>@item.Servicio</td>
+                                            <td>@(item.Habilitado ? "Habilitado" : "Suspendido")</td>
+                                        </tr>
                                     }
-                                </ul>
-                            }
-                            else
-                            {
-                                <div class="text-muted">Sin datos de ocupación por piso.</div>
-                            }
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted">No hay servicios configurados.</div>
+                    }
                 </div>
             </div>
         </section>
@@ -438,7 +377,6 @@
                         <div>
                             <div class="card-label">Entradas</div>
                             <div class="card-value">@Model.Historico.Entradas</div>
-                            <small class="text-muted">Vehículos detectados en el rango</small>
                         </div>
                     </div>
                 </div>
@@ -448,7 +386,7 @@
                         <div>
                             <div class="card-label">Egresos</div>
                             <div class="card-value">@Model.Historico.Egresos</div>
-                            <small class="text-muted">Reubicaciones: @Model.Historico.Reubicaciones</small>
+                            <div class="card-extra">@Model.Historico.Reubicaciones reubicaciones</div>
                         </div>
                     </div>
                 </div>
@@ -458,7 +396,7 @@
                         <div>
                             <div class="card-label">Permanencia promedio</div>
                             <div class="card-value">@Model.Historico.PermanenciaPromedioMin.ToString("0.0") min</div>
-                            <small class="text-muted">Vehículos únicos: @Model.Historico.VehiculosUnicos</small>
+                            <div class="card-extra">@Model.Historico.VehiculosUnicos vehículos únicos</div>
                         </div>
                     </div>
                 </div>
@@ -468,7 +406,6 @@
                         <div>
                             <div class="card-label">Servicios extra completados</div>
                             <div class="card-value">@Model.Historico.ServiciosExtrasCompletados</div>
-                            <small class="text-muted">Llaves registradas: @Model.Historico.LlavesPromedio</small>
                         </div>
                     </div>
                 </div>
@@ -666,6 +603,38 @@
         });
     </script>
 }
+else
+{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof Chart === 'undefined') {
+                return;
+            }
+
+            const ctx = document.getElementById('chartVehiculosActuales');
+            const labels = @Html.Raw(JsonSerializer.Serialize(Model.EnVivo.ClasificacionVehiculos.Select(x => x.Label)));
+            const valores = @Html.Raw(JsonSerializer.Serialize(Model.EnVivo.ClasificacionVehiculos.Select(x => x.Value)));
+
+            if (ctx && labels.length) {
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data: valores,
+                            backgroundColor: ['#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#fd7e14', '#198754', '#20c997', '#ffc107']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { position: 'bottom' } }
+                    }
+                });
+            }
+        });
+    </script>
+}
 
 <style>
     .gestion-dashboard .section-title {
@@ -699,5 +668,13 @@
     .gestion-card .card-value {
         font-size: 1.75rem;
         font-weight: 600;
+    }
+    .gestion-card .card-extra {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #6c757d;
+    }
+    .pie-chart-wrapper {
+        max-height: 220px;
     }
 </style>

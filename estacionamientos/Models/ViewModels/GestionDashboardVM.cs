@@ -52,6 +52,12 @@ public class GestionServicioDetalleVM
     public bool Atrasado { get; set; }
 }
 
+public class GestionServicioCatalogoVM
+{
+    public string Servicio { get; set; } = string.Empty;
+    public bool Habilitado { get; set; }
+}
+
 public class GestionMovimientoResumenVM
 {
     public string Tipo { get; set; } = string.Empty;
@@ -82,14 +88,11 @@ public class GestionEnVivoVM
     public int EgresosHoy { get; set; }
     public int RotacionesUltimaHora { get; set; }
     public double DuracionPromedioActivaMin { get; set; }
-    public int LlavesEnCustodia { get; set; }
     public int VehiculosAbonadosActuales { get; set; }
     public int VehiculosOcasionalesActuales { get; set; }
     public List<GestionSerieValorVM> ClasificacionVehiculos { get; set; } = new();
-    public List<GestionSerieValorVM> TopPatentesHoy { get; set; } = new();
-    public List<GestionNivelOcupacionVM> OcupacionPorPiso { get; set; } = new();
     public List<GestionPlazaEstadoVM> PlazasNoHabilitadas { get; set; } = new();
-    public List<GestionServicioDetalleVM> ServiciosPendientes { get; set; } = new();
+    public List<GestionServicioCatalogoVM> ServiciosDisponibles { get; set; } = new();
     public List<GestionMovimientoResumenVM> MovimientosUltimaHora { get; set; } = new();
     public List<GestionValoracionRecienteVM> ValoracionesRecientes { get; set; } = new();
     public bool AlertaSinPlayeros => PlayerosActivos == 0;
