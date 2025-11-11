@@ -731,12 +731,20 @@ public static class DbInitializer
         foreach (var conductor in conductores)
         {
             int cantidadUbicaciones = faker.Random.Int(2, 4); // 2 a 4 ubicaciones por conductor
+            var apodosUsados = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             for (int j = 0; j < cantidadUbicaciones; j++)
             {
+                string apodo;
+                do
+                {
+                    apodo = faker.Commerce.ProductName(); // Nombre o apodo
+                }
+                while (!apodosUsados.Add(apodo));
+
                 var ubicacion = new UbicacionFavorita
                 {
                     ConNU = conductor.UsuNU, // Asociamos al conductor
-                    UbfApodo = faker.Commerce.ProductName(), // Nombre o apodo
+                    UbfApodo = apodo, // Nombre o apodo (único por conductor)
                     UbfProv = faker.Address.State(), // Provincia
                     UbfCiu = faker.Address.City(), // Ciudad
                     UbfDir = faker.Address.StreetAddress(), // Dirección
