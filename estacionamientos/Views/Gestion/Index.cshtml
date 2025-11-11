@@ -21,9 +21,9 @@
         <div class="ms-auto d-flex gap-2">
             <form method="get" asp-controller="Gestion" asp-action="Index">
                 <input type="hidden" name="modo" value="en-vivo" />
-                @if (Model.PlayaSeleccionadaId.HasValue)
+                @foreach (var id in Model.PlayasSeleccionadas)
                 {
-                    <input type="hidden" name="playaId" value="@Model.PlayaSeleccionadaId.Value" />
+                    <input type="hidden" name="playasIds" value="@id" />
                 }
                 <button type="submit" class="btn @(esEnVivo ? "btn-primary" : "btn-outline-primary")">
                     <i class="fa-solid fa-wave-square fa-beat-fade me-2"></i>En vivo
@@ -33,9 +33,9 @@
                 <input type="hidden" name="modo" value="rango" />
                 <input type="hidden" name="desde" value="@Model.Filtros.Desde.ToString("yyyy-MM-dd")" />
                 <input type="hidden" name="hasta" value="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")" />
-                @if (Model.PlayaSeleccionadaId.HasValue)
+                @foreach (var id in Model.PlayasSeleccionadas)
                 {
-                    <input type="hidden" name="playaId" value="@Model.PlayaSeleccionadaId.Value" />
+                    <input type="hidden" name="playasIds" value="@id" />
                 }
                 <button type="submit" class="btn @(!esEnVivo ? "btn-primary" : "btn-outline-primary")">
                     <i class="fa-solid fa-chart-line me-2"></i>Rango de fechas
@@ -55,26 +55,34 @@
     {
         <div class="card shadow-sm mb-4">
             <div class="card-body row g-3 align-items-center">
-                <div class="col-sm-8 col-lg-6">
-                    <form method="get" asp-action="Index" asp-controller="Gestion" class="row g-2 align-items-center">
+                <div class="col-sm-8 col-lg-7">
+                    <form method="get" asp-action="Index" asp-controller="Gestion" class="row g-2 align-items-center" id="enVivoSelectorForm">
                         <input type="hidden" name="modo" value="en-vivo" />
-                        <div class="col-12 col-md-8">
-                            <label for="playaId" class="form-label fw-semibold text-muted mb-1">Seleccionar playa</label>
-                            <select id="playaId" name="playaId" class="form-select" onchange="this.form.submit()">
-                                @foreach (var playa in Model.PlayasDisponibles)
-                                {
-                                    if (Model.PlayaSeleccionadaId == playa.PlyID)
+                        <div class="col-12 col-md-9">
+                            <label class="form-label fw-semibold text-muted mb-1">Seleccionar playas</label>
+                            <div class="dropdown w-100">
+                                <button class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center" type="button" id="playasDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span id="playasDropdownText">Seleccione playas</span>
+                                    <i class="fas fa-chevron-down small"></i>
+                                </button>
+                                <div class="dropdown-menu w-100 p-3" aria-labelledby="playasDropdown" style="max-height: 280px; overflow-y: auto;">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="playasSelectAll">
+                                        <label class="form-check-label fw-semibold" for="playasSelectAll">Seleccionar todas</label>
+                                    </div>
+                                    <div class="dropdown-divider"></div>
+                                    @foreach (var playa in Model.PlayasDisponibles)
                                     {
-                                        <option value="@playa.PlyID" selected>@playa.PlayaNombre</option>
+                                        var checkboxId = $"playa_option_{playa.PlyID}";
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input playa-option" type="checkbox" id="@checkboxId" name="playasIds" value="@playa.PlyID" data-nombre="@playa.PlayaNombre" @(Model.PlayasSeleccionadas.Contains(playa.PlyID) ? "checked" : "")>
+                                            <label class="form-check-label" for="@checkboxId">@playa.PlayaNombre</label>
+                                        </div>
                                     }
-                                    else
-                                    {
-                                        <option value="@playa.PlyID">@playa.PlayaNombre</option>
-                                    }
-                                }
-                            </select>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-3">
                             <label class="form-label fw-semibold text-muted mb-1 d-block">Acciones</label>
                             <button type="submit" class="btn btn-outline-primary w-100">
                                 <i class="fas fa-rotate-right me-1"></i>Actualizar
@@ -341,10 +349,6 @@
             <div class="card-body">
                 <form method="get" asp-action="Index" asp-controller="Gestion" class="row g-3 align-items-end" id="rangoFiltersForm">
                     <input type="hidden" name="modo" value="rango" />
-                    @if (Model.PlayaSeleccionadaId.HasValue)
-                    {
-                        <input type="hidden" name="playaId" value="@Model.PlayaSeleccionadaId.Value" />
-                    }
                     <div class="col-12 col-md-4">
                         <label for="desde" class="form-label fw-semibold text-muted">Fecha desde</label>
                         <input type="date" class="form-control" id="desde" name="desde" value="@Model.Filtros.Desde.ToString("yyyy-MM-dd")" />
@@ -353,11 +357,35 @@
                         <label for="hasta" class="form-label fw-semibold text-muted">Fecha hasta</label>
                         <input type="date" class="form-control" id="hasta" name="hasta" value="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")" />
                     </div>
-                    <div class="col-12 col-md-4 d-flex gap-2">
+                        <div class="col-12 col-md-4 d-flex gap-2">
                         <button type="button" class="btn btn-outline-secondary flex-grow-1" onclick="setRangeDays(0)">Hoy</button>
                         <button type="button" class="btn btn-outline-secondary flex-grow-1" onclick="setRangeDays(7)">7 días</button>
                         <button type="button" class="btn btn-outline-secondary flex-grow-1" onclick="setRangeDays(30)">30 días</button>
                         <button type="button" class="btn btn-outline-secondary flex-grow-1" onclick="setRangeMonth()">Mes actual</button>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label fw-semibold text-muted">Seleccionar playas</label>
+                        <div class="dropdown w-100">
+                            <button class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center" type="button" id="playasDropdownRango" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span id="playasDropdownTextRango">Seleccione playas</span>
+                                <i class="fas fa-chevron-down small"></i>
+                            </button>
+                            <div class="dropdown-menu w-100 p-3" aria-labelledby="playasDropdownRango" style="max-height: 280px; overflow-y: auto;">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="playasSelectAllRango">
+                                    <label class="form-check-label fw-semibold" for="playasSelectAllRango">Seleccionar todas</label>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                @foreach (var playa in Model.PlayasDisponibles)
+                                {
+                                    var checkboxId = $"playa_option_rango_{playa.PlyID}";
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input playa-option-rango" type="checkbox" id="@checkboxId" name="playasIds" value="@playa.PlyID" data-nombre="@playa.PlayaNombre" @(Model.PlayasSeleccionadas.Contains(playa.PlyID) ? "checked" : "")>
+                                        <label class="form-check-label" for="@checkboxId">@playa.PlayaNombre</label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12 d-flex justify-content-end">
                         <button type="submit" class="btn btn-primary">
@@ -635,6 +663,65 @@ else
         });
     </script>
 }
+
+<script>
+    function initPlayasDropdown(formId, selectAllId, optionSelector, textId, fallbackLabel) {
+        const form = document.getElementById(formId);
+        const selectAll = document.getElementById(selectAllId);
+        const options = Array.from(document.querySelectorAll(optionSelector));
+        const textEl = document.getElementById(textId);
+
+        if (!selectAll || !textEl || options.length === 0) return;
+
+        function updateText() {
+            const checked = options.filter(cb => cb.checked);
+            if (checked.length === options.length) {
+                textEl.textContent = 'Todas las playas';
+                selectAll.checked = true;
+                selectAll.indeterminate = false;
+            } else if (checked.length === 0) {
+                textEl.textContent = fallbackLabel ?? 'Ninguna seleccionada';
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            } else if (checked.length === 1) {
+                textEl.textContent = checked[0].dataset.nombre || '1 playa';
+                selectAll.checked = false;
+                selectAll.indeterminate = true;
+            } else {
+                textEl.textContent = `${checked.length} playas seleccionadas`;
+                selectAll.checked = false;
+                selectAll.indeterminate = true;
+            }
+        }
+
+        function ensureAtLeastOne() {
+            if (options.every(cb => !cb.checked)) {
+                options.forEach(cb => cb.checked = true);
+            }
+            updateText();
+        }
+
+        selectAll.addEventListener('change', () => {
+            const value = selectAll.checked;
+            options.forEach(cb => cb.checked = value);
+            selectAll.indeterminate = false;
+            updateText();
+        });
+
+        options.forEach(cb => cb.addEventListener('change', updateText));
+
+        if (form) {
+            form.addEventListener('submit', ensureAtLeastOne);
+        }
+
+        updateText();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        initPlayasDropdown('enVivoSelectorForm', 'playasSelectAll', '.playa-option', 'playasDropdownText', 'Todas las playas');
+        initPlayasDropdown('rangoFiltersForm', 'playasSelectAllRango', '.playa-option-rango', 'playasDropdownTextRango', 'Todas las playas');
+    });
+</script>
 
 <style>
     .gestion-dashboard .section-title {

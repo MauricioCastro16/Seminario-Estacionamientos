@@ -47,12 +47,8 @@ public class GestionController(AppDbContext ctx) : Controller
 
         var modoSeleccionado = ParseModo(modo);
 
-        var seleccionPrimaria = playaId.HasValue && playasDisponibles.Any(p => p.PlyID == playaId.Value)
-            ? playaId.Value
-            : playasIds?.FirstOrDefault(id => playasDisponibles.Any(p => p.PlyID == id));
-
-        var playasSeleccionadas = seleccionPrimaria.HasValue
-            ? new List<int> { seleccionPrimaria.Value }
+        var playasSeleccionadas = playasIds?.Any() == true
+            ? playasIds.Where(id => playasDisponibles.Any(p => p.PlyID == id)).Distinct().ToList()
             : playasDisponibles.Select(p => p.PlyID).ToList();
 
         var hoy = DateTime.Now;
@@ -68,10 +64,12 @@ public class GestionController(AppDbContext ctx) : Controller
             Filtros = filtros,
             PlayasDisponibles = playasDisponibles,
             PlayasSeleccionadas = playasSeleccionadas,
-            PlayaSeleccionadaId = seleccionPrimaria ?? playasSeleccionadas.FirstOrDefault(),
-            PlayaSeleccionadaNombre = playasDisponibles
-                .FirstOrDefault(p => p.PlyID == (seleccionPrimaria ?? playasSeleccionadas.FirstOrDefault()))?.PlayaNombre
-                ?? "Todas las playas"
+            PlayaSeleccionadaId = playaId,
+            PlayaSeleccionadaNombre = playaId.HasValue
+                ? playasDisponibles.FirstOrDefault(p => p.PlyID == playaId.Value)?.PlayaNombre ?? "Playas seleccionadas"
+                : (playasSeleccionadas.Count == 1
+                    ? playasDisponibles.FirstOrDefault(p => p.PlyID == playasSeleccionadas[0])?.PlayaNombre ?? "Playas seleccionadas"
+                    : "Playas seleccionadas")
         };
 
         if (playasSeleccionadas.Count > 0)
