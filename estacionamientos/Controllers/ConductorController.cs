@@ -775,6 +775,73 @@ namespace estacionamientos.Controllers
                 return Json(new { success = false, error = ex.Message });
             }
         }
+        // --------- FAVORITOS: editar (renombrar) una ubicación favorita ---------
+        [HttpPost]
+        public async Task<IActionResult> EditarUbicacionFavorita([FromBody] EditarUbicacionFavoritaRequest model)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                    return Json(new { success = false, error = "Usuario no autenticado" });
+
+                var conductorId = int.Parse(userId);
+
+                if (string.IsNullOrWhiteSpace(model.ApodoActual) || string.IsNullOrWhiteSpace(model.NuevoApodo))
+                    return Json(new { success = false, error = "Los nombres no pueden estar vacíos." });
+
+                model.NuevoApodo = model.NuevoApodo.Trim();
+
+                // Buscar el favorito actual
+                var favorito = await _context.UbicacionesFavoritas
+                    .FirstOrDefaultAsync(u => u.ConNU == conductorId && u.UbfApodo == model.ApodoActual);
+
+                if (favorito == null)
+                    return Json(new { success = false, error = "No se encontró la ubicación favorita." });
+
+                // Verificar duplicado
+                bool yaExiste = await _context.UbicacionesFavoritas
+                    .AnyAsync(u => u.ConNU == conductorId && u.UbfApodo == model.NuevoApodo);
+
+                if (yaExiste)
+                    return Json(new { success = false, error = "Ya tenés otra ubicación con ese nombre." });
+
+                // Crear una nueva con el nuevo apodo
+                var nueva = new UbicacionFavorita
+                {
+                    ConNU = favorito.ConNU,
+                    UbfApodo = model.NuevoApodo,
+                    UbfProv = favorito.UbfProv,
+                    UbfCiu = favorito.UbfCiu,
+                    UbfDir = favorito.UbfDir,
+                    UbfTipo = favorito.UbfTipo,
+                    UbfLat = favorito.UbfLat,
+                    UbfLon = favorito.UbfLon
+                };
+
+                _context.UbicacionesFavoritas.Add(nueva);
+
+                // Eliminar la anterior
+                _context.UbicacionesFavoritas.Remove(favorito);
+
+                // Guardar cambios
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Ubicación renombrada correctamente." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+
+        public class EditarUbicacionFavoritaRequest
+        {
+            public string ApodoActual { get; set; } = string.Empty;
+            public string NuevoApodo { get; set; } = string.Empty;
+        }
+
 
         // Endpoint temporal para debug de horarios
         [HttpGet]

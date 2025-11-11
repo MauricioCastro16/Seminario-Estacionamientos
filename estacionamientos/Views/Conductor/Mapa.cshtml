@@ -806,6 +806,26 @@
             display: none;
         }
 
+        .favorite-edit-btn {
+            border: none;
+            background: #e2e3ff;
+            color: #383d7c;
+            border-radius: 6px;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            font-size: 12px;
+            margin-right: 3px;
+        }
+
+        .favorite-edit-btn:hover {
+            background: #c7c9ff;
+        }
+
         @@media (max-width: 768px) {
             .favorites-panel {
                 top: auto;
@@ -1662,6 +1682,17 @@
                     irAFavorito(fav);
                 };
 
+                // Botón editar
+                const editBtn = document.createElement('button');
+                editBtn.type = 'button';
+                editBtn.className = 'favorite-edit-btn';
+                editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+                editBtn.onclick = function (e) {
+                    e.stopPropagation();
+                    editarFavorito(fav);
+                };
+
+                // Botón eliminar
                 const removeBtn = document.createElement('button');
                 removeBtn.type = 'button';
                 removeBtn.className = 'favorite-remove-btn';
@@ -1672,10 +1703,12 @@
                 };
 
                 li.appendChild(mainBtn);
+                li.appendChild(editBtn);
                 li.appendChild(removeBtn);
                 lista.appendChild(li);
             });
         }
+
 
         // Ir al favorito: centrar mapa y buscar playas cercanas
         function irAFavorito(fav) {
@@ -1727,6 +1760,42 @@
                 alert('Ocurrió un error al eliminar el favorito.');
             });
         }
+
+        // EDIT: renombrar favorito
+        function editarFavorito(fav) {
+            const nuevoApodo = prompt('Nuevo nombre para esta ubicación favorita:', fav.apodo);
+            if (nuevoApodo === null) return; // canceló
+            if (nuevoApodo.trim() === '') {
+                alert('El nombre no puede estar vacío.');
+                return;
+            }
+
+            fetch('@Url.Action("EditarUbicacionFavorita", "Conductor")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': antiforgeryToken
+                },
+                body: JSON.stringify({
+                    apodoActual: fav.apodo,
+                    nuevoApodo: nuevoApodo.trim()
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    fav.apodo = nuevoApodo.trim();
+                    renderizarFavoritos();
+                } else {
+                    alert(data.error || 'No se pudo renombrar la ubicación favorita.');
+                }
+            })
+            .catch(err => {
+                console.error('Error al renombrar favorito:', err);
+                alert('Ocurrió un error al renombrar la ubicación favorita.');
+            });
+        }
+
 
         // ================== FIN FAVORITOS ==================
 
