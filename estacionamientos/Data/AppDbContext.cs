@@ -251,6 +251,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 entity.Property(u => u.UbfCiu).HasMaxLength(80).IsRequired();
                 entity.Property(u => u.UbfDir).HasMaxLength(120).IsRequired();
                 entity.Property(u => u.UbfTipo).HasMaxLength(30);
+                //Nuevo ubflat y ubflon
+                entity.Property(u => u.UbfLat)
+                    .HasColumnType("numeric(10,7)")
+                    .IsRequired();
+
+                entity.Property(u => u.UbfLon)
+                    .HasColumnType("numeric(10,7)")
+                    .IsRequired();
 
                 // 1 Conductor -> N UbicacionesFavoritas (requerido)
                 entity.HasOne(u => u.Conductor)

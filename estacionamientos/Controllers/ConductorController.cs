@@ -640,6 +640,141 @@ namespace estacionamientos.Controllers
                 return Json(new { error = ex.Message });
             }
         }
+        // --------- FAVORITOS: DTO interno ---------
+        public class CrearUbicacionFavoritaRequest
+        {
+            public string Apodo { get; set; } = string.Empty;
+            public string Provincia { get; set; } = string.Empty;
+            public string Ciudad { get; set; } = string.Empty;
+            public string Direccion { get; set; } = string.Empty;
+            public string? Tipo { get; set; }   // "Playa", "Casa", etc.
+            public decimal Lat { get; set; }
+            public decimal Lon { get; set; }
+        }
+
+        // --------- FAVORITOS: obtener todas las ubicaciones del conductor ---------
+        [HttpGet]
+        public async Task<IActionResult> GetUbicacionesFavoritas()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+            {
+                return Json(new { error = "Usuario no autenticado" });
+            }
+
+            var conductorId = int.Parse(userId);
+
+            var favoritas = await _context.UbicacionesFavoritas
+                .Where(u => u.ConNU == conductorId)
+                .AsNoTracking()
+                .Select(u => new
+                {
+                    apodo = u.UbfApodo,
+                    provincia = u.UbfProv,
+                    ciudad = u.UbfCiu,
+                    direccion = u.UbfDir,
+                    tipo = u.UbfTipo,
+                    UbfLat = u.UbfLat,   //  se guarda lo que vino del mapa
+                    UbfLon = u.UbfLon   
+                })
+                
+                .ToListAsync();
+
+            return Json(favoritas);
+        }
+
+        // --------- FAVORITOS: crear una ubicación favorita desde el mapa ---------
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AgregarUbicacionFavorita([FromBody] CrearUbicacionFavoritaRequest model)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                {
+                    return Json(new { success = false, error = "Usuario no autenticado" });
+                }
+
+                var conductorId = int.Parse(userId);
+
+                if (string.IsNullOrWhiteSpace(model.Apodo))
+                {
+                    model.Apodo = $"Favorito-{DateTime.Now:HHmmss}";
+                }
+
+                // Validar duplicado por (ConNU, Apodo)
+                bool yaExiste = await _context.UbicacionesFavoritas
+                    .AnyAsync(u => u.ConNU == conductorId && u.UbfApodo == model.Apodo);
+
+                if (yaExiste)
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        error = "Ya tienes una ubicación con ese apodo."
+                    });
+                }
+
+                var entidad = new UbicacionFavorita
+                {
+                    ConNU = conductorId,
+                    UbfApodo = model.Apodo,
+                    UbfProv = model.Provincia,
+                    UbfCiu = model.Ciudad,
+                    UbfDir = model.Direccion,
+                    UbfTipo = model.Tipo,
+                    UbfLat = model.Lat,
+                    UbfLon = model.Lon
+                };
+
+                _context.UbicacionesFavoritas.Add(entidad);
+                await _context.SaveChangesAsync();
+
+                return Json(new
+                {
+                    success = true,
+                    message = "Ubicación favorita guardada correctamente."
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        // --------- FAVORITOS: eliminar una favorita por apodo ---------
+        [HttpDelete]
+        public async Task<IActionResult> EliminarUbicacionFavorita(string apodo)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                {
+                    return Json(new { success = false, error = "Usuario no autenticado" });
+                }
+
+                var conductorId = int.Parse(userId);
+
+                var entity = await _context.UbicacionesFavoritas
+                    .FindAsync(conductorId, apodo);
+
+                if (entity == null)
+                {
+                    return Json(new { success = false, error = "Ubicación no encontrada" });
+                }
+
+                _context.UbicacionesFavoritas.Remove(entity);
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Ubicación favorita eliminada." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
 
         // Endpoint temporal para debug de horarios
         [HttpGet]
