@@ -7,17 +7,23 @@ using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
 using estacionamientos.Models.ViewModels.Auth;
+
 using BCrypt.Net;
 
 namespace estacionamientos.Controllers
 {
-    [AllowAnonymous]
+    [Authorize]
     public class AccountController : Controller
     {
         private readonly AppDbContext _ctx;
         public AccountController(AppDbContext ctx) => _ctx = ctx;
 
+        // ============================
+        // LOGIN
+        // ============================
+
         // GET: /Account/Login
+        [AllowAnonymous]
         [HttpGet]
         public IActionResult Login(string? returnUrl = null)
         {
@@ -25,12 +31,13 @@ namespace estacionamientos.Controllers
         }
 
         // POST: /Account/Login
+        [AllowAnonymous]
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(LoginViewModel model)
         {
             if (!ModelState.IsValid) return View(model);
 
-            // 1) Buscar usuario por email
+            // 1) Buscar usuario por email o nombre de usuario
             var user = await _ctx.Usuarios
                 .FirstOrDefaultAsync(u => u.UsuEmail == model.EmailOrUsername || u.UsuNomUsu == model.EmailOrUsername);
 
@@ -48,7 +55,7 @@ namespace estacionamientos.Controllers
                     // Si hay un error de salt, intentar con la contraseña en texto plano (solo para migración)
                     // NOTA: Esto es temporal para usuarios con hashes incompatibles
                     passwordOk = model.Password == user.UsuPswd;
-                    
+
                     // Si la contraseña coincide, actualizar el hash con la versión correcta
                     if (passwordOk)
                     {
@@ -110,6 +117,10 @@ namespace estacionamientos.Controllers
             return RedirectToAction("Index", "Home");
         }
 
+        // ============================
+        // LOGOUT
+        // ============================
+
         // POST: /Account/Logout
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -119,7 +130,12 @@ namespace estacionamientos.Controllers
             return RedirectToAction(nameof(Login));
         }
 
+        // ============================
+        // REGISTER
+        // ============================
+
         // GET: /Account/Register
+        [AllowAnonymous]
         [HttpGet]
         public IActionResult Register()
         {
@@ -127,6 +143,7 @@ namespace estacionamientos.Controllers
         }
 
         // POST: /Account/Register
+        [AllowAnonymous]
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterViewModel model)
         {
@@ -184,8 +201,82 @@ namespace estacionamientos.Controllers
             return RedirectToAction(nameof(Login));
         }
 
-        // Acceso denegado
+        // ============================
+        // ACCESS DENIED
+        // ============================
+
+        [AllowAnonymous]
         [HttpGet]
         public IActionResult Denied() => View();
+
+        // ============================
+        // CAMBIO DE CONTRASEÑA
+        // ============================
+
+        // GET: /Account/CambioContrasena
+        [HttpGet]
+        public IActionResult CambioContrasena()
+        {
+            return View(new CambioContrasena());
+        }
+
+        // POST: /Account/CambioContrasena
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CambioContrasena(CambioContrasena model)
+        {
+            if (!ModelState.IsValid)
+                return View(model);
+
+            // Obtener el ID del usuario logueado desde los claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+            {
+                // Si no hay sesión válida, redirige al login
+                return RedirectToAction(nameof(Login));
+            }
+
+            // Buscar el usuario en base
+            var usuario = await _ctx.Usuarios.FirstOrDefaultAsync(u => u.UsuNU == userId);
+            if (usuario == null)
+            {
+                ModelState.AddModelError(string.Empty, "Usuario no encontrado.");
+                return View(model);
+            }
+
+            // Verificar contraseña actual
+            bool passwordOk;
+            try
+            {
+                passwordOk = BCrypt.Net.BCrypt.Verify(model.ContrasenaActual, usuario.UsuPswd);
+            }
+            catch (BCrypt.Net.SaltParseException)
+            {
+                // Hash raro/antiguo: por seguridad no permitimos el cambio
+                ModelState.AddModelError(nameof(model.ContrasenaActual), "No se pudo verificar la contraseña actual.");
+                return View(model);
+            }
+
+            if (!passwordOk)
+            {
+                ModelState.AddModelError(nameof(model.ContrasenaActual), "La contraseña actual es incorrecta.");
+                return View(model);
+            }
+
+            // Hashear y guardar la nueva contraseña
+            usuario.UsuPswd = BCrypt.Net.BCrypt.HashPassword(model.NuevaContrasena);
+
+            try
+            {
+                await _ctx.SaveChangesAsync();
+                TempData["SuccessMessage"] = "Tu contraseña se actualizó correctamente.";
+                return RedirectToAction("Index", "Home");
+            }
+            catch (DbUpdateException)
+            {
+                ModelState.AddModelError(string.Empty, "Ocurrió un error al actualizar la contraseña. Intente nuevamente.");
+                return View(model);
+            }
+        }
     }
 }

@@ -1,0 +1,42 @@
+@model estacionamientos.Models.ViewModels.Auth.CambioContrasena
+
+@{
+    ViewData["Title"] = "Cambiar contraseña";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+<form asp-action="CambioContrasena" method="post">
+    @Html.AntiForgeryToken()
+
+    <div class="form-group">
+        <label asp-for="ContrasenaActual"></label>
+        <input asp-for="ContrasenaActual" class="form-control" />
+        <span asp-validation-for="ContrasenaActual" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mt-2">
+        <label asp-for="NuevaContrasena"></label>
+        <input asp-for="NuevaContrasena" class="form-control" />
+        <span asp-validation-for="NuevaContrasena" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mt-2">
+        <label asp-for="ConfirmarNuevaContrasena"></label>
+        <input asp-for="ConfirmarNuevaContrasena" class="form-control" />
+        <span asp-validation-for="ConfirmarNuevaContrasena" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-3">Guardar nueva contraseña</button>
+</form>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}
