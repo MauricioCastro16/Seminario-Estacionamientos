@@ -17,6 +17,9 @@ namespace estacionamientos.Models
 
         public bool ValFav { get; set; }
 
+        [MaxLength(500)]
+        public string? ValComentario { get; set; }
+
         // Navegaciones
         public PlayaEstacionamiento Playa { get; set; } = default!;
         public Conductor Conductor { get; set; } = default!;

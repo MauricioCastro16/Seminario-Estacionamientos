@@ -288,6 +288,7 @@
             color:#0d6efd;
             max-width:90%;
         }
+
         .filter-badge i.fa-filter{ font-size:12px; }
         .filter-badge span{ flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:300px; }
         .filter-close-btn{
@@ -367,7 +368,10 @@
 
     <div id="bottomMenu">
         <div class="menu-header">
-            <h4 id="playaNombre">Selecciona una playa</h4>
+            <div style="display:flex; align-items:center; gap:15px; flex:1;">
+                <h4 id="playaNombre" style="margin:0; flex:1;">Selecciona una playa</h4>
+                <div id="serviciosIconos" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;"></div>
+            </div>
             <button class="close-btn" onclick="closeMenu()">×</button>
         </div>
         <div id="playaInfo" style="display:none;">
@@ -382,12 +386,17 @@
                 <span class="info-label" style="margin-bottom:8px;">Tarifas:</span>
                 <div class="info-value" id="tarifasInfo" style="font-size:.9em; width:100%;"></div>
             </div>
-            <div class="info-row mt-3" id="serviciosSection" style="display:none;">
-                <span class="info-label">Servicios disponibles:</span>
-                <div class="info-value" id="serviciosInfo" style="font-size:.9em;"></div>
-            </div>
             <div class="info-row mt-2" id="debugInfoSection" style="display:none; font-size:.8em; color:#666;"><div id="debugInfo"></div></div>
             <button class="btn btn-primary w-100 mt-3" onclick="abrirNavegacion()"><i class="bi bi-navigation me-2"></i>Ver en Google Maps</button>
+        </div>
+        <div id="valoracionesInfo" style="display:none;">
+            <div id="valoracionesContent">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -533,8 +542,9 @@
                     <p style="margin:5px 0;font-size:14px;"><strong>Estado:</strong> ${playa.estaAbierto ? 'Abierto' : 'Cerrado'}</p>
                     ${isSearchMode ? `<p style="margin:5px 0;font-size:14px;color:#dc3545;"><strong>📍 Distancia:</strong> ${Number(playa.distancia||0).toFixed(2)} km</p>` : ''}
                     ${isSearchMode ? '<p style="margin:5px 0;font-size:12px;color:#dc3545;font-weight:bold;">🔍 Uno de los 3 más cercanos</p>' : ''}
-                    <div class="d-flex gap-1 mt-2">
+                    <div class="d-flex gap-1 mt-2 flex-wrap">
                       <button class="btn btn-sm btn-primary flex-fill" onclick="window.seleccionarPlayaDesdePopup(${playa.plyID})">Ver detalles</button>
+                      <button class="btn btn-sm btn-primary flex-fill" onclick="window.abrirValoraciones(${playa.plyID}, '${playa.plyNom}')">Valoraciones</button>
                       ${botonFavorito}
                     </div>
                   </div>`;
@@ -686,8 +696,9 @@
                         <p style="margin:5px 0;font-size:12px;color:#dc3545;font-weight:bold;">🔍 Uno de los 3 más cercanos</p>
                     ` : ''}
 
-                    <div class="d-flex gap-1 mt-2">
+                    <div class="d-flex gap-1 mt-2 flex-wrap">
                         <button class="btn btn-sm btn-primary flex-fill" onclick="window.seleccionarPlayaDesdePopup(${playa.plyID})">Ver detalles</button>
+                        <button class="btn btn-sm btn-primary flex-fill" onclick="window.abrirValoraciones(${playa.plyID}, '${playa.plyNom}')">Valoraciones</button>
                         ${botonFavorito}
                     </div>
                 </div>
@@ -697,6 +708,10 @@
         function seleccionarPlaya(playa){
             playaSeleccionada = playa;
             map.setView([playa.plyLat, playa.plyLon], 16);
+
+            // Asegurar que se muestren los detalles, no las valoraciones
+            $('#valoracionesInfo').hide();
+            $('#playaInfo').show();
 
             $.get('/Conductor/GetDetallePlaya', { id: playa.plyID })
              .done(detalle => {
@@ -731,92 +746,209 @@
         }
 
         function cargarTarifasYServicios(plyID){
-            $.get('/Conductor/GetTarifasYServicios', { id: plyID })
-             .done(data => {
-                 if (data && !data.error && data.servicios){
-                     mostrarTarifas(data.servicios);
-                     mostrarServicios(data.servicios);
-                 } else {
-                     $('#tarifasInfo').html('<span style="color:#dc3545;">No hay información disponible</span>');
-                     $('#serviciosInfo').html('<span style="color:#dc3545;">No hay servicios disponibles</span>');
-                     $('#tarifasSection').show();
-                     $('#serviciosSection').show();
-                 }
+            // Obtener el tipo de vehículo del cliente
+            $.get('/Conductor/GetVehiculoSeleccionado')
+             .done(vehiculoData => {
+                 const tipoVehiculo = vehiculoData?.tipo || null;
+                 
+                 $.get('/Conductor/GetTarifasYServicios', { id: plyID, tipoVehiculo: tipoVehiculo })
+                  .done(data => {
+                      if (data && !data.error && data.servicios){
+                          mostrarTarifas(data.servicios, tipoVehiculo);
+                          mostrarServicios(data.servicios);
+                      } else {
+                          $('#tarifasInfo').html('<span style="color:#dc3545;">No hay información disponible</span>');
+                          $('#serviciosIconos').html('');
+                          $('#tarifasSection').show();
+                      }
+                  })
+                  .fail(() => {
+                      $('#tarifasInfo').html('<span style="color:#dc3545;">Error al cargar tarifas</span>');
+                      $('#serviciosIconos').html('');
+                      $('#tarifasSection').show();
+                  });
              })
              .fail(() => {
-                 $('#tarifasInfo').html('<span style="color:#dc3545;">Error al cargar tarifas</span>');
-                 $('#serviciosInfo').html('<span style="color:#dc3545;">Error al cargar servicios</span>');
-                 $('#tarifasSection').show();
-                 $('#serviciosSection').show();
+                 // Si no se puede obtener el vehículo, cargar sin filtro
+                 $.get('/Conductor/GetTarifasYServicios', { id: plyID })
+                  .done(data => {
+                      if (data && !data.error && data.servicios){
+                          mostrarTarifas(data.servicios, null);
+                          mostrarServicios(data.servicios);
+                      } else {
+                          $('#tarifasInfo').html('<span style="color:#dc3545;">No hay información disponible</span>');
+                          $('#serviciosIconos').html('');
+                          $('#tarifasSection').show();
+                      }
+                  })
+                  .fail(() => {
+                      $('#tarifasInfo').html('<span style="color:#dc3545;">Error al cargar tarifas</span>');
+                      $('#serviciosIconos').html('');
+                      $('#tarifasSection').show();
+                  });
              });
         }
 
-        function mostrarTarifas(servicios){
-            const serviciosConTarifas = servicios.filter(s => s.tarifas && s.tarifas.length > 0);
+        function mostrarTarifas(servicios, tipoVehiculo){
+            // Filtrar tarifas por tipo de vehículo si se proporciona
+            const serviciosFiltrados = servicios.map(servicio => {
+                if (tipoVehiculo && servicio.tarifas && servicio.tarifas.length > 0) {
+                    const tarifasFiltradas = servicio.tarifas.filter(t => t.clasificacionVehiculo === tipoVehiculo);
+                    return {
+                        ...servicio,
+                        tarifas: tarifasFiltradas
+                    };
+                }
+                return servicio;
+            });
+            
+            const serviciosConTarifas = serviciosFiltrados.filter(s => s.tarifas && s.tarifas.length > 0);
             
             if (serviciosConTarifas.length === 0){
-                $('#tarifasInfo').html('<span style="color:#dc3545;">No hay tarifas configuradas</span>');
+                $('#tarifasInfo').html('<span style="color:#dc3545;">No hay tarifas configuradas para tu tipo de vehículo</span>');
                 $('#tarifasSection').show();
                 return;
             }
 
-            let tarifasHtml = '<div style="margin-top:5px; display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:8px; width:100%; grid-auto-flow:row;">';
+            // Agrupar servicios por tipo
+            const serviciosPorTipo = {};
             serviciosConTarifas.forEach(servicio => {
-                const duracion = servicio.serDuracionMinutos 
-                    ? servicio.serDuracionMinutos >= 60 
-                        ? `${Math.round(servicio.serDuracionMinutos / 60)}h`
-                        : `${servicio.serDuracionMinutos}min`
-                    : '';
+                const tipo = servicio.serTipo || 'Otros';
+                if (!serviciosPorTipo[tipo]) {
+                    serviciosPorTipo[tipo] = [];
+                }
+                serviciosPorTipo[tipo].push(servicio);
+            });
+
+            let tarifasHtml = '<div class="accordion" id="accordionTarifas" style="margin-top:5px;">';
+            
+            // Crear lista desplegable para cada tipo
+            Object.keys(serviciosPorTipo).forEach((tipo, index) => {
+                const serviciosDelTipo = serviciosPorTipo[tipo];
+                const tipoId = 'tarifas-' + tipo.replace(/\s+/g, '-').toLowerCase();
                 
-                servicio.tarifas.forEach(tarifa => {
-                    tarifasHtml += `
-                        <div class="tarifa-card" style="
-                            background-color: #cfe2ff;
-                            border: 1px solid rgba(13, 110, 253, 0.5);
-                            border-radius: 0.75rem;
-                            padding: 8px 10px;
-                            min-height: 70px;
-                            display: flex;
-                            flex-direction: column;
-                            justify-content: center;
-                            align-items: center;
-                            text-align: center;
-                            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2);
-                            transition: all 0.2s ease-in-out;
-                        ">
-                            <div style="font-size: 0.75em; color: #0d6efd; font-weight: 600; margin-bottom: 4px; line-height: 1.2;">
-                                ${servicio.serNom}
+                tarifasHtml += `
+                    <div class="accordion-item" style="border:1px solid #dee2e6; border-radius:8px; margin-bottom:8px;">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" onclick="toggleTarifaAccordion('${tipoId}')" style="background:#cfe2ff !important; color:#0d6efd !important; font-weight:600; padding:10px 15px; box-shadow:none; width:100%; text-align:left; border:none;">
+                                ${tipo}
+                            </button>
+                        </h2>
+                        <div id="${tipoId}" class="accordion-collapse collapse">
+                            <div class="accordion-body" style="padding:15px;">
+                                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:8px; justify-items:start;">
+                `;
+                
+                serviciosDelTipo.forEach(servicio => {
+                    const duracion = servicio.serDuracionMinutos 
+                        ? servicio.serDuracionMinutos >= 60 
+                            ? `${Math.round(servicio.serDuracionMinutos / 60)}h`
+                            : `${servicio.serDuracionMinutos}min`
+                        : '';
+                    
+                    servicio.tarifas.forEach(tarifa => {
+                        tarifasHtml += `
+                            <div class="tarifa-card" style="
+                                background-color: #ffffff;
+                                border: 1px solid rgba(13, 110, 253, 0.5);
+                                border-radius: 0.75rem;
+                                padding: 8px 10px;
+                                min-height: 70px;
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: center;
+                                align-items: center;
+                                text-align: center;
+                                box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2);
+                                transition: all 0.2s ease-in-out;
+                            ">
+                                <div style="font-size: 0.75em; color: #0d6efd; font-weight: 600; margin-bottom: 4px; line-height: 1.2;">
+                                    ${servicio.serNom}
+                                </div>
+                                ${duracion ? `<div style="font-size: 0.7em; color: #666; margin-bottom: 4px;">${duracion}</div>` : ''}
+                                <div style="font-size: 0.7em; color: #666; margin-bottom: 2px;">${tarifa.clasificacionVehiculo}</div>
+                                <div style="font-size: 0.85em; color: #0d6efd; font-weight: 700;">
+                                    $${parseFloat(tarifa.monto).toFixed(2)}
+                                </div>
                             </div>
-                            ${duracion ? `<div style="font-size: 0.7em; color: #666; margin-bottom: 4px;">${duracion}</div>` : ''}
-                            <div style="font-size: 0.7em; color: #666; margin-bottom: 2px;">${tarifa.clasificacionVehiculo}</div>
-                            <div style="font-size: 0.85em; color: #0d6efd; font-weight: 700;">
-                                $${parseFloat(tarifa.monto).toFixed(2)}
+                        `;
+                    });
+                });
+                
+                tarifasHtml += `
+                                </div>
                             </div>
                         </div>
-                    `;
-                });
+                    </div>
+                `;
             });
+            
             tarifasHtml += '</div>';
             
             $('#tarifasInfo').html(tarifasHtml);
             $('#tarifasSection').show();
         }
 
+        function toggleTarifaAccordion(tipoId){
+            const collapseElement = document.getElementById(tipoId);
+            const button = collapseElement.previousElementSibling.querySelector('.accordion-button');
+            
+            if (collapseElement.classList.contains('show')) {
+                collapseElement.classList.remove('show');
+                button.classList.add('collapsed');
+                button.setAttribute('aria-expanded', 'false');
+            } else {
+                collapseElement.classList.add('show');
+                button.classList.remove('collapsed');
+                button.setAttribute('aria-expanded', 'true');
+            }
+        }
+
+        function obtenerIconoServicio(serID){
+            // Mapeo de iconos según SerID (igual que en Servicios.cshtml)
+            if (serID == 1) return 'bi-bucket-fill';
+            else if (serID == 2) return 'bi-wrench';
+            else if (serID == 3) return 'bi-fuel-pump';
+            else if (serID == 4) return 'bi-bookmark-check-fill';
+            else if (serID >= 5 && serID <= 9) return 'bi-car-front-fill';
+            else return 'bi-cart-check-fill'; // Icono predeterminado
+        }
+
         function mostrarServicios(servicios){
             if (!servicios || servicios.length === 0){
-                $('#serviciosInfo').html('<span style="color:#dc3545;">No hay servicios disponibles</span>');
-                $('#serviciosSection').show();
+                $('#serviciosIconos').html('');
                 return;
             }
 
-            let serviciosHtml = '<div style="margin-top:5px; display:flex; flex-wrap:wrap; gap:6px;">';
+            // Mostrar iconos en el header
+            let iconosHtml = '';
             servicios.forEach(servicio => {
-                serviciosHtml += `<span style="display:inline-block; padding:4px 10px; background:#cfe2ff; color:#0d6efd; border:1px solid #0d6efd; border-radius:12px; font-size:0.85em;">${servicio.serNom}</span>`;
+                const icono = obtenerIconoServicio(servicio.serID);
+                iconosHtml += `
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 8px 10px;
+                        background-color: #cfe2ff;
+                        border: 1px solid rgba(13, 110, 253, 0.5);
+                        border-radius: 8px;
+                        cursor: pointer;
+                        transition: all 0.2s ease-in-out;
+                    " title="${servicio.serNom}" data-bs-toggle="tooltip" data-bs-placement="top">
+                        <i class="bi ${icono} fs-5" style="color: #0d6efd;"></i>
+                    </div>
+                `;
             });
-            serviciosHtml += '</div>';
             
-            $('#serviciosInfo').html(serviciosHtml);
-            $('#serviciosSection').show();
+            $('#serviciosIconos').html(iconosHtml);
+            
+            // Inicializar tooltips para los nuevos elementos
+            setTimeout(() => {
+                document.querySelectorAll('#serviciosIconos [data-bs-toggle="tooltip"]').forEach(el => {
+                    new bootstrap.Tooltip(el);
+                });
+            }, 100);
         }
 
         function mostrarDetallePlayaBasico(playa){
@@ -828,7 +960,12 @@
             $('#playaInfo').show();
         }
 
-        function closeMenu(){ $('#bottomMenu').removeClass('show'); playaSeleccionada = null; }
+        function closeMenu(){ 
+            $('#bottomMenu').removeClass('show'); 
+            $('#playaInfo').show();
+            $('#valoracionesInfo').hide();
+            playaSeleccionada = null; 
+        }
         function centerOnConductor(){ map.setView([conductorLat, conductorLon], 15); }
         function abrirNavegacion(){ if (playaSeleccionada) window.open(`https://www.google.com/maps/dir/?api=1&destination=${playaSeleccionada.plyLat},${playaSeleccionada.plyLon}`, '_blank'); }
 
@@ -1083,6 +1220,223 @@
                 if (d.success){ fav.apodo = nuevo.trim(); refreshFavoritesUI(); }
                 else alert(d.error || 'No se pudo renombrar la ubicación favorita.');
             }).catch(()=> alert('Ocurrió un error al renombrar la ubicación favorita.'));
+        }
+
+        // === Valoraciones ===
+        let valoracionActual = null;
+        let playaValoracionActual = null;
+
+        window.abrirValoraciones = function(plyID, playaNombre){
+            playaValoracionActual = { plyID, playaNombre };
+            $('#playaNombre').text(`Valoraciones - ${playaNombre}`);
+            $('#valoracionesContent').html('<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div></div>');
+            
+            // Ocultar detalles de playa y mostrar valoraciones
+            $('#playaInfo').hide();
+            $('#valoracionesInfo').show();
+            $('#bottomMenu').addClass('show');
+            
+            cargarValoraciones(plyID);
+        };
+
+        function cargarValoraciones(plyID){
+            $.get('/Conductor/GetValoraciones', { id: plyID })
+             .done(data => {
+                 if (data && !data.error){
+                     mostrarValoraciones(data);
+                 } else {
+                     $('#valoracionesContent').html('<div class="alert alert-warning">No se pudieron cargar las valoraciones.</div>');
+                 }
+             })
+             .fail(() => {
+                 $('#valoracionesContent').html('<div class="alert alert-danger">Error al cargar las valoraciones.</div>');
+             });
+        }
+        
+        function volverADetalles(){
+            $('#valoracionesInfo').hide();
+            $('#playaInfo').show();
+            if(playaSeleccionada){
+                $('#playaNombre').text(playaSeleccionada.plyNom);
+                // Recargar detalles si es necesario
+                $.get('/Conductor/GetDetallePlaya', { id: playaSeleccionada.plyID })
+                 .done(detalle => {
+                     mostrarDetallePlaya(detalle);
+                     cargarTarifasYServicios(playaSeleccionada.plyID);
+                 })
+                 .fail(() => {
+                     mostrarDetallePlayaBasico(playaSeleccionada);
+                     cargarTarifasYServicios(playaSeleccionada.plyID);
+                 });
+            }
+        }
+
+        function mostrarValoraciones(data){
+            const { valoraciones, promedio, miValoracion } = data;
+            valoracionActual = miValoracion;
+            
+            let html = '';
+            
+            // Promedio y estadísticas
+            html += `<div class="mb-3 p-3" style="background:#cfe2ff; border-radius:8px; border:1px solid #0d6efd;">`;
+            html += `<div class="text-center">`;
+            html += `<h4 style="color:#0d6efd; margin:0;">${promedio.toFixed(1)}</h4>`;
+            html += `<div class="mb-2">${generarEstrellas(promedio, true)}</div>`;
+            html += `<small style="color:#666; display:block; margin-bottom:8px;">${valoraciones.length} valoración${valoraciones.length !== 1 ? 'es' : ''}</small>`;
+            html += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(13,110,253,0.3);">`;
+            html += `<small style="color:#0d6efd; font-weight:500;"><i class="fa-solid fa-comments me-1"></i> Ver comentarios de otros conductores abajo</small>`;
+            html += `</div>`;
+            html += `</div></div>`;
+            
+            // Formulario para agregar/editar valoración
+            html += `<div class="mb-3 p-3" style="background:#f8f9fa; border-radius:8px; border:1px solid #dee2e6;">`;
+            html += `<h6 style="color:#333; margin-bottom:15px;">${miValoracion ? 'Editar mi valoración' : 'Agregar valoración'}</h6>`;
+            html += `<div class="mb-3">`;
+            html += `<label class="form-label" style="font-weight:600; color:#333;">Puntuación:</label>`;
+            html += `<div class="d-flex justify-content-center gap-2 mb-2" id="estrellasInput">`;
+            for(let i = 1; i <= 5; i++){
+                const activa = miValoracion && miValoracion.valNumEst >= i;
+                html += `<i class="fa-star ${activa ? 'fa-solid' : 'fa-regular'}" style="font-size:24px; color:${activa ? '#ffc107' : '#ddd'}; cursor:pointer;" data-rating="${i}" onclick="seleccionarEstrellas(${i})"></i>`;
+            }
+            html += `</div>`;
+            html += `<div class="text-center"><span id="ratingText" style="color:#666; font-size:0.9em;">${miValoracion ? miValoracion.valNumEst + ' estrellas' : 'Selecciona una puntuación'}</span></div>`;
+            html += `</div>`;
+            html += `<div class="mb-3">`;
+            html += `<label class="form-label" style="font-weight:600; color:#333;">Comentario (opcional):</label>`;
+            html += `<textarea class="form-control" id="valComentario" rows="3" placeholder="Escribe tu comentario aquí..." maxlength="500" style="resize:vertical;">${miValoracion && miValoracion.valComentario ? (miValoracion.valComentario || '') : ''}</textarea>`;
+            html += `<small class="text-muted" style="font-size:0.8em;">Máximo 500 caracteres</small>`;
+            html += `</div>`;
+            html += `<button class="btn btn-primary w-100" onclick="guardarValoracion()" style="background:#0d6efd; border-color:#0d6efd;">${miValoracion ? 'Actualizar valoración' : 'Guardar valoración'}</button>`;
+            if(miValoracion){
+                html += `<button class="btn btn-outline-danger w-100 mt-2" onclick="eliminarValoracion()">Eliminar mi valoración</button>`;
+            }
+            html += `</div>`;
+            
+            // Lista de valoraciones
+            html += `<h6 style="color:#333; margin-bottom:15px; margin-top:20px;">Valoraciones de otros usuarios:</h6>`;
+            if(valoraciones.length === 0){
+                html += `<div class="alert alert-info" style="background:#cfe2ff; border-color:#0d6efd; color:#0d6efd;">Aún no hay valoraciones de otros usuarios.</div>`;
+            } else {
+                html += `<div style="max-height:250px; overflow-y:auto;">`;
+                valoraciones.forEach(v => {
+                    html += `<div class="mb-2 p-2" style="background:#fff; border:1px solid #dee2e6; border-radius:8px;">`;
+                    html += `<div class="d-flex justify-content-between align-items-start mb-1">`;
+                    html += `<div>`;
+                    html += `<strong style="color:#333; font-size:0.9em;">${v.conductorNombre || 'Usuario'}</strong>`;
+                    html += `${v.valFav ? ' <span style="color:#f1c40f;">★</span>' : ''}`;
+                    html += `</div>`;
+                    html += `<div>${generarEstrellas(v.valNumEst, false)}</div>`;
+                    html += `</div>`;
+                    if(v.valComentario && v.valComentario.trim()){
+                        html += `<div class="mt-2 p-2" style="background:#f8f9fa; border-radius:6px; border-left:3px solid #0d6efd;">`;
+                        html += `<p style="margin:0; color:#333; font-size:0.9em; white-space:pre-wrap;">${v.valComentario}</p>`;
+                        html += `</div>`;
+                    }
+                    html += `<small style="color:#666; font-size:0.8em;">${v.fecha || ''}</small>`;
+                    html += `</div>`;
+                });
+                html += `</div>`;
+            }
+            
+            $('#valoracionesContent').html(html);
+        }
+
+        function generarEstrellas(promedio, esPromedio){
+            let html = '';
+            const num = Math.round(promedio);
+            for(let i = 1; i <= 5; i++){
+                if(i <= num){
+                    html += '<i class="fa-solid fa-star" style="color:#ffc107;"></i>';
+                } else if(i - 0.5 <= promedio){
+                    html += '<i class="fa-solid fa-star-half-stroke" style="color:#ffc107;"></i>';
+                } else {
+                    html += '<i class="fa-regular fa-star" style="color:#ddd;"></i>';
+                }
+            }
+            return html;
+        }
+
+        let ratingSeleccionado = null;
+        function seleccionarEstrellas(rating){
+            ratingSeleccionado = rating;
+            const estrellas = document.querySelectorAll('#estrellasInput .fa-star');
+            estrellas.forEach((star, index) => {
+                if(index < rating){
+                    star.classList.remove('fa-regular');
+                    star.classList.add('fa-solid');
+                    star.style.color = '#ffc107';
+                } else {
+                    star.classList.remove('fa-solid');
+                    star.classList.add('fa-regular');
+                    star.style.color = '#ddd';
+                }
+            });
+            document.getElementById('ratingText').textContent = rating + ' estrella' + (rating > 1 ? 's' : '');
+        }
+
+        function guardarValoracion(){
+            if(!ratingSeleccionado && !valoracionActual){
+                alert('Por favor selecciona una puntuación.');
+                return;
+            }
+            
+            const rating = ratingSeleccionado || (valoracionActual ? valoracionActual.valNumEst : null);
+            if(!rating){
+                alert('Por favor selecciona una puntuación.');
+                return;
+            }
+            
+            const valComentario = document.getElementById('valComentario').value.trim();
+            
+            const payload = {
+                plyID: playaValoracionActual.plyID,
+                valNumEst: rating,
+                valFav: false,
+                valComentario: valComentario || null
+            };
+            
+            $.ajax({
+                url: '/Conductor/GuardarValoracion',
+                method: 'POST',
+                contentType: 'application/json',
+                headers: { 'RequestVerificationToken': antiforgeryToken },
+                data: JSON.stringify(payload)
+            })
+            .done(data => {
+                if(data.success){
+                    alert('Valoración guardada correctamente.');
+                    cargarValoraciones(playaValoracionActual.plyID);
+                    ratingSeleccionado = null;
+                } else {
+                    alert(data.error || 'No se pudo guardar la valoración.');
+                }
+            })
+            .fail(() => {
+                alert('Ocurrió un error al guardar la valoración.');
+            });
+        }
+
+        function eliminarValoracion(){
+            if(!confirm('¿Eliminar tu valoración?')) return;
+            
+            $.ajax({
+                url: '/Conductor/EliminarValoracion',
+                method: 'DELETE',
+                data: { id: playaValoracionActual.plyID },
+                headers: { 'RequestVerificationToken': antiforgeryToken }
+            })
+            .done(data => {
+                if(data.success){
+                    alert('Valoración eliminada correctamente.');
+                    cargarValoraciones(playaValoracionActual.plyID);
+                    ratingSeleccionado = null;
+                } else {
+                    alert(data.error || 'No se pudo eliminar la valoración.');
+                }
+            })
+            .fail(() => {
+                alert('Ocurrió un error al eliminar la valoración.');
+            });
         }
 
         // Teclado

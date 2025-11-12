@@ -1088,7 +1088,7 @@ namespace estacionamientos.Controllers
 
         // Endpoint para obtener tarifas y servicios disponibles de una playa
         [HttpGet]
-        public async Task<IActionResult> GetTarifasYServicios(int id)
+        public async Task<IActionResult> GetTarifasYServicios(int id, string? tipoVehiculo = null)
         {
             try
             {
@@ -1120,6 +1120,15 @@ namespace estacionamientos.Controllers
                                t.ServicioProveido.SerProvHab)
                     .ToListAsync();
 
+                // Filtrar por tipo de vehículo si se proporciona
+                if (!string.IsNullOrEmpty(tipoVehiculo))
+                {
+                    tarifasRaw = tarifasRaw
+                        .Where(t => t.ClasificacionVehiculo != null && 
+                                   t.ClasificacionVehiculo.ClasVehTipo == tipoVehiculo)
+                        .ToList();
+                }
+
                 var tarifas = tarifasRaw
                     .GroupBy(t => new { t.SerID, ClasVehTipo = t.ClasificacionVehiculo?.ClasVehTipo ?? "Sin clasificación" })
                     .Select(g => new
@@ -1129,6 +1138,13 @@ namespace estacionamientos.Controllers
                         monto = g.OrderByDescending(t => t.TasFecIni).First().TasMonto
                     })
                     .ToList();
+
+                // Filtrar servicios que tienen tarifas para el tipo de vehículo (si se especificó)
+                if (!string.IsNullOrEmpty(tipoVehiculo))
+                {
+                    var serviciosConTarifasParaVehiculo = tarifas.Select(t => t.serID).Distinct().ToList();
+                    servicios = servicios.Where(s => serviciosConTarifasParaVehiculo.Contains(s.serID)).ToList();
+                }
 
                 // Agrupar tarifas por servicio
                 var serviciosConTarifas = servicios.Select(s => new
@@ -1150,6 +1166,162 @@ namespace estacionamientos.Controllers
             {
                 return Json(new { error = ex.Message });
             }
+        }
+
+        // Endpoint para obtener valoraciones de una playa
+        [HttpGet]
+        public async Task<IActionResult> GetValoraciones(int id)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var conductorId = userId != null ? int.Parse(userId) : (int?)null;
+
+                // Obtener todas las valoraciones de la playa
+                var valoraciones = await _context.Valoraciones
+                    .Include(v => v.Conductor)
+                    .Where(v => v.PlyID == id)
+                    .OrderByDescending(v => v.ValNumEst)
+                    .ThenByDescending(v => v.ValFav)
+                    .Select(v => new
+                    {
+                        conNU = v.ConNU,
+                        conductorNombre = v.Conductor.UsuNyA,
+                        valNumEst = v.ValNumEst,
+                        valFav = v.ValFav,
+                        valComentario = v.ValComentario,
+                        esMia = conductorId.HasValue && v.ConNU == conductorId.Value
+                    })
+                    .ToListAsync();
+
+                // Calcular promedio
+                var promedio = valoraciones.Any() 
+                    ? (decimal)valoraciones.Average(v => v.valNumEst) 
+                    : 0m;
+
+                // Separar mi valoración de las demás
+                var miValoracion = conductorId.HasValue
+                    ? valoraciones.FirstOrDefault(v => v.esMia)
+                    : null;
+
+                var otrasValoraciones = valoraciones
+                    .Where(v => !v.esMia)
+                    .Select(v => new
+                    {
+                        v.conductorNombre,
+                        v.valNumEst,
+                        v.valFav,
+                        v.valComentario
+                    })
+                    .ToList();
+
+                return Json(new
+                {
+                    valoraciones = otrasValoraciones,
+                    promedio = promedio,
+                    miValoracion = miValoracion != null ? new
+                    {
+                        valNumEst = miValoracion.valNumEst,
+                        valFav = miValoracion.valFav,
+                        valComentario = miValoracion.valComentario
+                    } : null
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
+        // Endpoint para guardar/actualizar valoración
+        [HttpPost]
+        public async Task<IActionResult> GuardarValoracion([FromBody] GuardarValoracionRequest model)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                {
+                    return Json(new { success = false, error = "Usuario no autenticado" });
+                }
+
+                var conductorId = int.Parse(userId);
+
+                // Buscar si ya existe una valoración
+                var valoracionExistente = await _context.Valoraciones
+                    .FirstOrDefaultAsync(v => v.PlyID == model.PlyID && v.ConNU == conductorId);
+
+                if (valoracionExistente != null)
+                {
+                    // Actualizar
+                    valoracionExistente.ValNumEst = model.ValNumEst;
+                    valoracionExistente.ValFav = model.ValFav;
+                    valoracionExistente.ValComentario = model.ValComentario;
+                    _context.Entry(valoracionExistente).State = EntityState.Modified;
+                }
+                else
+                {
+                    // Crear nueva
+                    var nuevaValoracion = new Valoracion
+                    {
+                        PlyID = model.PlyID,
+                        ConNU = conductorId,
+                        ValNumEst = model.ValNumEst,
+                        ValFav = model.ValFav,
+                        ValComentario = model.ValComentario
+                    };
+                    _context.Valoraciones.Add(nuevaValoracion);
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Valoración guardada correctamente." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        // Endpoint para eliminar valoración
+        [HttpDelete]
+        public async Task<IActionResult> EliminarValoracion(int id)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                {
+                    return Json(new { success = false, error = "Usuario no autenticado" });
+                }
+
+                var conductorId = int.Parse(userId);
+
+                var valoracion = await _context.Valoraciones
+                    .FirstOrDefaultAsync(v => v.PlyID == id && v.ConNU == conductorId);
+
+                if (valoracion == null)
+                {
+                    return Json(new { success = false, error = "Valoración no encontrada" });
+                }
+
+                _context.Valoraciones.Remove(valoracion);
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Valoración eliminada correctamente." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        public class GuardarValoracionRequest
+        {
+            public int PlyID { get; set; }
+            public int ValNumEst { get; set; }
+            public bool ValFav { get; set; }
+            public string? ValComentario { get; set; }
         }
 
         private async Task<decimal> CalcularPromedioTarifaHora(int plyID)
