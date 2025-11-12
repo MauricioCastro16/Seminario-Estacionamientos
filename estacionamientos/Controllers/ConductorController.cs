@@ -1086,6 +1086,72 @@ namespace estacionamientos.Controllers
             }
         }
 
+        // Endpoint para obtener tarifas y servicios disponibles de una playa
+        [HttpGet]
+        public async Task<IActionResult> GetTarifasYServicios(int id)
+        {
+            try
+            {
+                var ahora = DateTime.UtcNow;
+
+                // Obtener servicios disponibles (habilitados)
+                var servicios = await _context.ServiciosProveidos
+                    .Include(sp => sp.Servicio)
+                    .Where(sp => sp.PlyID == id && sp.SerProvHab)
+                    .Select(sp => new
+                    {
+                        serID = sp.SerID,
+                        serNom = sp.Servicio.SerNom,
+                        serDesc = sp.Servicio.SerDesc,
+                        serTipo = sp.Servicio.SerTipo,
+                        serDuracionMinutos = sp.Servicio.SerDuracionMinutos
+                    })
+                    .Distinct()
+                    .ToListAsync();
+
+                // Obtener tarifas vigentes agrupadas por servicio y clasificación de vehículo
+                var tarifasRaw = await _context.TarifasServicio
+                    .Include(t => t.ServicioProveido)
+                        .ThenInclude(sp => sp.Servicio)
+                    .Include(t => t.ClasificacionVehiculo)
+                    .Where(t => t.PlyID == id &&
+                               t.TasFecIni <= ahora &&
+                               (t.TasFecFin == null || t.TasFecFin >= ahora) &&
+                               t.ServicioProveido.SerProvHab)
+                    .ToListAsync();
+
+                var tarifas = tarifasRaw
+                    .GroupBy(t => new { t.SerID, ClasVehTipo = t.ClasificacionVehiculo?.ClasVehTipo ?? "Sin clasificación" })
+                    .Select(g => new
+                    {
+                        serID = g.Key.SerID,
+                        clasificacionVehiculo = g.Key.ClasVehTipo,
+                        monto = g.OrderByDescending(t => t.TasFecIni).First().TasMonto
+                    })
+                    .ToList();
+
+                // Agrupar tarifas por servicio
+                var serviciosConTarifas = servicios.Select(s => new
+                {
+                    s.serID,
+                    s.serNom,
+                    s.serDesc,
+                    s.serTipo,
+                    s.serDuracionMinutos,
+                    tarifas = tarifas
+                        .Where(t => t.serID == s.serID)
+                        .Select(t => new { t.clasificacionVehiculo, t.monto })
+                        .ToList()
+                }).ToList();
+
+                return Json(new { servicios = serviciosConTarifas });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
+            }
+        }
+
         private async Task<decimal> CalcularPromedioTarifaHora(int plyID)
         {
             try

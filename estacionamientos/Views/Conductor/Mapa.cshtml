@@ -378,6 +378,14 @@
             <div class="info-row"><span class="info-label">Dirección:</span><span class="info-value" id="direccion">Av. Principal 123</span></div>
             <div class="info-row"><span class="info-label">Valor promedio:</span><span class="info-value" id="valorPromedio">$500/hora</span></div>
             <div class="info-row mt-3" id="horariosSection" style="display:none;"><span class="info-label">Horarios de atención:</span><div class="info-value" id="horariosInfo" style="font-size:.9em;"></div></div>
+            <div class="info-row mt-3" id="tarifasSection" style="display:none; flex-direction:column; align-items:flex-start;">
+                <span class="info-label" style="margin-bottom:8px;">Tarifas:</span>
+                <div class="info-value" id="tarifasInfo" style="font-size:.9em; width:100%;"></div>
+            </div>
+            <div class="info-row mt-3" id="serviciosSection" style="display:none;">
+                <span class="info-label">Servicios disponibles:</span>
+                <div class="info-value" id="serviciosInfo" style="font-size:.9em;"></div>
+            </div>
             <div class="info-row mt-2" id="debugInfoSection" style="display:none; font-size:.8em; color:#666;"><div id="debugInfo"></div></div>
             <button class="btn btn-primary w-100 mt-3" onclick="abrirNavegacion()"><i class="bi bi-navigation me-2"></i>Ver en Google Maps</button>
         </div>
@@ -693,12 +701,14 @@
             $.get('/Conductor/GetDetallePlaya', { id: playa.plyID })
              .done(detalle => {
                  mostrarDetallePlaya(detalle);
+                 cargarTarifasYServicios(playa.plyID);
                  $('#bottomMenu').addClass('show');
                  // abrir popup (marker o temporal)
                  openMarkerPopup({ ...detalle, plyLat: detalle.plyLat ?? playa.plyLat, plyLon: detalle.plyLon ?? playa.plyLon });
              })
              .fail(() => {
                  mostrarDetallePlayaBasico(playa);
+                 cargarTarifasYServicios(playa.plyID);
                  $('#bottomMenu').addClass('show');
                  openMarkerPopup(playa);
              });
@@ -718,6 +728,95 @@
             horariosHtml += '</div>';
             $('#horariosInfo').html(tiene ? horariosHtml : '<span style="color:#dc3545;">No hay horarios configurados</span>');
             $('#horariosSection').show(); $('#debugInfoSection').hide(); $('#playaInfo').show();
+        }
+
+        function cargarTarifasYServicios(plyID){
+            $.get('/Conductor/GetTarifasYServicios', { id: plyID })
+             .done(data => {
+                 if (data && !data.error && data.servicios){
+                     mostrarTarifas(data.servicios);
+                     mostrarServicios(data.servicios);
+                 } else {
+                     $('#tarifasInfo').html('<span style="color:#dc3545;">No hay información disponible</span>');
+                     $('#serviciosInfo').html('<span style="color:#dc3545;">No hay servicios disponibles</span>');
+                     $('#tarifasSection').show();
+                     $('#serviciosSection').show();
+                 }
+             })
+             .fail(() => {
+                 $('#tarifasInfo').html('<span style="color:#dc3545;">Error al cargar tarifas</span>');
+                 $('#serviciosInfo').html('<span style="color:#dc3545;">Error al cargar servicios</span>');
+                 $('#tarifasSection').show();
+                 $('#serviciosSection').show();
+             });
+        }
+
+        function mostrarTarifas(servicios){
+            const serviciosConTarifas = servicios.filter(s => s.tarifas && s.tarifas.length > 0);
+            
+            if (serviciosConTarifas.length === 0){
+                $('#tarifasInfo').html('<span style="color:#dc3545;">No hay tarifas configuradas</span>');
+                $('#tarifasSection').show();
+                return;
+            }
+
+            let tarifasHtml = '<div style="margin-top:5px; display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:8px; width:100%; grid-auto-flow:row;">';
+            serviciosConTarifas.forEach(servicio => {
+                const duracion = servicio.serDuracionMinutos 
+                    ? servicio.serDuracionMinutos >= 60 
+                        ? `${Math.round(servicio.serDuracionMinutos / 60)}h`
+                        : `${servicio.serDuracionMinutos}min`
+                    : '';
+                
+                servicio.tarifas.forEach(tarifa => {
+                    tarifasHtml += `
+                        <div class="tarifa-card" style="
+                            background-color: #cfe2ff;
+                            border: 1px solid rgba(13, 110, 253, 0.5);
+                            border-radius: 0.75rem;
+                            padding: 8px 10px;
+                            min-height: 70px;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: center;
+                            align-items: center;
+                            text-align: center;
+                            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2);
+                            transition: all 0.2s ease-in-out;
+                        ">
+                            <div style="font-size: 0.75em; color: #0d6efd; font-weight: 600; margin-bottom: 4px; line-height: 1.2;">
+                                ${servicio.serNom}
+                            </div>
+                            ${duracion ? `<div style="font-size: 0.7em; color: #666; margin-bottom: 4px;">${duracion}</div>` : ''}
+                            <div style="font-size: 0.7em; color: #666; margin-bottom: 2px;">${tarifa.clasificacionVehiculo}</div>
+                            <div style="font-size: 0.85em; color: #0d6efd; font-weight: 700;">
+                                $${parseFloat(tarifa.monto).toFixed(2)}
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+            tarifasHtml += '</div>';
+            
+            $('#tarifasInfo').html(tarifasHtml);
+            $('#tarifasSection').show();
+        }
+
+        function mostrarServicios(servicios){
+            if (!servicios || servicios.length === 0){
+                $('#serviciosInfo').html('<span style="color:#dc3545;">No hay servicios disponibles</span>');
+                $('#serviciosSection').show();
+                return;
+            }
+
+            let serviciosHtml = '<div style="margin-top:5px; display:flex; flex-wrap:wrap; gap:6px;">';
+            servicios.forEach(servicio => {
+                serviciosHtml += `<span style="display:inline-block; padding:4px 10px; background:#cfe2ff; color:#0d6efd; border:1px solid #0d6efd; border-radius:12px; font-size:0.85em;">${servicio.serNom}</span>`;
+            });
+            serviciosHtml += '</div>';
+            
+            $('#serviciosInfo').html(serviciosHtml);
+            $('#serviciosSection').show();
         }
 
         function mostrarDetallePlayaBasico(playa){
