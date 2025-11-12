@@ -347,7 +347,7 @@
         <input type="text" id="searchInput" placeholder="Buscar dirección..." />
         <button onclick="buscarDireccion()" id="btnBuscar" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Buscar"><i class="fa-solid fa-magnifying-glass"></i></button>
         <button class="home-btn" onclick="centerOnConductor()" id="btnHome" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Reubicar mapa"><i class="fa-solid fa-house"></i></button>
-        <button class="fav-btn" id="favBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ubicaciones favoritas"><i class="fa-solid fa-star"></i></button>
+        <button class="fav-btn" id="favBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Playas de estacionamiento favoritas"><i class="fa-solid fa-star"></i></button>
     </div>
 
     <!-- Indicador de filtro aplicado -->
@@ -743,7 +743,7 @@
                         }
                     }
                     
-                    alert('Ubicación favorita eliminada correctamente.');
+                    alert('Playa de estacionamiento favorita eliminada correctamente.');
                 } else {
                     alert(data.error || 'No se pudo eliminar el favorito.');
                 }
@@ -1207,10 +1207,10 @@
             return fetch('@Url.Action("AgregarUbicacionFavorita", "Conductor")', {
                 method:'POST', headers:{ 'Content-Type':'application/json', 'RequestVerificationToken': antiforgeryToken }, body: JSON.stringify(ubicacion)
             }).then(r=>r.json()).then(d=>{
-                if (d.success) alert('Ubicación favorita guardada correctamente.');
-                else alert(d.error || 'No se pudo guardar la ubicación favorita.');
-                return d;
-            }).catch(()=> alert('Ocurrió un error al guardar la ubicación favorita.'));
+                 if (d.success) alert('Playa de estacionamiento favorita guardada correctamente.');
+                 else alert(d.error || 'No se pudo guardar la playa de estacionamiento favorita.');
+                 return d;
+             }).catch(()=> alert('Ocurrió un error al guardar la playa de estacionamiento favorita.'));
         }
 
         function cargarUbicacionesFavoritas(){
@@ -1260,7 +1260,7 @@
                 viewBtn.className = 'favorite-view-btn'; 
                 viewBtn.setAttribute('data-bs-toggle', 'tooltip');
                 viewBtn.setAttribute('data-bs-placement', 'top');
-                viewBtn.title = 'Visualizar ubicación favorita';
+                viewBtn.title = 'Visualizar playa de estacionamiento favorita';
                 viewBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
                 viewBtn.onclick = (e)=>{ e.stopPropagation(); irAFavorito(fav); };
                 new bootstrap.Tooltip(viewBtn);
@@ -1270,7 +1270,7 @@
                 editBtn.className = 'favorite-edit-btn'; 
                 editBtn.setAttribute('data-bs-toggle', 'tooltip');
                 editBtn.setAttribute('data-bs-placement', 'top');
-                editBtn.title = 'Renombrar ubicación favorita';
+                editBtn.title = 'Renombrar playa de estacionamiento favorita';
                 editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
                 editBtn.onclick = (e)=>{ e.stopPropagation(); editarFavorito(fav); };
                 new bootstrap.Tooltip(editBtn);
@@ -1280,7 +1280,7 @@
                 removeBtn.className = 'favorite-remove-btn'; 
                 removeBtn.setAttribute('data-bs-toggle', 'tooltip');
                 removeBtn.setAttribute('data-bs-placement', 'top');
-                removeBtn.title = 'Eliminar ubicación favorita';
+                removeBtn.title = 'Eliminar playa de estacionamiento favorita';
                 removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
                 removeBtn.onclick = (e)=>{ e.stopPropagation(); eliminarFavorito(fav); };
                 new bootstrap.Tooltip(removeBtn);
@@ -1379,7 +1379,7 @@
         }
 
         function editarFavorito(fav){
-            const nuevo = prompt('Nuevo nombre para esta ubicación favorita:', fav.apodo);
+            const nuevo = prompt('Nuevo nombre para esta playa de estacionamiento favorita:', fav.apodo);
             if (nuevo == null) return;
             if (nuevo.trim() === '') return alert('El nombre no puede estar vacío.');
             fetch('@Url.Action("EditarUbicacionFavorita", "Conductor")', {
@@ -1387,8 +1387,8 @@
                 body: JSON.stringify({ apodoActual: fav.apodo, nuevoApodo: nuevo.trim() })
             }).then(r=>r.json()).then(d=>{
                 if (d.success){ fav.apodo = nuevo.trim(); refreshFavoritesUI(); }
-                else alert(d.error || 'No se pudo renombrar la ubicación favorita.');
-            }).catch(()=> alert('Ocurrió un error al renombrar la ubicación favorita.'));
+                else alert(d.error || 'No se pudo renombrar la playa de estacionamiento favorita.');
+            }).catch(()=> alert('Ocurrió un error al renombrar la playa de estacionamiento favorita.'));
         }
 
         // === Valoraciones ===
@@ -1453,7 +1453,7 @@
             html += `<div class="mb-2">${generarEstrellas(promedio, true)}</div>`;
             html += `<small style="color:#666; display:block; margin-bottom:8px;">${valoraciones.length} valoración${valoraciones.length !== 1 ? 'es' : ''}</small>`;
             html += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(13,110,253,0.3);">`;
-            html += `<small style="color:#0d6efd; font-weight:500;"><i class="fa-solid fa-comments me-1"></i> Ver comentarios de otros conductores abajo</small>`;
+            html += `<button type="button" onclick="toggleOpinionesOtros()" style="background:none; border:none; color:#0d6efd; font-weight:500; cursor:pointer; padding:0; text-decoration:none; font-size:inherit; width:100%; text-align:center;"><i class="fa-solid fa-comments me-1"></i> Opiniones de otros conductores</button>`;
             html += `</div>`;
             html += `</div></div>`;
             
@@ -1481,8 +1481,9 @@
             }
             html += `</div>`;
             
-            // Lista de valoraciones
-            html += `<h6 style="color:#333; margin-bottom:15px; margin-top:20px;">Valoraciones de otros usuarios:</h6>`;
+            // Lista de valoraciones (inicialmente oculta)
+            html += `<div id="opinionesOtrosConductores" style="display:none; margin-top:20px;">`;
+            html += `<h6 style="color:#333; margin-bottom:15px;">Opiniones de otros conductores:</h6>`;
             if(valoraciones.length === 0){
                 html += `<div class="alert alert-info" style="background:#cfe2ff; border-color:#0d6efd; color:#0d6efd;">Aún no hay valoraciones de otros usuarios.</div>`;
             } else {
@@ -1506,8 +1507,24 @@
                 });
                 html += `</div>`;
             }
+            html += `</div>`;
             
             $('#valoracionesContent').html(html);
+        }
+
+        function toggleOpinionesOtros(){
+            const seccion = document.getElementById('opinionesOtrosConductores');
+            if (seccion) {
+                if (seccion.style.display === 'none') {
+                    seccion.style.display = 'block';
+                    // Hacer scroll suave hacia la sección
+                    setTimeout(() => {
+                        seccion.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 100);
+                } else {
+                    seccion.style.display = 'none';
+                }
+            }
         }
 
         function generarEstrellas(promedio, esPromedio){
