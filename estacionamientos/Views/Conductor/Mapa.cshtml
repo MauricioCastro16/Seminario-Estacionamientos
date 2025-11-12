@@ -731,12 +731,33 @@
             return L.divIcon({ className, html:'P', iconSize:[30,30], iconAnchor:[15,15] });
         }
 
+        function buildPopupContent(playa, isSearchMode = false){
+            const favorito = esFavorita(playa);
+            const botonFavorito = favorito 
+                ? `<button class="btn btn-sm btn-eliminar-favorito flex-fill" onclick="window.eliminarFavoritaDesdePopup('${favorito.apodo}', ${playa.plyID})">Eliminar favorito</button>`
+                : `<button class="btn btn-sm btn-favorito-azul flex-fill" onclick="window.agregarFavoritaDesdePopup(${playa.plyID})">★ Favorito</button>`;
+
+            return `
+              <div style="min-width:220px;">
+                <h6 style="margin:0 0 10px;color:#2c3e50;">${playa.plyNom}</h6>
+                <p style="margin:5px 0;font-size:14px;"><strong>Dirección:</strong> ${playa.plyDir}</p>
+                <p style="margin:5px 0;font-size:14px;"><strong>Disponibilidad:</strong> ${playa.disponibilidad}%</p>
+                <p style="margin:5px 0;font-size:14px;"><strong>Estado:</strong> ${playa.estaAbierto ? 'Abierto' : 'Cerrado'}</p>
+                ${isSearchMode ? `<p style="margin:5px 0;font-size:14px;color:#dc3545;"><strong>📍 Distancia:</strong> ${Number(playa.distancia||0).toFixed(2)} km</p>` : ''}
+                ${isSearchMode ? '<p style="margin:5px 0;font-size:12px;color:#dc3545;font-weight:bold;">🔍 Uno de los 3 más cercanos</p>' : ''}
+                <div class="d-flex gap-1 mt-2 flex-wrap">
+                  <button class="btn btn-sm btn-primary flex-fill" onclick="window.seleccionarPlayaDesdePopup(${playa.plyID})">Ver detalles</button>
+                  <button class="btn btn-sm btn-primary flex-fill" onclick="window.abrirValoraciones(${playa.plyID}, '${playa.plyNom}')">Valoraciones</button>
+                  ${botonFavorito}
+                </div>
+              </div>`;
+        }
+
         function mostrarPlayasEnMapa(){
+            const playasAMostrar = isSearchMode ? searchResults : playas;
             parkingMarkers.forEach(m => map.removeLayer(m));
             parkingMarkers = [];
             playaIdToMarker.clear();
-
-            const playasAMostrar = isSearchMode ? searchResults : playas;
 
             playasAMostrar.forEach(playa => {
                 if (playa.plyLat == null || playa.plyLon == null || isNaN(playa.plyLat) || isNaN(playa.plyLon)){
@@ -747,28 +768,13 @@
                 const icon = crearIconoPlaya(playa, isSearchMode);
                 const marker = L.marker([playa.plyLat, playa.plyLon], { icon }).addTo(map);
 
-                const favorito = esFavorita(playa);
-                const botonFavorito = favorito 
-                    ? `<button class="btn btn-sm btn-eliminar-favorito flex-fill" onclick="window.eliminarFavoritaDesdePopup('${favorito.apodo}', ${playa.plyID})">Eliminar favorito</button>`
-                    : `<button class="btn btn-sm btn-favorito-azul flex-fill" onclick="window.agregarFavoritaDesdePopup(${playa.plyID})">★ Favorito</button>`;
-
-                const popupContent = `
-                  <div style="min-width:220px;">
-                    <h6 style="margin:0 0 10px;color:#2c3e50;">${playa.plyNom}</h6>
-                    <p style="margin:5px 0;font-size:14px;"><strong>Dirección:</strong> ${playa.plyDir}</p>
-                    <p style="margin:5px 0;font-size:14px;"><strong>Disponibilidad:</strong> ${playa.disponibilidad}%</p>
-                    <p style="margin:5px 0;font-size:14px;"><strong>Estado:</strong> ${playa.estaAbierto ? 'Abierto' : 'Cerrado'}</p>
-                    ${isSearchMode ? `<p style="margin:5px 0;font-size:14px;color:#dc3545;"><strong>📍 Distancia:</strong> ${Number(playa.distancia||0).toFixed(2)} km</p>` : ''}
-                    ${isSearchMode ? '<p style="margin:5px 0;font-size:12px;color:#dc3545;font-weight:bold;">🔍 Uno de los 3 más cercanos</p>' : ''}
-                    <div class="d-flex gap-1 mt-2 flex-wrap">
-                      <button class="btn btn-sm btn-primary flex-fill" onclick="window.seleccionarPlayaDesdePopup(${playa.plyID})">Ver detalles</button>
-                      <button class="btn btn-sm btn-primary flex-fill" onclick="window.abrirValoraciones(${playa.plyID}, '${playa.plyNom}')">Valoraciones</button>
-                      ${botonFavorito}
-                    </div>
-                  </div>`;
+                const popupContent = buildPopupContent(playa, isSearchMode);
                 marker.bindPopup(popupContent);
 
-                marker.on('click', () => seleccionarPlaya(playa));
+                marker.on('click', () => {
+                    // Solo abrir el popup, no abrir el footer automáticamente
+                    marker.openPopup();
+                });
                 marker.on('popupopen', () => console.log('📋 Popup abierto para:', playa.plyNom));
 
                 if (playa.plyID != null) playaIdToMarker.set(playa.plyID, marker);
@@ -815,11 +821,55 @@
                 if (isNaN(lat) || isNaN(lon)) return;
 
                 const esPlaya = fav.tipo === 'Playa';
-                const marker = L.marker([lat, lon], { icon:crearIconoFavorito(esPlaya), zIndexOffset:500 })
-                    .addTo(map)
-                    .bindPopup(`<strong>${fav.apodo}</strong><br>${fav.direccion || fav.ciudad || ''}`);
+                // Usar un z-index más alto para que esté por encima del marcador de búsqueda
+                const marker = L.marker([lat, lon], { icon:crearIconoFavorito(esPlaya), zIndexOffset:1000 })
+                    .addTo(map);
 
-                marker.on('click', () => irAFavorito(fav));
+                if (esPlaya) {
+                    // Para playas favoritas, buscar la playa correspondiente y mostrar su popup
+                    const playa = playas.find(p => {
+                        if (!p.plyLat || !p.plyLon) return false;
+                        const playaLat = parseFloat(p.plyLat);
+                        const playaLon = parseFloat(p.plyLon);
+                        if (isNaN(playaLat) || isNaN(playaLon)) return false;
+                        // Buscar por coordenadas con tolerancia
+                        return Math.abs(playaLat - lat) < 0.0001 && Math.abs(playaLon - lon) < 0.0001;
+                    });
+                    
+                    if (playa) {
+                        // Mostrar el popup de la playa con el botón de eliminar favorito
+                        // NO activar modo de búsqueda ni mostrar marcador de búsqueda
+                        const popupContent = buildPopupContent(playa, false);
+                        marker.bindPopup(popupContent);
+                        marker.on('click', (e) => {
+                            // Prevenir que se active el modo de búsqueda
+                            if (e.originalEvent) {
+                                e.originalEvent.stopPropagation();
+                            }
+                            // Cerrar y ocultar cualquier marcador de búsqueda que esté visible
+                            if (searchLocationMarker) {
+                                searchLocationMarker.closePopup();
+                                map.removeLayer(searchLocationMarker);
+                                searchLocationMarker = null;
+                            }
+                            // Ocultar el badge de filtro si está visible
+                            $('#filterBadge').fadeOut(300);
+                            // Asegurarse de que no se active el modo de búsqueda
+                            isSearchMode = false;
+                            // Solo abrir el popup de la playa
+                            marker.openPopup();
+                        });
+                    } else {
+                        // Si no se encuentra la playa, mostrar solo el nombre del favorito
+                        marker.bindPopup(`<strong>${fav.apodo}</strong><br>${fav.direccion || fav.ciudad || ''}`);
+                        marker.on('click', () => irAFavorito(fav));
+                    }
+                } else {
+                    // Para ubicaciones favoritas, mantener el comportamiento original
+                    marker.bindPopup(`<strong>${fav.apodo}</strong><br>${fav.direccion || fav.ciudad || ''}`);
+                    marker.on('click', () => irAFavorito(fav));
+                }
+                
                 favoriteMarkers.push(marker);
             });
         }
@@ -1526,11 +1576,14 @@
             const li = document.createElement('li'); 
             li.classList.add('favorite-item');
 
+            // Determinar qué función usar según el tipo
+            const funcionIrA = tipo === 'playa' ? irAPlayaFavorita : irAFavorito;
+
                 const mainBtn = document.createElement('button');
             mainBtn.type = 'button'; 
             mainBtn.className = 'favorite-main-btn';
                 mainBtn.innerHTML = `<span>${fav.apodo}</span><span>${fav.direccion || (fav.ciudad || '')}</span>`;
-                mainBtn.onclick = () => irAFavorito(fav);
+                mainBtn.onclick = () => funcionIrA(fav);
 
                 const viewBtn = document.createElement('button');
             viewBtn.type = 'button'; 
@@ -1541,7 +1594,7 @@
                 ? 'Visualizar playa de estacionamiento favorita' 
                 : 'Visualizar ubicación favorita';
             viewBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
-                viewBtn.onclick = (e)=>{ e.stopPropagation(); irAFavorito(fav); };
+                viewBtn.onclick = (e)=>{ e.stopPropagation(); funcionIrA(fav); };
             new bootstrap.Tooltip(viewBtn);
 
                 const editBtn = document.createElement('button');
@@ -1574,6 +1627,68 @@
             li.appendChild(removeBtn);
             
             return li;
+        }
+
+        function irAPlayaFavorita(fav){
+            const lat = parseFloat(fav.lat ?? fav.ubfLat ?? fav.UbfLat);
+            const lon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
+            if (isNaN(lat) || isNaN(lon)) return alert('Este favorito no tiene coordenadas válidas.');
+
+            // Buscar la playa correspondiente por coordenadas
+            const playa = playas.find(p => {
+                if (!p.plyLat || !p.plyLon) return false;
+                const playaLat = parseFloat(p.plyLat);
+                const playaLon = parseFloat(p.plyLon);
+                if (isNaN(playaLat) || isNaN(playaLon)) return false;
+                // Buscar por coordenadas con tolerancia
+                return Math.abs(playaLat - lat) < 0.0001 && Math.abs(playaLon - lon) < 0.0001;
+            });
+            
+            if (!playa) {
+                alert('No se encontró la playa de estacionamiento en el mapa.');
+                return;
+            }
+            
+            // Cerrar y ocultar cualquier marcador de búsqueda que esté visible
+            if (searchLocationMarker) {
+                searchLocationMarker.closePopup();
+                map.removeLayer(searchLocationMarker);
+                searchLocationMarker = null;
+            }
+            
+            // Ocultar el badge de filtro si está visible
+            $('#filterBadge').fadeOut(300);
+            
+            // Asegurarse de que no se active el modo de búsqueda
+            isSearchMode = false;
+            
+            // Centrar el mapa con animación suave
+            map.flyTo([lat, lon], 16, {
+                animate: true,
+                duration: 0.8
+            });
+            
+            // Asegurar que el mapa se actualice después de centrar
+            setTimeout(() => {
+                map.invalidateSize();
+                
+                // Buscar el marcador de la playa y abrir su popup
+                const marker = playaIdToMarker.get(playa.plyID);
+                if (marker) {
+                    // Si el marcador existe, abrir su popup
+                    marker.openPopup();
+                } else {
+                    // Si no existe el marcador, crear un popup temporal
+                    const popupContent = buildPopupContent(playa, false);
+                    if (transientPopup) {
+                        map.removeLayer(transientPopup);
+                    }
+                    transientPopup = L.popup()
+                        .setLatLng([lat, lon])
+                        .setContent(popupContent)
+                        .openOn(map);
+                }
+            }, 100);
         }
 
         function irAFavorito(fav){
