@@ -1075,13 +1075,25 @@
                  if (data?.length){
                     const lat = parseFloat(data[0].lat), lon = parseFloat(data[0].lon);
                     map.setView([lat, lon], 15);
+                    // Mostrar badge inmediatamente con la dirección buscada
+                    $('#filterText').text(direccion);
+                    $('#filterBadge').fadeIn(300);
                     buscarPlayasCercanas(lat, lon);
-                 } else { alert('No se encontró la dirección.'); $('#loading').hide(); }
+                 } else { 
+                     alert('No se encontró la dirección.'); 
+                     $('#loading').hide(); 
+                 }
              })
-             .fail(()=>{ alert('Error al buscar la dirección.'); $('#loading').hide(); });
+             .fail(()=>{ 
+                 alert('Error al buscar la dirección.'); 
+                 $('#loading').hide(); 
+             });
         }
 
         function buscarPlayasCercanas(lat, lon){
+            // Guardar la dirección buscada para el badge
+            const direccionBuscada = $('#searchInput').val().trim();
+            
             // Primero obtener el tipo de vehículo
             $.get('/Conductor/GetVehiculoSeleccionado')
              .done(vehiculoData => {
@@ -1094,43 +1106,53 @@
                       if (!tipoVehiculo) {
                           // Si no hay tipo de vehículo, mostrar todas las playas (máximo 3)
                           searchResults = todasLasPlayas.slice(0,3);
-                          mostrarPlayasBuscadas(lat, lon);
+                          mostrarPlayasBuscadas(lat, lon, direccionBuscada);
                           return;
                       }
                       
                       // Filtrar playas que tienen servicios/tarifas para el tipo de vehículo
-                      filtrarPlayasBuscadasPorTipoVehiculo(todasLasPlayas, tipoVehiculo, lat, lon);
+                      filtrarPlayasBuscadasPorTipoVehiculo(todasLasPlayas, tipoVehiculo, lat, lon, direccionBuscada);
                   })
-                  .fail(()=> $('#loading').hide());
+                  .fail(()=> {
+                      $('#loading').hide();
+                      alert('Error al buscar playas cercanas.');
+                  });
              })
              .fail(() => {
                  // Si no se puede obtener el vehículo, mostrar todas las playas
                  $.get('/Conductor/GetPlayasCercanas', { lat, lon, radioKm:10 })
                   .done(data => {
                       searchResults = (data || []).sort((a,b)=>a.distancia - b.distancia).slice(0,3);
-                      mostrarPlayasBuscadas(lat, lon);
+                      mostrarPlayasBuscadas(lat, lon, direccionBuscada);
                   })
-                  .fail(()=> $('#loading').hide());
+                  .fail(()=> {
+                      $('#loading').hide();
+                      alert('Error al buscar playas cercanas.');
+                  });
              });
         }
         
-        function mostrarPlayasBuscadas(lat, lon){
+        function mostrarPlayasBuscadas(lat, lon, direccionBuscada){
             if (searchLocationMarker) map.removeLayer(searchLocationMarker);
+            const direccion = direccionBuscada || $('#searchInput').val().trim();
             searchLocationMarker = L.marker([lat, lon], { icon: L.divIcon({ className:'search-location-marker', html:'<i class="fa-solid fa-location-dot" style="color:#dc3545;font-size:24px;text-shadow:2px 2px 4px rgba(0,0,0,.3);"></i>', iconSize:[30,30], iconAnchor:[15,15] }) }).addTo(map);
-            searchLocationMarker.bindPopup('<b>Ubicación buscada</b><br>Dirección: ' + $('#searchInput').val()).openPopup();
+            searchLocationMarker.bindPopup('<b>Ubicación buscada</b><br>Dirección: ' + direccion).openPopup();
             isSearchMode = true; 
             mostrarPlayasEnMapa(); 
             $('#loading').hide();
-            // Mostrar badge de filtro
-            const direccionBuscada = $('#searchInput').val().trim();
-            $('#filterText').text(direccionBuscada);
-            $('#filterBadge').fadeIn(300);
+            // Asegurar que el badge de filtro esté visible con la dirección correcta
+            if (direccion && $('#filterText').text() !== direccion) {
+                $('#filterText').text(direccion);
+            }
+            if (!$('#filterBadge').is(':visible')) {
+                $('#filterBadge').fadeIn(300);
+            }
         }
         
-        function filtrarPlayasBuscadasPorTipoVehiculo(todasLasPlayas, tipoVehiculo, lat, lon){
+        function filtrarPlayasBuscadasPorTipoVehiculo(todasLasPlayas, tipoVehiculo, lat, lon, direccionBuscada){
             if (todasLasPlayas.length === 0) {
                 searchResults = [];
-                mostrarPlayasBuscadas(lat, lon);
+                mostrarPlayasBuscadas(lat, lon, direccionBuscada);
                 return;
             }
             
@@ -1159,14 +1181,14 @@
                      // Cuando se hayan verificado todas las playas o tengamos 3, mostrar las filtradas
                      if (verificadas === todasLasPlayas.length || playasFiltradas.length >= maxPlayas) {
                          searchResults = playasFiltradas;
-                         mostrarPlayasBuscadas(lat, lon);
+                         mostrarPlayasBuscadas(lat, lon, direccionBuscada);
                      }
                  })
                  .fail(() => {
                      verificadas++;
                      if (verificadas === todasLasPlayas.length) {
                          searchResults = playasFiltradas;
-                         mostrarPlayasBuscadas(lat, lon);
+                         mostrarPlayasBuscadas(lat, lon, direccionBuscada);
                      }
                  });
             });
