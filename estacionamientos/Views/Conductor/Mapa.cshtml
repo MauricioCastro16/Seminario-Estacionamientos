@@ -416,11 +416,45 @@
             });
         }
 
-        // Helpers popup en botones del popup de playa
-        window.seleccionarPlayaDesdePopup = function(plyID){
-            const playa = playas.find(p => p.plyID === plyID);
-            if (playa) seleccionarPlaya(playa);
+        // === Helpers del popup de la playa ===
+        window.seleccionarPlayaDesdePopup = function (plyID) {
+        const playa = playas.find(p => p.plyID === plyID);
+        if (!playa) return;
+
+        // Abrir el popup del marcador si existe
+        const mk = playaIdToMarker.get(plyID);
+        if (mk) mk.openPopup();
+
+        // Mostrar el detalle en el footer
+        seleccionarPlaya(playa);
         };
+
+        window.agregarFavoritaDesdePopup = function (plyID) {
+        const playa = playas.find(p => p.plyID === plyID);
+        if (!playa) return alert('No se pudo guardar la playa como favorita.');
+
+        const apodo = prompt('¿Cómo querés llamar a esta playa favorita?', playa.plyNom);
+        if (apodo == null || apodo.trim() === '') return;
+
+        const payload = {
+            apodo: apodo.trim(),
+            provincia: playa.plyProv || '',
+            ciudad: playa.plyCiu || '',
+            direccion: playa.plyDir || '',
+            tipo: 'Playa',
+            lat: playa.plyLat,
+            lon: playa.plyLon
+        };
+
+        guardarUbicacionFavorita(payload).then(() => refreshFavoritesUI());
+        };
+
+        // === Refrescar UI de favoritos (lista + estrellas en el mapa) ===
+        function refreshFavoritesUI() {
+        cargarUbicacionesFavoritas(); // recarga lista + marcadores del mapa
+        }
+
+
         window.agregarFavoritaDesdePopup = function(plyID){
             const playa = playas.find(p => p.plyID === plyID);
             if (!playa) return alert('No se pudo guardar la playa como favorita.');
@@ -432,6 +466,26 @@
         if (d.success) {
             fav.apodo = nuevoApodo.trim();
             refreshFavoritesUI(); // en vez de solo renderizar
+        }
+
+        function buildPopupContent(playa, esResultadoBusqueda = false){
+            return `
+                <div style="min-width:220px;">
+                    <h6 style="margin:0 0 10px;color:#2c3e50;">${playa.plyNom}</h6>
+                    <p style="margin:5px 0;font-size:14px;"><strong>Dirección:</strong> ${playa.plyDir || ''}</p>
+                    <p style="margin:5px 0;font-size:14px;"><strong>Disponibilidad:</strong> ${playa.disponibilidad ?? '—'}%</p>
+                    <p style="margin:5px 0;font-size:14px;"><strong>Estado:</strong> ${playa.estaAbierto ? 'Abierto' : 'Cerrado'}</p>
+                    ${esResultadoBusqueda && typeof playa.distancia === 'number' ? `
+                        <p style="margin:5px 0;font-size:14px;color:#dc3545;"><strong>📍 Distancia:</strong> ${playa.distancia.toFixed(2)} km</p>
+                        <p style="margin:5px 0;font-size:12px;color:#dc3545;font-weight:bold;">🔍 Uno de los 3 más cercanos</p>
+                    ` : ''}
+
+                    <div class="d-flex gap-1 mt-2">
+                        <button class="btn btn-sm btn-primary flex-fill" onclick="window.seleccionarPlayaDesdePopup(${playa.plyID})">Ver detalles</button>
+                        <button class="btn btn-sm btn-outline-warning flex-fill" onclick="window.agregarFavoritaDesdePopup(${playa.plyID})">★ Favorito</button>
+                    </div>
+                </div>
+            `;
         }
 
         function seleccionarPlaya(playa){
@@ -637,13 +691,14 @@
                 type: 'DELETE'
             })
             .done(function(data) {
-                if (data.success) {
-                    favoritos = favoritos.filter(f => f.apodo !== fav.apodo);
-                    refreshFavoritesUI(); // <-- AHORA refresca mapa también
-                } else {
-                    alert(data.error || 'No se pudo eliminar el favorito.');
-                }
+            if (data.success) {
+                favoritos = favoritos.filter(f => f.apodo !== fav.apodo);
+                refreshFavoritesUI(); // 👈 también se actualiza
+            } else {
+                alert(data.error || 'No se pudo eliminar el favorito.');
+            }
             })
+
             .fail(function() {
                 alert('Ocurrió un error al eliminar el favorito.');
             });
@@ -663,7 +718,7 @@
                 method:'POST', headers:{ 'Content-Type':'application/json', 'RequestVerificationToken': antiforgeryToken },
                 body: JSON.stringify({ apodoActual: fav.apodo, nuevoApodo: nuevo.trim() })
             }).then(r=>r.json()).then(d=>{
-                if (d.success){ fav.apodo = nuevo.trim(); renderizarFavoritos(); }
+                if (d.success){ fav.apodo = nuevoApodo.trim(); refreshFavoritesUI(); }
                 else alert(d.error || 'No se pudo renombrar la ubicación favorita.');
             }).catch(()=> alert('Ocurrió un error al renombrar la ubicación favorita.'));
         }
