@@ -47,12 +47,37 @@
             width:90%; max-width:600px; min-width:280px;
         }
         .search-bar input{ flex:1; border:none; outline:none; background:transparent; padding:8px 12px; font-size:16px; min-width:0; width:100%; }
-        .search-bar button{ background:#3498db; color:#fff; border:none; border-radius:50%; width:40px; height:40px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-left:8px; transition:.3s; flex-shrink:0; }
-        .search-bar button:hover{ background:#2980b9; transform:scale(1.05); }
-        .search-bar .home-btn{ background:#6c757d; }
-        .search-bar .home-btn:hover{ background:#5a6268; }
-        .search-bar .clear-btn{ background:#6c757d; margin-left:5px; display:none; }
-        .search-bar .clear-btn.show{ display:flex; }
+        .search-bar button{ 
+            background:transparent; 
+            color:#0d6efd; 
+            border:1px solid #0d6efd; 
+            border-radius:50%; 
+            width:40px; 
+            height:40px; 
+            display:flex; 
+            align-items:center; 
+            justify-content:center; 
+            cursor:pointer; 
+            margin-left:8px; 
+            transition:.3s; 
+            flex-shrink:0; 
+        }
+        .search-bar button:hover{ 
+            background:#cfe2ff; 
+            color:#0d6efd; 
+            border-color:#0d6efd; 
+            transform:scale(1.05); 
+        }
+        .search-bar .home-btn{ 
+            background:transparent; 
+            color:#0d6efd; 
+            border:1px solid #0d6efd; 
+        }
+        .search-bar .home-btn:hover{ 
+            background:#cfe2ff; 
+            color:#0d6efd; 
+            border-color:#0d6efd; 
+        }
 
         @@media (max-width:768px){
             .search-bar{ width:95%; max-width:500px; padding:6px 12px; top:70px; }
@@ -139,26 +164,156 @@
         .favorite-main-btn span:last-child{ color:#777; font-size:11px; }
         .favorite-main-btn:hover{ background:#e9ecef; }
 
-        .favorite-view-btn{ border:none; background:#e7f0ff; color:#0d6efd; border-radius:6px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; font-size:12px; }
-        .favorite-view-btn:hover{ background:#d7e7ff; }
+        .favorite-view-btn{ 
+            border:1px solid #0d6efd; 
+            background:transparent; 
+            color:#0d6efd; 
+            border-radius:6px; 
+            width:28px; 
+            height:28px; 
+            display:flex; 
+            align-items:center; 
+            justify-content:center; 
+            cursor:pointer; 
+            flex-shrink:0; 
+            font-size:12px; 
+        }
+        .favorite-view-btn:hover{ 
+            background:#cfe2ff; 
+            color:#0d6efd; 
+            border-color:#0d6efd; 
+        }
 
-        .favorite-edit-btn{ border:none; background:#e2e3ff; color:#383d7c; border-radius:6px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; font-size:12px; }
-        .favorite-edit-btn:hover{ background:#c7c9ff; }
+        .favorite-edit-btn{ 
+            border:1px solid #0d6efd; 
+            background:transparent; 
+            color:#0d6efd; 
+            border-radius:6px; 
+            width:28px; 
+            height:28px; 
+            display:flex; 
+            align-items:center; 
+            justify-content:center; 
+            cursor:pointer; 
+            flex-shrink:0; 
+            font-size:12px; 
+        }
+        .favorite-edit-btn:hover{ 
+            background:#cfe2ff; 
+            color:#0d6efd; 
+            border-color:#0d6efd; 
+        }
 
-        .favorite-remove-btn{ border:none; background:#f8d7da; color:#721c24; border-radius:6px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; font-size:12px; }
-        .favorite-remove-btn:hover{ background:#f5c6cb; }
+        .favorite-remove-btn{ 
+            border:1px solid #0d6efd; 
+            background:transparent; 
+            color:#0d6efd; 
+            border-radius:6px; 
+            width:28px; 
+            height:28px; 
+            display:flex; 
+            align-items:center; 
+            justify-content:center; 
+            cursor:pointer; 
+            flex-shrink:0; 
+            font-size:12px; 
+        }
+        .favorite-remove-btn:hover{ 
+            background:#cfe2ff; 
+            color:#0d6efd; 
+            border-color:#0d6efd; 
+        }
 
         .favorites-empty{ font-size:11px; color:#777; padding:4px 2px; }
         .favorites-panel.collapsed{ max-height:44px; }
         .favorites-panel.collapsed .favorites-body{ display:none; }
+        
+        /* Estilo para botón de eliminar favorito - azul/celeste */
+        .btn-eliminar-favorito{ 
+            background:#0d6efd; 
+            color:#fff; 
+            border:none; 
+        }
+        .btn-eliminar-favorito:hover{ 
+            background:#0b5ed7; 
+            color:#fff; 
+        }
+        .btn-eliminar-favorito:active{ 
+            background:#0a58ca; 
+            color:#fff; 
+        }
+        
+        /* Estilo para botón de favorito - azul/celeste outline */
+        .btn-favorito-azul{
+            background:transparent;
+            color:#0d6efd;
+            border:1px solid #0d6efd;
+        }
+        .btn-favorito-azul:hover{
+            background:#cfe2ff;
+            color:#0d6efd;
+            border-color:#0b5ed7;
+        }
+        .btn-favorito-azul:active{
+            background:#9ec5fe;
+            color:#0a58ca;
+            border-color:#0a58ca;
+        }
+        
         @@media (max-width:768px){
-            .favorites-panel{ top:auto; bottom:20px; left:10px; right:10px; width:auto; max-height:160px; display:none; }
-            .favorites-panel.open{ display:flex; }
+            .favorites-panel{ top:140px; left:10px; right:auto; width:260px; max-height:50vh; display:flex; }
         }
 
         /* Botón de favoritos en la barra */
         .fav-btn{ background:#f1c40f; color:#fff; border:none; border-radius:50%; width:40px; height:40px; display:flex; align-items:center; justify-content:center; margin-left:5px; cursor:pointer; flex-shrink:0; }
         .fav-btn i{ font-size:16px; }
+
+        /* Badge de filtro aplicado */
+        .filter-badge{
+            position:fixed; 
+            top:140px; 
+            left:50%; 
+            transform:translateX(-50%); 
+            z-index:1000; 
+            display:flex; 
+            align-items:center; 
+            gap:8px; 
+            background:#cfe2ff; 
+            border:1px solid #0d6efd; 
+            border-radius:20px; 
+            padding:8px 12px; 
+            box-shadow:0 2px 8px rgba(13,110,253,.2); 
+            backdrop-filter:blur(10px);
+            font-size:14px;
+            color:#0d6efd;
+            max-width:90%;
+        }
+        .filter-badge i.fa-filter{ font-size:12px; }
+        .filter-badge span{ flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:300px; }
+        .filter-close-btn{
+            background:transparent;
+            border:none;
+            color:#0d6efd;
+            cursor:pointer;
+            padding:2px 4px;
+            border-radius:50%;
+            width:20px;
+            height:20px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            transition:.2s;
+        }
+        .filter-close-btn:hover{
+            background:#9ec5fe;
+            color:#0b5ed7;
+        }
+        .filter-close-btn i{ font-size:10px; }
+        
+        @@media (max-width:768px){
+            .filter-badge{ top:130px; font-size:12px; padding:6px 10px; }
+            .filter-badge span{ max-width:200px; }
+        }
     </style>
 </head>
 <body>
@@ -189,10 +344,18 @@
     <!-- Barra de búsqueda -->
     <div class="search-bar">
         <input type="text" id="searchInput" placeholder="Buscar dirección..." />
-        <button class="clear-btn" onclick="limpiarBusqueda()" title="Limpiar búsqueda" id="clearBtn"><i class="fa-solid fa-xmark"></i></button>
-        <button onclick="buscarDireccion()" title="Buscar"><i class="fa-solid fa-magnifying-glass"></i></button>
-        <button class="home-btn" onclick="centerOnConductor()" title="Volver al inicio"><i class="fa-solid fa-house"></i></button>
-        <button class="fav-btn" id="favBtn" title="Ubicaciones favoritas" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-star"></i></button>
+        <button onclick="buscarDireccion()" id="btnBuscar" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Buscar"><i class="fa-solid fa-magnifying-glass"></i></button>
+        <button class="home-btn" onclick="centerOnConductor()" id="btnHome" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Reubicar mapa"><i class="fa-solid fa-house"></i></button>
+        <button class="fav-btn" id="favBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ubicaciones favoritas"><i class="fa-solid fa-star"></i></button>
+    </div>
+
+    <!-- Indicador de filtro aplicado -->
+    <div class="filter-badge" id="filterBadge" style="display:none;">
+        <i class="fa-solid fa-filter"></i>
+        <span id="filterText"></span>
+        <button class="filter-close-btn" onclick="limpiarBusqueda()" title="Quitar filtro">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
     </div>
 
     <div class="loading" id="loading"><div class="spinner"></div>Cargando mapa...</div>
@@ -250,9 +413,6 @@
             // Enter en búsqueda
             $('#searchInput').keypress(function(e){ if(e.which === 13) buscarDireccion(); });
 
-            // Mostrar/ocultar clear
-            $('#searchInput').on('input', function(){ $(this).val().trim() !== '' ? $('#clearBtn').addClass('show') : $('#clearBtn').removeClass('show'); });
-
             // ⭐ abre panel (mobile y desktop)
             document.getElementById('favBtn')?.addEventListener('click', openFavoritesFromStar);
 
@@ -268,7 +428,6 @@
         function openFavoritesFromStar(){
             const panel = document.getElementById('favoritesPanel');
             const icon  = document.getElementById('favoritesToggleIcon');
-            if (window.matchMedia('(max-width:768px)').matches){ panel.classList.add('open'); }
             panel.classList.remove('collapsed');
             if (icon){ icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
         }
@@ -353,6 +512,11 @@
                 const icon = crearIconoPlaya(playa, isSearchMode);
                 const marker = L.marker([playa.plyLat, playa.plyLon], { icon }).addTo(map);
 
+                const favorito = esFavorita(playa);
+                const botonFavorito = favorito 
+                    ? `<button class="btn btn-sm btn-eliminar-favorito flex-fill" onclick="window.eliminarFavoritaDesdePopup('${favorito.apodo}', ${playa.plyID})">Eliminar favorito</button>`
+                    : `<button class="btn btn-sm btn-favorito-azul flex-fill" onclick="window.agregarFavoritaDesdePopup(${playa.plyID})">★ Favorito</button>`;
+                
                 const popupContent = `
                   <div style="min-width:220px;">
                     <h6 style="margin:0 0 10px;color:#2c3e50;">${playa.plyNom}</h6>
@@ -363,7 +527,7 @@
                     ${isSearchMode ? '<p style="margin:5px 0;font-size:12px;color:#dc3545;font-weight:bold;">🔍 Uno de los 3 más cercanos</p>' : ''}
                     <div class="d-flex gap-1 mt-2">
                       <button class="btn btn-sm btn-primary flex-fill" onclick="window.seleccionarPlayaDesdePopup(${playa.plyID})">Ver detalles</button>
-                      <button class="btn btn-sm btn-outline-warning flex-fill" onclick="window.agregarFavoritaDesdePopup(${playa.plyID})">★ Favorito</button>
+                      ${botonFavorito}
                     </div>
                   </div>`;
                 marker.bindPopup(popupContent);
@@ -416,6 +580,23 @@
             });
         }
 
+        // Función para verificar si una playa es favorita
+        function esFavorita(playa){
+            if (!favoritos?.length || !playa?.plyLat || !playa?.plyLon) return null;
+            const playaLat = parseFloat(playa.plyLat);
+            const playaLon = parseFloat(playa.plyLon);
+            if (isNaN(playaLat) || isNaN(playaLon)) return null;
+            
+            // Buscar favorito por coordenadas (con tolerancia de 0.0001 grados, aprox 11 metros)
+            const favorito = favoritos.find(fav => {
+                const favLat = parseFloat(fav.lat ?? fav.ubfLat ?? fav.UbfLat);
+                const favLon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
+                if (isNaN(favLat) || isNaN(favLon)) return false;
+                return Math.abs(favLat - playaLat) < 0.0001 && Math.abs(favLon - playaLon) < 0.0001;
+            });
+            return favorito || null;
+        }
+
         // === Helpers del popup de la playa ===
         window.seleccionarPlayaDesdePopup = function (plyID) {
         const playa = playas.find(p => p.plyID === plyID);
@@ -429,46 +610,63 @@
         seleccionarPlaya(playa);
         };
 
-        window.agregarFavoritaDesdePopup = function (plyID) {
-        const playa = playas.find(p => p.plyID === plyID);
-        if (!playa) return alert('No se pudo guardar la playa como favorita.');
-
-        const apodo = prompt('¿Cómo querés llamar a esta playa favorita?', playa.plyNom);
-        if (apodo == null || apodo.trim() === '') return;
-
-        const payload = {
-            apodo: apodo.trim(),
-            provincia: playa.plyProv || '',
-            ciudad: playa.plyCiu || '',
-            direccion: playa.plyDir || '',
-            tipo: 'Playa',
-            lat: playa.plyLat,
-            lon: playa.plyLon
-        };
-
-        guardarUbicacionFavorita(payload).then(() => refreshFavoritesUI());
-        };
-
-        // === Refrescar UI de favoritos (lista + estrellas en el mapa) ===
-        function refreshFavoritesUI() {
-        cargarUbicacionesFavoritas(); // recarga lista + marcadores del mapa
-        }
-
-
         window.agregarFavoritaDesdePopup = function(plyID){
             const playa = playas.find(p => p.plyID === plyID);
             if (!playa) return alert('No se pudo guardar la playa como favorita.');
             const apodo = prompt('¿Cómo querés llamar a esta playa favorita?', playa.plyNom);
             if (apodo == null || apodo.trim() === '') return;
             const payload = { apodo: apodo.trim(), provincia: playa.plyProv || '', ciudad: playa.plyCiu || '', direccion: playa.plyDir || '', tipo:'Playa', lat: playa.plyLat, lon: playa.plyLon };
-            guardarUbicacionFavorita(payload).then(() => cargarUbicacionesFavoritas());
+            guardarUbicacionFavorita(payload).then(() => {
+                cargarUbicacionesFavoritas().then(() => {
+                    // Actualizar el popup del marcador para mostrar el botón de eliminar
+                    const marker = playaIdToMarker.get(plyID);
+                    if (marker) {
+                        const playaActualizada = playas.find(p => p.plyID === plyID);
+                        if (playaActualizada) {
+                            marker.setPopupContent(buildPopupContent(playaActualizada, isSearchMode));
+                        }
+                    }
+                });
+            });
         };
-        if (d.success) {
-            fav.apodo = nuevoApodo.trim();
-            refreshFavoritesUI(); // en vez de solo renderizar
-        }
+
+        window.eliminarFavoritaDesdePopup = function(apodo, plyID){
+            if (!confirm(`¿Eliminar "${apodo}" de tus favoritos?`)) return;
+            
+            $.ajax({
+                url: '@Url.Action("EliminarUbicacionFavorita", "Conductor")' + '?apodo=' + encodeURIComponent(apodo),
+                type: 'DELETE'
+            })
+            .done(function(data) {
+                if (data.success) {
+                    favoritos = favoritos.filter(f => f.apodo !== apodo);
+                    refreshFavoritesUI();
+                    
+                    // Actualizar el popup del marcador para mostrar el botón de agregar
+                    const marker = playaIdToMarker.get(plyID);
+                    if (marker) {
+                        const playa = playas.find(p => p.plyID === plyID);
+                        if (playa) {
+                            marker.setPopupContent(buildPopupContent(playa, isSearchMode));
+                        }
+                    }
+                    
+                    alert('Ubicación favorita eliminada correctamente.');
+                } else {
+                    alert(data.error || 'No se pudo eliminar el favorito.');
+                }
+            })
+            .fail(function() {
+                alert('Ocurrió un error al eliminar el favorito.');
+            });
+        };
 
         function buildPopupContent(playa, esResultadoBusqueda = false){
+            const favorito = esFavorita(playa);
+            const botonFavorito = favorito 
+                ? `<button class="btn btn-sm btn-eliminar-favorito flex-fill" onclick="window.eliminarFavoritaDesdePopup('${favorito.apodo}', ${playa.plyID})">Eliminar favorito</button>`
+                : `<button class="btn btn-sm btn-favorito-azul flex-fill" onclick="window.agregarFavoritaDesdePopup(${playa.plyID})">★ Favorito</button>`;
+            
             return `
                 <div style="min-width:220px;">
                     <h6 style="margin:0 0 10px;color:#2c3e50;">${playa.plyNom}</h6>
@@ -482,7 +680,7 @@
 
                     <div class="d-flex gap-1 mt-2">
                         <button class="btn btn-sm btn-primary flex-fill" onclick="window.seleccionarPlayaDesdePopup(${playa.plyID})">Ver detalles</button>
-                        <button class="btn btn-sm btn-outline-warning flex-fill" onclick="window.agregarFavoritaDesdePopup(${playa.plyID})">★ Favorito</button>
+                        ${botonFavorito}
                     </div>
                 </div>
             `;
@@ -538,7 +736,6 @@
         function buscarDireccion(){
             const direccion = $('#searchInput').val().trim();
             if (!direccion) return alert('Por favor ingresa una dirección');
-            $('#clearBtn').addClass('show');
             const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion + ', Resistencia, Chaco')}&limit=1`;
             $('#loading').show();
             $.get(url)
@@ -559,17 +756,24 @@
                  if (searchLocationMarker) map.removeLayer(searchLocationMarker);
                  searchLocationMarker = L.marker([lat, lon], { icon: L.divIcon({ className:'search-location-marker', html:'<i class="fa-solid fa-location-dot" style="color:#dc3545;font-size:24px;text-shadow:2px 2px 4px rgba(0,0,0,.3);"></i>', iconSize:[30,30], iconAnchor:[15,15] }) }).addTo(map);
                  searchLocationMarker.bindPopup('<b>Ubicación buscada</b><br>Dirección: ' + $('#searchInput').val()).openPopup();
-                 isSearchMode = true; mostrarPlayasEnMapa(); $('#loading').hide();
+                 isSearchMode = true; 
+                 mostrarPlayasEnMapa(); 
+                 $('#loading').hide();
+                 // Mostrar badge de filtro
+                 const direccionBuscada = $('#searchInput').val().trim();
+                 $('#filterText').text(direccionBuscada);
+                 $('#filterBadge').fadeIn(300);
              })
              .fail(()=> $('#loading').hide());
         }
 
         function volverAVistaNormal(){
-            isSearchMode = false; searchResults = []; $('#searchInput').val(''); $('#clearBtn').removeClass('show');
+            isSearchMode = false; searchResults = []; $('#searchInput').val('');
             if (searchLocationMarker){ map.removeLayer(searchLocationMarker); searchLocationMarker = null; }
+            $('#filterBadge').fadeOut(300);
             cargarPlayas();
         }
-        function limpiarBusqueda(){ $('#searchInput').val(''); $('#clearBtn').removeClass('show'); volverAVistaNormal(); }
+        function limpiarBusqueda(){ $('#searchInput').val(''); volverAVistaNormal(); }
 
         function inicializarEscalaPersonalizada(){ map.on('zoomend', actualizarEscala); map.on('moveend', actualizarEscala); actualizarEscala(); }
         function actualizarEscala(){
@@ -605,8 +809,30 @@
         }
 
         function cargarUbicacionesFavoritas(){
-            $.get('@Url.Action("GetUbicacionesFavoritas", "Conductor")')
-             .done(data => { if (data && !data.error){ favoritos = data; renderizarFavoritos(); mostrarFavoritosEnMapa(); }});
+            return $.get('@Url.Action("GetUbicacionesFavoritas", "Conductor")')
+             .done(data => { 
+                 if (data && !data.error){ 
+                     favoritos = data; 
+                     renderizarFavoritos(); 
+                     mostrarFavoritosEnMapa();
+                     // Actualizar popups de marcadores existentes
+                     actualizarPopupsMarcadores();
+                 }
+             });
+        }
+
+        function actualizarPopupsMarcadores(){
+            parkingMarkers.forEach(marker => {
+                const playa = playas.find(p => {
+                    const markerLat = marker.getLatLng().lat;
+                    const markerLon = marker.getLatLng().lng;
+                    return Math.abs(parseFloat(p.plyLat) - markerLat) < 0.0001 && 
+                           Math.abs(parseFloat(p.plyLon) - markerLon) < 0.0001;
+                });
+                if (playa) {
+                    marker.setPopupContent(buildPopupContent(playa, isSearchMode));
+                }
+            });
         }
 
         function renderizarFavoritos(){
@@ -625,16 +851,34 @@
                 mainBtn.onclick = () => irAFavorito(fav);
 
                 const viewBtn = document.createElement('button');
-                viewBtn.type = 'button'; viewBtn.className = 'favorite-view-btn'; viewBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+                viewBtn.type = 'button'; 
+                viewBtn.className = 'favorite-view-btn'; 
+                viewBtn.setAttribute('data-bs-toggle', 'tooltip');
+                viewBtn.setAttribute('data-bs-placement', 'top');
+                viewBtn.title = 'Visualizar ubicación favorita';
+                viewBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
                 viewBtn.onclick = (e)=>{ e.stopPropagation(); irAFavorito(fav); };
+                new bootstrap.Tooltip(viewBtn);
 
                 const editBtn = document.createElement('button');
-                editBtn.type = 'button'; editBtn.className = 'favorite-edit-btn'; editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+                editBtn.type = 'button'; 
+                editBtn.className = 'favorite-edit-btn'; 
+                editBtn.setAttribute('data-bs-toggle', 'tooltip');
+                editBtn.setAttribute('data-bs-placement', 'top');
+                editBtn.title = 'Renombrar ubicación favorita';
+                editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
                 editBtn.onclick = (e)=>{ e.stopPropagation(); editarFavorito(fav); };
+                new bootstrap.Tooltip(editBtn);
 
                 const removeBtn = document.createElement('button');
-                removeBtn.type = 'button'; removeBtn.className = 'favorite-remove-btn'; removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+                removeBtn.type = 'button'; 
+                removeBtn.className = 'favorite-remove-btn'; 
+                removeBtn.setAttribute('data-bs-toggle', 'tooltip');
+                removeBtn.setAttribute('data-bs-placement', 'top');
+                removeBtn.title = 'Eliminar ubicación favorita';
+                removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
                 removeBtn.onclick = (e)=>{ e.stopPropagation(); eliminarFavorito(fav); };
+                new bootstrap.Tooltip(removeBtn);
 
                 li.appendChild(mainBtn); li.appendChild(viewBtn); li.appendChild(editBtn); li.appendChild(removeBtn);
                 lista.appendChild(li);
@@ -646,7 +890,17 @@
             const lon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
             if (isNaN(lat) || isNaN(lon)) return alert('Este favorito no tiene coordenadas válidas.');
 
-            map.setView([lat, lon], 16);
+            // Centrar el mapa con animación suave
+            map.flyTo([lat, lon], 16, {
+                animate: true,
+                duration: 0.8
+            });
+            
+            // Asegurar que el mapa se actualice después de centrar
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 100);
+            
             $('#loading').show();
 
             // ¿Existe ya alguna playa en memoria en esas coords?
@@ -655,7 +909,10 @@
             if (playaCoincidente){
                 $('#loading').hide();
                 seleccionarPlaya(playaCoincidente);
-                openMarkerPopup(playaCoincidente);
+                setTimeout(() => {
+                    openMarkerPopup(playaCoincidente);
+                    map.invalidateSize();
+                }, 500);
                 return;
             }
 
@@ -666,7 +923,10 @@
                  if (data?.length){
                     const playa = data[0];
                     seleccionarPlaya(playa);
-                    setTimeout(()=> openMarkerPopup(playa), 300);
+                    setTimeout(()=> {
+                        openMarkerPopup(playa);
+                        map.invalidateSize();
+                    }, 500);
                  } else {
                     // No hay playas → mostrar datos del favorito y popup de ubicación
                     $('#playaNombre').text(fav.apodo);
@@ -676,9 +936,11 @@
                     $('#horariosInfo').html('<span style="color:#dc3545;">Sin playas cercanas</span>'); $('#horariosSection').show(); $('#playaInfo').show(); $('#bottomMenu').addClass('show');
 
                     if (transientPopup) map.closePopup(transientPopup);
-                    transientPopup = L.popup().setLatLng([lat, lon]).setContent(`<strong>${fav.apodo}</strong><br>${fav.direccion || ''}`).openOn(map);
+                    setTimeout(() => {
+                        transientPopup = L.popup().setLatLng([lat, lon]).setContent(`<strong>${fav.apodo}</strong><br>${fav.direccion || ''}`).openOn(map);
+                        map.invalidateSize();
+                    }, 500);
                  }
-                 setTimeout(()=> map.invalidateSize(), 200);
              })
              .fail(()=> $('#loading').hide());
         }
@@ -708,6 +970,7 @@
         function refreshFavoritesUI() {
             renderizarFavoritos();
             mostrarFavoritosEnMapa(); // limpia y vuelve a dibujar estrellas según "favoritos"
+            actualizarPopupsMarcadores(); // actualiza los popups de los marcadores existentes
         }
 
         function editarFavorito(fav){
@@ -718,7 +981,7 @@
                 method:'POST', headers:{ 'Content-Type':'application/json', 'RequestVerificationToken': antiforgeryToken },
                 body: JSON.stringify({ apodoActual: fav.apodo, nuevoApodo: nuevo.trim() })
             }).then(r=>r.json()).then(d=>{
-                if (d.success){ fav.apodo = nuevoApodo.trim(); refreshFavoritesUI(); }
+                if (d.success){ fav.apodo = nuevo.trim(); refreshFavoritesUI(); }
                 else alert(d.error || 'No se pudo renombrar la ubicación favorita.');
             }).catch(()=> alert('Ocurrió un error al renombrar la ubicación favorita.'));
         }
