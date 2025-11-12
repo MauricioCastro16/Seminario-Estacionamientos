@@ -156,7 +156,30 @@
         .favorites-toggle{ border:none; background:transparent; cursor:pointer; color:#666; padding:4px; border-radius:50%; }
         .favorites-toggle:hover{ background:#f4f4f4; }
         .favorites-body{ padding:6px 8px 8px 8px; overflow-y:auto; }
-        #listaFavoritos{ list-style:none; margin:0; padding:0; }
+        .favorites-section{ margin-bottom:15px; }
+        .favorites-section-title{ display:flex; align-items:center; justify-content:space-between; gap:6px; font-weight:600; color:#0d6efd; font-size:12px; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid #e9ecef; }
+        .favorites-section-title i{ font-size:14px; }
+        .favorites-section-title-content{ display:flex; align-items:center; gap:6px; }
+        .favorites-add-btn{ 
+            border:1px solid #0d6efd; 
+            background:transparent; 
+            color:#0d6efd; 
+            border-radius:6px; 
+            width:24px; 
+            height:24px; 
+            display:flex; 
+            align-items:center; 
+            justify-content:center; 
+            cursor:pointer; 
+            padding:0; 
+            font-size:14px;
+            transition: all 0.2s ease-in-out;
+        }
+        .favorites-add-btn:hover{ 
+            background:#cfe2ff; 
+            border-color:#0d6efd; 
+        }
+        #listaFavoritosPlayas, #listaFavoritosUbicaciones{ list-style:none; margin:0; padding:0; }
         .favorite-item{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:4px; }
 
         .favorite-main-btn{ flex:1; border:none; background:#f8f9fa; border-radius:6px; padding:6px 8px; text-align:left; font-size:12px; cursor:pointer; display:flex; flex-direction:column; }
@@ -334,10 +357,35 @@
             </button>
         </div>
         <div class="favorites-body">
-            <ul id="listaFavoritos"></ul>
-            <div class="favorites-empty" id="favoritosVacio">
-                Aún no agregaste playas favoritas.<br />
-                Tocá una playa en el mapa y usá ★ para guardarla.
+            <!-- Sección de Playas de estacionamiento favoritas -->
+            <div class="favorites-section">
+                <div class="favorites-section-title">
+                    <i class="fa-solid fa-parking"></i>
+                    <span>Playas de estacionamiento favoritas</span>
+                </div>
+                <ul id="listaFavoritosPlayas"></ul>
+                <div class="favorites-empty" id="favoritosPlayasVacio" style="display:none;">
+                    Aún no agregaste playas favoritas.<br />
+                    Tocá una playa en el mapa y usá ★ para guardarla.
+                </div>
+            </div>
+            
+            <!-- Sección de Ubicaciones favoritas -->
+            <div class="favorites-section" style="margin-top:20px;">
+                <div class="favorites-section-title">
+                    <div class="favorites-section-title-content">
+                        <i class="fa-solid fa-map-pin"></i>
+                        <span>Ubicaciones favoritas</span>
+                    </div>
+                    <button class="favorites-add-btn" id="btnAgregarUbicacion" onclick="agregarNuevaUbicacionFavorita()" title="Agregar ubicación favorita" data-bs-toggle="tooltip" data-bs-placement="top">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+                <ul id="listaFavoritosUbicaciones"></ul>
+                <div class="favorites-empty" id="favoritosUbicacionesVacio" style="display:none;">
+                    Aún no agregaste ubicaciones favoritas.<br />
+                    Hacé clic en el botón + para agregar una ubicación.
+                </div>
             </div>
         </div>
     </div>
@@ -398,6 +446,45 @@
                 </div>
             </div>
         </div>
+        <div id="agregarUbicacionInfo" style="display:none;">
+            <div id="agregarUbicacionContent">
+                <h5 style="color:#0d6efd; margin-bottom:20px;">Agregar ubicación favorita</h5>
+                
+                <div class="mb-3">
+                    <label class="form-label" style="font-weight:600; color:#333;">Buscar por dirección:</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="inputDireccionUbicacion" placeholder="Ingresá una dirección...">
+                        <button class="btn btn-primary" onclick="buscarDireccionParaUbicacion()" type="button">
+                            <i class="fa-solid fa-magnifying-glass"></i> Buscar
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-3" style="text-align:center; padding:15px; background:#f8f9fa; border-radius:8px;">
+                    <p style="margin:0 0 10px 0; color:#666; font-size:0.9em;">O</p>
+                    <button class="btn btn-outline-primary w-100" id="btnModoPin" onclick="activarModoPin()" type="button">
+                        <i class="fa-solid fa-map-pin"></i> Agregar pin en el mapa
+                    </button>
+                    <small class="text-muted d-block mt-2" id="instruccionPin" style="display:none;">
+                        Hacé clic en el mapa para colocar el pin
+                    </small>
+                </div>
+                
+                <div id="infoUbicacionSeleccionada" style="display:none; padding:15px; background:#cfe2ff; border-radius:8px; border:1px solid #0d6efd; margin-bottom:15px;">
+                    <div class="mb-2">
+                        <strong style="color:#0d6efd;">Ubicación seleccionada:</strong>
+                        <div id="textoUbicacionSeleccionada" style="color:#333; margin-top:5px;"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-weight:600; color:#333;">Nombre para esta ubicación:</label>
+                        <input type="text" class="form-control" id="inputNombreUbicacion" placeholder="Ej: Casa, Trabajo, etc.">
+                    </div>
+                    <button class="btn btn-primary w-100" onclick="guardarNuevaUbicacion()" type="button">
+                        <i class="fa-solid fa-check"></i> Guardar ubicación favorita
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Leaflet & libs -->
@@ -429,6 +516,12 @@
 
             // Enter en búsqueda
             $('#searchInput').keypress(function(e){ if(e.which === 13) buscarDireccion(); });
+            
+            // Enter en búsqueda de ubicación favorita
+            $('#inputDireccionUbicacion').keypress(function(e){ if(e.which === 13) buscarDireccionParaUbicacion(); });
+            
+            // Enter en nombre de ubicación favorita
+            $('#inputNombreUbicacion').keypress(function(e){ if(e.which === 13) guardarNuevaUbicacion(); });
 
             // ⭐ abre panel (mobile y desktop)
             document.getElementById('favBtn')?.addEventListener('click', openFavoritesFromStar);
@@ -476,6 +569,11 @@
             map = L.map('mapContainer', { zoomControl:false, scrollWheelZoom:true, doubleClickZoom:true, boxZoom:true, keyboard:true, dragging:true, touchZoom:true, attributionControl:false, minZoom:12 });
             L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{ attribution:'&copy; OpenStreetMap & CARTO'}).addTo(map);
             L.control.zoom({ position:'topright' }).addTo(map);
+            
+            // Evento de clic derecho para agregar ubicación favorita
+            map.on('contextmenu', function(e) {
+                agregarUbicacionFavoritaDesdeMapa(e.latlng.lat, e.latlng.lng);
+            });
 
             if (navigator.geolocation){
                 navigator.geolocation.getCurrentPosition(
@@ -649,8 +747,15 @@
         }
 
         // Mostrar favoritos con ⭐
-        function crearIconoFavorito(){
-            return L.divIcon({ className:'favorite-map-icon', html:'<i class="fa-solid fa-star"></i>', iconSize:[30,30], iconAnchor:[15,15] });
+        function crearIconoFavorito(esPlaya = true){
+            const icono = esPlaya ? 'fa-star' : 'fa-map-pin';
+            const color = esPlaya ? '#f1c40f' : '#0d6efd';
+            return L.divIcon({ 
+                className:'favorite-map-icon', 
+                html:`<i class="fa-solid ${icono}" style="color:${color};"></i>`, 
+                iconSize:[30,30], 
+                iconAnchor:[15,15] 
+            });
         }
 
         function mostrarFavoritosEnMapa(){
@@ -663,7 +768,8 @@
                 const lon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
                 if (isNaN(lat) || isNaN(lon)) return;
 
-                const marker = L.marker([lat, lon], { icon:crearIconoFavorito(), zIndexOffset:500 })
+                const esPlaya = fav.tipo === 'Playa';
+                const marker = L.marker([lat, lon], { icon:crearIconoFavorito(esPlaya), zIndexOffset:500 })
                     .addTo(map)
                     .bindPopup(`<strong>${fav.apodo}</strong><br>${fav.direccion || fav.ciudad || ''}`);
 
@@ -1058,9 +1164,24 @@
 
         function closeMenu(){ 
             $('#bottomMenu').removeClass('show'); 
-            $('#playaInfo').show();
+            $('#playaInfo').hide();
             $('#valoracionesInfo').hide();
-            playaSeleccionada = null; 
+            $('#agregarUbicacionInfo').hide();
+            playaSeleccionada = null;
+            
+            // Limpiar modo pin si está activo
+            if (modoPinActivo) {
+                modoPinActivo = false;
+                if (clickHandlerPin) {
+                    map.off('click', clickHandlerPin);
+                    clickHandlerPin = null;
+                }
+            }
+            if (pinTemporal) {
+                map.removeLayer(pinTemporal);
+                pinTemporal = null;
+            }
+            ubicacionSeleccionada = null;
         }
         function centerOnConductor(){ map.setView([conductorLat, conductorLon], 15); }
         function abrirNavegacion(){ if (playaSeleccionada) window.open(`https://www.google.com/maps/dir/?api=1&destination=${playaSeleccionada.plyLat},${playaSeleccionada.plyLon}`, '_blank'); }
@@ -1090,9 +1211,9 @@
              });
         }
 
-        function buscarPlayasCercanas(lat, lon){
-            // Guardar la dirección buscada para el badge
-            const direccionBuscada = $('#searchInput').val().trim();
+        function buscarPlayasCercanas(lat, lon, direccionBuscadaParam = null){
+            // Guardar la dirección buscada para el badge (priorizar parámetro si viene de favorito)
+            const direccionBuscada = direccionBuscadaParam || $('#searchInput').val().trim();
             
             // Primero obtener el tipo de vehículo
             $.get('/Conductor/GetVehiculoSeleccionado')
@@ -1133,10 +1254,20 @@
         }
         
         function mostrarPlayasBuscadas(lat, lon, direccionBuscada){
-            if (searchLocationMarker) map.removeLayer(searchLocationMarker);
             const direccion = direccionBuscada || $('#searchInput').val().trim();
-            searchLocationMarker = L.marker([lat, lon], { icon: L.divIcon({ className:'search-location-marker', html:'<i class="fa-solid fa-location-dot" style="color:#dc3545;font-size:24px;text-shadow:2px 2px 4px rgba(0,0,0,.3);"></i>', iconSize:[30,30], iconAnchor:[15,15] }) }).addTo(map);
-            searchLocationMarker.bindPopup('<b>Ubicación buscada</b><br>Dirección: ' + direccion).openPopup();
+            
+            // Solo crear/actualizar marcador si no existe (si viene de favorito, ya se creó en irAFavorito)
+            if (!searchLocationMarker) {
+                searchLocationMarker = L.marker([lat, lon], { icon: L.divIcon({ className:'search-location-marker', html:'<i class="fa-solid fa-location-dot" style="color:#dc3545;font-size:24px;text-shadow:2px 2px 4px rgba(0,0,0,.3);"></i>', iconSize:[30,30], iconAnchor:[15,15] }) }).addTo(map);
+                searchLocationMarker.bindPopup('<b>Ubicación buscada</b><br>Dirección: ' + direccion).openPopup();
+            } else {
+                // Si el marcador ya existe, solo actualizar el popup si es necesario
+                const currentPopup = searchLocationMarker.getPopup();
+                if (currentPopup) {
+                    searchLocationMarker.setPopupContent('<b>Ubicación buscada</b><br>Dirección: ' + direccion);
+                }
+            }
+            
             isSearchMode = true; 
             mostrarPlayasEnMapa(); 
             $('#loading').hide();
@@ -1226,13 +1357,28 @@
         }
 
         function guardarUbicacionFavorita(ubicacion){
+            const esPlaya = ubicacion.tipo === 'Playa';
             return fetch('@Url.Action("AgregarUbicacionFavorita", "Conductor")', {
                 method:'POST', headers:{ 'Content-Type':'application/json', 'RequestVerificationToken': antiforgeryToken }, body: JSON.stringify(ubicacion)
             }).then(r=>r.json()).then(d=>{
-                 if (d.success) alert('Playa de estacionamiento favorita guardada correctamente.');
-                 else alert(d.error || 'No se pudo guardar la playa de estacionamiento favorita.');
+                 if (d.success) {
+                     const mensaje = esPlaya 
+                         ? 'Playa de estacionamiento favorita guardada correctamente.'
+                         : 'Ubicación favorita guardada correctamente.';
+                     alert(mensaje);
+                 } else {
+                     const mensajeError = esPlaya 
+                         ? 'No se pudo guardar la playa de estacionamiento favorita.'
+                         : 'No se pudo guardar la ubicación favorita.';
+                     alert(d.error || mensajeError);
+                 }
                  return d;
-             }).catch(()=> alert('Ocurrió un error al guardar la playa de estacionamiento favorita.'));
+             }).catch(()=> {
+                 const mensajeError = esPlaya 
+                     ? 'Ocurrió un error al guardar la playa de estacionamiento favorita.'
+                     : 'Ocurrió un error al guardar la ubicación favorita.';
+                 alert(mensajeError);
+             });
         }
 
         function cargarUbicacionesFavoritas(){
@@ -1263,53 +1409,99 @@
         }
 
         function renderizarFavoritos(){
-            const lista = document.getElementById('listaFavoritos');
-            const mensajeVacio = document.getElementById('favoritosVacio');
-            lista.innerHTML = '';
-            if (!favoritos?.length){ mensajeVacio.style.display = 'block'; return; }
-            mensajeVacio.style.display = 'none';
+            const listaPlayas = document.getElementById('listaFavoritosPlayas');
+            const listaUbicaciones = document.getElementById('listaFavoritosUbicaciones');
+            const mensajeVacioPlayas = document.getElementById('favoritosPlayasVacio');
+            const mensajeVacioUbicaciones = document.getElementById('favoritosUbicacionesVacio');
+            
+            listaPlayas.innerHTML = '';
+            listaUbicaciones.innerHTML = '';
+            
+            if (!favoritos?.length){ 
+                mensajeVacioPlayas.style.display = 'block';
+                mensajeVacioUbicaciones.style.display = 'block';
+                return; 
+            }
+            
+            // Separar favoritos por tipo
+            const favoritosPlayas = favoritos.filter(fav => fav.tipo === 'Playa');
+            const favoritosUbicaciones = favoritos.filter(fav => fav.tipo !== 'Playa');
+            
+            // Renderizar playas favoritas
+            if (favoritosPlayas.length === 0) {
+                mensajeVacioPlayas.style.display = 'block';
+            } else {
+                mensajeVacioPlayas.style.display = 'none';
+                favoritosPlayas.forEach(fav => {
+                    const li = crearItemFavorito(fav, 'playa');
+                    listaPlayas.appendChild(li);
+                });
+            }
+            
+            // Renderizar ubicaciones favoritas
+            if (favoritosUbicaciones.length === 0) {
+                mensajeVacioUbicaciones.style.display = 'block';
+            } else {
+                mensajeVacioUbicaciones.style.display = 'none';
+                favoritosUbicaciones.forEach(fav => {
+                    const li = crearItemFavorito(fav, 'ubicacion');
+                    listaUbicaciones.appendChild(li);
+                });
+            }
+        }
+        
+        function crearItemFavorito(fav, tipo){
+            const li = document.createElement('li'); 
+            li.classList.add('favorite-item');
 
-            favoritos.forEach(fav => {
-                const li = document.createElement('li'); li.classList.add('favorite-item');
+            const mainBtn = document.createElement('button');
+            mainBtn.type = 'button'; 
+            mainBtn.className = 'favorite-main-btn';
+            mainBtn.innerHTML = `<span>${fav.apodo}</span><span>${fav.direccion || (fav.ciudad || '')}</span>`;
+            mainBtn.onclick = () => irAFavorito(fav);
 
-                const mainBtn = document.createElement('button');
-                mainBtn.type = 'button'; mainBtn.className = 'favorite-main-btn';
-                mainBtn.innerHTML = `<span>${fav.apodo}</span><span>${fav.direccion || (fav.ciudad || '')}</span>`;
-                mainBtn.onclick = () => irAFavorito(fav);
+            const viewBtn = document.createElement('button');
+            viewBtn.type = 'button'; 
+            viewBtn.className = 'favorite-view-btn'; 
+            viewBtn.setAttribute('data-bs-toggle', 'tooltip');
+            viewBtn.setAttribute('data-bs-placement', 'top');
+            viewBtn.title = tipo === 'playa' 
+                ? 'Visualizar playa de estacionamiento favorita' 
+                : 'Visualizar ubicación favorita';
+            viewBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+            viewBtn.onclick = (e)=>{ e.stopPropagation(); irAFavorito(fav); };
+            new bootstrap.Tooltip(viewBtn);
 
-                const viewBtn = document.createElement('button');
-                viewBtn.type = 'button'; 
-                viewBtn.className = 'favorite-view-btn'; 
-                viewBtn.setAttribute('data-bs-toggle', 'tooltip');
-                viewBtn.setAttribute('data-bs-placement', 'top');
-                viewBtn.title = 'Visualizar playa de estacionamiento favorita';
-                viewBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
-                viewBtn.onclick = (e)=>{ e.stopPropagation(); irAFavorito(fav); };
-                new bootstrap.Tooltip(viewBtn);
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button'; 
+            editBtn.className = 'favorite-edit-btn'; 
+            editBtn.setAttribute('data-bs-toggle', 'tooltip');
+            editBtn.setAttribute('data-bs-placement', 'top');
+            editBtn.title = tipo === 'playa' 
+                ? 'Renombrar playa de estacionamiento favorita' 
+                : 'Renombrar ubicación favorita';
+            editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+            editBtn.onclick = (e)=>{ e.stopPropagation(); editarFavorito(fav); };
+            new bootstrap.Tooltip(editBtn);
 
-                const editBtn = document.createElement('button');
-                editBtn.type = 'button'; 
-                editBtn.className = 'favorite-edit-btn'; 
-                editBtn.setAttribute('data-bs-toggle', 'tooltip');
-                editBtn.setAttribute('data-bs-placement', 'top');
-                editBtn.title = 'Renombrar playa de estacionamiento favorita';
-                editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
-                editBtn.onclick = (e)=>{ e.stopPropagation(); editarFavorito(fav); };
-                new bootstrap.Tooltip(editBtn);
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button'; 
+            removeBtn.className = 'favorite-remove-btn'; 
+            removeBtn.setAttribute('data-bs-toggle', 'tooltip');
+            removeBtn.setAttribute('data-bs-placement', 'top');
+            removeBtn.title = tipo === 'playa' 
+                ? 'Eliminar playa de estacionamiento favorita' 
+                : 'Eliminar ubicación favorita';
+            removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+            removeBtn.onclick = (e)=>{ e.stopPropagation(); eliminarFavorito(fav); };
+            new bootstrap.Tooltip(removeBtn);
 
-                const removeBtn = document.createElement('button');
-                removeBtn.type = 'button'; 
-                removeBtn.className = 'favorite-remove-btn'; 
-                removeBtn.setAttribute('data-bs-toggle', 'tooltip');
-                removeBtn.setAttribute('data-bs-placement', 'top');
-                removeBtn.title = 'Eliminar playa de estacionamiento favorita';
-                removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-                removeBtn.onclick = (e)=>{ e.stopPropagation(); eliminarFavorito(fav); };
-                new bootstrap.Tooltip(removeBtn);
-
-                li.appendChild(mainBtn); li.appendChild(viewBtn); li.appendChild(editBtn); li.appendChild(removeBtn);
-                lista.appendChild(li);
-            });
+            li.appendChild(mainBtn); 
+            li.appendChild(viewBtn); 
+            li.appendChild(editBtn); 
+            li.appendChild(removeBtn);
+            
+            return li;
         }
 
         function irAFavorito(fav){
@@ -1317,6 +1509,9 @@
             const lon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
             if (isNaN(lat) || isNaN(lon)) return alert('Este favorito no tiene coordenadas válidas.');
 
+            // Obtener dirección del favorito para el filtro
+            const direccionFavorito = fav.direccion || fav.apodo || 'Ubicación favorita';
+            
             // Centrar el mapa con animación suave
             map.flyTo([lat, lon], 16, {
                 animate: true,
@@ -1328,68 +1523,58 @@
                 map.invalidateSize();
             }, 100);
             
-            $('#loading').show();
-
-            // ¿Existe ya alguna playa en memoria en esas coords?
-            const playaCoincidente = playas.find(p => p.plyLat && p.plyLon && Math.abs(parseFloat(p.plyLat)-lat) < 0.0001 && Math.abs(parseFloat(p.plyLon)-lon) < 0.0001);
-
-            if (playaCoincidente){
-                $('#loading').hide();
-                seleccionarPlaya(playaCoincidente);
-                setTimeout(() => {
-                    openMarkerPopup(playaCoincidente);
-                    map.invalidateSize();
-                }, 500);
-                return;
-            }
-
-            // Buscar en servidor
-            $.get('/Conductor/GetPlayasCercanas', { lat, lon, radioKm:2 })
-             .done(data => {
-                 $('#loading').hide();
-                 if (data?.length){
-                    const playa = data[0];
-                    seleccionarPlaya(playa);
-                    setTimeout(()=> {
-                        openMarkerPopup(playa);
-                        map.invalidateSize();
-                    }, 500);
-                 } else {
-                    // No hay playas → mostrar datos del favorito y popup de ubicación
-                    $('#playaNombre').text(fav.apodo);
-                    $('#estadoBadge').text('N/A').removeClass('open closed');
-                    $('#disponibilidadTexto').text('Sin datos'); $('#disponibilidadBarra').css('width','0%');
-                    $('#tipoPiso').text('No disponible'); $('#direccion').text(fav.direccion || fav.ciudad || ''); $('#valorPromedio').text('N/A');
-                    $('#horariosInfo').html('<span style="color:#dc3545;">Sin playas cercanas</span>'); $('#horariosSection').show(); $('#playaInfo').show(); $('#bottomMenu').addClass('show');
-
-                    if (transientPopup) map.closePopup(transientPopup);
-                    setTimeout(() => {
-                        transientPopup = L.popup().setLatLng([lat, lon]).setContent(`<strong>${fav.apodo}</strong><br>${fav.direccion || ''}`).openOn(map);
-                        map.invalidateSize();
-                    }, 500);
-                 }
-             })
-             .fail(()=> $('#loading').hide());
+            // Mostrar marcador de ubicación buscada si no existe
+            if (searchLocationMarker) map.removeLayer(searchLocationMarker);
+            searchLocationMarker = L.marker([lat, lon], { 
+                icon: L.divIcon({ 
+                    className:'search-location-marker', 
+                    html:'<i class="fa-solid fa-location-dot" style="color:#dc3545;font-size:24px;text-shadow:2px 2px 4px rgba(0,0,0,.3);"></i>', 
+                    iconSize:[30,30], 
+                    iconAnchor:[15,15] 
+                }) 
+            }).addTo(map);
+            searchLocationMarker.bindPopup(`<strong>${fav.apodo}</strong><br>${direccionFavorito}`).openPopup();
+            
+            // Activar modo búsqueda y mostrar todas las playas cercanas
+            isSearchMode = true;
+            
+            // Mostrar badge de filtro con la dirección del favorito
+            $('#filterText').text(direccionFavorito);
+            $('#filterBadge').fadeIn(300);
+            
+            // Buscar todas las playas cercanas aplicando filtro por tipo de vehículo
+            buscarPlayasCercanas(lat, lon, direccionFavorito);
         }
 
         function eliminarFavorito(fav) {
-            if (!confirm(`¿Eliminar "${fav.apodo}" de tus favoritos?`)) return;
+            const esPlaya = fav.tipo === 'Playa';
+            const mensajeConfirmacion = esPlaya 
+                ? `¿Eliminar "${fav.apodo}" de tus playas favoritas?`
+                : `¿Eliminar "${fav.apodo}" de tus ubicaciones favoritas?`;
+            
+            if (!confirm(mensajeConfirmacion)) return;
 
             $.ajax({
                 url: '@Url.Action("EliminarUbicacionFavorita", "Conductor")' + '?apodo=' + encodeURIComponent(fav.apodo),
                 type: 'DELETE'
             })
             .done(function(data) {
-            if (data.success) {
-                favoritos = favoritos.filter(f => f.apodo !== fav.apodo);
-                refreshFavoritesUI(); // 👈 también se actualiza
-            } else {
-                alert(data.error || 'No se pudo eliminar el favorito.');
-            }
+                if (data.success) {
+                    favoritos = favoritos.filter(f => f.apodo !== fav.apodo);
+                    refreshFavoritesUI();
+                    const mensajeExito = esPlaya 
+                        ? 'Playa de estacionamiento favorita eliminada correctamente.'
+                        : 'Ubicación favorita eliminada correctamente.';
+                    alert(mensajeExito);
+                } else {
+                    alert(data.error || 'No se pudo eliminar el favorito.');
+                }
             })
-
             .fail(function() {
-                alert('Ocurrió un error al eliminar el favorito.');
+                const mensajeError = esPlaya 
+                    ? 'Ocurrió un error al eliminar la playa de estacionamiento favorita.'
+                    : 'Ocurrió un error al eliminar la ubicación favorita.';
+                alert(mensajeError);
             });
         }
 
@@ -1401,16 +1586,341 @@
         }
 
         function editarFavorito(fav){
-            const nuevo = prompt('Nuevo nombre para esta playa de estacionamiento favorita:', fav.apodo);
+            const esPlaya = fav.tipo === 'Playa';
+            const textoPrompt = esPlaya 
+                ? 'Nuevo nombre para esta playa de estacionamiento favorita:' 
+                : 'Nuevo nombre para esta ubicación favorita:';
+            const nuevo = prompt(textoPrompt, fav.apodo);
             if (nuevo == null) return;
             if (nuevo.trim() === '') return alert('El nombre no puede estar vacío.');
             fetch('@Url.Action("EditarUbicacionFavorita", "Conductor")', {
                 method:'POST', headers:{ 'Content-Type':'application/json', 'RequestVerificationToken': antiforgeryToken },
                 body: JSON.stringify({ apodoActual: fav.apodo, nuevoApodo: nuevo.trim() })
             }).then(r=>r.json()).then(d=>{
-                if (d.success){ fav.apodo = nuevo.trim(); refreshFavoritesUI(); }
-                else alert(d.error || 'No se pudo renombrar la playa de estacionamiento favorita.');
-            }).catch(()=> alert('Ocurrió un error al renombrar la playa de estacionamiento favorita.'));
+                if (d.success){ 
+                    fav.apodo = nuevo.trim(); 
+                    refreshFavoritesUI(); 
+                } else {
+                    const mensajeError = esPlaya 
+                        ? 'No se pudo renombrar la playa de estacionamiento favorita.'
+                        : 'No se pudo renombrar la ubicación favorita.';
+                    alert(d.error || mensajeError);
+                }
+            }).catch(()=> {
+                const mensajeError = esPlaya 
+                    ? 'Ocurrió un error al renombrar la playa de estacionamiento favorita.'
+                    : 'Ocurrió un error al renombrar la ubicación favorita.';
+                alert(mensajeError);
+            });
+        }
+        
+        let modoPinActivo = false;
+        let pinTemporal = null;
+        let ubicacionSeleccionada = null;
+        let clickHandlerPin = null;
+        
+        function agregarNuevaUbicacionFavorita(){
+            // Limpiar estado anterior
+            modoPinActivo = false;
+            ubicacionSeleccionada = null;
+            if (pinTemporal) {
+                map.removeLayer(pinTemporal);
+                pinTemporal = null;
+            }
+            if (clickHandlerPin) {
+                map.off('click', clickHandlerPin);
+                clickHandlerPin = null;
+            }
+            
+            // Limpiar formulario
+            $('#inputDireccionUbicacion').val('');
+            $('#inputNombreUbicacion').val('');
+            $('#infoUbicacionSeleccionada').hide();
+            $('#instruccionPin').hide();
+            $('#btnModoPin').removeClass('btn-primary').addClass('btn-outline-primary');
+            
+            // Mostrar footer
+            $('#playaNombre').text('Agregar ubicación favorita');
+            $('#playaInfo').hide();
+            $('#valoracionesInfo').hide();
+            $('#agregarUbicacionInfo').show();
+            $('#bottomMenu').addClass('show');
+            
+            // Actualizar título del header
+            $('#playaNombre').text('Agregar ubicación favorita');
+        }
+        
+        function buscarDireccionParaUbicacion(){
+            const direccion = $('#inputDireccionUbicacion').val().trim();
+            if (!direccion) {
+                alert('Por favor ingresá una dirección.');
+                return;
+            }
+            
+            $('#loading').show();
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion + ', Resistencia, Chaco')}&limit=1`;
+            
+            $.get(url)
+             .done(data => {
+                 $('#loading').hide();
+                 if (data?.length) {
+                     const lat = parseFloat(data[0].lat);
+                     const lon = parseFloat(data[0].lon);
+                     const direccionCompleta = data[0].display_name || direccion;
+                     
+                     // Centrar el mapa en la ubicación encontrada
+                     map.flyTo([lat, lon], 16, { animate: true, duration: 0.8 });
+                     
+                     // Guardar ubicación seleccionada
+                     ubicacionSeleccionada = {
+                         lat: lat,
+                         lon: lon,
+                         direccion: direccionCompleta
+                     };
+                     
+                     // Mostrar pin temporal
+                     if (pinTemporal) map.removeLayer(pinTemporal);
+                     pinTemporal = L.marker([lat, lon], {
+                         icon: L.divIcon({
+                             className: 'pin-temporal',
+                             html: '<i class="fa-solid fa-map-pin" style="color:#0d6efd;font-size:24px;text-shadow:2px 2px 4px rgba(0,0,0,.3);"></i>',
+                             iconSize: [30, 30],
+                             iconAnchor: [15, 30]
+                         })
+                     }).addTo(map);
+                     
+                     // Mostrar información de ubicación seleccionada
+                     $('#textoUbicacionSeleccionada').text(direccionCompleta);
+                     $('#infoUbicacionSeleccionada').show();
+                     
+                     // Hacer scroll automático para mostrar el recuadro
+                     setTimeout(() => {
+                         const infoBox = document.getElementById('infoUbicacionSeleccionada');
+                         const bottomMenu = document.getElementById('bottomMenu');
+                         if (infoBox && bottomMenu) {
+                             // Calcular la posición del elemento dentro del contenedor
+                             const infoBoxTop = infoBox.offsetTop;
+                             const bottomMenuScrollTop = bottomMenu.scrollTop;
+                             const bottomMenuHeight = bottomMenu.clientHeight;
+                             
+                             // Si el elemento está fuera de la vista, hacer scroll
+                             if (infoBoxTop < bottomMenuScrollTop || infoBoxTop > bottomMenuScrollTop + bottomMenuHeight) {
+                                 bottomMenu.scrollTo({
+                                     top: infoBoxTop - 20,
+                                     behavior: 'smooth'
+                                 });
+                             }
+                         }
+                     }, 200);
+                 } else {
+                     alert('No se encontró la dirección.');
+                 }
+             })
+             .fail(() => {
+                 $('#loading').hide();
+                 alert('Error al buscar la dirección.');
+             });
+        }
+        
+        function activarModoPin(){
+            if (modoPinActivo) {
+                // Desactivar modo pin
+                modoPinActivo = false;
+                $('#btnModoPin').removeClass('btn-primary').addClass('btn-outline-primary');
+                $('#instruccionPin').hide();
+                if (clickHandlerPin) {
+                    map.off('click', clickHandlerPin);
+                    clickHandlerPin = null;
+                }
+            } else {
+                // Activar modo pin
+                modoPinActivo = true;
+                $('#btnModoPin').removeClass('btn-outline-primary').addClass('btn-primary');
+                $('#instruccionPin').show();
+                
+                // Remover handler anterior si existe
+                if (clickHandlerPin) {
+                    map.off('click', clickHandlerPin);
+                }
+                
+                // Agregar handler para clic en el mapa
+                clickHandlerPin = function(e) {
+                    const lat = e.latlng.lat;
+                    const lon = e.latlng.lng;
+                    
+                    // Obtener dirección usando geocoding inverso
+                    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
+                    $('#loading').show();
+                    
+                    $.get(url)
+                     .done(data => {
+                         $('#loading').hide();
+                         const direccionCompleta = data?.display_name || '';
+                         
+                         // Guardar ubicación seleccionada
+                         ubicacionSeleccionada = {
+                             lat: lat,
+                             lon: lon,
+                             direccion: direccionCompleta
+                         };
+                         
+                         // Mostrar pin temporal
+                         if (pinTemporal) map.removeLayer(pinTemporal);
+                         pinTemporal = L.marker([lat, lon], {
+                             icon: L.divIcon({
+                                 className: 'pin-temporal',
+                                 html: '<i class="fa-solid fa-map-pin" style="color:#0d6efd;font-size:24px;text-shadow:2px 2px 4px rgba(0,0,0,.3);"></i>',
+                                 iconSize: [30, 30],
+                                 iconAnchor: [15, 30]
+                             })
+                         }).addTo(map);
+                         
+                         // Mostrar información de ubicación seleccionada
+                         $('#textoUbicacionSeleccionada').text(direccionCompleta || `Lat: ${lat.toFixed(6)}, Lon: ${lon.toFixed(6)}`);
+                         $('#infoUbicacionSeleccionada').show();
+                         
+                         // Hacer scroll automático para mostrar el recuadro
+                         setTimeout(() => {
+                             const infoBox = document.getElementById('infoUbicacionSeleccionada');
+                             if (infoBox) {
+                                 infoBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                             }
+                         }, 100);
+                         
+                         // Desactivar modo pin
+                         modoPinActivo = false;
+                         $('#btnModoPin').removeClass('btn-primary').addClass('btn-outline-primary');
+                         $('#instruccionPin').hide();
+                         map.off('click', clickHandlerPin);
+                         clickHandlerPin = null;
+                     })
+                     .fail(() => {
+                         $('#loading').hide();
+                         // Si falla el geocoding, usar coordenadas
+                         ubicacionSeleccionada = {
+                             lat: lat,
+                             lon: lon,
+                             direccion: `Lat: ${lat.toFixed(6)}, Lon: ${lon.toFixed(6)}`
+                         };
+                         
+                         if (pinTemporal) map.removeLayer(pinTemporal);
+                         pinTemporal = L.marker([lat, lon], {
+                             icon: L.divIcon({
+                                 className: 'pin-temporal',
+                                 html: '<i class="fa-solid fa-map-pin" style="color:#0d6efd;font-size:24px;text-shadow:2px 2px 4px rgba(0,0,0,.3);"></i>',
+                                 iconSize: [30, 30],
+                                 iconAnchor: [15, 30]
+                             })
+                         }).addTo(map);
+                         
+                         $('#textoUbicacionSeleccionada').text(`Lat: ${lat.toFixed(6)}, Lon: ${lon.toFixed(6)}`);
+                         $('#infoUbicacionSeleccionada').show();
+                         
+                         // Hacer scroll automático para mostrar el recuadro
+                         setTimeout(() => {
+                             const infoBox = document.getElementById('infoUbicacionSeleccionada');
+                             if (infoBox) {
+                                 infoBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                             }
+                         }, 100);
+                         
+                         modoPinActivo = false;
+                         $('#btnModoPin').removeClass('btn-primary').addClass('btn-outline-primary');
+                         $('#instruccionPin').hide();
+                         map.off('click', clickHandlerPin);
+                         clickHandlerPin = null;
+                     });
+                };
+                
+                map.on('click', clickHandlerPin);
+            }
+        }
+        
+        function guardarNuevaUbicacion(){
+            if (!ubicacionSeleccionada) {
+                alert('Por favor seleccioná una ubicación primero.');
+                return;
+            }
+            
+            const nombre = $('#inputNombreUbicacion').val().trim();
+            if (!nombre) {
+                alert('Por favor ingresá un nombre para esta ubicación.');
+                return;
+            }
+            
+            const partes = ubicacionSeleccionada.direccion.split(',');
+            const ciudad = partes.length > 1 ? partes[partes.length - 3]?.trim() || '' : '';
+            const provincia = partes.length > 1 ? partes[partes.length - 2]?.trim() || '' : '';
+            const direccionCorta = partes.slice(0, Math.max(1, partes.length - 3)).join(', ') || ubicacionSeleccionada.direccion;
+            
+            const payload = { 
+                apodo: nombre, 
+                provincia: provincia || 'Chaco', 
+                ciudad: ciudad || 'Resistencia', 
+                direccion: direccionCorta || ubicacionSeleccionada.direccion, 
+                tipo: 'Ubicación', 
+                lat: ubicacionSeleccionada.lat, 
+                lon: ubicacionSeleccionada.lon 
+            };
+            
+            guardarUbicacionFavorita(payload).then(() => {
+                // Limpiar y cerrar
+                if (pinTemporal) {
+                    map.removeLayer(pinTemporal);
+                    pinTemporal = null;
+                }
+                ubicacionSeleccionada = null;
+                $('#inputDireccionUbicacion').val('');
+                $('#inputNombreUbicacion').val('');
+                $('#infoUbicacionSeleccionada').hide();
+                $('#agregarUbicacionInfo').hide();
+                $('#bottomMenu').removeClass('show');
+                
+                // Recargar favoritos
+                cargarUbicacionesFavoritas();
+            });
+        }
+        
+        function agregarUbicacionFavoritaDesdeMapa(lat, lon){
+            // Obtener dirección usando geocoding inverso
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
+            $('#loading').show();
+            
+            $.get(url)
+             .done(data => {
+                 $('#loading').hide();
+                 const direccion = data?.display_name || '';
+                 agregarUbicacionFavoritaDesdeCoordenadas(lat, lon, direccion);
+             })
+             .fail(() => {
+                 $('#loading').hide();
+                 // Si falla el geocoding, permitir agregar igual
+                 agregarUbicacionFavoritaDesdeCoordenadas(lat, lon, '');
+             });
+        }
+        
+        function agregarUbicacionFavoritaDesdeCoordenadas(lat, lon, direccionCompleta){
+            const partes = direccionCompleta.split(',');
+            const ciudad = partes.length > 1 ? partes[partes.length - 3]?.trim() || '' : '';
+            const provincia = partes.length > 1 ? partes[partes.length - 2]?.trim() || '' : '';
+            const direccionCorta = partes.slice(0, Math.max(1, partes.length - 3)).join(', ') || direccionCompleta;
+            
+            const apodo = prompt('¿Cómo querés llamar a esta ubicación favorita?', direccionCorta || 'Mi ubicación');
+            if (apodo == null || apodo.trim() === '') return;
+            
+            const payload = { 
+                apodo: apodo.trim(), 
+                provincia: provincia || 'Chaco', 
+                ciudad: ciudad || 'Resistencia', 
+                direccion: direccionCorta || direccionCompleta, 
+                tipo: 'Ubicación', 
+                lat: lat, 
+                lon: lon 
+            };
+            
+            guardarUbicacionFavorita(payload).then(() => {
+                cargarUbicacionesFavoritas();
+            });
         }
 
         // === Valoraciones ===
