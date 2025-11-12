@@ -147,6 +147,11 @@
             position:fixed; top:140px; left:20px; z-index:1000; background:rgba(255,255,255,.97);
             border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,.15); width:260px; max-height:50vh; overflow:hidden;
             display:flex; flex-direction:column; font-size:13px;
+            /* Oculto por defecto */
+            display:none;
+        }
+        .favorites-panel.show{
+            display:flex;
         }
         .favorites-header{ display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid #eee; }
         .favorite-map-icon{ display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,.95); box-shadow:0 2px 8px rgba(0,0,0,.35); border:2px solid #f1c40f; }
@@ -441,7 +446,7 @@
         <input type="text" id="searchInput" placeholder="Buscar dirección..." />
         <button onclick="buscarDireccion()" id="btnBuscar" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Buscar"><i class="fa-solid fa-magnifying-glass"></i></button>
         <button class="home-btn" onclick="centerOnConductor()" id="btnHome" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Reubicar mapa"><i class="fa-solid fa-house"></i></button>
-        <button class="fav-btn" id="favBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Playas de estacionamiento favoritas"><i class="fa-solid fa-star"></i></button>
+        <button class="fav-btn" id="favBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Favoritos"><i class="fa-solid fa-star"></i></button>
     </div>
 
     <!-- Indicador de filtro aplicado -->
@@ -584,8 +589,14 @@
         function openFavoritesFromStar(){
             const panel = document.getElementById('favoritesPanel');
             const icon  = document.getElementById('favoritesToggleIcon');
-            panel.classList.remove('collapsed');
-            if (icon){ icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
+            // Mostrar la sidebar si está oculta, ocultarla si está visible
+            if (panel.classList.contains('show')) {
+                panel.classList.remove('show');
+            } else {
+                panel.classList.add('show');
+                panel.classList.remove('collapsed');
+                if (icon){ icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
+            }
         }
 
         function obtenerVehiculoSeleccionado(){
@@ -1447,6 +1458,8 @@
         function toggleFavorites(){
             const panel = document.getElementById('favoritesPanel');
             const icon = document.getElementById('favoritesToggleIcon');
+            // Solo permitir colapsar/expandir si la sidebar está visible
+            if (!panel.classList.contains('show')) return;
             panel.classList.toggle('collapsed');
             if (panel.classList.contains('collapsed')){ icon.classList.remove('fa-chevron-down'); icon.classList.add('fa-chevron-up'); }
             else { icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
