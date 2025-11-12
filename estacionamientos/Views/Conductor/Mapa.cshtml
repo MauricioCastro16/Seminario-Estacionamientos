@@ -751,13 +751,42 @@
              .done(vehiculoData => {
                  const tipoVehiculo = vehiculoData?.tipo || null;
                  
+                 if (!tipoVehiculo) {
+                     $('#tarifasInfo').html('<span style="color:#dc3545;">No se pudo obtener el tipo de vehículo. Por favor selecciona un vehículo.</span>');
+                     $('#serviciosIconos').html('');
+                     $('#tarifasSection').show();
+                     return;
+                 }
+                 
                  $.get('/Conductor/GetTarifasYServicios', { id: plyID, tipoVehiculo: tipoVehiculo })
                   .done(data => {
                       if (data && !data.error && data.servicios){
-                          mostrarTarifas(data.servicios, tipoVehiculo);
-                          mostrarServicios(data.servicios);
+                          // El backend ya filtra por tipo de vehículo, pero validamos nuevamente en el frontend
+                          // Filtrar servicios que tienen tarifas EXACTAMENTE para el tipo de vehículo del conductor
+                          const serviciosConTarifas = data.servicios
+                              .map(servicio => {
+                                  // Filtrar solo las tarifas del tipo de vehículo del conductor
+                                  const tarifasFiltradas = servicio.tarifas 
+                                      ? servicio.tarifas.filter(t => t.clasificacionVehiculo === tipoVehiculo)
+                                      : [];
+                                  
+                                  return {
+                                      ...servicio,
+                                      tarifas: tarifasFiltradas
+                                  };
+                              })
+                              .filter(s => s.tarifas && s.tarifas.length > 0); // Solo servicios con tarifas del tipo de vehículo
+                          
+                          if (serviciosConTarifas.length > 0) {
+                              mostrarTarifas(serviciosConTarifas, tipoVehiculo);
+                              mostrarServicios(serviciosConTarifas);
+                          } else {
+                              $('#tarifasInfo').html('<span style="color:#dc3545;">No hay tarifas disponibles para tu tipo de vehículo (' + tipoVehiculo + ')</span>');
+                              $('#serviciosIconos').html('');
+                              $('#tarifasSection').show();
+                          }
                       } else {
-                          $('#tarifasInfo').html('<span style="color:#dc3545;">No hay información disponible</span>');
+                          $('#tarifasInfo').html('<span style="color:#dc3545;">No hay tarifas disponibles para tu tipo de vehículo</span>');
                           $('#serviciosIconos').html('');
                           $('#tarifasSection').show();
                       }
@@ -769,46 +798,39 @@
                   });
              })
              .fail(() => {
-                 // Si no se puede obtener el vehículo, cargar sin filtro
-                 $.get('/Conductor/GetTarifasYServicios', { id: plyID })
-                  .done(data => {
-                      if (data && !data.error && data.servicios){
-                          mostrarTarifas(data.servicios, null);
-                          mostrarServicios(data.servicios);
-                      } else {
-                          $('#tarifasInfo').html('<span style="color:#dc3545;">No hay información disponible</span>');
-                          $('#serviciosIconos').html('');
-                          $('#tarifasSection').show();
-                      }
-                  })
-                  .fail(() => {
-                      $('#tarifasInfo').html('<span style="color:#dc3545;">Error al cargar tarifas</span>');
-                      $('#serviciosIconos').html('');
-                      $('#tarifasSection').show();
-                  });
+                 $('#tarifasInfo').html('<span style="color:#dc3545;">No se pudo obtener el tipo de vehículo. Por favor selecciona un vehículo.</span>');
+                 $('#serviciosIconos').html('');
+                 $('#tarifasSection').show();
              });
         }
 
         function mostrarTarifas(servicios, tipoVehiculo){
-            // Filtrar tarifas por tipo de vehículo si se proporciona
+            // Filtrar tarifas por tipo de vehículo - SOLO mostrar las del tipo del conductor
+            if (!tipoVehiculo) {
+                $('#tarifasInfo').html('<span style="color:#dc3545;">No se pudo obtener el tipo de vehículo</span>');
+                $('#tarifasSection').show();
+                return;
+            }
+            
             const serviciosFiltrados = servicios.map(servicio => {
-                if (tipoVehiculo && servicio.tarifas && servicio.tarifas.length > 0) {
+                if (servicio.tarifas && servicio.tarifas.length > 0) {
+                    // Filtrar SOLO las tarifas que corresponden al tipo de vehículo del conductor
                     const tarifasFiltradas = servicio.tarifas.filter(t => t.clasificacionVehiculo === tipoVehiculo);
                     return {
                         ...servicio,
                         tarifas: tarifasFiltradas
                     };
                 }
-                return servicio;
-            });
+                return null; // Excluir servicios sin tarifas
+            }).filter(s => s !== null && s.tarifas && s.tarifas.length > 0); // Solo servicios con tarifas del tipo de vehículo
             
-            const serviciosConTarifas = serviciosFiltrados.filter(s => s.tarifas && s.tarifas.length > 0);
-            
-            if (serviciosConTarifas.length === 0){
+            if (serviciosFiltrados.length === 0){
                 $('#tarifasInfo').html('<span style="color:#dc3545;">No hay tarifas configuradas para tu tipo de vehículo</span>');
                 $('#tarifasSection').show();
                 return;
             }
+            
+            const serviciosConTarifas = serviciosFiltrados;
 
             // Agrupar servicios por tipo
             const serviciosPorTipo = {};
