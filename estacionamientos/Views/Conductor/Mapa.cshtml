@@ -500,9 +500,83 @@
 
         function cargarPlayas(){
             $('#loading').show();
-            $.get('/Conductor/GetPlayasCercanas', { lat:conductorLat, lon:conductorLon, radioKm:50 })
-             .done(data => { playas = data || []; mostrarPlayasEnMapa(); $('#loading').hide(); })
-             .fail((_,__,err)=> $('#loading').html('<div class="spinner"></div>Error al cargar playas: ' + err));
+            
+            // Primero obtener el tipo de vehículo
+            $.get('/Conductor/GetVehiculoSeleccionado')
+             .done(vehiculoData => {
+                 const tipoVehiculo = vehiculoData?.tipo || null;
+                 
+                 // Cargar todas las playas
+                 $.get('/Conductor/GetPlayasCercanas', { lat:conductorLat, lon:conductorLon, radioKm:50 })
+                  .done(data => {
+                      const todasLasPlayas = data || [];
+                      
+                      if (!tipoVehiculo) {
+                          // Si no hay tipo de vehículo, mostrar todas las playas
+                          playas = todasLasPlayas;
+                          mostrarPlayasEnMapa();
+                          $('#loading').hide();
+                          return;
+                      }
+                      
+                      // Filtrar playas que tienen servicios/tarifas para el tipo de vehículo
+                      filtrarPlayasPorTipoVehiculo(todasLasPlayas, tipoVehiculo);
+                  })
+                  .fail((_,__,err)=> $('#loading').html('<div class="spinner"></div>Error al cargar playas: ' + err));
+             })
+             .fail(() => {
+                 // Si no se puede obtener el vehículo, mostrar todas las playas
+                 $.get('/Conductor/GetPlayasCercanas', { lat:conductorLat, lon:conductorLon, radioKm:50 })
+                  .done(data => { playas = data || []; mostrarPlayasEnMapa(); $('#loading').hide(); })
+                  .fail((_,__,err)=> $('#loading').html('<div class="spinner"></div>Error al cargar playas: ' + err));
+             });
+        }
+        
+        function filtrarPlayasPorTipoVehiculo(todasLasPlayas, tipoVehiculo){
+            if (todasLasPlayas.length === 0) {
+                playas = [];
+                mostrarPlayasEnMapa();
+                $('#loading').hide();
+                return;
+            }
+            
+            let playasFiltradas = [];
+            let verificadas = 0;
+            
+            todasLasPlayas.forEach((playa, index) => {
+                // Verificar si la playa tiene servicios/tarifas para el tipo de vehículo
+                $.get('/Conductor/GetTarifasYServicios', { id: playa.plyID, tipoVehiculo: tipoVehiculo })
+                 .done(data => {
+                     if (data && !data.error && data.servicios && data.servicios.length > 0) {
+                         // Verificar que tenga al menos un servicio con tarifas para el tipo de vehículo
+                         const serviciosConTarifas = data.servicios.filter(s => {
+                             if (!s.tarifas || s.tarifas.length === 0) return false;
+                             return s.tarifas.some(t => t.clasificacionVehiculo === tipoVehiculo);
+                         });
+                         
+                         if (serviciosConTarifas.length > 0) {
+                             playasFiltradas.push(playa);
+                         }
+                     }
+                     
+                     verificadas++;
+                     
+                     // Cuando se hayan verificado todas las playas, mostrar las filtradas
+                     if (verificadas === todasLasPlayas.length) {
+                         playas = playasFiltradas;
+                         mostrarPlayasEnMapa();
+                         $('#loading').hide();
+                     }
+                 })
+                 .fail(() => {
+                     verificadas++;
+                     if (verificadas === todasLasPlayas.length) {
+                         playas = playasFiltradas;
+                         mostrarPlayasEnMapa();
+                         $('#loading').hide();
+                     }
+                 });
+            });
         }
 
         function crearIconoPlaya(playa, esResultadoBusqueda=false){
@@ -1008,21 +1082,94 @@
         }
 
         function buscarPlayasCercanas(lat, lon){
-            $.get('/Conductor/GetPlayasCercanas', { lat, lon, radioKm:10 })
-             .done(data => {
-                 searchResults = (data || []).sort((a,b)=>a.distancia - b.distancia).slice(0,3);
-                 if (searchLocationMarker) map.removeLayer(searchLocationMarker);
-                 searchLocationMarker = L.marker([lat, lon], { icon: L.divIcon({ className:'search-location-marker', html:'<i class="fa-solid fa-location-dot" style="color:#dc3545;font-size:24px;text-shadow:2px 2px 4px rgba(0,0,0,.3);"></i>', iconSize:[30,30], iconAnchor:[15,15] }) }).addTo(map);
-                 searchLocationMarker.bindPopup('<b>Ubicación buscada</b><br>Dirección: ' + $('#searchInput').val()).openPopup();
-                 isSearchMode = true; 
-                 mostrarPlayasEnMapa(); 
-                 $('#loading').hide();
-                 // Mostrar badge de filtro
-                 const direccionBuscada = $('#searchInput').val().trim();
-                 $('#filterText').text(direccionBuscada);
-                 $('#filterBadge').fadeIn(300);
+            // Primero obtener el tipo de vehículo
+            $.get('/Conductor/GetVehiculoSeleccionado')
+             .done(vehiculoData => {
+                 const tipoVehiculo = vehiculoData?.tipo || null;
+                 
+                 $.get('/Conductor/GetPlayasCercanas', { lat, lon, radioKm:10 })
+                  .done(data => {
+                      const todasLasPlayas = (data || []).sort((a,b)=>a.distancia - b.distancia);
+                      
+                      if (!tipoVehiculo) {
+                          // Si no hay tipo de vehículo, mostrar todas las playas (máximo 3)
+                          searchResults = todasLasPlayas.slice(0,3);
+                          mostrarPlayasBuscadas(lat, lon);
+                          return;
+                      }
+                      
+                      // Filtrar playas que tienen servicios/tarifas para el tipo de vehículo
+                      filtrarPlayasBuscadasPorTipoVehiculo(todasLasPlayas, tipoVehiculo, lat, lon);
+                  })
+                  .fail(()=> $('#loading').hide());
              })
-             .fail(()=> $('#loading').hide());
+             .fail(() => {
+                 // Si no se puede obtener el vehículo, mostrar todas las playas
+                 $.get('/Conductor/GetPlayasCercanas', { lat, lon, radioKm:10 })
+                  .done(data => {
+                      searchResults = (data || []).sort((a,b)=>a.distancia - b.distancia).slice(0,3);
+                      mostrarPlayasBuscadas(lat, lon);
+                  })
+                  .fail(()=> $('#loading').hide());
+             });
+        }
+        
+        function mostrarPlayasBuscadas(lat, lon){
+            if (searchLocationMarker) map.removeLayer(searchLocationMarker);
+            searchLocationMarker = L.marker([lat, lon], { icon: L.divIcon({ className:'search-location-marker', html:'<i class="fa-solid fa-location-dot" style="color:#dc3545;font-size:24px;text-shadow:2px 2px 4px rgba(0,0,0,.3);"></i>', iconSize:[30,30], iconAnchor:[15,15] }) }).addTo(map);
+            searchLocationMarker.bindPopup('<b>Ubicación buscada</b><br>Dirección: ' + $('#searchInput').val()).openPopup();
+            isSearchMode = true; 
+            mostrarPlayasEnMapa(); 
+            $('#loading').hide();
+            // Mostrar badge de filtro
+            const direccionBuscada = $('#searchInput').val().trim();
+            $('#filterText').text(direccionBuscada);
+            $('#filterBadge').fadeIn(300);
+        }
+        
+        function filtrarPlayasBuscadasPorTipoVehiculo(todasLasPlayas, tipoVehiculo, lat, lon){
+            if (todasLasPlayas.length === 0) {
+                searchResults = [];
+                mostrarPlayasBuscadas(lat, lon);
+                return;
+            }
+            
+            let playasFiltradas = [];
+            let verificadas = 0;
+            const maxPlayas = 3;
+            
+            todasLasPlayas.forEach((playa, index) => {
+                // Verificar si la playa tiene servicios/tarifas para el tipo de vehículo
+                $.get('/Conductor/GetTarifasYServicios', { id: playa.plyID, tipoVehiculo: tipoVehiculo })
+                 .done(data => {
+                     if (data && !data.error && data.servicios && data.servicios.length > 0) {
+                         // Verificar que tenga al menos un servicio con tarifas para el tipo de vehículo
+                         const serviciosConTarifas = data.servicios.filter(s => {
+                             if (!s.tarifas || s.tarifas.length === 0) return false;
+                             return s.tarifas.some(t => t.clasificacionVehiculo === tipoVehiculo);
+                         });
+                         
+                         if (serviciosConTarifas.length > 0 && playasFiltradas.length < maxPlayas) {
+                             playasFiltradas.push(playa);
+                         }
+                     }
+                     
+                     verificadas++;
+                     
+                     // Cuando se hayan verificado todas las playas o tengamos 3, mostrar las filtradas
+                     if (verificadas === todasLasPlayas.length || playasFiltradas.length >= maxPlayas) {
+                         searchResults = playasFiltradas;
+                         mostrarPlayasBuscadas(lat, lon);
+                     }
+                 })
+                 .fail(() => {
+                     verificadas++;
+                     if (verificadas === todasLasPlayas.length) {
+                         searchResults = playasFiltradas;
+                         mostrarPlayasBuscadas(lat, lon);
+                     }
+                 });
+            });
         }
 
         function volverAVistaNormal(){
