@@ -37,8 +37,12 @@
             backdrop-filter:blur(10px) !important; height:60px !important; pointer-events:auto !important;
         }
         .navbar *{ pointer-events:auto !important; }
-        .dropdown-menu, .nav-item.dropdown, .user-menu{ z-index:10001 !important; position:relative !important; }
-        .dropdown.show .dropdown-menu{ display:block !important; z-index:10001 !important; position:absolute !important; top:100% !important; left:0 !important; }
+        /* Asegurar que el dropdown tenga el z-index más alto y funcione correctamente */
+        .nav-item.dropdown{ z-index:10002 !important; position:relative !important; }
+        .nav-item.dropdown .dropdown-toggle{ pointer-events:auto !important; cursor:pointer !important; z-index:10002 !important; }
+        .nav-item.dropdown .dropdown-menu{ z-index:10003 !important; position:absolute !important; }
+        .nav-item.dropdown.show .dropdown-menu{ display:block !important; z-index:10003 !important; }
+        .user-menu{ z-index:10002 !important; position:relative !important; }
 
         .controls{ position:fixed; top:80px; right:20px; z-index:1000; display:flex; flex-direction:column; gap:10px; }
         .search-bar{
@@ -565,6 +569,27 @@
             // tooltips
             document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
 
+            // Asegurar que el dropdown del usuario funcione correctamente
+            // Esperar a que el mapa se inicialice para evitar conflictos
+            setTimeout(function() {
+                const userMenuDropdown = document.getElementById('userMenu');
+                if (userMenuDropdown && typeof bootstrap !== 'undefined') {
+                    try {
+                        // Inicializar el dropdown
+                        const dropdownInstance = bootstrap.Dropdown.getOrCreateInstance(userMenuDropdown);
+                        
+                        // Agregar un listener adicional para asegurar que funcione
+                        // Usar el método toggle de Bootstrap directamente
+                        userMenuDropdown.addEventListener('click', function(e) {
+                            e.stopPropagation(); // Prevenir que el mapa capture el evento
+                            dropdownInstance.toggle(); // Toggle del dropdown usando Bootstrap
+                        });
+                    } catch (e) {
+                        console.error('Error inicializando dropdown del usuario:', e);
+                    }
+                }
+            }, 500); // Esperar medio segundo para que todo esté inicializado
+
             // Enter en búsqueda
             $('#searchInput').keypress(function(e){ if(e.which === 13) buscarDireccion(); });
 
@@ -626,6 +651,9 @@
             map = L.map('mapContainer', { zoomControl:false, scrollWheelZoom:true, doubleClickZoom:true, boxZoom:true, keyboard:true, dragging:true, touchZoom:true, attributionControl:false, minZoom:12 });
             L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{ attribution:'&copy; OpenStreetMap & CARTO'}).addTo(map);
             L.control.zoom({ position:'topright' }).addTo(map);
+            
+            // Asegurar que el mapa no capture eventos del header
+            // El header ya tiene z-index alto y pointer-events:auto, así que debería funcionar
             
             // Evento de clic derecho para agregar ubicación favorita
             map.on('contextmenu', function(e) {
