@@ -18,858 +18,147 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        #mapContainer {
-            position: fixed;
-            top: 60px; /* Dejar espacio para el header */
-            left: 0;
-            width: 100vw;
-            height: calc(100vh - 60px); /* Restar altura del header */
-            z-index: 1;
-            pointer-events: auto;
-        }
-
-        /* Ocultar footer en mobile cuando está en el mapa */
-        @@media (max-width: 768px) {
-            .main-footer {
-                display: none !important;
-            }
-            
-            #mapContainer {
-                height: 100vh !important;
-                top: 0 !important;
-            }
-        }
-
-        /* Ajustar el contenido principal para que no interfiera con el mapa */
-        .main-content {
-            background: transparent;
-            padding-top: 0;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* Asegurar que el header tenga fondo */
-        .main-header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-        }
-
-        /* Asegurar que el layout esté visible por encima del mapa */
-        .main-header, .main-content, 
-        .mobile-sidebar, .sidebar-overlay,
-        .navbar, .sidebar {
-            position: relative !important;
-            z-index: 1000 !important;
-        }
-
-        /* Footer con z-index más bajo que el menú de detalles */
-        .main-footer, .footer {
-            position: relative !important;
-            z-index: 100 !important;
-        }
-
-        /* Asegurar que el header completo sea visible y clickeable */
-        .main-header {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            z-index: 10000 !important;
-            background: rgba(255, 255, 255, 0.95) !important;
-            backdrop-filter: blur(10px) !important;
-            height: 60px !important;
-            pointer-events: auto !important;
-        }
-
-        /* Asegurar que el navbar sea visible y clickeable */
-        .navbar {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            z-index: 10000 !important;
-            background: rgba(255, 255, 255, 0.95) !important;
-            backdrop-filter: blur(10px) !important;
-            height: 60px !important;
-            pointer-events: auto !important;
-        }
-
-        /* Asegurar que todos los elementos del navbar sean clickeables */
-        .navbar * {
-            pointer-events: auto !important;
-        }
-
-        /* Asegurar que el menú de usuario tenga z-index alto */
-        .dropdown-menu {
-            z-index: 10001 !important;
-            position: absolute !important;
-        }
-
-        .nav-item.dropdown {
-            z-index: 10001 !important;
-            position: relative !important;
-        }
-
-        .user-menu {
-            z-index: 10001 !important;
-            position: relative !important;
-        }
-
-        /* Forzar que el dropdown sea visible */
-        .dropdown.show .dropdown-menu {
-            display: block !important;
-            z-index: 10001 !important;
-        }
-
-        /* Asegurar que el contenedor del navbar tenga z-index alto */
-        .navbar-nav {
-            z-index: 10001 !important;
-        }
-
-        /* Asegurar que todos los elementos del menú de usuario sean clickeables */
-        .user-menu, .user-menu *, 
-        .dropdown-menu, .dropdown-menu *,
-        .nav-item.dropdown, .nav-item.dropdown * {
-            pointer-events: auto !important;
-            z-index: 10001 !important;
-        }
-
-        /* Forzar que el dropdown se muestre cuando está abierto */
-        .dropdown.show .dropdown-menu {
-            display: block !important;
-            z-index: 10001 !important;
-            position: absolute !important;
-            top: 100% !important;
-            left: 0 !important;
-            right: auto !important;
-        }
-
-        /* Asegurar que el menú de usuario esté por encima de todo */
-        .navbar .nav-item:last-child {
-            z-index: 10001 !important;
-            position: relative !important;
-        }
-
-        .mobile-sidebar {
-            position: fixed !important;
-            z-index: 10001 !important;
-            pointer-events: auto !important;
-        }
-
-        .sidebar-overlay {
-            position: fixed !important;
-            z-index: 10000 !important;
-            pointer-events: auto !important;
-        }
-
-        /* Asegurar que el botón del menú hamburguesa sea clickeable */
-        .btn-mobile-menu {
-            position: relative !important;
-            z-index: 10002 !important;
-            pointer-events: auto !important;
-        }
-
-        /* Asegurar que el sidebar sea visible cuando esté abierto */
-        .mobile-sidebar.show {
-            transform: translateX(0) !important;
-            z-index: 10001 !important;
-        }
-
-        /* Asegurar que los controles del mapa también estén visibles */
-        .controls {
-            z-index: 1001;
-        }
-
-        .controls {
-            position: fixed;
-            top: 80px; /* Mover más abajo para no tapar el layout */
-            right: 20px;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .search-bar {
-            position: fixed;
-            top: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 25px;
-            padding: 8px 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-            width: 90%;
-            max-width: 600px;
-            min-width: 280px;
-        }
-
-        .search-bar input {
-            flex: 1;
-            border: none;
-            outline: none;
-            background: transparent;
-            padding: 8px 12px;
-            font-size: 16px;
-            min-width: 0;
-            width: 100%;
-        }
-
-        .search-bar button {
-            background: #3498db;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            margin-left: 8px;
-            transition: all 0.3s ease;
-            flex-shrink: 0;
-        }
-
-        .search-bar button:hover {
-            background: #2980b9;
-            transform: scale(1.05);
-        }
-
-        .search-bar .home-btn {
-            background: #6c757d;
-            margin-left: 5px;
-        }
-
-        .search-bar .home-btn:hover {
-            background: #5a6268;
-        }
-
-        .search-bar .clear-btn {
-            background: #6c757d;
-            margin-left: 5px;
-            display: none;
-        }
-
-        .search-bar .clear-btn:hover {
-            background: #5a6268;
-        }
-
-        .search-bar .clear-btn.show {
-            display: flex;
-        }
-
-        /* Responsive para tablets */
-        @@media (max-width: 768px) {
-            .search-bar {
-                width: 95%;
-                max-width: 500px;
-                padding: 6px 12px;
-                top: 70px;
-            }
-
-            .search-bar input {
-                font-size: 14px;
-                padding: 6px 10px;
-            }
-
-            .search-bar button {
-                width: 36px;
-                height: 36px;
-                margin-left: 6px;
-            }
-
-            .search-bar .home-btn {
-                margin-left: 4px;
-            }
-        }
-
-        /* Responsive para móviles pequeños */
-        @@media (max-width: 480px) {
-            .search-bar {
-                width: 98%;
-                max-width: none;
-                padding: 5px 10px;
-                top: 65px;
-                border-radius: 20px;
-            }
-
-            .search-bar input {
-                font-size: 13px;
-                padding: 5px 8px;
-            }
-
-            .search-bar button {
-                width: 32px;
-                height: 32px;
-                margin-left: 4px;
-            }
-
-            .search-bar .home-btn {
-                margin-left: 3px;
-            }
-        }
-
-        /* Responsive para móviles muy pequeños */
-        @@media (max-width: 360px) {
-            .search-bar {
-                width: 100%;
-                margin: 0 5px;
-                padding: 4px 8px;
-                top: 60px;
-            }
-
-            .search-bar input {
-                font-size: 12px;
-                padding: 4px 6px;
-            }
-
-            .search-bar button {
-                width: 28px;
-                height: 28px;
-                margin-left: 3px;
-            }
-
-            .search-bar button i {
-                font-size: 12px;
-            }
-        }
-
-        .control-btn {
-            background: rgba(255, 255, 255, 0.9);
-            border: none;
-            border-radius: 8px;
-            padding: 12px;
-            cursor: pointer;
-            font-size: 18px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            min-width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .search-container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 8px;
-            padding: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 10px;
-        }
-
-        .search-input {
-            width: 200px;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        .search-btn {
-            background: #3498db;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 8px 12px;
-            margin-left: 5px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .search-btn:hover {
-            background: #2980b9;
-        }
-
-        .control-btn:hover {
-            background: rgba(255, 255, 255, 1);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .loading {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            z-index: 1002;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @@keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        #bottomMenu {
-            position: fixed;
-            bottom: -100%;
-            left: 10px;
-            right: 10px;
-            background: white;
-            border-radius: 20px 20px 0 0;
-            padding: 25px;
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-            z-index: 10001; /* Mayor z-index para estar por encima del footer */
-            transition: bottom 0.3s ease;
-            max-height: 40vh; /* Desktop: Mitad de la altura */
-            overflow-y: auto;
-        }
-
-        #bottomMenu.show {
-            bottom: 0;
-        }
-
-        /* Ajustar el menú inferior en mobile */
-        @@media (max-width: 768px) {
-            #bottomMenu {
-                left: 5px;
-                right: 5px;
-                padding: 20px;
-                max-height: 80vh !important; /* Mobile: Más alto que desktop */
-                border-radius: 15px 15px 0 0;
-            }
-        }
-
-        /* Mobile: menú más pequeño y en línea */
-        @@media (max-width: 768px) {
-            #bottomMenu {
-                padding: 10px;
-                height: auto;
-                max-height: 120px;
-            }
-
-            .menu-header {
-                margin-bottom: 8px;
-            }
-
-            .menu-header h4 {
-                font-size: 16px;
-                margin: 0;
-            }
-
-            .info-row {
-                display: inline-block;
-                margin-right: 15px;
-                margin-bottom: 5px;
-                font-size: 12px;
-            }
-
-            .info-label {
-                font-weight: 600;
-                color: #333;
-                font-size: 11px;
-            }
-
-            .info-value {
-                color: #666;
-                font-size: 11px;
-            }
-
-            .status-badge {
-                padding: 2px 6px;
-                border-radius: 3px;
-                font-size: 10px;
-            }
-
-            .availability-bar {
-                width: 60px;
-                height: 4px;
-                margin: 2px 0;
-            }
-
-            .btn {
-                padding: 6px 12px;
-                font-size: 12px;
-                margin-top: 5px;
-            }
-        }
-
-        .menu-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #666;
-        }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-
-        .info-label {
-            font-weight: 600;
-            color: #333;
-        }
-
-        .info-value {
-            color: #666;
-        }
-
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .status-badge.open {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-badge.closed {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .availability-bar {
-            width: 100%;
-            height: 8px;
-            background: #e9ecef;
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 5px 0;
-        }
-
-        .availability-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);
-            transition: width 0.3s ease;
-        }
-
-        .custom-parking-icon {
-            background: #3498db;
-            color: white;
-            border: 2px solid white;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 14px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            cursor: pointer;
-        }
-
-        .custom-parking-icon.available {
-            background: #28a745;
-        }
-
-        .custom-parking-icon.closed {
-            background: #95a5a6;
-        }
-
-        .custom-parking-icon.search-result {
-            background: #dc3545; /* Rojo para resultados de búsqueda */
-        }
-
-        .search-location-marker {
-            background: transparent !important;
-            border: none !important;
-        }
-
-        /* Escala de zoom personalizada */
-        .custom-scale {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 8px 12px;
-            font-size: 12px;
-            font-weight: bold;
-            color: #333;
-            z-index: 1000;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(5px);
-        }
-
-        .scale-line {
-            height: 2px;
-            background: #333;
-            margin: 4px 0;
-            position: relative;
-        }
-
-        .scale-line::before,
-        .scale-line::after {
-            content: '';
-            position: absolute;
-            top: -3px;
-            width: 1px;
-            height: 8px;
-            background: #333;
-        }
-
-        .scale-line::before {
-            left: 0;
-        }
-
-        .scale-line::after {
-            right: 0;
-        }
-
-        .custom-parking-icon:hover {
-            transform: scale(1.2);
-            transition: transform 0.2s ease;
-        }
-
-        /* Estilo para mapa simplificado */
-        .simplified-map {
-            filter: grayscale(20%) contrast(1.1) brightness(1.1);
-        }
-
-        /* Ocultar elementos innecesarios del mapa */
-        .leaflet-control-container .leaflet-top.leaflet-left {
-            display: none;
-        }
-
-        .leaflet-control-container .leaflet-top.leaflet-right {
-            display: none;
-        }
-
-        .leaflet-control-container .leaflet-bottom.leaflet-left {
-            display: none;
-        }
-
-        .leaflet-control-container .leaflet-bottom.leaflet-right {
-            display: none;
-        }
-
-        /* ========= PANEL DE FAVORITOS ========= */
-
-        .favorites-panel {
-            position: fixed;
-            top: 140px;
-            left: 20px;
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.97);
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-            width: 260px;
-            max-height: 50vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            font-size: 13px;
-        }
-
-
-        .favorites-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 10px;
-            border-bottom: 1px solid #eee;
-        }
-        .favorite-map-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.95);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-            border: 2px solid #f1c40f;
-        }
-
-        .favorite-map-icon i {
-            color: #f1c40f;
-            font-size: 18px;
-        }
-
-
-        .favorites-title {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .favorites-title i {
-            color: #f1c40f;
-        }
-
-        .favorites-toggle {
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            color: #666;
-            padding: 4px;
-            border-radius: 50%;
-        }
-
-        .favorites-toggle:hover {
-            background: #f4f4f4;
-        }
-
-        .favorites-body {
-            padding: 6px 8px 8px 8px;
-            overflow-y: auto;
-        }
-
-        #listaFavoritos {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
-
-        .favorite-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            gap: 4px;
-        }
-
-        .favorite-main-btn {
-            flex: 1;
-            border: none;
-            background: #f8f9fa;
-            border-radius: 6px;
-            padding: 6px 8px;
-            text-align: left;
-            font-size: 12px;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .favorite-main-btn span:first-child {
-            font-weight: 600;
-            color: #333;
-        }
-
-        .favorite-main-btn span:last-child {
-            color: #777;
-            font-size: 11px;
-        }
-
-        .favorite-main-btn:hover {
-            background: #e9ecef;
-        }
-
-        .favorite-remove-btn {
-            border: none;
-            background: #f8d7da;
-            color: #721c24;
-            border-radius: 6px;
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            flex-shrink: 0;
-            font-size: 12px;
-        }
-
-        .favorite-remove-btn:hover {
-            background: #f5c6cb;
-        }
-
-        .favorites-empty {
-            font-size: 11px;
-            color: #777;
-            padding: 4px 2px;
-        }
-
-        .favorites-panel.collapsed {
-            max-height: 44px;
-        }
-
-        .favorites-panel.collapsed .favorites-body {
-            display: none;
-        }
-
-        .favorite-edit-btn {
-            border: none;
-            background: #e2e3ff;
-            color: #383d7c;
-            border-radius: 6px;
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            flex-shrink: 0;
-            font-size: 12px;
-            margin-right: 3px;
-        }
-
-        .favorite-edit-btn:hover {
-            background: #c7c9ff;
-        }
-
-        @@media (max-width: 768px) {
-            .favorites-panel {
-                top: auto;
-                bottom: 20px;
-                left: 10px;
-                right: 10px;
-                width: auto;
-                max-height: 160px;
-            }
-        }
-
-        /* Botón de favoritos */
-        .fav-btn{
-        background:#f1c40f; color:#fff; border:none; border-radius:50%;
-        width:40px; height:40px; display:flex; align-items:center; justify-content:center;
-        margin-left:5px; cursor:pointer; flex-shrink:0;
-        }
-        .fav-btn i{ font-size:16px; }
+        body { margin:0; padding:0; overflow:hidden; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #mapContainer { position:fixed; top:60px; left:0; width:100vw; height:calc(100vh - 60px); z-index:1; pointer-events:auto; }
+
+        @@media (max-width: 768px){
+            .main-footer{ display:none !important; }
+            #mapContainer{ height:100vh !important; top:0 !important; }
+        }
+
+        .main-content{ background:transparent; padding-top:0; position:relative; z-index:1; }
+        .main-header{ background:rgba(255,255,255,.95); backdrop-filter:blur(10px); }
+        .main-header, .main-content, .mobile-sidebar, .sidebar-overlay, .navbar, .sidebar{ position:relative !important; z-index:1000 !important; }
+        .main-footer, .footer{ position:relative !important; z-index:100 !important; }
+
+        .main-header, .navbar{
+            position:fixed !important; top:0 !important; left:0 !important; right:0 !important;
+            z-index:10000 !important; background:rgba(255,255,255,.95) !important;
+            backdrop-filter:blur(10px) !important; height:60px !important; pointer-events:auto !important;
+        }
+        .navbar *{ pointer-events:auto !important; }
+        .dropdown-menu, .nav-item.dropdown, .user-menu{ z-index:10001 !important; position:relative !important; }
+        .dropdown.show .dropdown-menu{ display:block !important; z-index:10001 !important; position:absolute !important; top:100% !important; left:0 !important; }
+
+        .controls{ position:fixed; top:80px; right:20px; z-index:1000; display:flex; flex-direction:column; gap:10px; }
+        .search-bar{
+            position:fixed; top:80px; left:50%; transform:translateX(-50%); z-index:1000; display:flex; align-items:center;
+            background:rgba(255,255,255,.95); border-radius:25px; padding:8px 15px; box-shadow:0 4px 15px rgba(0,0,0,.1); backdrop-filter:blur(10px);
+            width:90%; max-width:600px; min-width:280px;
+        }
+        .search-bar input{ flex:1; border:none; outline:none; background:transparent; padding:8px 12px; font-size:16px; min-width:0; width:100%; }
+        .search-bar button{ background:#3498db; color:#fff; border:none; border-radius:50%; width:40px; height:40px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-left:8px; transition:.3s; flex-shrink:0; }
+        .search-bar button:hover{ background:#2980b9; transform:scale(1.05); }
+        .search-bar .home-btn{ background:#6c757d; }
+        .search-bar .home-btn:hover{ background:#5a6268; }
+        .search-bar .clear-btn{ background:#6c757d; margin-left:5px; display:none; }
+        .search-bar .clear-btn.show{ display:flex; }
 
-        /* En mobile el panel arranca oculto y se muestra con .open */
         @@media (max-width:768px){
-        .favorites-panel{ display:none; bottom:80px; left:10px; right:10px; width:auto; max-height:65vh; z-index:10002; }
-        .favorites-panel.open{ display:flex; }
+            .search-bar{ width:95%; max-width:500px; padding:6px 12px; top:70px; }
+            .search-bar input{ font-size:14px; padding:6px 10px; }
+            .search-bar button{ width:36px; height:36px; margin-left:6px; }
+            .search-bar .home-btn{ margin-left:4px; }
+        }
+        @@media (max-width:480px){
+            .search-bar{ width:98%; max-width:none; padding:5px 10px; top:65px; border-radius:20px; }
+            .search-bar input{ font-size:13px; padding:5px 8px; }
+            .search-bar button{ width:32px; height:32px; margin-left:4px; }
+        }
+        @@media (max-width:360px){
+            .search-bar{ width:100%; margin:0 5px; padding:4px 8px; top:60px; }
+            .search-bar input{ font-size:12px; padding:4px 6px; }
+            .search-bar button{ width:28px; height:28px; margin-left:3px; }
+            .search-bar button i{ font-size:12px; }
         }
 
+        .control-btn{ background:rgba(255,255,255,.9); border:none; border-radius:8px; padding:12px; cursor:pointer; font-size:18px; box-shadow:0 2px 10px rgba(0,0,0,.1); transition:.3s; min-width:50px; height:50px; display:flex; align-items:center; justify-content:center; }
+        .control-btn:hover{ background:#fff; transform:translateY(-2px); box-shadow:0 4px 15px rgba(0,0,0,.2); }
 
+        .loading{ position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(255,255,255,.95); padding:20px; border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,.1); z-index:1002; display:flex; align-items:center; gap:10px; }
+        .spinner{ width:20px; height:20px; border:2px solid #f3f3f3; border-top:2px solid #3498db; border-radius:50%; animation:spin 1s linear infinite; }
+        @@keyframes spin{ 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+
+        #bottomMenu{
+            position:fixed; bottom:-100%; left:10px; right:10px; background:#fff; border-radius:20px 20px 0 0; padding:25px;
+            box-shadow:0 -4px 20px rgba(0,0,0,.1); z-index:10001; transition:bottom .3s ease; max-height:40vh; overflow-y:auto;
+        }
+        #bottomMenu.show{ bottom:0; }
+        @@media (max-width:768px){
+            #bottomMenu{ left:5px; right:5px; padding:20px; max-height:80vh !important; border-radius:15px 15px 0 0; }
+        }
+
+        .menu-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; }
+        .close-btn{ background:none; border:none; font-size:24px; cursor:pointer; color:#666; }
+        .info-row{ display:flex; justify-content:space-between; margin-bottom:10px; }
+        .info-label{ font-weight:600; color:#333; }
+        .info-value{ color:#666; }
+        .status-badge{ padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600; }
+        .status-badge.open{ background:#d4edda; color:#155724; }
+        .status-badge.closed{ background:#f8d7da; color:#721c24; }
+        .availability-bar{ width:100%; height:8px; background:#e9ecef; border-radius:4px; overflow:hidden; margin:5px 0; }
+        .availability-fill{ height:100%; background:linear-gradient(90deg,#28a745,#ffc107,#dc3545); transition:width .3s; }
+
+        .custom-parking-icon{ background:#3498db; color:#fff; border:2px solid #fff; border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px; box-shadow:0 2px 8px rgba(0,0,0,.3); cursor:pointer; }
+        .custom-parking-icon.available{ background:#28a745; }
+        .custom-parking-icon.closed{ background:#95a5a6; }
+        .custom-parking-icon.search-result{ background:#dc3545; }
+        .search-location-marker{ background:transparent !important; border:none !important; }
+
+        .custom-scale{ position:fixed; bottom:20px; left:20px; background:rgba(255,255,255,.9); border:1px solid #ccc; border-radius:4px; padding:8px 12px; font-size:12px; font-weight:bold; color:#333; z-index:1000; box-shadow:0 2px 4px rgba(0,0,0,.2); backdrop-filter:blur(5px); }
+        .scale-line{ height:2px; background:#333; margin:4px 0; position:relative; }
+        .scale-line::before, .scale-line::after{ content:''; position:absolute; top:-3px; width:1px; height:8px; background:#333; }
+        .scale-line::before{ left:0; } .scale-line::after{ right:0; }
+
+        .custom-parking-icon:hover{ transform:scale(1.2); transition:transform .2s; }
+        .simplified-map{ filter:grayscale(20%) contrast(1.1) brightness(1.1); }
+        .leaflet-control-container .leaflet-top.leaflet-left,
+        .leaflet-control-container .leaflet-top.leaflet-right,
+        .leaflet-control-container .leaflet-bottom.leaflet-left,
+        .leaflet-control-container .leaflet-bottom.leaflet-right{ display:none; }
+
+        /* ==== Favoritos ==== */
+        .favorites-panel{
+            position:fixed; top:140px; left:20px; z-index:1000; background:rgba(255,255,255,.97);
+            border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,.15); width:260px; max-height:50vh; overflow:hidden;
+            display:flex; flex-direction:column; font-size:13px;
+        }
+        .favorites-header{ display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid #eee; }
+        .favorite-map-icon{ display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,.95); box-shadow:0 2px 8px rgba(0,0,0,.35); border:2px solid #f1c40f; }
+        .favorite-map-icon i{ color:#f1c40f; font-size:18px; }
+        .favorites-title{ display:flex; align-items:center; gap:6px; font-weight:600; color:#333; }
+        .favorites-title i{ color:#f1c40f; }
+        .favorites-toggle{ border:none; background:transparent; cursor:pointer; color:#666; padding:4px; border-radius:50%; }
+        .favorites-toggle:hover{ background:#f4f4f4; }
+        .favorites-body{ padding:6px 8px 8px 8px; overflow-y:auto; }
+        #listaFavoritos{ list-style:none; margin:0; padding:0; }
+        .favorite-item{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:4px; }
+
+        .favorite-main-btn{ flex:1; border:none; background:#f8f9fa; border-radius:6px; padding:6px 8px; text-align:left; font-size:12px; cursor:pointer; display:flex; flex-direction:column; }
+        .favorite-main-btn span:first-child{ font-weight:600; color:#333; }
+        .favorite-main-btn span:last-child{ color:#777; font-size:11px; }
+        .favorite-main-btn:hover{ background:#e9ecef; }
+
+        .favorite-view-btn{ border:none; background:#e7f0ff; color:#0d6efd; border-radius:6px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; font-size:12px; }
+        .favorite-view-btn:hover{ background:#d7e7ff; }
+
+        .favorite-edit-btn{ border:none; background:#e2e3ff; color:#383d7c; border-radius:6px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; font-size:12px; }
+        .favorite-edit-btn:hover{ background:#c7c9ff; }
+
+        .favorite-remove-btn{ border:none; background:#f8d7da; color:#721c24; border-radius:6px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; font-size:12px; }
+        .favorite-remove-btn:hover{ background:#f5c6cb; }
+
+        .favorites-empty{ font-size:11px; color:#777; padding:4px 2px; }
+        .favorites-panel.collapsed{ max-height:44px; }
+        .favorites-panel.collapsed .favorites-body{ display:none; }
+        @@media (max-width:768px){
+            .favorites-panel{ top:auto; bottom:20px; left:10px; right:10px; width:auto; max-height:160px; display:none; }
+            .favorites-panel.open{ display:flex; }
+        }
+
+        /* Botón de favoritos en la barra */
+        .fav-btn{ background:#f1c40f; color:#fff; border:none; border-radius:50%; width:40px; height:40px; display:flex; align-items:center; justify-content:center; margin-left:5px; cursor:pointer; flex-shrink:0; }
+        .fav-btn i{ font-size:16px; }
     </style>
 </head>
 <body>
@@ -897,31 +186,17 @@
         </div>
     </div>
 
-    <!-- Barra de búsqueda superior centrada -->
+    <!-- Barra de búsqueda -->
     <div class="search-bar">
         <input type="text" id="searchInput" placeholder="Buscar dirección..." />
-        <button class="clear-btn" onclick="limpiarBusqueda()" title="Limpiar búsqueda" id="clearBtn">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-        <button onclick="buscarDireccion()" title="Buscar">
-            <i class="fa-solid fa-magnifying-glass"></i>
-        </button>
-        <button class="home-btn" onclick="centerOnConductor()" title="Volver al inicio">
-            <i class="fa-solid fa-house"></i>
-        </button>
-        <button class="fav-btn" id="favBtn" title="Ubicaciones favoritas"
-            data-bs-toggle="tooltip" data-bs-placement="bottom">
-        <i class="fa-solid fa-star"></i>
-</button>
-
+        <button class="clear-btn" onclick="limpiarBusqueda()" title="Limpiar búsqueda" id="clearBtn"><i class="fa-solid fa-xmark"></i></button>
+        <button onclick="buscarDireccion()" title="Buscar"><i class="fa-solid fa-magnifying-glass"></i></button>
+        <button class="home-btn" onclick="centerOnConductor()" title="Volver al inicio"><i class="fa-solid fa-house"></i></button>
+        <button class="fav-btn" id="favBtn" title="Ubicaciones favoritas" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-star"></i></button>
     </div>
 
-    <div class="loading" id="loading">
-        <div class="spinner"></div>
-        Cargando mapa...
-    </div>
+    <div class="loading" id="loading"><div class="spinner"></div>Cargando mapa...</div>
 
-    <!-- Escala de zoom personalizada -->
     <div class="custom-scale" id="customScale">
         <div id="scaleText">1 km</div>
         <div class="scale-line" id="scaleLine"></div>
@@ -932,994 +207,428 @@
             <h4 id="playaNombre">Selecciona una playa</h4>
             <button class="close-btn" onclick="closeMenu()">×</button>
         </div>
-        
-        <div id="playaInfo" style="display: none;">
-            <div class="info-row">
-                <span class="info-label">Estado:</span>
-                <span class="status-badge" id="estadoBadge">Abierto</span>
-            </div>
-            
-            <div class="info-row">
-                <span class="info-label">Ocupación:</span>
-                <span class="info-value" id="disponibilidadTexto">15% ocupado</span>
-            </div>
-            
-            <div class="availability-bar">
-                <div class="availability-fill" id="disponibilidadBarra" style="width: 85%"></div>
-            </div>
-            
-            <div class="info-row">
-                <span class="info-label">Tipo de piso:</span>
-                <span class="info-value" id="tipoPiso">Hormigón</span>
-            </div>
-            
-            <div class="info-row">
-                <span class="info-label">Dirección:</span>
-                <span class="info-value" id="direccion">Av. Principal 123</span>
-            </div>
-            
-            <div class="info-row">
-                <span class="info-label">Valor promedio:</span>
-                <span class="info-value" id="valorPromedio">$500/hora</span>
-            </div>
-            
-            <div class="info-row mt-3" id="horariosSection" style="display: none;">
-                <span class="info-label">Horarios de atención:</span>
-                <div class="info-value" id="horariosInfo" style="font-size: 0.9em;"></div>
-            </div>
-            
-            <div class="info-row mt-2" id="debugInfoSection" style="display: none; font-size: 0.8em; color: #666;">
-                <div id="debugInfo"></div>
-            </div>
-            
-            <button class="btn btn-primary w-100 mt-3" onclick="abrirNavegacion()">
-                <i class="bi bi-navigation me-2"></i>Ver en Google Maps
-            </button>
+        <div id="playaInfo" style="display:none;">
+            <div class="info-row"><span class="info-label">Estado:</span><span class="status-badge" id="estadoBadge">Abierto</span></div>
+            <div class="info-row"><span class="info-label">Ocupación:</span><span class="info-value" id="disponibilidadTexto">15% ocupado</span></div>
+            <div class="availability-bar"><div class="availability-fill" id="disponibilidadBarra" style="width:85%"></div></div>
+            <div class="info-row"><span class="info-label">Tipo de piso:</span><span class="info-value" id="tipoPiso">Hormigón</span></div>
+            <div class="info-row"><span class="info-label">Dirección:</span><span class="info-value" id="direccion">Av. Principal 123</span></div>
+            <div class="info-row"><span class="info-label">Valor promedio:</span><span class="info-value" id="valorPromedio">$500/hora</span></div>
+            <div class="info-row mt-3" id="horariosSection" style="display:none;"><span class="info-label">Horarios de atención:</span><div class="info-value" id="horariosInfo" style="font-size:.9em;"></div></div>
+            <div class="info-row mt-2" id="debugInfoSection" style="display:none; font-size:.8em; color:#666;"><div id="debugInfo"></div></div>
+            <button class="btn btn-primary w-100 mt-3" onclick="abrirNavegacion()"><i class="bi bi-navigation me-2"></i>Ver en Google Maps</button>
         </div>
     </div>
 
-    <!-- Leaflet JavaScript -->
+    <!-- Leaflet & libs -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
-        let map;
-        let playas = [];
-        let playaSeleccionada = null;
-        let favoriteMarkers = [];
-        let conductorMarker;
-        let parkingMarkers = [];
-        let searchResults = [];
-        let isSearchMode = false;
-        let searchLocationMarker = null;
-        let customScale = null;
+        let map, playas = [], playaSeleccionada = null;
+        let favoriteMarkers = [], conductorMarker, parkingMarkers = [];
+        let searchResults = [], isSearchMode = false, searchLocationMarker = null, customScale = null;
 
-        let favoritos = [];
-        let antiforgeryToken = null;
+        let favoritos = [], antiforgeryToken = null;
+        let playaIdToMarker = new Map();
+        let transientPopup = null; // popup temporal cuando no hay marker
 
-        // Ubicación del conductor (se actualizará con geolocalización)
-        // UTN FRRe (fallback) - Resistencia, Chaco (igual que Create.cshtml)
-        let conductorLat = -27.451000;
-        let conductorLon = -58.986000;
+        // Fallback Resistencia
+        let conductorLat = -27.451000, conductorLon = -58.986000;
         let vehiculoFavorito = null;
 
-        $(document).ready(function() {
-            // Token antifraude para POST
+        $(document).ready(function () {
             antiforgeryToken = $('input[name="__RequestVerificationToken"]').val();
-
-            // Obtener vehículo seleccionado del conductor
             obtenerVehiculoSeleccionado();
             inicializarMapa();
-
-            // Cargar favoritos al iniciar
             cargarUbicacionesFavoritas();
-            
-            // Escuchar cambios en sessionStorage para actualizar el vehículo en el mapa
-            window.addEventListener('storage', function(e) {
+
+            // tooltips
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+
+            // Enter en búsqueda
+            $('#searchInput').keypress(function(e){ if(e.which === 13) buscarDireccion(); });
+
+            // Mostrar/ocultar clear
+            $('#searchInput').on('input', function(){ $(this).val().trim() !== '' ? $('#clearBtn').addClass('show') : $('#clearBtn').removeClass('show'); });
+
+            // ⭐ abre panel (mobile y desktop)
+            document.getElementById('favBtn')?.addEventListener('click', openFavoritesFromStar);
+
+            // sync vehículo si cambia en otra pestaña
+            window.addEventListener('storage', function(e){
                 if (e.key === 'vehiculoSeleccionado' && e.newValue) {
                     vehiculoFavorito = JSON.parse(e.newValue);
-                    console.log('Vehículo actualizado desde otra pestaña:', vehiculoFavorito);
-                    // Actualizar el icono del conductor si ya está creado
-                    if (conductorMarker) {
-                        conductorMarker.setIcon(crearIconoConductor());
-                    }
-                }
-            });
-            
-            // Forzar que el dropdown del menú de usuario funcione
-            $('#userMenu').on('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                $(this).dropdown('toggle');
-            });
-            
-            // Prevenir que el mapa interfiera con el dropdown
-            $(document).on('click', '.dropdown-menu', function(e) {
-                e.stopPropagation();
-            });
-            
-            // Permitir buscar con Enter
-            $('#searchInput').keypress(function(e) {
-                if (e.which === 13) { // Enter
-                    buscarDireccion();
-                }
-            });
-
-            // Mostrar/ocultar botón de limpiar según el contenido
-            $('#searchInput').on('input', function() {
-                if ($(this).val().trim() !== '') {
-                    $('#clearBtn').addClass('show');
-                } else {
-                    $('#clearBtn').removeClass('show');
+                    if (conductorMarker) conductorMarker.setIcon(crearIconoConductor());
                 }
             });
         });
 
-        // Inicializar tooltips de Bootstrap (para el hover "Ubicaciones favoritas")
-        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
-            new bootstrap.Tooltip(el);
-        });
-
-        // Toggle del panel de favoritos en mobile
-        function toggleFavoritesMobile(){
+        function openFavoritesFromStar(){
             const panel = document.getElementById('favoritesPanel');
-            panel.classList.toggle('open');
+            const icon  = document.getElementById('favoritesToggleIcon');
+            if (window.matchMedia('(max-width:768px)').matches){ panel.classList.add('open'); }
+            panel.classList.remove('collapsed');
+            if (icon){ icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
         }
 
-        // Click del botón ⭐
-        document.getElementById('favBtn')?.addEventListener('click', toggleFavoritesMobile);
-
-
-        function obtenerVehiculoSeleccionado() {
-            // Primero verificar si hay vehículo seleccionado en sessionStorage
-            const vehiculoGuardado = sessionStorage.getItem('vehiculoSeleccionado');
-            if (vehiculoGuardado) {
-                vehiculoFavorito = JSON.parse(vehiculoGuardado);
-                console.log('Vehículo seleccionado cargado desde sesión:', vehiculoFavorito);
-                return;
-            }
-            
-            // Si no hay en sessionStorage, obtener del servidor
+        function obtenerVehiculoSeleccionado(){
+            const guardado = sessionStorage.getItem('vehiculoSeleccionado');
+            if (guardado){ vehiculoFavorito = JSON.parse(guardado); return; }
             $.get('/Conductor/GetVehiculoSeleccionado')
-                .done(function(data) {
-                    if (data.error) {
-                        console.log('No se pudo obtener el vehículo seleccionado:', data.error);
-                        vehiculoFavorito = null;
-                        return;
-                    }
-                    
-                    vehiculoFavorito = data;
-                    // Guardar en sessionStorage para futuras navegaciones
-                    sessionStorage.setItem('vehiculoSeleccionado', JSON.stringify(data));
-                    console.log('Vehículo seleccionado obtenido del servidor:', vehiculoFavorito);
-                })
-                .fail(function() {
-                    console.log('No se pudo obtener el vehículo seleccionado');
-                    vehiculoFavorito = null;
-                });
+             .done(d => { if(!d.error){ vehiculoFavorito = d; sessionStorage.setItem('vehiculoSeleccionado', JSON.stringify(d)); }})
+             .fail(() => vehiculoFavorito = null);
         }
 
-        function openFavoritesFromStar() {
-        const panel = document.getElementById('favoritesPanel');
-        const icon  = document.getElementById('favoritesToggleIcon');
-
-        // Mobile: mostrar panel (tenía display:none)
-        if (window.matchMedia('(max-width: 768px)').matches) {
-            panel.classList.add('open');
-        }
-
-        // Desktop y mobile: asegurar que NO esté colapsado
-        panel.classList.remove('collapsed');
-
-        // Sync del chevron
-        if (icon) {
-            icon.classList.remove('fa-chevron-up');
-            icon.classList.add('fa-chevron-down');
-        }
-        }
-        // Click de la ⭐
-        document.getElementById('favBtn')?.addEventListener('click', openFavoritesFromStar);
-
-
-        function crearIconoConductor() {
-            let imagenUrl = '/estacionamientos/Resources/Map/auto.png'; // Imagen por defecto
-            
-            if (vehiculoFavorito && vehiculoFavorito.tipo) {
-                const tipoVehiculo = vehiculoFavorito.tipo.toLowerCase();
-                
-                if (tipoVehiculo.includes('automóvil') || tipoVehiculo.includes('auto')) {
-                    imagenUrl = '/estacionamientos/Resources/Map/auto.png';
-                } else if (tipoVehiculo.includes('camioneta') || tipoVehiculo.includes('suv')) {
-                    imagenUrl = '/estacionamientos/Resources/Map/camioneta.png';
-                } else if (tipoVehiculo.includes('motocicleta') || tipoVehiculo.includes('moto')) {
-                    imagenUrl = '/estacionamientos/Resources/Map/moto.png';
-                } else if (tipoVehiculo.includes('camión') || tipoVehiculo.includes('camion')) {
-                    imagenUrl = '/estacionamientos/Resources/Map/suv.png';
-                }
+        function crearIconoConductor(){
+            let imagenUrl = '/estacionamientos/Resources/Map/auto.png';
+            if (vehiculoFavorito?.tipo){
+                const t = vehiculoFavorito.tipo.toLowerCase();
+                if (t.includes('camioneta') || t.includes('suv')) imagenUrl = '/estacionamientos/Resources/Map/camioneta.png';
+                else if (t.includes('moto')) imagenUrl = '/estacionamientos/Resources/Map/moto.png';
+                else if (t.includes('camion')) imagenUrl = '/estacionamientos/Resources/Map/suv.png';
             }
-            
             return L.divIcon({
-                className: 'conductor-marker',
-                html: `<div style="background: white; border: 3px solid #3498db; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3); overflow: hidden;"><img src="${imagenUrl}" style="width: 40px; height: 40px; object-fit: contain;" alt="Vehículo"></div>`,
-                iconSize: [50, 50],
-                iconAnchor: [25, 25]
+                className:'conductor-marker',
+                html:`<div style="background:#fff;border:3px solid #3498db;border-radius:50%;width:50px;height:50px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3);overflow:hidden;"><img src="${imagenUrl}" style="width:40px;height:40px;object-fit:contain" alt="Vehículo"></div>`,
+                iconSize:[50,50], iconAnchor:[25,25]
             });
         }
 
-        function inicializarMapa() {
-            // Inicializar el mapa con geolocalización como Create.cshtml
-            map = L.map('mapContainer', {
-                zoomControl: false,
-                scrollWheelZoom: true,
-                doubleClickZoom: true,
-                boxZoom: true,
-                keyboard: true,
-                dragging: true,
-                touchZoom: true,
-                attributionControl: false,
-                minZoom: 12 // Limitar zoom mínimo (aproximadamente 3km) - no puede alejarse más
-            });
+        function inicializarMapa(){
+            map = L.map('mapContainer', { zoomControl:false, scrollWheelZoom:true, doubleClickZoom:true, boxZoom:true, keyboard:true, dragging:true, touchZoom:true, attributionControl:false, minZoom:12 });
+            L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{ attribution:'&copy; OpenStreetMap & CARTO'}).addTo(map);
+            L.control.zoom({ position:'topright' }).addTo(map);
 
-            // Usar el mismo tema que Create.cshtml (CartoDB Positron)
-            L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-                attribution: '&copy; OpenStreetMap & CARTO'
-            }).addTo(map);
-            
-            L.control.zoom({ position: 'topright' }).addTo(map);
-            // L.control.scale({ imperial: false }).addTo(map); // Ocultamos la escala por defecto
-
-            // Geolocalización del usuario
-            if (navigator.geolocation) {
+            if (navigator.geolocation){
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        const lat = pos.coords.latitude;
-                        const lon = pos.coords.longitude;
+                    pos => {
+                        const { latitude:lat, longitude:lon } = pos.coords;
                         map.setView([lat, lon], 16);
-                        
-                        // Agregar marcador del conductor en ubicación real
-                        conductorMarker = L.marker([lat, lon], {
-                            icon: crearIconoConductor()
-                        }).addTo(map);
-                        
-                        conductorMarker.bindPopup('<b>Tu ubicación</b><br>Ubicación detectada').openPopup();
-                        
-                        // Actualizar coordenadas del conductor
-                        conductorLat = lat;
-                        conductorLon = lon;
-                        
-                        // Cargar playas con la ubicación real
-                        cargarPlayas();
-                        
-                        // Inicializar escala personalizada después de que el mapa esté listo
-                        inicializarEscalaPersonalizada();
+                        conductorMarker = L.marker([lat, lon], { icon:crearIconoConductor() }).addTo(map).bindPopup('<b>Tu ubicación</b><br>Ubicación detectada').openPopup();
+                        conductorLat = lat; conductorLon = lon;
+                        cargarPlayas(); inicializarEscalaPersonalizada();
                     },
-                    () => {
-                        // Fallback a Resistencia si falla la geolocalización
-                        map.setView([conductorLat, conductorLon], 14);
-                        conductorMarker = L.marker([conductorLat, conductorLon], {
-                            icon: crearIconoConductor()
-                        }).addTo(map);
-                        
-                        conductorMarker.bindPopup('<b>Tu ubicación</b><br>Resistencia, Chaco').openPopup();
-                        
-                        // Cargar playas con ubicación por defecto
-                        cargarPlayas();
-                        
-                        // Inicializar escala personalizada después de que el mapa esté listo
-                        inicializarEscalaPersonalizada();
-                    },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    () => fallbackMapa(),
+                    { enableHighAccuracy:true, timeout:10000, maximumAge:0 }
                 );
-            } else {
-                // Fallback si no hay geolocalización
+            } else fallbackMapa();
+
+            function fallbackMapa(){
                 map.setView([conductorLat, conductorLon], 14);
-                conductorMarker = L.marker([conductorLat, conductorLon], {
-                    icon: crearIconoConductor()
-                }).addTo(map);
-                
-                conductorMarker.bindPopup('<b>Tu ubicación</b><br>Resistencia, Chaco').openPopup();
-                
-                // Cargar playas con ubicación por defecto
-                cargarPlayas();
-                
-                // Inicializar escala personalizada después de que el mapa esté listo
-                inicializarEscalaPersonalizada();
+                conductorMarker = L.marker([conductorLat, conductorLon], { icon:crearIconoConductor() }).addTo(map).bindPopup('<b>Tu ubicación</b><br>Resistencia, Chaco').openPopup();
+                cargarPlayas(); inicializarEscalaPersonalizada();
             }
-
-            console.log('Mapa inicializado con geolocalización');
         }
 
-        function cargarPlayas() {
+        function cargarPlayas(){
             $('#loading').show();
-            
-            $.get('/Conductor/GetPlayasCercanas', {
-                lat: conductorLat,
-                lon: conductorLon,
-                radioKm: 50 // Radio más amplio para mostrar más playas
-            })
-            .done(function(data) {
-                console.log('=== DEBUG: Playas cargadas ===');
-                console.log('Total playas:', data.length);
-                if (data.length > 0) {
-                    console.log('Primera playa:', data[0]);
-                    console.log('Estado primera playa:', data[0].estaAbierto ? 'ABIERTO' : 'CERRADO');
-                }
-                console.log('Todas las playas:', data);
-                console.log('==============================');
-                playas = data;
-                mostrarPlayasEnMapa();
-                $('#loading').hide();
-            })
-            .fail(function(xhr, status, error) {
-                console.error('Error al cargar playas:', error);
-                $('#loading').html('<div class="spinner"></div>Error al cargar playas: ' + error);
-            });
+            $.get('/Conductor/GetPlayasCercanas', { lat:conductorLat, lon:conductorLon, radioKm:50 })
+             .done(data => { playas = data || []; mostrarPlayasEnMapa(); $('#loading').hide(); })
+             .fail((_,__,err)=> $('#loading').html('<div class="spinner"></div>Error al cargar playas: ' + err));
         }
 
-        function mostrarPlayasEnMapa() {
-            // Limpiar marcadores existentes
-            parkingMarkers.forEach(marker => map.removeLayer(marker));
-            parkingMarkers = [];
+        function crearIconoPlaya(playa, esResultadoBusqueda=false){
+            let className = 'custom-parking-icon';
+            if (esResultadoBusqueda) className += ' search-result';
+            else if (!playa.estaAbierto) className += ' closed';
+            else if (playa.disponibilidad > 50) className += ' available';
+            return L.divIcon({ className, html:'P', iconSize:[30,30], iconAnchor:[15,15] });
+        }
 
-            // Usar playas de búsqueda si estamos en modo búsqueda
+        function mostrarPlayasEnMapa(){
+            parkingMarkers.forEach(m => map.removeLayer(m));
+            parkingMarkers = [];
+            playaIdToMarker.clear();
+
             const playasAMostrar = isSearchMode ? searchResults : playas;
 
-            playasAMostrar.forEach(function(playa) {
-                // Validar que las coordenadas sean válidas
-                if (!playa.plyLat || !playa.plyLon || 
-                    isNaN(playa.plyLat) || isNaN(playa.plyLon) ||
-                    playa.plyLat === undefined || playa.plyLon === undefined) {
+            playasAMostrar.forEach(playa => {
+                if (playa.plyLat == null || playa.plyLon == null || isNaN(playa.plyLat) || isNaN(playa.plyLon)){
                     console.warn(`Coordenadas inválidas para ${playa.plyNom}: lat=${playa.plyLat}, lon=${playa.plyLon}`);
-                    return; // Saltar esta playa
+                    return;
                 }
 
                 const icon = crearIconoPlaya(playa, isSearchMode);
-                
-
-                const marker = L.marker([playa.plyLat, playa.plyLon], {
-                    icon: icon
-                }).addTo(map);
+                const marker = L.marker([playa.plyLat, playa.plyLon], { icon }).addTo(map);
 
                 const popupContent = `
-                    <div style="min-width: 220px;">
-                        <h6 style="margin: 0 0 10px 0; color: #2c3e50;">${playa.plyNom}</h6>
-                        <p style="margin: 5px 0; font-size: 14px;"><strong>Dirección:</strong> ${playa.plyDir}</p>
-                        <p style="margin: 5px 0; font-size: 14px;"><strong>Disponibilidad:</strong> ${playa.disponibilidad}%</p>
-                        <p style="margin: 5px 0; font-size: 14px;"><strong>Estado:</strong> ${playa.estaAbierto ? 'Abierto' : 'Cerrado'}</p>
-                        ${isSearchMode ? `<p style="margin: 5px 0; font-size: 14px; color: #dc3545;"><strong>📍 Distancia:</strong> ${playa.distancia.toFixed(2)} km</p>` : ''}
-                        ${isSearchMode ? '<p style="margin: 5px 0; font-size: 12px; color: #dc3545; font-weight: bold;">🔍 Uno de los 3 más cercanos</p>' : ''}
-
-                        <div class="d-flex gap-1 mt-2">
-                            <button class="btn btn-sm btn-primary flex-fill" onclick="window.seleccionarPlayaDesdePopup(${playa.plyID})" style="cursor: pointer;">
-                                Ver detalles
-                            </button>
-                            <button class="btn btn-sm btn-outline-warning flex-fill" onclick="window.agregarFavoritaDesdePopup(${playa.plyID})" style="cursor: pointer;">
-                                ★ Favorito
-                            </button>
-                        </div>
+                  <div style="min-width:220px;">
+                    <h6 style="margin:0 0 10px;color:#2c3e50;">${playa.plyNom}</h6>
+                    <p style="margin:5px 0;font-size:14px;"><strong>Dirección:</strong> ${playa.plyDir}</p>
+                    <p style="margin:5px 0;font-size:14px;"><strong>Disponibilidad:</strong> ${playa.disponibilidad}%</p>
+                    <p style="margin:5px 0;font-size:14px;"><strong>Estado:</strong> ${playa.estaAbierto ? 'Abierto' : 'Cerrado'}</p>
+                    ${isSearchMode ? `<p style="margin:5px 0;font-size:14px;color:#dc3545;"><strong>📍 Distancia:</strong> ${Number(playa.distancia||0).toFixed(2)} km</p>` : ''}
+                    ${isSearchMode ? '<p style="margin:5px 0;font-size:12px;color:#dc3545;font-weight:bold;">🔍 Uno de los 3 más cercanos</p>' : ''}
+                    <div class="d-flex gap-1 mt-2">
+                      <button class="btn btn-sm btn-primary flex-fill" onclick="window.seleccionarPlayaDesdePopup(${playa.plyID})">Ver detalles</button>
+                      <button class="btn btn-sm btn-outline-warning flex-fill" onclick="window.agregarFavoritaDesdePopup(${playa.plyID})">★ Favorito</button>
                     </div>
-                `;
-                
+                  </div>`;
                 marker.bindPopup(popupContent);
 
-                // Evento click para seleccionar playa
-                marker.on('click', function(e) {
-                    console.log('🖱️ CLIC EN MARCADOR:', playa.plyNom);
-                    console.log('Evento:', e);
-                    seleccionarPlaya(playa);
-                });
-                
-                // También capturar cuando se abre el popup
-                marker.on('popupopen', function() {
-                    console.log('📋 Popup abierto para:', playa.plyNom);
-                });
+                marker.on('click', () => seleccionarPlaya(playa));
+                marker.on('popupopen', () => console.log('📋 Popup abierto para:', playa.plyNom));
+
+                if (playa.plyID != null) playaIdToMarker.set(playa.plyID, marker);
 
                 parkingMarkers.push(marker);
             });
-
-            if (isSearchMode) {
-                console.log(`Mostrando los 3 estacionamientos más cercanos a la dirección buscada`);
-                // Mostrar mensaje informativo
-                if (playasAMostrar.length > 0) {
-                    console.log(`📍 Ubicación buscada: ${$('#searchInput').val()}`);
-                    console.log(`🔍 Encontrados ${playasAMostrar.length} estacionamientos más cercanos:`);
-                    playasAMostrar.forEach((playa, index) => {
-                        console.log(`${index + 1}. ${playa.plyNom} - ${playa.distancia.toFixed(2)} km`);
-                    });
-                }
-            } else {
-                console.log(`Mostrando ${playasAMostrar.length} playas en el mapa`);
-            }
         }
 
-        // Mostrar las ubicaciones favoritas en el mapa
-        function mostrarFavoritosEnMapa() {
-            // Limpiar marcadores anteriores
+        function openMarkerPopup(playaLike){
+            // Intenta abrir el popup del marker existente
+            const marker = playaIdToMarker.get(playaLike?.plyID);
+            if (marker){ marker.openPopup(); return; }
+
+            // Si no hay marker (p.ej. vino de favorito aislado), muestra popup temporal
+            if (transientPopup) map.closePopup(transientPopup);
+            const nombre = playaLike?.plyNom || playaLike?.apodo || 'Ubicación';
+            const dir = playaLike?.plyDir || playaLike?.direccion || '';
+            transientPopup = L.popup({ closeOnClick:true, autoClose:true })
+                .setLatLng([playaLike.plyLat || playaLike.lat, playaLike.plyLon || playaLike.lon])
+                .setContent(`<strong>${nombre}</strong><br>${dir}`)
+                .openOn(map);
+        }
+
+        // Mostrar favoritos con ⭐
+        function crearIconoFavorito(){
+            return L.divIcon({ className:'favorite-map-icon', html:'<i class="fa-solid fa-star"></i>', iconSize:[30,30], iconAnchor:[15,15] });
+        }
+
+        function mostrarFavoritosEnMapa(){
             favoriteMarkers.forEach(m => map.removeLayer(m));
             favoriteMarkers = [];
-
-            console.log('Mostrando favoritos en mapa:', favoritos);
-
-            if (!favoritos || favoritos.length === 0) return;
+            if (!favoritos?.length) return;
 
             favoritos.forEach(fav => {
-                const lat = fav.lat ?? fav.ubfLat ?? fav.UbfLat;
-                const lon = fav.lon ?? fav.ubfLon ?? fav.UbfLon;
+                const lat = parseFloat(fav.lat ?? fav.ubfLat ?? fav.UbfLat);
+                const lon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
+                if (isNaN(lat) || isNaN(lon)) return;
 
-                if (lat === undefined || lat === null || lon === undefined || lon === null) {
-                    console.warn('Favorito sin coordenadas:', fav);
-                    return;
-                }
+                const marker = L.marker([lat, lon], { icon:crearIconoFavorito(), zIndexOffset:500 })
+                    .addTo(map)
+                    .bindPopup(`<strong>${fav.apodo}</strong><br>${fav.direccion || fav.ciudad || ''}`);
 
-                const latNum = parseFloat(lat);
-                const lonNum = parseFloat(lon);
-                if (isNaN(latNum) || isNaN(lonNum)) {
-                    console.warn('Coordenadas no numéricas para favorito:', fav);
-                    return;
-                }
-
-                const marker = L.marker([latNum, lonNum], {
-                    icon: crearIconoFavorito(),
-                    zIndexOffset: 500
-                });
-
-                marker.bindPopup(`<strong>${fav.apodo}</strong><br>${fav.direccion || fav.ciudad || ''}`);
-
-                // Click en la estrella
                 marker.on('click', () => irAFavorito(fav));
-
-                marker.addTo(map);
                 favoriteMarkers.push(marker);
             });
         }
 
-
-
-        function crearIconoPlaya(playa, esResultadoBusqueda = false) {
-            let className = 'custom-parking-icon';
-            
-            if (esResultadoBusqueda) {
-                className += ' search-result'; // Rojo para resultados de búsqueda
-            } else if (!playa.estaAbierto) {
-                className += ' closed';
-            } else if (playa.disponibilidad > 50) {
-                className += ' available';
-            }
-
-            return L.divIcon({
-                className: className,
-                html: 'P',
-                iconSize: [30, 30],
-                iconAnchor: [15, 15]
-            });
-        }
-
-        // Crear icono de estrella para ubicaciones favoritas
-        function crearIconoFavorito() {
-            return L.divIcon({
-                className: 'favorite-map-icon',
-                html: '<i class="fa-solid fa-star"></i>',
-                iconSize: [30, 30],
-                iconAnchor: [15, 15]
-            });
-        }
-
-        // Función auxiliar para llamar desde el popup
-        window.seleccionarPlayaDesdePopup = function(plyID) {
-            console.log('🔘 Botón "Ver detalles" presionado para playa ID:', plyID);
+        // Helpers popup en botones del popup de playa
+        window.seleccionarPlayaDesdePopup = function(plyID){
             const playa = playas.find(p => p.plyID === plyID);
-            if (playa) {
-                seleccionarPlaya(playa);
-            } else {
-                console.error('❌ No se encontró la playa con ID:', plyID);
-            }
+            if (playa) seleccionarPlaya(playa);
         };
-
-        // Guardar playa actual como favorita (desde el popup)
-        window.agregarFavoritaDesdePopup = function(plyID) {
+        window.agregarFavoritaDesdePopup = function(plyID){
             const playa = playas.find(p => p.plyID === plyID);
-            if (!playa) {
-                console.error('No se encontró la playa con ID:', plyID);
-                alert('No se pudo guardar la playa como favorita.');
-                return;
-            }
-
+            if (!playa) return alert('No se pudo guardar la playa como favorita.');
             const apodo = prompt('¿Cómo querés llamar a esta playa favorita?', playa.plyNom);
-            if (apodo === null) return; // Canceló
-            if (apodo.trim() === '') {
-                alert('El apodo no puede estar vacío.');
-                return;
-            }
-
-            const payload = {
-                apodo: apodo.trim(),
-                provincia: playa.plyProv || '',
-                ciudad: playa.plyCiu || '',
-                direccion: playa.plyDir || '',
-                tipo: 'Playa',
-                lat: playa.plyLat,
-                lon: playa.plyLon
-            };
-
-            guardarUbicacionFavorita(payload).then(() => {
-                cargarUbicacionesFavoritas();
-            });
+            if (apodo == null || apodo.trim() === '') return;
+            const payload = { apodo: apodo.trim(), provincia: playa.plyProv || '', ciudad: playa.plyCiu || '', direccion: playa.plyDir || '', tipo:'Playa', lat: playa.plyLat, lon: playa.plyLon };
+            guardarUbicacionFavorita(payload).then(() => cargarUbicacionesFavoritas());
         };
+        if (d.success) {
+            fav.apodo = nuevoApodo.trim();
+            refreshFavoritesUI(); // en vez de solo renderizar
+        }
 
-        function seleccionarPlaya(playa) {
-            console.log('🎯 FUNCIÓN seleccionarPlaya EJECUTADA');
-            console.log('Playa recibida:', playa);
-            console.log('Playa ID:', playa.plyID);
-            console.log('Estado actual:', playa.estaAbierto);
-            
+        function seleccionarPlaya(playa){
             playaSeleccionada = playa;
-            
-            // Centrar el mapa en la playa seleccionada
             map.setView([playa.plyLat, playa.plyLon], 16);
-            
-            // Obtener detalles completos
+
             $.get('/Conductor/GetDetallePlaya', { id: playa.plyID })
-            .done(function(detalle) {
-                // 🔍 DEBUG: Mostrar información de depuración en consola
-                console.log('=== DEBUG HORARIOS PLAYA ===');
-                console.log('Playa ID:', detalle.plyID);
-                console.log('Estado calculado:', detalle.estaAbierto ? 'ABIERTO' : 'CERRADO');
-                if (detalle.debug) {
-                    console.log('Hora actual:', detalle.debug.horaActual);
-                    console.log('Día actual:', detalle.debug.diaActual);
-                    console.log('Total horarios:', detalle.debug.totalHorarios);
-                    console.log('Horarios detalle:', detalle.debug.horariosDetalle);
-                }
-                console.log('Respuesta completa:', detalle);
-                console.log('===========================');
-                
-                mostrarDetallePlaya(detalle);
-                $('#bottomMenu').addClass('show');
-            })
-            .fail(function(xhr, status, error) {
-                console.error('Error al obtener detalles de la playa:', error);
-                // Mostrar información básica si falla la petición
-                mostrarDetallePlayaBasico(playa);
-                $('#bottomMenu').addClass('show');
-            });
+             .done(detalle => {
+                 mostrarDetallePlaya(detalle);
+                 $('#bottomMenu').addClass('show');
+                 // abrir popup (marker o temporal)
+                 openMarkerPopup({ ...detalle, plyLat: detalle.plyLat ?? playa.plyLat, plyLon: detalle.plyLon ?? playa.plyLon });
+             })
+             .fail(() => {
+                 mostrarDetallePlayaBasico(playa);
+                 $('#bottomMenu').addClass('show');
+                 openMarkerPopup(playa);
+             });
         }
 
-        function mostrarDetallePlaya(detalle) {
+        function mostrarDetallePlaya(detalle){
             $('#playaNombre').text(detalle.plyNom);
-            $('#estadoBadge').text(detalle.estaAbierto ? 'Abierto' : 'Cerrado');
-            $('#estadoBadge').removeClass('open closed').addClass(detalle.estaAbierto ? 'open' : 'closed');
-            
-            // Mostrar ocupación en lugar de disponibilidad
+            $('#estadoBadge').text(detalle.estaAbierto ? 'Abierto' : 'Cerrado').removeClass('open closed').addClass(detalle.estaAbierto ? 'open' : 'closed');
             const ocupacion = 100 - detalle.disponibilidad;
-            $('#disponibilidadTexto').text(ocupacion + '% ocupado');
-            $('#disponibilidadBarra').css('width', ocupacion + '%');
-            
-            $('#tipoPiso').text(detalle.plyTipoPiso);
-            $('#direccion').text(detalle.plyDir);
-            // Formatear valor promedio a 2 decimales
-            var valorFormateado = parseFloat(detalle.plyValProm || 0).toFixed(2);
-            $('#valorPromedio').text('$' + valorFormateado + '/hora');
-            
-            // Mostrar horarios - solo "Lunes a Viernes" y "Sábado Domingo"
-            let horariosHtml = '<div style="margin-top: 5px;">';
-            let tieneHorarios = false;
-            
-            if (detalle.horariosLunesViernes && detalle.horariosLunesViernes.length > 0) {
-                tieneHorarios = true;
-                horariosHtml += '<div style="margin-bottom: 5px;"><strong>Lunes a Viernes:</strong> ';
-                let rangos = detalle.horariosLunesViernes.map(h => `${h.horaInicio} - ${h.horaFin}`).join(', ');
-                horariosHtml += rangos + '</div>';
-            }
-            
-            if (detalle.horariosFinSemana && detalle.horariosFinSemana.length > 0) {
-                tieneHorarios = true;
-                horariosHtml += '<div style="margin-bottom: 5px;"><strong>Sábado Domingo:</strong> ';
-                let rangos = detalle.horariosFinSemana.map(h => `${h.horaInicio} - ${h.horaFin}`).join(', ');
-                horariosHtml += rangos + '</div>';
-            }
-            
+            $('#disponibilidadTexto').text(ocupacion + '% ocupado'); $('#disponibilidadBarra').css('width', ocupacion + '%');
+            $('#tipoPiso').text(detalle.plyTipoPiso); $('#direccion').text(detalle.plyDir);
+            $('#valorPromedio').text('$' + (parseFloat(detalle.plyValProm || 0).toFixed(2)) + '/hora');
+
+            let horariosHtml = '<div style="margin-top:5px;">', tiene=false;
+            if (detalle.horariosLunesViernes?.length){ tiene=true; horariosHtml += '<div style="margin-bottom:5px;"><strong>Lunes a Viernes:</strong> ' + detalle.horariosLunesViernes.map(h=>`${h.horaInicio} - ${h.horaFin}`).join(', ') + '</div>'; }
+            if (detalle.horariosFinSemana?.length){ tiene=true; horariosHtml += '<div style="margin-bottom:5px;"><strong>Sábado Domingo:</strong> ' + detalle.horariosFinSemana.map(h=>`${h.horaInicio} - ${h.horaFin}`).join(', ') + '</div>'; }
             horariosHtml += '</div>';
-            
-            if (tieneHorarios) {
-                $('#horariosInfo').html(horariosHtml);
-                $('#horariosSection').show();
-            } else {
-                $('#horariosInfo').html('<span style="color: #dc3545;">No hay horarios configurados</span>');
-                $('#horariosSection').show();
-            }
-            
-            // Ocultar sección de debug
-            $('#debugInfoSection').hide();
-            
-            $('#playaInfo').show();
+            $('#horariosInfo').html(tiene ? horariosHtml : '<span style="color:#dc3545;">No hay horarios configurados</span>');
+            $('#horariosSection').show(); $('#debugInfoSection').hide(); $('#playaInfo').show();
         }
 
-        function mostrarDetallePlayaBasico(playa) {
+        function mostrarDetallePlayaBasico(playa){
             $('#playaNombre').text(playa.plyNom);
-            $('#estadoBadge').text(playa.estaAbierto ? 'Abierto' : 'Cerrado');
-            $('#estadoBadge').removeClass('open closed').addClass(playa.estaAbierto ? 'open' : 'closed');
-            
-            // Mostrar ocupación en lugar de disponibilidad
-            const ocupacion = 100 - playa.disponibilidad;
-            $('#disponibilidadTexto').text(ocupacion + '% ocupado');
-            $('#disponibilidadBarra').css('width', ocupacion + '%');
-            
-            $('#tipoPiso').text(playa.plyTipoPiso);
-            $('#direccion').text(playa.plyDir);
-            // Formatear valor promedio a 2 decimales
-            var valorFormateado = parseFloat(playa.plyValProm || 0).toFixed(2);
-            $('#valorPromedio').text('$' + valorFormateado + '/hora');
-            
+            $('#estadoBadge').text(playa.estaAbierto ? 'Abierto' : 'Cerrado').removeClass('open closed').addClass(playa.estaAbierto ? 'open' : 'closed');
+            const ocupacion = 100 - playa.disponibilidad; $('#disponibilidadTexto').text(ocupacion + '% ocupado'); $('#disponibilidadBarra').css('width', ocupacion + '%');
+            $('#tipoPiso').text(playa.plyTipoPiso); $('#direccion').text(playa.plyDir);
+            $('#valorPromedio').text('$' + (parseFloat(playa.plyValProm || 0).toFixed(2)) + '/hora');
             $('#playaInfo').show();
         }
 
-        function closeMenu() {
-            $('#bottomMenu').removeClass('show');
-            playaSeleccionada = null;
-        }
+        function closeMenu(){ $('#bottomMenu').removeClass('show'); playaSeleccionada = null; }
+        function centerOnConductor(){ map.setView([conductorLat, conductorLon], 15); }
+        function abrirNavegacion(){ if (playaSeleccionada) window.open(`https://www.google.com/maps/dir/?api=1&destination=${playaSeleccionada.plyLat},${playaSeleccionada.plyLon}`, '_blank'); }
 
-        function centerOnConductor() {
-            map.setView([conductorLat, conductorLon], 15);
-        }
-
-        function abrirNavegacion() {
-            if (playaSeleccionada) {
-                const url = `https://www.google.com/maps/dir/?api=1&destination=${playaSeleccionada.plyLat},${playaSeleccionada.plyLon}`;
-                window.open(url, '_blank');
-            }
-        }
-
-        function buscarDireccion() {
+        function buscarDireccion(){
             const direccion = $('#searchInput').val().trim();
-            if (!direccion) {
-                alert('Por favor ingresa una dirección');
-                return;
-            }
-
-            // Mostrar botón de limpiar
+            if (!direccion) return alert('Por favor ingresa una dirección');
             $('#clearBtn').addClass('show');
-
-            // Usar geocoding para obtener coordenadas de la dirección
-            const geocodingUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion + ', Resistencia, Chaco')}&limit=1`;
-            
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion + ', Resistencia, Chaco')}&limit=1`;
             $('#loading').show();
-            
-            $.get(geocodingUrl)
-                .done(function(data) {
-                    if (data && data.length > 0) {
-                        const lat = parseFloat(data[0].lat);
-                        const lon = parseFloat(data[0].lon);
-                        
-                        // Centrar el mapa en la dirección buscada
-                        map.setView([lat, lon], 15);
-                        
-                        // Buscar playas cercanas a esa dirección
-                        buscarPlayasCercanas(lat, lon);
-                    } else {
-                        alert('No se encontró la dirección. Intenta con una dirección más específica.');
-                        $('#loading').hide();
-                    }
-                })
-                .fail(function() {
-                    alert('Error al buscar la dirección. Intenta nuevamente.');
-                    $('#loading').hide();
-                });
+            $.get(url)
+             .done(data => {
+                 if (data?.length){
+                    const lat = parseFloat(data[0].lat), lon = parseFloat(data[0].lon);
+                    map.setView([lat, lon], 15);
+                    buscarPlayasCercanas(lat, lon);
+                 } else { alert('No se encontró la dirección.'); $('#loading').hide(); }
+             })
+             .fail(()=>{ alert('Error al buscar la dirección.'); $('#loading').hide(); });
         }
 
-        function buscarPlayasCercanas(lat, lon) {
-            $.get('/Conductor/GetPlayasCercanas', {
-                lat: lat,
-                lon: lon,
-                radioKm: 10 // Radio más amplio para obtener más opciones
-            })
-            .done(function(data) {
-                console.log('Playas cercanas encontradas:', data);
-                
-                // Ordenar por distancia y tomar solo los 3 más cercanos
-                searchResults = data.sort((a, b) => a.distancia - b.distancia).slice(0, 3);
-                
-                // Agregar marcador de ubicación buscada
-                if (searchLocationMarker) {
-                    map.removeLayer(searchLocationMarker);
-                }
-                
-                searchLocationMarker = L.marker([lat, lon], {
-                    icon: L.divIcon({
-                        className: 'search-location-marker',
-                        html: '<i class="fa-solid fa-location-dot" style="color: #dc3545; font-size: 24px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);"></i>',
-                        iconSize: [30, 30],
-                        iconAnchor: [15, 15]
-                    })
-                }).addTo(map);
-                
-                searchLocationMarker.bindPopup('<b>Ubicación buscada</b><br>Dirección: ' + $('#searchInput').val()).openPopup();
-                
-                isSearchMode = true;
-                mostrarPlayasEnMapa();
-                $('#loading').hide();
-            })
-            .fail(function(xhr, status, error) {
-                console.error('Error al buscar playas cercanas:', error);
-                $('#loading').hide();
-            });
+        function buscarPlayasCercanas(lat, lon){
+            $.get('/Conductor/GetPlayasCercanas', { lat, lon, radioKm:10 })
+             .done(data => {
+                 searchResults = (data || []).sort((a,b)=>a.distancia - b.distancia).slice(0,3);
+                 if (searchLocationMarker) map.removeLayer(searchLocationMarker);
+                 searchLocationMarker = L.marker([lat, lon], { icon: L.divIcon({ className:'search-location-marker', html:'<i class="fa-solid fa-location-dot" style="color:#dc3545;font-size:24px;text-shadow:2px 2px 4px rgba(0,0,0,.3);"></i>', iconSize:[30,30], iconAnchor:[15,15] }) }).addTo(map);
+                 searchLocationMarker.bindPopup('<b>Ubicación buscada</b><br>Dirección: ' + $('#searchInput').val()).openPopup();
+                 isSearchMode = true; mostrarPlayasEnMapa(); $('#loading').hide();
+             })
+             .fail(()=> $('#loading').hide());
         }
 
-        function volverAVistaNormal() {
-            isSearchMode = false;
-            searchResults = [];
-            $('#searchInput').val('');
-            $('#clearBtn').removeClass('show');
-            
-            // Remover marcador de ubicación buscada
-            if (searchLocationMarker) {
-                map.removeLayer(searchLocationMarker);
-                searchLocationMarker = null;
-            }
-            
-            cargarPlayas(); // Recargar todas las playas
+        function volverAVistaNormal(){
+            isSearchMode = false; searchResults = []; $('#searchInput').val(''); $('#clearBtn').removeClass('show');
+            if (searchLocationMarker){ map.removeLayer(searchLocationMarker); searchLocationMarker = null; }
+            cargarPlayas();
+        }
+        function limpiarBusqueda(){ $('#searchInput').val(''); $('#clearBtn').removeClass('show'); volverAVistaNormal(); }
+
+        function inicializarEscalaPersonalizada(){ map.on('zoomend', actualizarEscala); map.on('moveend', actualizarEscala); actualizarEscala(); }
+        function actualizarEscala(){
+            if (!map?.getCenter) return;
+            try{
+                const d = map.containerPointToLatLng([0,0]).distanceTo(map.containerPointToLatLng([100,0]));
+                let text='1 km';
+                if (d >= 1000) text = Math.round(d/1000) + ' km';
+                else if (d >= 100) text = Math.round(d/100)*100 + ' m';
+                else if (d >= 10) text = Math.round(d/10)*10 + ' m';
+                else text = Math.round(d) + ' m';
+                $('#scaleText').text(text); $('#scaleLine').css('width', '100px');
+            } catch(e){ $('#scaleText').text('1 km'); $('#scaleLine').css('width','100px'); }
         }
 
-        function limpiarBusqueda() {
-            $('#searchInput').val('');
-            $('#clearBtn').removeClass('show');
-            volverAVistaNormal();
-        }
-
-        function inicializarEscalaPersonalizada() {
-            // Actualizar escala cuando cambie el zoom
-            map.on('zoomend', actualizarEscala);
-            map.on('moveend', actualizarEscala);
-            
-            // Actualizar escala inicial
-            actualizarEscala();
-        }
-
-        function actualizarEscala() {
-            // Verificar que el mapa esté inicializado
-            if (!map || !map.getCenter) {
-                return;
-            }
-            
-            try {
-                const center = map.getCenter();
-                const zoom = map.getZoom();
-                
-                // Calcular la distancia en metros para 100 píxeles
-                const point1 = map.containerPointToLatLng([0, 0]);
-                const point2 = map.containerPointToLatLng([100, 0]);
-                const distance = point1.distanceTo(point2);
-                
-                // Determinar la mejor unidad y valor
-                let scaleText, scaleWidth;
-                
-                if (distance >= 1000) {
-                    // Usar kilómetros
-                    const km = Math.round(distance / 1000);
-                    scaleText = km + ' km';
-                    scaleWidth = 100; // 100 píxeles
-                } else if (distance >= 100) {
-                    // Usar metros
-                    const m = Math.round(distance / 100) * 100;
-                    scaleText = m + ' m';
-                    scaleWidth = 100;
-                } else if (distance >= 10) {
-                    // Usar metros más pequeños
-                    const m = Math.round(distance / 10) * 10;
-                    scaleText = m + ' m';
-                    scaleWidth = 100;
-                } else {
-                    // Usar metros muy pequeños
-                    const m = Math.round(distance);
-                    scaleText = m + ' m';
-                    scaleWidth = 100;
-                }
-                
-                // Actualizar el texto y el ancho de la línea
-                $('#scaleText').text(scaleText);
-                $('#scaleLine').css('width', scaleWidth + 'px');
-            } catch (error) {
-                console.log('Escala no disponible aún:', error);
-                // Mostrar escala por defecto
-                $('#scaleText').text('1 km');
-                $('#scaleLine').css('width', '100px');
-            }
-        }
-
-        // ================== FAVORITOS ==================
-
-        function toggleFavorites() {
+        /* ===== Favoritos (panel) ===== */
+        function toggleFavorites(){
             const panel = document.getElementById('favoritesPanel');
             const icon = document.getElementById('favoritesToggleIcon');
-            
             panel.classList.toggle('collapsed');
-            if (panel.classList.contains('collapsed')) {
-                icon.classList.remove('fa-chevron-down');
-                icon.classList.add('fa-chevron-up');
-            } else {
-                icon.classList.remove('fa-chevron-up');
-                icon.classList.add('fa-chevron-down');
-            }
+            if (panel.classList.contains('collapsed')){ icon.classList.remove('fa-chevron-down'); icon.classList.add('fa-chevron-up'); }
+            else { icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
         }
 
-        // POST: guardar ubicación favorita
-        function guardarUbicacionFavorita(ubicacion) {
+        function guardarUbicacionFavorita(ubicacion){
             return fetch('@Url.Action("AgregarUbicacionFavorita", "Conductor")', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': antiforgeryToken
-                },
-                body: JSON.stringify(ubicacion)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log('Favorito guardado correctamente');
-                    alert('Ubicación favorita guardada correctamente.');
-                } else {
-                    console.warn('Error al guardar favorito:', data.error);
-                    alert(data.error || 'No se pudo guardar la ubicación favorita.');
-                }
-                return data;
-            })
-            .catch(err => {
-                console.error('Error en la petición de favorito:', err);
-                alert('Ocurrió un error al guardar la ubicación favorita.');
-            });
+                method:'POST', headers:{ 'Content-Type':'application/json', 'RequestVerificationToken': antiforgeryToken }, body: JSON.stringify(ubicacion)
+            }).then(r=>r.json()).then(d=>{
+                if (d.success) alert('Ubicación favorita guardada correctamente.');
+                else alert(d.error || 'No se pudo guardar la ubicación favorita.');
+                return d;
+            }).catch(()=> alert('Ocurrió un error al guardar la ubicación favorita.'));
         }
-        // GET: cargar ubicaciones favoritas del conductor
-        function cargarUbicacionesFavoritas() {
+
+        function cargarUbicacionesFavoritas(){
             $.get('@Url.Action("GetUbicacionesFavoritas", "Conductor")')
-                .done(function (data) {
-                    console.log('Favoritos recibidos:', data);
-
-                    if (data && !data.error) {
-                        favoritos = data;
-                        renderizarFavoritos();      // lista del panel
-                        mostrarFavoritosEnMapa();   // ⭐ estrellas en el mapa
-                    } else {
-                        console.log('No se pudieron obtener los favoritos:', data.error);
-                    }
-                })
-                .fail(function (xhr, status, error) {
-                    console.error('Error al obtener favoritos:', error);
-                });
+             .done(data => { if (data && !data.error){ favoritos = data; renderizarFavoritos(); mostrarFavoritosEnMapa(); }});
         }
 
-        // Renderizar lista en el panel
-        function renderizarFavoritos() {
+        function renderizarFavoritos(){
             const lista = document.getElementById('listaFavoritos');
             const mensajeVacio = document.getElementById('favoritosVacio');
-
             lista.innerHTML = '';
-
-            if (!favoritos || favoritos.length === 0) {
-                mensajeVacio.style.display = 'block';
-                return;
-            }
-
+            if (!favoritos?.length){ mensajeVacio.style.display = 'block'; return; }
             mensajeVacio.style.display = 'none';
 
             favoritos.forEach(fav => {
-                const li = document.createElement('li');
-                li.classList.add('favorite-item');
+                const li = document.createElement('li'); li.classList.add('favorite-item');
 
                 const mainBtn = document.createElement('button');
-                mainBtn.type = 'button';
-                mainBtn.className = 'favorite-main-btn';
-                mainBtn.innerHTML = `
-                    <span>${fav.apodo}</span>
-                    <span>${fav.direccion || (fav.ciudad || '')}</span>
-                `;
-                mainBtn.onclick = function () {
-                    irAFavorito(fav);
-                };
+                mainBtn.type = 'button'; mainBtn.className = 'favorite-main-btn';
+                mainBtn.innerHTML = `<span>${fav.apodo}</span><span>${fav.direccion || (fav.ciudad || '')}</span>`;
+                mainBtn.onclick = () => irAFavorito(fav);
 
-                // Botón editar
+                const viewBtn = document.createElement('button');
+                viewBtn.type = 'button'; viewBtn.className = 'favorite-view-btn'; viewBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+                viewBtn.onclick = (e)=>{ e.stopPropagation(); irAFavorito(fav); };
+
                 const editBtn = document.createElement('button');
-                editBtn.type = 'button';
-                editBtn.className = 'favorite-edit-btn';
-                editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
-                editBtn.onclick = function (e) {
-                    e.stopPropagation();
-                    editarFavorito(fav);
-                };
+                editBtn.type = 'button'; editBtn.className = 'favorite-edit-btn'; editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+                editBtn.onclick = (e)=>{ e.stopPropagation(); editarFavorito(fav); };
 
-                // Botón eliminar
                 const removeBtn = document.createElement('button');
-                removeBtn.type = 'button';
-                removeBtn.className = 'favorite-remove-btn';
-                removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-                removeBtn.onclick = function (e) {
-                    e.stopPropagation();
-                    eliminarFavorito(fav);
-                };
+                removeBtn.type = 'button'; removeBtn.className = 'favorite-remove-btn'; removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+                removeBtn.onclick = (e)=>{ e.stopPropagation(); eliminarFavorito(fav); };
 
-                li.appendChild(mainBtn);
-                li.appendChild(editBtn);
-                li.appendChild(removeBtn);
+                li.appendChild(mainBtn); li.appendChild(viewBtn); li.appendChild(editBtn); li.appendChild(removeBtn);
                 lista.appendChild(li);
             });
         }
 
+        function irAFavorito(fav){
+            const lat = parseFloat(fav.lat ?? fav.ubfLat ?? fav.UbfLat);
+            const lon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
+            if (isNaN(lat) || isNaN(lon)) return alert('Este favorito no tiene coordenadas válidas.');
 
-        // Ir al favorito: centrar mapa y buscar playas cercanas
-        function irAFavorito(fav) {
-            const lat = fav.lat ?? fav.ubfLat ?? fav.UbfLat;
-            const lon = fav.lon ?? fav.ubfLon ?? fav.UbfLon;
-
-            if (lat === undefined || lon === undefined) {
-                alert('Este favorito no tiene coordenadas guardadas.');
-                return;
-            }
-
-            const latNum = parseFloat(lat);
-            const lonNum = parseFloat(lon);
-            if (isNaN(latNum) || isNaN(lonNum)) {
-                alert('Las coordenadas de este favorito no son válidas.');
-                return;
-            }
-
-            // Centrar el mapa
-            map.setView([latNum, lonNum], 16);
-
+            map.setView([lat, lon], 16);
             $('#loading').show();
 
-            // Buscar si la playa del favorito ya está cargada en memoria (por coordenadas)
-            const playaCoincidente = playas.find(p =>
-                p.plyLat && p.plyLon &&
-                Math.abs(parseFloat(p.plyLat) - latNum) < 0.0001 &&
-                Math.abs(parseFloat(p.plyLon) - lonNum) < 0.0001
-            );
+            // ¿Existe ya alguna playa en memoria en esas coords?
+            const playaCoincidente = playas.find(p => p.plyLat && p.plyLon && Math.abs(parseFloat(p.plyLat)-lat) < 0.0001 && Math.abs(parseFloat(p.plyLon)-lon) < 0.0001);
 
-            if (playaCoincidente) {
-                console.log('➡️ Playa encontrada localmente:', playaCoincidente.plyNom);
+            if (playaCoincidente){
                 $('#loading').hide();
-                seleccionarPlaya(playaCoincidente); // ✅ esto actualiza el footer
+                seleccionarPlaya(playaCoincidente);
+                openMarkerPopup(playaCoincidente);
                 return;
             }
 
-            // Si no está en la lista, buscarla en el servidor
-            $.get('/Conductor/GetPlayasCercanas', {
-                lat: latNum,
-                lon: lonNum,
-                radioKm: 2
-            })
-            .done(function (data) {
-                $('#loading').hide();
-
-                if (data && data.length > 0) {
-                    // Tomar la más cercana y usar el flujo normal
+            // Buscar en servidor
+            $.get('/Conductor/GetPlayasCercanas', { lat, lon, radioKm:2 })
+             .done(data => {
+                 $('#loading').hide();
+                 if (data?.length){
                     const playa = data[0];
-                    console.log('➡️ Playa encontrada por coordenadas:', playa.plyNom);
-                    seleccionarPlaya(playa); // ✅ usa el mismo flujo de detalle
-                } else {
-                    // No hay playas cercanas → mostrar solo datos del favorito
+                    seleccionarPlaya(playa);
+                    setTimeout(()=> openMarkerPopup(playa), 300);
+                 } else {
+                    // No hay playas → mostrar datos del favorito y popup de ubicación
                     $('#playaNombre').text(fav.apodo);
                     $('#estadoBadge').text('N/A').removeClass('open closed');
-                    $('#disponibilidadTexto').text('Sin datos');
-                    $('#disponibilidadBarra').css('width', '0%');
-                    $('#tipoPiso').text('No disponible');
-                    $('#direccion').text(fav.direccion || fav.ciudad || '');
-                    $('#valorPromedio').text('N/A');
-                    $('#horariosInfo').html('<span style="color:#dc3545;">Sin playas cercanas</span>');
-                    $('#horariosSection').show();
-                    $('#playaInfo').show();
-                    $('#bottomMenu').addClass('show');
-                }
+                    $('#disponibilidadTexto').text('Sin datos'); $('#disponibilidadBarra').css('width','0%');
+                    $('#tipoPiso').text('No disponible'); $('#direccion').text(fav.direccion || fav.ciudad || ''); $('#valorPromedio').text('N/A');
+                    $('#horariosInfo').html('<span style="color:#dc3545;">Sin playas cercanas</span>'); $('#horariosSection').show(); $('#playaInfo').show(); $('#bottomMenu').addClass('show');
 
-                setTimeout(() => map.invalidateSize(), 200);
-            })
-            .fail(function (xhr, status, error) {
-                $('#loading').hide();
-                console.error('Error al cargar playas desde favorito:', error);
-            });
+                    if (transientPopup) map.closePopup(transientPopup);
+                    transientPopup = L.popup().setLatLng([lat, lon]).setContent(`<strong>${fav.apodo}</strong><br>${fav.direccion || ''}`).openOn(map);
+                 }
+                 setTimeout(()=> map.invalidateSize(), 200);
+             })
+             .fail(()=> $('#loading').hide());
         }
 
-
-
-
-        // DELETE: eliminar favorito
         function eliminarFavorito(fav) {
             if (!confirm(`¿Eliminar "${fav.apodo}" de tus favoritos?`)) return;
 
@@ -1930,66 +639,39 @@
             .done(function(data) {
                 if (data.success) {
                     favoritos = favoritos.filter(f => f.apodo !== fav.apodo);
-                    renderizarFavoritos();
+                    refreshFavoritesUI(); // <-- AHORA refresca mapa también
                 } else {
                     alert(data.error || 'No se pudo eliminar el favorito.');
                 }
             })
-            .fail(function(xhr, status, error) {
-                console.error('Error al eliminar favorito:', error);
+            .fail(function() {
                 alert('Ocurrió un error al eliminar el favorito.');
             });
         }
 
-        // EDIT: renombrar favorito
-        function editarFavorito(fav) {
-            const nuevoApodo = prompt('Nuevo nombre para esta ubicación favorita:', fav.apodo);
-            if (nuevoApodo === null) return; // canceló
-            if (nuevoApodo.trim() === '') {
-                alert('El nombre no puede estar vacío.');
-                return;
-            }
 
-            fetch('@Url.Action("EditarUbicacionFavorita", "Conductor")', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': antiforgeryToken
-                },
-                body: JSON.stringify({
-                    apodoActual: fav.apodo,
-                    nuevoApodo: nuevoApodo.trim()
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    fav.apodo = nuevoApodo.trim();
-                    renderizarFavoritos();
-                } else {
-                    alert(data.error || 'No se pudo renombrar la ubicación favorita.');
-                }
-            })
-            .catch(err => {
-                console.error('Error al renombrar favorito:', err);
-                alert('Ocurrió un error al renombrar la ubicación favorita.');
-            });
+        function refreshFavoritesUI() {
+            renderizarFavoritos();
+            mostrarFavoritosEnMapa(); // limpia y vuelve a dibujar estrellas según "favoritos"
         }
 
+        function editarFavorito(fav){
+            const nuevo = prompt('Nuevo nombre para esta ubicación favorita:', fav.apodo);
+            if (nuevo == null) return;
+            if (nuevo.trim() === '') return alert('El nombre no puede estar vacío.');
+            fetch('@Url.Action("EditarUbicacionFavorita", "Conductor")', {
+                method:'POST', headers:{ 'Content-Type':'application/json', 'RequestVerificationToken': antiforgeryToken },
+                body: JSON.stringify({ apodoActual: fav.apodo, nuevoApodo: nuevo.trim() })
+            }).then(r=>r.json()).then(d=>{
+                if (d.success){ fav.apodo = nuevo.trim(); renderizarFavoritos(); }
+                else alert(d.error || 'No se pudo renombrar la ubicación favorita.');
+            }).catch(()=> alert('Ocurrió un error al renombrar la ubicación favorita.'));
+        }
 
-        // ================== FIN FAVORITOS ==================
-
-        // Controles de teclado
-        $(document).keydown(function(e) {
-            switch(e.key) {
-                case 'Escape':
-                    closeMenu();
-                    break;
-                case 'c':
-                case 'C':
-                    centerOnConductor();
-                    break;
-            }
+        // Teclado
+        $(document).keydown(function(e){
+            if (e.key === 'Escape') closeMenu();
+            if (e.key === 'c' || e.key === 'C') centerOnConductor();
         });
     </script>
 </body>
