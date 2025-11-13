@@ -12,6 +12,14 @@
 }
 
 <div class="container-fluid py-4">
+    @if (TempData["Mensaje"] != null)
+    {
+        <div class="alert alert-@(TempData["TipoMensaje"] ?? "info") alert-dismissible fade show" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            @TempData["Mensaje"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
     <div class="row">
         <!-- Sección superior: Vehículo seleccionado -->
         <div class="col-12 mb-4">

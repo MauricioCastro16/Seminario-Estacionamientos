@@ -68,6 +68,63 @@ namespace estacionamientos.Controllers
         {
             try
             {
+                // Verificar si el conductor tiene un vehículo seleccionado o favorito
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                {
+                    return RedirectToAction("Login", "Account");
+                }
+
+                var conductorId = int.Parse(userId);
+
+                // Verificar si hay un vehículo seleccionado en la sesión
+                var vehiculoSeleccionado = HttpContext.Session.GetString("vehiculoSeleccionado");
+                bool tieneVehiculo = false;
+
+                if (!string.IsNullOrEmpty(vehiculoSeleccionado))
+                {
+                    // Verificar que el vehículo seleccionado existe y pertenece al conductor
+                    var conduceSeleccionado = await _context.Conduces
+                        .Where(c => c.ConNU == conductorId && c.VehPtnt == vehiculoSeleccionado)
+                        .AsNoTracking()
+                        .AnyAsync();
+                    
+                    tieneVehiculo = conduceSeleccionado;
+                }
+
+                // Si no hay vehículo seleccionado, verificar si tiene un favorito
+                if (!tieneVehiculo)
+                {
+                    var tieneFavorito = await _context.Conduces
+                        .Where(c => c.ConNU == conductorId && c.Favorito)
+                        .AsNoTracking()
+                        .AnyAsync();
+                    
+                    tieneVehiculo = tieneFavorito;
+                }
+
+                // Si no tiene vehículo seleccionado ni favorito, verificar si tiene vehículos registrados
+                if (!tieneVehiculo)
+                {
+                    var tieneVehiculosRegistrados = await _context.Conduces
+                        .Where(c => c.ConNU == conductorId)
+                        .AsNoTracking()
+                        .AnyAsync();
+                    
+                    // Si no tiene vehículos registrados, redirigir a Vehiculos para que agregue uno
+                    if (!tieneVehiculosRegistrados)
+                    {
+                        TempData["Mensaje"] = "Debes agregar y seleccionar un vehículo para usar el mapa.";
+                        TempData["TipoMensaje"] = "warning";
+                        return RedirectToAction("Vehiculos", "Conductor");
+                    }
+                    
+                    // Si tiene vehículos pero ninguno seleccionado ni favorito, redirigir a Vehiculos para que seleccione uno
+                    TempData["Mensaje"] = "Debes seleccionar un vehículo para usar el mapa.";
+                    TempData["TipoMensaje"] = "info";
+                    return RedirectToAction("Vehiculos", "Conductor");
+                }
+
                 // Obtener todas las playas con coordenadas para mostrar en el mapa
                 var playas = await _context.Playas
                     .Include(p => p.Horarios)

@@ -925,9 +925,9 @@
                             marker.openPopup();
                         });
                     } else {
-                        // Si no se encuentra la playa, mostrar solo el nombre del favorito
+                        // Si no se encuentra la playa, intentar usar irAPlayaFavorita para no mostrar el filtro
                         marker.bindPopup(`<strong>${fav.apodo}</strong><br>${fav.direccion || fav.ciudad || ''}`);
-                        marker.on('click', () => irAFavorito(fav));
+                        marker.on('click', () => irAPlayaFavorita(fav));
                     }
                 } else {
                     // Para ubicaciones favoritas, mantener el comportamiento original
@@ -1054,6 +1054,19 @@
         function seleccionarPlaya(playa){
             playaSeleccionada = playa;
             map.setView([playa.plyLat, playa.plyLon], 16);
+
+            // Asegurar que NO se active el modo de búsqueda ni se muestre el filtro
+            isSearchMode = false;
+            searchResults = []; // Limpiar resultados de búsqueda
+            if (searchLocationMarker) {
+                searchLocationMarker.closePopup();
+                map.removeLayer(searchLocationMarker);
+                searchLocationMarker = null;
+            }
+            $('#filterBadge').fadeOut(300);
+            
+            // Refrescar el mapa para mostrar todas las playas (no solo las de búsqueda)
+            mostrarPlayasEnMapa();
 
             // Asegurar que se muestren los detalles, no las valoraciones
             $('#valoracionesInfo').hide();
@@ -1755,15 +1768,23 @@
             const lon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
             if (isNaN(lat) || isNaN(lon)) return alert('Este favorito no tiene coordenadas válidas.');
 
-            // Buscar la playa correspondiente por coordenadas
-            const playa = playas.find(p => {
-                if (!p.plyLat || !p.plyLon) return false;
-                const playaLat = parseFloat(p.plyLat);
-                const playaLon = parseFloat(p.plyLon);
-                if (isNaN(playaLat) || isNaN(playaLon)) return false;
-                // Buscar por coordenadas con tolerancia
-                return Math.abs(playaLat - lat) < 0.0001 && Math.abs(playaLon - lon) < 0.0001;
-            });
+            // Buscar la playa correspondiente
+            let playa = null;
+            // Primero intentar por plyID si está disponible (más confiable)
+            if (fav.plyID) {
+                playa = playas.find(p => p.plyID === fav.plyID);
+            }
+            // Si no se encontró por ID, buscar por coordenadas
+            if (!playa) {
+                playa = playas.find(p => {
+                    if (!p.plyLat || !p.plyLon) return false;
+                    const playaLat = parseFloat(p.plyLat);
+                    const playaLon = parseFloat(p.plyLon);
+                    if (isNaN(playaLat) || isNaN(playaLon)) return false;
+                    // Buscar por coordenadas con tolerancia
+                    return Math.abs(playaLat - lat) < 0.0001 && Math.abs(playaLon - lon) < 0.0001;
+                });
+            }
             
             if (!playa) {
                 alert('No se encontró la playa de estacionamiento en el mapa.');
@@ -1813,6 +1834,12 @@
         }
 
         function irAFavorito(fav){
+            // Esta función SOLO debe usarse para ubicaciones favoritas (no playas)
+            // Si es una playa, usar irAPlayaFavorita en su lugar
+            if (fav.tipo === 'Playa') {
+                return irAPlayaFavorita(fav);
+            }
+            
             const lat = parseFloat(fav.lat ?? fav.ubfLat ?? fav.UbfLat);
             const lon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
             if (isNaN(lat) || isNaN(lon)) return alert('Este favorito no tiene coordenadas válidas.');
@@ -2254,6 +2281,8 @@
             // Ocultar detalles de playa y mostrar valoraciones
             $('#playaInfo').hide();
             $('#valoracionesInfo').show();
+            // Ocultar iconos de servicios cuando se abren valoraciones
+            $('#serviciosIconos').html('');
             $('#bottomMenu').addClass('show');
             
             cargarValoraciones(plyID);
