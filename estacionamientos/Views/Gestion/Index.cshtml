@@ -1,0 +1,767 @@
+@model estacionamientos.ViewModels.GestionDashboardVM
+@using estacionamientos.ViewModels
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Gestión";
+    var esEnVivo = Model.Modo == GestionModo.EnVivo;
+    decimal ocupacionPorcentaje = 0;
+    decimal disponibilidadPorcentaje = 0;
+    if (Model.EnVivo.PlazasHabilitadas > 0)
+    {
+        ocupacionPorcentaje = Math.Round((decimal)Model.EnVivo.PlazasOcupadas * 100m / Model.EnVivo.PlazasHabilitadas, 1);
+        disponibilidadPorcentaje = Math.Max(0, 100 - ocupacionPorcentaje);
+    }
+    var actualizado = Model.EnVivo.GeneradoUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss");
+}
+
+<div class="container gestion-dashboard">
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
+        <h1 class="mb-0">Gestión</h1>
+        <div class="ms-auto d-flex gap-2">
+            <form method="get" asp-controller="Gestion" asp-action="Index">
+                <input type="hidden" name="modo" value="en-vivo" />
+                @foreach (var id in Model.PlayasSeleccionadas)
+                {
+                    <input type="hidden" name="playasIds" value="@id" />
+                }
+                <button type="submit" class="btn @(esEnVivo ? "btn-primary" : "btn-outline-primary")">
+                    <i class="fa-solid fa-wave-square fa-beat-fade me-2"></i>En vivo
+                </button>
+            </form>
+            <form method="get" asp-controller="Gestion" asp-action="Index">
+                <input type="hidden" name="modo" value="rango" />
+                <input type="hidden" name="desde" value="@Model.Filtros.Desde.ToString("yyyy-MM-dd")" />
+                <input type="hidden" name="hasta" value="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")" />
+                @foreach (var id in Model.PlayasSeleccionadas)
+                {
+                    <input type="hidden" name="playasIds" value="@id" />
+                }
+                <button type="submit" class="btn @(!esEnVivo ? "btn-primary" : "btn-outline-primary")">
+                    <i class="fa-solid fa-chart-line me-2"></i>Rango de fechas
+                </button>
+            </form>
+        </div>
+    </div>
+
+    @if (!Model.PlayasDisponibles.Any())
+    {
+        <div class="alert alert-warning shadow-sm">
+            <i class="fas fa-info-circle me-2"></i>
+            No tenés playas asociadas todavía. Añadí al menos una playa para comenzar a monitorear la operación.
+        </div>
+    }
+    else if (esEnVivo)
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-body row g-3 align-items-center">
+                <div class="col-sm-8 col-lg-7">
+                    <form method="get" asp-action="Index" asp-controller="Gestion" class="row g-2 align-items-center" id="enVivoSelectorForm">
+                        <input type="hidden" name="modo" value="en-vivo" />
+                        <div class="col-12 col-md-9">
+                            <label class="form-label fw-semibold text-muted mb-1">Seleccionar playas</label>
+                            <div class="dropdown w-100">
+                                <button class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center" type="button" id="playasDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span id="playasDropdownText">Seleccione playas</span>
+                                    <i class="fas fa-chevron-down small"></i>
+                                </button>
+                                <div class="dropdown-menu w-100 p-3" aria-labelledby="playasDropdown" style="max-height: 280px; overflow-y: auto;">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="playasSelectAll">
+                                        <label class="form-check-label fw-semibold" for="playasSelectAll">Seleccionar todas</label>
+                                    </div>
+                                    <div class="dropdown-divider"></div>
+                                    @foreach (var playa in Model.PlayasDisponibles)
+                                    {
+                                        var checkboxId = $"playa_option_{playa.PlyID}";
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input playa-option" type="checkbox" id="@checkboxId" name="playasIds" value="@playa.PlyID" data-nombre="@playa.PlayaNombre" @(Model.PlayasSeleccionadas.Contains(playa.PlyID) ? "checked" : "")>
+                                            <label class="form-check-label" for="@checkboxId">@playa.PlayaNombre</label>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label fw-semibold text-muted mb-1 d-block">Acciones</label>
+                            <button type="submit" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-rotate-right me-1"></i>Actualizar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="col-sm-4 col-lg-3 ms-sm-auto text-sm-end">
+                    <div class="small text-muted">Actualizado</div>
+                    <div class="fw-semibold">@actualizado</div>
+                </div>
+            </div>
+        </div>
+
+        <section class="mb-4">
+            <h5 class="section-title">Operación</h5>
+            <div class="row g-3">
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="gestion-card shadow-sm">
+                        <div class="card-icon bg-warning-subtle text-warning"><i class="fas fa-building"></i></div>
+                        <div>
+                            <div class="card-label">Ocupación (playa)</div>
+                            <div class="card-value">@ocupacionPorcentaje.ToString("0.#")%</div>
+                            <div class="card-extra">@Model.EnVivo.PlazasOcupadas/@Model.EnVivo.PlazasHabilitadas</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="gestion-card shadow-sm">
+                        <div class="card-icon bg-info-subtle text-info"><i class="fas fa-user-tie"></i></div>
+                        <div>
+                            <div class="card-label">Playeros activos</div>
+                            <div class="card-value">@Model.EnVivo.PlayerosActivos</div>
+                            <div class="card-extra">@(!Model.EnVivo.AlertaSinPlayeros ? "En turno" : "Sin turno")</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="gestion-card shadow-sm">
+                        <div class="card-icon bg-primary-subtle text-primary"><i class="fas fa-screwdriver-wrench"></i></div>
+                        <div>
+                            <div class="card-label">Servicios extra</div>
+                            <div class="card-value">@Model.EnVivo.ServiciosDisponibles.Count</div>
+                            <div class="card-extra">@Model.EnVivo.ServiciosExtrasActivos habilitados</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="gestion-card shadow-sm">
+                        <div class="card-icon bg-danger-subtle text-danger"><i class="fas fa-door-closed"></i></div>
+                        <div>
+                            <div class="card-label">Estado</div>
+                            <div class="card-value">@Model.EnVivo.EstadoOperativo</div>
+                            <div class="card-extra">@Model.EnVivo.PlazasFueraServicio fuera</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="gestion-card shadow-sm">
+                        <div class="card-icon bg-warning-subtle text-warning"><i class="fas fa-star"></i></div>
+                        <div>
+                            <div class="card-label">Valoración promedio</div>
+                            <div class="card-value">@Model.EnVivo.ValoracionPromedio.ToString("0.00")</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="gestion-card shadow-sm">
+                        <div class="card-icon bg-primary-subtle text-primary"><i class="fas fa-id-card"></i></div>
+                        <div>
+                            <div class="card-label">Abonos activos</div>
+                            <div class="card-value">@Model.EnVivo.AbonosActivos</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-4">
+            <h5 class="section-title">Flujo del día</h5>
+            <div class="row g-3">
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="gestion-card shadow-sm">
+                        <div class="card-icon bg-success-subtle text-success"><i class="fas fa-square"></i></div>
+                        <div>
+                            <div class="card-label">Disponibilidad</div>
+                            <div class="card-value">@disponibilidadPorcentaje.ToString("0.#")%</div>
+                            <div class="card-extra">@Model.EnVivo.PlazasHabilitadas - @Model.EnVivo.PlazasOcupadas</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="gestion-card shadow-sm">
+                        <div class="card-icon bg-primary-subtle text-primary"><i class="fas fa-right-to-bracket"></i></div>
+                        <div>
+                            <div class="card-label">Entradas (hoy)</div>
+                            <div class="card-value">@Model.EnVivo.EntradasHoy</div>
+                            <div class="card-extra">@Model.EnVivo.RotacionesUltimaHora última hora</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="gestion-card shadow-sm">
+                        <div class="card-icon bg-danger-subtle text-danger"><i class="fas fa-right-from-bracket"></i></div>
+                        <div>
+                            <div class="card-label">Egresos (hoy)</div>
+                            <div class="card-value">@Model.EnVivo.EgresosHoy</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="gestion-card shadow-sm">
+                        <div class="card-icon bg-secondary-subtle text-secondary"><i class="fas fa-stopwatch"></i></div>
+                        <div>
+                            <div class="card-label">Duración prom. activa</div>
+                            <div class="card-value">@Model.EnVivo.DuracionPromedioActivaMin.ToString("0.0") min</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-4">
+            <h5 class="section-title">Perfil de vehículos presentes</h5>
+            <div class="row g-3">
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header">
+                            <i class="fas fa-chart-pie me-2 text-primary"></i>Clasificación actual
+                        </div>
+                        <div class="card-body">
+                            @if (Model.EnVivo.ClasificacionVehiculos.Any())
+                            {
+                                <ul class="list-unstyled mb-0">
+                                    @foreach (var item in Model.EnVivo.ClasificacionVehiculos)
+                                    {
+                                        <li class="d-flex justify-content-between py-2 border-bottom">
+                                            <span>@item.Label</span>
+                                            <span class="fw-semibold">@item.Value</span>
+                                        </li>
+                                    }
+                                </ul>
+                                <div class="pt-3 fw-semibold text-end">Total @Model.EnVivo.ClasificacionVehiculos.Sum(x => x.Value)</div>
+                            }
+                            else
+                            {
+                                <div class="text-muted">Sin vehículos clasificados en este momento.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header">
+                            <i class="fas fa-chart-pie me-2 text-secondary"></i>Distribución visual
+                        </div>
+                        <div class="card-body pie-chart-wrapper d-flex align-items-center justify-content-center">
+                            <canvas id="chartVehiculosActuales"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-4">
+            <h5 class="section-title">Servicios disponibles</h5>
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <i class="fas fa-list me-2 text-primary"></i>Catálogo
+                </div>
+                <div class="card-body">
+                    @if (Model.EnVivo.ServiciosDisponibles.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Servicio</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.EnVivo.ServiciosDisponibles)
+                                    {
+                                        <tr>
+                                            <td>@item.Servicio</td>
+                                            <td>@(item.Habilitado ? "Habilitado" : "Suspendido")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted">No hay servicios configurados.</div>
+                    }
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-4">
+            <h5 class="section-title">Movimiento operativo (última hora)</h5>
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    @if (Model.EnVivo.MovimientosUltimaHora.Any())
+                    {
+                        <div class="d-flex flex-wrap gap-3">
+                            @foreach (var mov in Model.EnVivo.MovimientosUltimaHora)
+                            {
+                                <div class="badge bg-secondary-subtle text-secondary p-3">
+                                    <div class="small text-uppercase text-muted">@mov.Tipo</div>
+                                    <div class="fw-semibold fs-5">@mov.Conteo</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted">Sin movimientos registrados en la última hora.</div>
+                    }
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-4">
+            <h5 class="section-title">Experiencia del cliente</h5>
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    @if (Model.EnVivo.ValoracionesRecientes.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var val in Model.EnVivo.ValoracionesRecientes)
+                            {
+                                var fechaTexto = val.FechaUtc.HasValue
+                                    ? val.FechaUtc.Value.ToLocalTime().ToString("dd/MM HH:mm")
+                                    : "Reciente";
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="text-warning">
+                                            @for (var i = 0; i < val.Estrellas; i++)
+                                            {
+                                                <i class="fas fa-star"></i>
+                                            }
+                                        </div>
+                                        <small class="text-muted">Favorito: @(val.Favorito ? "Sí" : "No")</small>
+                                    </div>
+                                    <div class="text-muted small">@fechaTexto</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted">Todavía no hay reseñas recientes para la playa seleccionada.</div>
+                    }
+                </div>
+            </div>
+        </section>
+    }
+    else
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <form method="get" asp-action="Index" asp-controller="Gestion" class="row g-3 align-items-end" id="rangoFiltersForm">
+                    <input type="hidden" name="modo" value="rango" />
+                    <div class="col-12 col-md-4">
+                        <label for="desde" class="form-label fw-semibold text-muted">Fecha desde</label>
+                        <input type="date" class="form-control" id="desde" name="desde" value="@Model.Filtros.Desde.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label for="hasta" class="form-label fw-semibold text-muted">Fecha hasta</label>
+                        <input type="date" class="form-control" id="hasta" name="hasta" value="@Model.Filtros.Hasta.ToString("yyyy-MM-dd")" />
+                    </div>
+                        <div class="col-12 col-md-4 d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary flex-grow-1" onclick="setRangeDays(0)">Hoy</button>
+                        <button type="button" class="btn btn-outline-secondary flex-grow-1" onclick="setRangeDays(7)">7 días</button>
+                        <button type="button" class="btn btn-outline-secondary flex-grow-1" onclick="setRangeDays(30)">30 días</button>
+                        <button type="button" class="btn btn-outline-secondary flex-grow-1" onclick="setRangeMonth()">Mes actual</button>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label fw-semibold text-muted">Seleccionar playas</label>
+                        <div class="dropdown w-100">
+                            <button class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center" type="button" id="playasDropdownRango" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span id="playasDropdownTextRango">Seleccione playas</span>
+                                <i class="fas fa-chevron-down small"></i>
+                            </button>
+                            <div class="dropdown-menu w-100 p-3" aria-labelledby="playasDropdownRango" style="max-height: 280px; overflow-y: auto;">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="playasSelectAllRango">
+                                    <label class="form-check-label fw-semibold" for="playasSelectAllRango">Seleccionar todas</label>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                @foreach (var playa in Model.PlayasDisponibles)
+                                {
+                                    var checkboxId = $"playa_option_rango_{playa.PlyID}";
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input playa-option-rango" type="checkbox" id="@checkboxId" name="playasIds" value="@playa.PlyID" data-nombre="@playa.PlayaNombre" @(Model.PlayasSeleccionadas.Contains(playa.PlyID) ? "checked" : "")>
+                                        <label class="form-check-label" for="@checkboxId">@playa.PlayaNombre</label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter me-1"></i>Aplicar filtros
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <section class="mb-4">
+            <h5 class="section-title">Resumen del periodo</h5>
+            <div class="row g-3">
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="gestion-card shadow-sm">
+                        <div class="card-icon bg-primary-subtle text-primary"><i class="fas fa-right-to-bracket"></i></div>
+                        <div>
+                            <div class="card-label">Entradas</div>
+                            <div class="card-value">@Model.Historico.Entradas</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="gestion-card shadow-sm">
+                        <div class="card-icon bg-danger-subtle text-danger"><i class="fas fa-right-from-bracket"></i></div>
+                        <div>
+                            <div class="card-label">Egresos</div>
+                            <div class="card-value">@Model.Historico.Egresos</div>
+                            <div class="card-extra">@Model.Historico.Reubicaciones reubicaciones</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="gestion-card shadow-sm">
+                        <div class="card-icon bg-warning-subtle text-warning"><i class="fas fa-clock"></i></div>
+                        <div>
+                            <div class="card-label">Permanencia promedio</div>
+                            <div class="card-value">@Model.Historico.PermanenciaPromedioMin.ToString("0.0") min</div>
+                            <div class="card-extra">@Model.Historico.VehiculosUnicos vehículos únicos</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="gestion-card shadow-sm">
+                        <div class="card-icon bg-success-subtle text-success"><i class="fas fa-handshake-angle"></i></div>
+                        <div>
+                            <div class="card-label">Servicios extra completados</div>
+                            <div class="card-value">@Model.Historico.ServiciosExtrasCompletados</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-4">
+            <div class="row g-3">
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header">
+                            <i class="fas fa-line-chart me-2 text-primary"></i>Ocupación diaria
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartOcupacionDiaria"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header">
+                            <i class="fas fa-arrows-rotate me-2 text-info"></i>Rotación diaria
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartRotacionDiaria"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-4">
+            <div class="row g-3">
+                <div class="col-12 col-lg-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header"><i class="fas fa-car me-2 text-secondary"></i>Demanda por clasificación</div>
+                        <div class="card-body">
+                            @if (Model.Historico.ClasificacionVehiculos.Any())
+                            {
+                                <ul class="list-unstyled mb-0">
+                                    @foreach (var item in Model.Historico.ClasificacionVehiculos)
+                                    {
+                                        <li class="d-flex justify-content-between py-2 border-bottom">
+                                            <span>@item.Label</span>
+                                            <span class="fw-semibold">@item.Value</span>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <div class="text-muted">Sin datos de clasificación en el rango seleccionado.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header"><i class="fas fa-id-card me-2 text-primary"></i>Playeros más activos</div>
+                        <div class="card-body">
+                            @if (Model.Historico.PlayerosActivos.Any())
+                            {
+                                <ul class="list-group list-group-flush">
+                                    @foreach (var item in Model.Historico.PlayerosActivos)
+                                    {
+                                        <li class="list-group-item d-flex justify-content-between">
+                                            <span>@item.Label</span>
+                                            <span class="badge bg-primary-subtle text-primary">@item.Value movimientos</span>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <div class="text-muted">No se registraron movimientos de playeros.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header"><i class="fas fa-screwdriver-wrench me-2 text-warning"></i>Servicios extra por tipo</div>
+                        <div class="card-body">
+                            @if (Model.Historico.ServiciosExtraPorTipo.Any())
+                            {
+                                <ul class="list-group list-group-flush">
+                                    @foreach (var item in Model.Historico.ServiciosExtraPorTipo)
+                                    {
+                                        <li class="list-group-item d-flex justify-content-between">
+                                            <span>@item.Label</span>
+                                            <span class="badge bg-warning-subtle text-warning">@item.Value</span>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <div class="text-muted">No se realizaron servicios extra en el periodo.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-thumbs-up me-2 text-success"></i>Calidad de servicio</span>
+                    <span class="badge bg-success-subtle text-success">Promedio: @Model.Historico.ValoracionPromedio.ToString("0.00")</span>
+                </div>
+                <div class="card-body">
+                    <div class="text-muted">Correlacioná este indicador con los picos operativos para detectar oportunidades de mejora.</div>
+                </div>
+            </div>
+        </section>
+    }
+</div>
+
+@if (!esEnVivo)
+{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        function setRangeDays(n) {
+            const hoy = new Date();
+            const hasta = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+            const desde = new Date(hasta);
+            desde.setDate(hasta.getDate() - (n === 0 ? 0 : n - 1));
+            document.getElementById('desde').value = desde.toISOString().slice(0, 10);
+            document.getElementById('hasta').value = hasta.toISOString().slice(0, 10);
+            document.getElementById('rangoFiltersForm').submit();
+        }
+
+        function setRangeMonth() {
+            const hoy = new Date();
+            const desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+            const hasta = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+            document.getElementById('desde').value = desde.toISOString().slice(0, 10);
+            document.getElementById('hasta').value = hasta.toISOString().slice(0, 10);
+            document.getElementById('rangoFiltersForm').submit();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof Chart === 'undefined') {
+                return;
+            }
+
+            const ocupacionCtx = document.getElementById('chartOcupacionDiaria');
+            const rotacionCtx = document.getElementById('chartRotacionDiaria');
+            const ocupacionLabels = @Html.Raw(JsonSerializer.Serialize(Model.Historico.OcupacionDiaria.Select(x => x.Label)));
+            const ocupacionValores = @Html.Raw(JsonSerializer.Serialize(Model.Historico.OcupacionDiaria.Select(x => x.Value)));
+            const rotacionLabels = @Html.Raw(JsonSerializer.Serialize(Model.Historico.RotacionDiaria.Select(x => x.Label)));
+            const rotacionValores = @Html.Raw(JsonSerializer.Serialize(Model.Historico.RotacionDiaria.Select(x => x.Value)));
+
+            if (ocupacionCtx && ocupacionLabels.length) {
+                new Chart(ocupacionCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ocupacionLabels,
+                        datasets: [{
+                            label: 'Entradas',
+                            data: ocupacionValores,
+                            borderColor: '#0d6efd',
+                            backgroundColor: 'rgba(13,110,253,0.12)',
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+            }
+
+            if (rotacionCtx && rotacionLabels.length) {
+                new Chart(rotacionCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: rotacionLabels,
+                        datasets: [{
+                            label: 'Egresos',
+                            data: rotacionValores,
+                            backgroundColor: 'rgba(25,135,84,0.65)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+            }
+        });
+    </script>
+}
+else
+{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof Chart === 'undefined') {
+                return;
+            }
+
+            const ctx = document.getElementById('chartVehiculosActuales');
+            const labels = @Html.Raw(JsonSerializer.Serialize(Model.EnVivo.ClasificacionVehiculos.Select(x => x.Label)));
+            const valores = @Html.Raw(JsonSerializer.Serialize(Model.EnVivo.ClasificacionVehiculos.Select(x => x.Value)));
+
+            if (ctx && labels.length) {
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data: valores,
+                            backgroundColor: ['#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#fd7e14', '#198754', '#20c997', '#ffc107']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { position: 'bottom' } }
+                    }
+                });
+            }
+        });
+    </script>
+}
+
+<script>
+    function initPlayasDropdown(formId, selectAllId, optionSelector, textId, fallbackLabel) {
+        const form = document.getElementById(formId);
+        const selectAll = document.getElementById(selectAllId);
+        const options = Array.from(document.querySelectorAll(optionSelector));
+        const textEl = document.getElementById(textId);
+
+        if (!selectAll || !textEl || options.length === 0) return;
+
+        function updateText() {
+            const checked = options.filter(cb => cb.checked);
+            if (checked.length === options.length) {
+                textEl.textContent = 'Todas las playas';
+                selectAll.checked = true;
+                selectAll.indeterminate = false;
+            } else if (checked.length === 0) {
+                textEl.textContent = fallbackLabel ?? 'Ninguna seleccionada';
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            } else if (checked.length === 1) {
+                textEl.textContent = checked[0].dataset.nombre || '1 playa';
+                selectAll.checked = false;
+                selectAll.indeterminate = true;
+            } else {
+                textEl.textContent = `${checked.length} playas seleccionadas`;
+                selectAll.checked = false;
+                selectAll.indeterminate = true;
+            }
+        }
+
+        function ensureAtLeastOne() {
+            if (options.every(cb => !cb.checked)) {
+                options.forEach(cb => cb.checked = true);
+            }
+            updateText();
+        }
+
+        selectAll.addEventListener('change', () => {
+            const value = selectAll.checked;
+            options.forEach(cb => cb.checked = value);
+            selectAll.indeterminate = false;
+            updateText();
+        });
+
+        options.forEach(cb => cb.addEventListener('change', updateText));
+
+        if (form) {
+            form.addEventListener('submit', ensureAtLeastOne);
+        }
+
+        updateText();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        initPlayasDropdown('enVivoSelectorForm', 'playasSelectAll', '.playa-option', 'playasDropdownText', 'Todas las playas');
+        initPlayasDropdown('rangoFiltersForm', 'playasSelectAllRango', '.playa-option-rango', 'playasDropdownTextRango', 'Todas las playas');
+    });
+</script>
+
+<style>
+    .gestion-dashboard .section-title {
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+    }
+    .gestion-card {
+        display: flex;
+        gap: 1rem;
+        border-radius: 1rem;
+        background: #fff;
+        padding: 1rem 1.25rem;
+        align-items: center;
+    }
+    .gestion-card .card-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+    .gestion-card .card-label {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #6c757d;
+        margin-bottom: 0.25rem;
+    }
+    .gestion-card .card-value {
+        font-size: 1.75rem;
+        font-weight: 600;
+    }
+    .gestion-card .card-extra {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #6c757d;
+    }
+    .pie-chart-wrapper {
+        max-height: 220px;
+    }
+</style>
