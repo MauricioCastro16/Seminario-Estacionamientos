@@ -1351,7 +1351,7 @@
              });
         }
 
-        function buscarPlayasCercanas(lat, lon, direccionBuscadaParam = null){
+        function buscarPlayasCercanas(lat, lon, direccionBuscadaParam = null, noCrearMarcador = false){
             // Guardar la dirección buscada para el badge (priorizar parámetro si viene de favorito)
             const direccionBuscada = direccionBuscadaParam || $('#searchInput').val().trim();
             
@@ -1367,12 +1367,12 @@
                       if (!tipoVehiculo) {
                           // Si no hay tipo de vehículo, mostrar todas las playas (máximo 3)
                           searchResults = todasLasPlayas.slice(0,3);
-                          mostrarPlayasBuscadas(lat, lon, direccionBuscada);
+                          mostrarPlayasBuscadas(lat, lon, direccionBuscada, noCrearMarcador);
                           return;
                       }
                       
                       // Filtrar playas que tienen servicios/tarifas para el tipo de vehículo
-                      filtrarPlayasBuscadasPorTipoVehiculo(todasLasPlayas, tipoVehiculo, lat, lon, direccionBuscada);
+                      filtrarPlayasBuscadasPorTipoVehiculo(todasLasPlayas, tipoVehiculo, lat, lon, direccionBuscada, noCrearMarcador);
                   })
                   .fail(()=> {
                       $('#loading').hide();
@@ -1384,7 +1384,7 @@
             $.get('/Conductor/GetPlayasCercanas', { lat, lon, radioKm:10 })
              .done(data => {
                  searchResults = (data || []).sort((a,b)=>a.distancia - b.distancia).slice(0,3);
-                      mostrarPlayasBuscadas(lat, lon, direccionBuscada);
+                      mostrarPlayasBuscadas(lat, lon, direccionBuscada, noCrearMarcador);
                   })
                   .fail(()=> {
                       $('#loading').hide();
@@ -1393,8 +1393,18 @@
              });
         }
         
-        function mostrarPlayasBuscadas(lat, lon, direccionBuscada){
+        function mostrarPlayasBuscadas(lat, lon, direccionBuscada, noCrearMarcador = false){
             const direccion = direccionBuscada || $('#searchInput').val().trim();
+            
+            // Si viene de favorito, no crear el marcador rojo (ya existe el amarillo)
+            if (noCrearMarcador) {
+                // Solo eliminar cualquier marcador rojo existente
+                if (searchLocationMarker) {
+                    map.removeLayer(searchLocationMarker);
+                    searchLocationMarker = null;
+                }
+                return;
+            }
             
             // Solo crear/actualizar marcador si no existe (si viene de favorito, ya se creó en irAFavorito)
             if (!searchLocationMarker) {
@@ -1420,10 +1430,10 @@
             }
         }
         
-        function filtrarPlayasBuscadasPorTipoVehiculo(todasLasPlayas, tipoVehiculo, lat, lon, direccionBuscada){
+        function filtrarPlayasBuscadasPorTipoVehiculo(todasLasPlayas, tipoVehiculo, lat, lon, direccionBuscada, noCrearMarcador = false){
             if (todasLasPlayas.length === 0) {
                 searchResults = [];
-                mostrarPlayasBuscadas(lat, lon, direccionBuscada);
+                mostrarPlayasBuscadas(lat, lon, direccionBuscada, noCrearMarcador);
                 return;
             }
             
@@ -1452,14 +1462,14 @@
                      // Cuando se hayan verificado todas las playas o tengamos 3, mostrar las filtradas
                      if (verificadas === todasLasPlayas.length || playasFiltradas.length >= maxPlayas) {
                          searchResults = playasFiltradas;
-                         mostrarPlayasBuscadas(lat, lon, direccionBuscada);
+                         mostrarPlayasBuscadas(lat, lon, direccionBuscada, noCrearMarcador);
                      }
                  })
                  .fail(() => {
                      verificadas++;
                      if (verificadas === todasLasPlayas.length) {
                          searchResults = playasFiltradas;
-                         mostrarPlayasBuscadas(lat, lon, direccionBuscada);
+                         mostrarPlayasBuscadas(lat, lon, direccionBuscada, noCrearMarcador);
                      }
                  });
             });
@@ -1745,6 +1755,12 @@
             // Obtener dirección del favorito para el filtro
             const direccionFavorito = fav.direccion || fav.apodo || 'Ubicación favorita';
             
+            // Eliminar cualquier marcador de búsqueda existente para evitar superposición
+            if (searchLocationMarker) {
+                map.removeLayer(searchLocationMarker);
+                searchLocationMarker = null;
+            }
+            
             // Centrar el mapa con animación suave
             map.flyTo([lat, lon], 16, {
                 animate: true,
@@ -1754,19 +1770,18 @@
             // Asegurar que el mapa se actualice después de centrar
             setTimeout(() => {
                 map.invalidateSize();
+                
+                // Buscar el marcador amarillo de favorito y abrir su popup
+                const favoritoMarker = favoriteMarkers.find(m => {
+                    const markerLat = m.getLatLng().lat;
+                    const markerLon = m.getLatLng().lng;
+                    return Math.abs(markerLat - lat) < 0.0001 && Math.abs(markerLon - lon) < 0.0001;
+                });
+                
+                if (favoritoMarker) {
+                    favoritoMarker.openPopup();
+                }
             }, 100);
-            
-            // Mostrar marcador de ubicación buscada si no existe
-            if (searchLocationMarker) map.removeLayer(searchLocationMarker);
-            searchLocationMarker = L.marker([lat, lon], { 
-                icon: L.divIcon({ 
-                    className:'search-location-marker', 
-                    html:'<i class="fa-solid fa-location-dot" style="color:#dc3545;font-size:24px;text-shadow:2px 2px 4px rgba(0,0,0,.3);"></i>', 
-                    iconSize:[30,30], 
-                    iconAnchor:[15,15] 
-                }) 
-            }).addTo(map);
-            searchLocationMarker.bindPopup(`<strong>${fav.apodo}</strong><br>${direccionFavorito}`).openPopup();
             
             // Activar modo búsqueda y mostrar todas las playas cercanas
             isSearchMode = true;
@@ -1776,7 +1791,8 @@
             $('#filterBadge').fadeIn(300);
             
             // Buscar todas las playas cercanas aplicando filtro por tipo de vehículo
-            buscarPlayasCercanas(lat, lon, direccionFavorito);
+            // Pasar noCrearMarcador=true para evitar crear el marcador rojo (ya existe el amarillo)
+            buscarPlayasCercanas(lat, lon, direccionFavorito, true);
         }
 
         function eliminarFavorito(fav) {
