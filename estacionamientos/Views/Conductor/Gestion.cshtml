@@ -1,0 +1,213 @@
+@model List<estacionamientos.Models.Vehiculo>
+
+@{
+    ViewData["Title"] = "Gestión - Historial de Visitas";
+    var historialPorVehiculo = ViewBag.HistorialPorVehiculo as Dictionary<estacionamientos.Models.Vehiculo, List<object>>;
+}
+
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-clock-history me-2"></i>
+                        Historial de Visitas a Playas de Estacionamiento
+                    </h4>
+                </div>
+                <div class="card-body">
+                    @if (Model != null && Model.Any())
+                    {
+                        @foreach (var vehiculo in Model)
+                        {
+                            var historial = historialPorVehiculo?.ContainsKey(vehiculo) == true 
+                                ? historialPorVehiculo[vehiculo] 
+                                : new List<object>();
+                            
+                            var totalGastos = historial.Cast<dynamic>().Sum(v => (decimal)v.MontoPagado);
+                            var totalVisitas = historial.Count;
+                            var visitasCompletadas = historial.Cast<dynamic>().Count(v => v.FechaHoraEgreso != null);
+                            
+                            <div class="card mb-4 border-0 shadow-sm">
+                                <div class="card-header bg-light">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h5 class="mb-0">
+                                                <i class="bi bi-car-front me-2"></i>
+                                                <span class="badge bg-primary fs-6">@vehiculo.VehPtnt</span>
+                                            </h5>
+                                            <small class="text-muted">
+                                                @vehiculo.VehMarc - @(vehiculo.Clasificacion?.ClasVehTipo ?? "Sin clasificación")
+                                            </small>
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-info">@historial.Count visita(s)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    @if (historial.Any())
+                                    {
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Playa</th>
+                                                        <th>Dirección</th>
+                                                        <th>Ingreso</th>
+                                                        <th>Egreso</th>
+                                                        <th>Duración</th>
+                                                        <th>Monto</th>
+                                                        <th>Método Pago</th>
+                                                        <th>Plaza</th>
+                                                        <th>Llaves</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (dynamic visita in historial)
+                                                    {
+                                                        <tr>
+                                                            <td><strong>@visita.PlayaNombre</strong></td>
+                                                            <td><small>@visita.PlayaDireccion</small></td>
+                                                            <td>
+                                                                <small>@visita.FechaHoraIngreso.ToString("dd/MM/yyyy HH:mm")</small>
+                                                            </td>
+                                                            <td>
+                                                                @if (visita.FechaHoraEgreso != null)
+                                                                {
+                                                                    <small>@(((DateTime)visita.FechaHoraEgreso).ToString("dd/MM/yyyy HH:mm"))</small>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="badge bg-warning">En curso</span>
+                                                                }
+                                                            </td>
+                                                            <td>
+                                                                @if (visita.Duracion != null)
+                                                                {
+                                                                    var horas = (double)visita.Duracion;
+                                                                    if (horas < 1)
+                                                                    {
+                                                                        <small>@((int)(horas * 60)) min</small>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <small>@horas.ToString("F1") h</small>
+                                                                    }
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-muted">—</span>
+                                                                }
+                                                            </td>
+                                                            <td>
+                                                                @if (visita.MontoPagado > 0)
+                                                                {
+                                                                    <strong class="text-success">$@visita.MontoPagado.ToString("F2")</strong>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-muted">$0.00</span>
+                                                                }
+                                                            </td>
+                                                            <td>
+                                                                <small>@visita.MetodoPago</small>
+                                                            </td>
+                                                            <td>
+                                                                @if (visita.PlazaNumero != null)
+                                                                {
+                                                                    <span class="badge bg-secondary">@visita.PlazaNumero</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-muted">—</span>
+                                                                }
+                                                            </td>
+                                                            <td>
+                                                                @if (visita.DejoLlaves)
+                                                                {
+                                                                    <i class="bi bi-key-fill text-warning" title="Dejó llaves"></i>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-muted">—</span>
+                                                                }
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        <div class="mt-3 p-3 bg-light rounded">
+                                            <div class="row text-center">
+                                                <div class="col-md-4">
+                                                    <strong>Total de Visitas:</strong> @totalVisitas
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <strong>Visitas Completadas:</strong> @visitasCompletadas
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <strong>Total Gastado:</strong> <span class="text-success">$@totalGastos.ToString("F2")</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center py-4">
+                                            <i class="bi bi-inbox display-4 text-muted"></i>
+                                            <p class="text-muted mt-3">Este vehículo aún no tiene visitas registradas.</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="bi bi-car-front display-1 text-muted"></i>
+                            <h5 class="mt-3 text-muted">No tienes vehículos registrados</h5>
+                            <p class="text-muted">Agrega un vehículo en la sección de <a asp-controller="Conductor" asp-action="Vehiculos">Vehículos</a> para comenzar a registrar visitas.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table th {
+        font-size: 0.875rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    
+    .table td {
+        font-size: 0.875rem;
+        vertical-align: middle;
+    }
+    
+    .card-header h5 {
+        font-size: 1.1rem;
+    }
+    
+    .badge {
+        font-family: 'Courier New', monospace;
+        letter-spacing: 0.5px;
+    }
+    
+    @@media (max-width: 768px) {
+        .table-responsive {
+            font-size: 0.8rem;
+        }
+        
+        .table th,
+        .table td {
+            padding: 0.5rem;
+        }
+    }
+</style>
+

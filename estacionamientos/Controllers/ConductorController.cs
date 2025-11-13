@@ -144,6 +144,72 @@ namespace estacionamientos.Controllers
             }
         }
 
+        // Método para mostrar el historial de visitas (Gestión)
+        public async Task<IActionResult> Gestion()
+        {
+            try
+            {
+                // Obtener el ID del conductor actual desde las claims
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                {
+                    return RedirectToAction("Login", "Account");
+                }
+
+                var conductorId = int.Parse(userId);
+
+                // Obtener todos los vehículos del conductor
+                var vehiculos = await _context.Conduces
+                    .Include(c => c.Vehiculo)
+                        .ThenInclude(v => v.Clasificacion)
+                    .Where(c => c.ConNU == conductorId)
+                    .Select(c => c.Vehiculo)
+                    .Distinct()
+                    .ToListAsync();
+
+                // Crear un diccionario para almacenar el historial por vehículo
+                var historialPorVehiculo = new Dictionary<Vehiculo, List<object>>();
+
+                foreach (var vehiculo in vehiculos)
+                {
+                    // Obtener todas las ocupaciones de este vehículo con información relacionada
+                    var ocupaciones = await _context.Ocupaciones
+                        .Include(o => o.Plaza)
+                            .ThenInclude(p => p.Playa)
+                        .Include(o => o.Pago)
+                            .ThenInclude(p => p.MetodoPago)
+                        .Where(o => o.VehPtnt == vehiculo.VehPtnt)
+                        .OrderByDescending(o => o.OcufFyhIni)
+                        .ToListAsync();
+
+                    var historial = ocupaciones.Select(o => new
+                    {
+                        PlayaNombre = o.Plaza?.Playa?.PlyNom ?? "Desconocida",
+                        PlayaDireccion = o.Plaza?.Playa?.PlyDir ?? "",
+                        FechaHoraIngreso = o.OcufFyhIni,
+                        FechaHoraEgreso = o.OcufFyhFin,
+                        Duracion = o.OcufFyhFin.HasValue 
+                            ? (o.OcufFyhFin.Value - o.OcufFyhIni).TotalHours 
+                            : (double?)null,
+                        MontoPagado = o.Pago?.PagMonto ?? 0,
+                        MetodoPago = o.Pago?.MetodoPago?.MepNom ?? "Sin pago",
+                        PlazaNumero = o.PlzNum,
+                        DejoLlaves = o.OcuLlavDej
+                    }).ToList<object>();
+
+                    historialPorVehiculo[vehiculo] = historial;
+                }
+
+                ViewBag.HistorialPorVehiculo = historialPorVehiculo;
+                return View(vehiculos);
+            }
+            catch (Exception ex)
+            {
+                ViewBag.Error = ex.Message;
+                return View(new List<Vehiculo>());
+            }
+        }
+
         // Método para mostrar vehículos del conductor
         public async Task<IActionResult> Vehiculos()
         {
