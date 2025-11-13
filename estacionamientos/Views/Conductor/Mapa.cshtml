@@ -774,7 +774,7 @@
             const favorito = esFavorita(playa);
             const botonFavorito = favorito 
                 ? `<button class="btn btn-sm btn-eliminar-favorito flex-fill" onclick="window.eliminarFavoritaDesdePopup('${favorito.apodo}', ${playa.plyID})">Eliminar favorito</button>`
-                : `<button class="btn btn-sm btn-favorito-azul flex-fill" onclick="window.agregarFavoritaDesdePopup(${playa.plyID})">★ Favorito</button>`;
+                : `<button class="btn btn-sm btn-primary flex-fill" onclick="window.agregarFavoritaDesdePopup(${playa.plyID})"><i class="fa-solid fa-star" style="color:white;"></i> Favorito</button>`;
 
             return `
               <div style="min-width:220px;">
@@ -1003,7 +1003,7 @@
             const favorito = esFavorita(playa);
             const botonFavorito = favorito 
                 ? `<button class="btn btn-sm btn-eliminar-favorito flex-fill" onclick="window.eliminarFavoritaDesdePopup('${favorito.apodo}', ${playa.plyID})">Eliminar favorito</button>`
-                : `<button class="btn btn-sm btn-favorito-azul flex-fill" onclick="window.agregarFavoritaDesdePopup(${playa.plyID})">★ Favorito</button>`;
+                : `<button class="btn btn-sm btn-primary flex-fill" onclick="window.agregarFavoritaDesdePopup(${playa.plyID})"><i class="fa-solid fa-star" style="color:white;"></i> Favorito</button>`;
             
             return `
                 <div style="min-width:220px;">
