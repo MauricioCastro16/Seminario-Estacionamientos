@@ -21,9 +21,6 @@ namespace estacionamientos.Models
         [Required, StringLength(120)]
         public string UbfDir { get; set; } = string.Empty;
 
-        [StringLength(30)]
-        public string? UbfTipo { get; set; }   // casa, trabajo, etc.
-
          // 🔹 Coordenadas elegidas en el mapa
         public decimal UbfLat { get; set; }
         public decimal UbfLon { get; set; }

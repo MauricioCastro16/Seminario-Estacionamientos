@@ -17,6 +17,9 @@ namespace estacionamientos.Models
 
         public bool ValFav { get; set; }
 
+        [StringLength(50)]
+        public string? ValApodo { get; set; }   // Nombre/apodo para playas favoritas
+
         [MaxLength(500)]
         public string? ValComentario { get; set; }
 

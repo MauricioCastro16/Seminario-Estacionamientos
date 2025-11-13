@@ -840,7 +840,7 @@
         // Mostrar favoritos con ⭐
         function crearIconoFavorito(esPlaya = true){
             const icono = esPlaya ? 'fa-star' : 'fa-map-pin';
-            const color = esPlaya ? '#f1c40f' : '#0d6efd';
+            const color = esPlaya ? '#f1c40f' : '#f1c40f'; // Amarillo para ambos
             return L.divIcon({ 
                 className:'favorite-map-icon', 
                 html:`<i class="fa-solid ${icono}" style="color:${color};"></i>`, 
@@ -948,7 +948,7 @@
         if (!playa) return alert('No se pudo guardar la playa como favorita.');
         const apodo = prompt('¿Cómo querés llamar a esta playa favorita?', playa.plyNom);
         if (apodo == null || apodo.trim() === '') return;
-            const payload = { apodo: apodo.trim(), provincia: playa.plyProv || '', ciudad: playa.plyCiu || '', direccion: playa.plyDir || '', tipo:'Playa', lat: playa.plyLat, lon: playa.plyLon };
+            const payload = { apodo: apodo.trim(), provincia: playa.plyProv || '', ciudad: playa.plyCiu || '', direccion: playa.plyDir || '', tipo:'Playa', lat: playa.plyLat, lon: playa.plyLon, plyID: plyID };
             guardarUbicacionFavorita(payload).then(() => {
                 cargarUbicacionesFavoritas().then(() => {
                     // Actualizar el popup del marcador para mostrar el botón de eliminar
@@ -967,12 +967,17 @@
             if (!confirm(`¿Eliminar "${apodo}" de tus favoritos?`)) return;
             
             $.ajax({
-                url: '@Url.Action("EliminarUbicacionFavorita", "Conductor")' + '?apodo=' + encodeURIComponent(apodo),
+                url: '@Url.Action("EliminarUbicacionFavorita", "Conductor")' + '?apodo=' + encodeURIComponent(apodo) + '&tipo=Playa&plyID=' + plyID,
                 type: 'DELETE'
             })
             .done(function(data) {
                 if (data.success) {
-                    favoritos = favoritos.filter(f => f.apodo !== apodo);
+                    // Filtrar por plyID si está disponible, si no por apodo
+                    if (plyID) {
+                        favoritos = favoritos.filter(f => !(f.tipo === 'Playa' && f.plyID === plyID));
+                    } else {
+                        favoritos = favoritos.filter(f => f.apodo !== apodo);
+                    }
                     refreshFavoritesUI();
                     
                     // Actualizar el popup del marcador para mostrar el botón de agregar
@@ -1783,12 +1788,17 @@
             if (!confirm(mensajeConfirmacion)) return;
 
             $.ajax({
-                url: '@Url.Action("EliminarUbicacionFavorita", "Conductor")' + '?apodo=' + encodeURIComponent(fav.apodo),
+                url: '@Url.Action("EliminarUbicacionFavorita", "Conductor")' + '?apodo=' + encodeURIComponent(fav.apodo) + (esPlaya ? '&tipo=Playa' + (fav.plyID ? '&plyID=' + fav.plyID : '') : ''),
                 type: 'DELETE'
             })
             .done(function(data) {
             if (data.success) {
-                favoritos = favoritos.filter(f => f.apodo !== fav.apodo);
+                // Si es una playa y tiene plyID, filtrar por ambos; si no, solo por apodo
+                if (esPlaya && fav.plyID) {
+                    favoritos = favoritos.filter(f => !(f.tipo === 'Playa' && f.plyID === fav.plyID));
+                } else {
+                    favoritos = favoritos.filter(f => f.apodo !== fav.apodo);
+                }
                     refreshFavoritesUI();
                     const mensajeExito = esPlaya 
                         ? 'Playa de estacionamiento favorita eliminada correctamente.'
@@ -1823,7 +1833,7 @@
             if (nuevo.trim() === '') return alert('El nombre no puede estar vacío.');
             fetch('@Url.Action("EditarUbicacionFavorita", "Conductor")', {
                 method:'POST', headers:{ 'Content-Type':'application/json', 'RequestVerificationToken': antiforgeryToken },
-                body: JSON.stringify({ apodoActual: fav.apodo, nuevoApodo: nuevo.trim() })
+                body: JSON.stringify({ apodoActual: fav.apodo, nuevoApodo: nuevo.trim(), tipo: fav.tipo || null, plyID: fav.plyID || null })
             }).then(r=>r.json()).then(d=>{
                 if (d.success){ 
                     fav.apodo = nuevo.trim(); 

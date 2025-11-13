@@ -250,7 +250,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 entity.Property(u => u.UbfProv).HasMaxLength(50).IsRequired();
                 entity.Property(u => u.UbfCiu).HasMaxLength(80).IsRequired();
                 entity.Property(u => u.UbfDir).HasMaxLength(120).IsRequired();
-                entity.Property(u => u.UbfTipo).HasMaxLength(30);
                 //Nuevo ubflat y ubflon
                 entity.Property(u => u.UbfLat)
                     .HasColumnType("numeric(10,7)")
@@ -287,6 +286,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
                 e.Property(v => v.ValNumEst).IsRequired();
                 e.Property(v => v.ValFav);
+                e.Property(v => v.ValApodo).HasMaxLength(50);
 
                 e.HasOne(v => v.Playa)
                 .WithMany(p => p.Valoraciones)

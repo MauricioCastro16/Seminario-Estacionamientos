@@ -647,9 +647,10 @@ namespace estacionamientos.Controllers
             public string Provincia { get; set; } = string.Empty;
             public string Ciudad { get; set; } = string.Empty;
             public string Direccion { get; set; } = string.Empty;
-            public string? Tipo { get; set; }   // "Playa", "Casa", etc.
+            public string? Tipo { get; set; }   // "Playa" o null/otro para ubicaciones
             public decimal Lat { get; set; }
             public decimal Lon { get; set; }
+            public int? PlyID { get; set; }   // ID de la playa si es tipo "Playa"
         }
 
         // --------- FAVORITOS: obtener todas las ubicaciones del conductor ---------
@@ -664,7 +665,8 @@ namespace estacionamientos.Controllers
 
             var conductorId = int.Parse(userId);
 
-            var favoritas = await _context.UbicacionesFavoritas
+            // Obtener ubicaciones favoritas (no playas)
+            var ubicacionesFavoritas = await _context.UbicacionesFavoritas
                 .Where(u => u.ConNU == conductorId)
                 .AsNoTracking()
                 .Select(u => new
@@ -673,14 +675,35 @@ namespace estacionamientos.Controllers
                     provincia = u.UbfProv,
                     ciudad = u.UbfCiu,
                     direccion = u.UbfDir,
-                    tipo = u.UbfTipo,
-                    UbfLat = u.UbfLat,   //  se guarda lo que vino del mapa
-                    UbfLon = u.UbfLon   
+                    tipo = "Ubicación",
+                    UbfLat = u.UbfLat,
+                    UbfLon = u.UbfLon,
+                    plyID = (int?)null
                 })
-                
                 .ToListAsync();
 
-            return Json(favoritas);
+            // Obtener playas favoritas desde Valoracion
+            var playasFavoritas = await _context.Valoraciones
+                .Include(v => v.Playa)
+                .Where(v => v.ConNU == conductorId && v.ValFav == true)
+                .AsNoTracking()
+                .Select(v => new
+                {
+                    apodo = v.ValApodo ?? v.Playa.PlyNom,
+                    provincia = v.Playa.PlyProv,
+                    ciudad = v.Playa.PlyCiu,
+                    direccion = v.Playa.PlyDir,
+                    tipo = "Playa",
+                    UbfLat = v.Playa.PlyLat ?? 0,
+                    UbfLon = v.Playa.PlyLon ?? 0,
+                    plyID = (int?)v.PlyID
+                })
+                .ToListAsync();
+
+            // Combinar ambas listas
+            var todasLasFavoritas = ubicacionesFavoritas.Concat(playasFavoritas).ToList();
+
+            return Json(todasLasFavoritas);
         }
 
         // --------- FAVORITOS: crear una ubicación favorita desde el mapa ---------
@@ -698,44 +721,93 @@ namespace estacionamientos.Controllers
 
                 var conductorId = int.Parse(userId);
 
-                if (string.IsNullOrWhiteSpace(model.Apodo))
+                // Si es una playa, guardar en Valoracion
+                if (model.Tipo == "Playa" && model.PlyID.HasValue)
                 {
-                    model.Apodo = $"Favorito-{DateTime.Now:HHmmss}";
-                }
+                    if (string.IsNullOrWhiteSpace(model.Apodo))
+                    {
+                        var playa = await _context.Playas.FindAsync(model.PlyID.Value);
+                        model.Apodo = playa?.PlyNom ?? $"Playa-{DateTime.Now:HHmmss}";
+                    }
 
-                // Validar duplicado por (ConNU, Apodo)
-                bool yaExiste = await _context.UbicacionesFavoritas
-                    .AnyAsync(u => u.ConNU == conductorId && u.UbfApodo == model.Apodo);
+                    // Buscar si ya existe una valoración para esta playa
+                    var valoracionExistente = await _context.Valoraciones
+                        .FirstOrDefaultAsync(v => v.PlyID == model.PlyID.Value && v.ConNU == conductorId);
 
-                if (yaExiste)
-                {
+                    if (valoracionExistente != null)
+                    {
+                        // Actualizar la valoración existente
+                        valoracionExistente.ValFav = true;
+                        valoracionExistente.ValApodo = model.Apodo;
+                        // Si no tiene estrellas, asignar un valor por defecto
+                        if (valoracionExistente.ValNumEst == 0)
+                        {
+                            valoracionExistente.ValNumEst = 5;
+                        }
+                    }
+                    else
+                    {
+                        // Crear nueva valoración
+                        var nuevaValoracion = new Valoracion
+                        {
+                            PlyID = model.PlyID.Value,
+                            ConNU = conductorId,
+                            ValFav = true,
+                            ValApodo = model.Apodo,
+                            ValNumEst = 5  // Valor por defecto
+                        };
+                        _context.Valoraciones.Add(nuevaValoracion);
+                    }
+
+                    await _context.SaveChangesAsync();
+
                     return Json(new
                     {
-                        success = false,
-                        error = "Ya tienes una ubicación con ese apodo."
+                        success = true,
+                        message = "Playa de estacionamiento favorita guardada correctamente."
                     });
                 }
-
-                var entidad = new UbicacionFavorita
+                else
                 {
-                    ConNU = conductorId,
-                    UbfApodo = model.Apodo,
-                    UbfProv = model.Provincia,
-                    UbfCiu = model.Ciudad,
-                    UbfDir = model.Direccion,
-                    UbfTipo = model.Tipo,
-                    UbfLat = model.Lat,
-                    UbfLon = model.Lon
-                };
+                    // Es una ubicación normal, guardar en UbicacionFavorita
+                    if (string.IsNullOrWhiteSpace(model.Apodo))
+                    {
+                        model.Apodo = $"Favorito-{DateTime.Now:HHmmss}";
+                    }
 
-                _context.UbicacionesFavoritas.Add(entidad);
-                await _context.SaveChangesAsync();
+                    // Validar duplicado por (ConNU, Apodo)
+                    bool yaExiste = await _context.UbicacionesFavoritas
+                        .AnyAsync(u => u.ConNU == conductorId && u.UbfApodo == model.Apodo);
 
-                return Json(new
-                {
-                    success = true,
-                    message = "Ubicación favorita guardada correctamente."
-                });
+                    if (yaExiste)
+                    {
+                        return Json(new
+                        {
+                            success = false,
+                            error = "Ya tienes una ubicación con ese apodo."
+                        });
+                    }
+
+                    var entidad = new UbicacionFavorita
+                    {
+                        ConNU = conductorId,
+                        UbfApodo = model.Apodo,
+                        UbfProv = model.Provincia,
+                        UbfCiu = model.Ciudad,
+                        UbfDir = model.Direccion,
+                        UbfLat = model.Lat,
+                        UbfLon = model.Lon
+                    };
+
+                    _context.UbicacionesFavoritas.Add(entidad);
+                    await _context.SaveChangesAsync();
+
+                    return Json(new
+                    {
+                        success = true,
+                        message = "Ubicación favorita guardada correctamente."
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -745,7 +817,7 @@ namespace estacionamientos.Controllers
 
         // --------- FAVORITOS: eliminar una favorita por apodo ---------
         [HttpDelete]
-        public async Task<IActionResult> EliminarUbicacionFavorita(string apodo)
+        public async Task<IActionResult> EliminarUbicacionFavorita(string apodo, string? tipo = null, int? plyID = null)
         {
             try
             {
@@ -757,18 +829,52 @@ namespace estacionamientos.Controllers
 
                 var conductorId = int.Parse(userId);
 
-                var entity = await _context.UbicacionesFavoritas
-                    .FindAsync(conductorId, apodo);
-
-                if (entity == null)
+                // Si es una playa, buscar en Valoracion
+                if (tipo == "Playa")
                 {
-                    return Json(new { success = false, error = "Ubicación no encontrada" });
+                    Valoracion? valoracion;
+                    
+                    // Si tenemos el plyID, usarlo para identificar la playa específica
+                    if (plyID.HasValue)
+                    {
+                        valoracion = await _context.Valoraciones
+                            .FirstOrDefaultAsync(v => v.ConNU == conductorId && v.PlyID == plyID.Value && v.ValFav == true);
+                    }
+                    else
+                    {
+                        // Si no hay plyID, buscar por apodo (puede haber ambigüedad si hay múltiples con el mismo apodo)
+                        valoracion = await _context.Valoraciones
+                            .FirstOrDefaultAsync(v => v.ConNU == conductorId && v.ValFav == true && v.ValApodo == apodo);
+                    }
+
+                    if (valoracion == null)
+                    {
+                        return Json(new { success = false, error = "Playa favorita no encontrada" });
+                    }
+
+                    // Solo quitar el favorito, no eliminar la valoración completa
+                    valoracion.ValFav = false;
+                    valoracion.ValApodo = null;
+                    await _context.SaveChangesAsync();
+
+                    return Json(new { success = true, message = "Playa de estacionamiento favorita eliminada." });
                 }
+                else
+                {
+                    // Es una ubicación normal
+                    var entity = await _context.UbicacionesFavoritas
+                        .FindAsync(conductorId, apodo);
 
-                _context.UbicacionesFavoritas.Remove(entity);
-                await _context.SaveChangesAsync();
+                    if (entity == null)
+                    {
+                        return Json(new { success = false, error = "Ubicación no encontrada" });
+                    }
 
-                return Json(new { success = true, message = "Ubicación favorita eliminada." });
+                    _context.UbicacionesFavoritas.Remove(entity);
+                    await _context.SaveChangesAsync();
+
+                    return Json(new { success = true, message = "Ubicación favorita eliminada." });
+                }
             }
             catch (Exception ex)
             {
@@ -792,42 +898,79 @@ namespace estacionamientos.Controllers
 
                 model.NuevoApodo = model.NuevoApodo.Trim();
 
-                // Buscar el favorito actual
-                var favorito = await _context.UbicacionesFavoritas
-                    .FirstOrDefaultAsync(u => u.ConNU == conductorId && u.UbfApodo == model.ApodoActual);
-
-                if (favorito == null)
-                    return Json(new { success = false, error = "No se encontró la ubicación favorita." });
-
-                // Verificar duplicado
-                bool yaExiste = await _context.UbicacionesFavoritas
-                    .AnyAsync(u => u.ConNU == conductorId && u.UbfApodo == model.NuevoApodo);
-
-                if (yaExiste)
-                    return Json(new { success = false, error = "Ya tenés otra ubicación con ese nombre." });
-
-                // Crear una nueva con el nuevo apodo
-                var nueva = new UbicacionFavorita
+                // Si es una playa, buscar en Valoracion
+                if (model.Tipo == "Playa")
                 {
-                    ConNU = favorito.ConNU,
-                    UbfApodo = model.NuevoApodo,
-                    UbfProv = favorito.UbfProv,
-                    UbfCiu = favorito.UbfCiu,
-                    UbfDir = favorito.UbfDir,
-                    UbfTipo = favorito.UbfTipo,
-                    UbfLat = favorito.UbfLat,
-                    UbfLon = favorito.UbfLon
-                };
+                    Valoracion? valoracion;
+                    
+                    // Si tenemos el plyID, usarlo para identificar la playa específica
+                    if (model.PlyID.HasValue)
+                    {
+                        valoracion = await _context.Valoraciones
+                            .FirstOrDefaultAsync(v => v.ConNU == conductorId && v.PlyID == model.PlyID.Value && v.ValFav == true);
+                    }
+                    else
+                    {
+                        // Si no hay plyID, buscar por apodo (puede haber ambigüedad si hay múltiples con el mismo apodo)
+                        valoracion = await _context.Valoraciones
+                            .FirstOrDefaultAsync(v => v.ConNU == conductorId && v.ValFav == true && v.ValApodo == model.ApodoActual);
+                    }
 
-                _context.UbicacionesFavoritas.Add(nueva);
+                    if (valoracion == null)
+                        return Json(new { success = false, error = "No se encontró la playa favorita." });
 
-                // Eliminar la anterior
-                _context.UbicacionesFavoritas.Remove(favorito);
+                    // Verificar duplicado (excluyendo la playa actual si tenemos plyID)
+                    bool yaExiste = await _context.Valoraciones
+                        .AnyAsync(v => v.ConNU == conductorId && v.ValFav == true && v.ValApodo == model.NuevoApodo && 
+                                      (!model.PlyID.HasValue || v.PlyID != model.PlyID.Value));
 
-                // Guardar cambios
-                await _context.SaveChangesAsync();
+                    if (yaExiste)
+                        return Json(new { success = false, error = "Ya tenés otra playa con ese nombre." });
 
-                return Json(new { success = true, message = "Ubicación renombrada correctamente." });
+                    // Actualizar el apodo
+                    valoracion.ValApodo = model.NuevoApodo;
+                    await _context.SaveChangesAsync();
+
+                    return Json(new { success = true, message = "Playa de estacionamiento renombrada correctamente." });
+                }
+                else
+                {
+                    // Es una ubicación normal
+                    var favorito = await _context.UbicacionesFavoritas
+                        .FirstOrDefaultAsync(u => u.ConNU == conductorId && u.UbfApodo == model.ApodoActual);
+
+                    if (favorito == null)
+                        return Json(new { success = false, error = "No se encontró la ubicación favorita." });
+
+                    // Verificar duplicado
+                    bool yaExiste = await _context.UbicacionesFavoritas
+                        .AnyAsync(u => u.ConNU == conductorId && u.UbfApodo == model.NuevoApodo);
+
+                    if (yaExiste)
+                        return Json(new { success = false, error = "Ya tenés otra ubicación con ese nombre." });
+
+                    // Crear una nueva con el nuevo apodo
+                    var nueva = new UbicacionFavorita
+                    {
+                        ConNU = favorito.ConNU,
+                        UbfApodo = model.NuevoApodo,
+                        UbfProv = favorito.UbfProv,
+                        UbfCiu = favorito.UbfCiu,
+                        UbfDir = favorito.UbfDir,
+                        UbfLat = favorito.UbfLat,
+                        UbfLon = favorito.UbfLon
+                    };
+
+                    _context.UbicacionesFavoritas.Add(nueva);
+
+                    // Eliminar la anterior
+                    _context.UbicacionesFavoritas.Remove(favorito);
+
+                    // Guardar cambios
+                    await _context.SaveChangesAsync();
+
+                    return Json(new { success = true, message = "Ubicación renombrada correctamente." });
+                }
             }
             catch (Exception ex)
             {
@@ -840,6 +983,8 @@ namespace estacionamientos.Controllers
         {
             public string ApodoActual { get; set; } = string.Empty;
             public string NuevoApodo { get; set; } = string.Empty;
+            public string? Tipo { get; set; }   // "Playa" o null para ubicaciones
+            public int? PlyID { get; set; }   // ID de la playa si es tipo "Playa"
         }
 
 
@@ -1257,6 +1402,11 @@ namespace estacionamientos.Controllers
                     valoracionExistente.ValNumEst = model.ValNumEst;
                     valoracionExistente.ValFav = model.ValFav;
                     valoracionExistente.ValComentario = model.ValComentario;
+                    // Si se quita el favorito, limpiar el apodo
+                    if (!model.ValFav)
+                    {
+                        valoracionExistente.ValApodo = null;
+                    }
                     _context.Entry(valoracionExistente).State = EntityState.Modified;
                 }
                 else

@@ -748,7 +748,8 @@ public static class DbInitializer
                     UbfProv = faker.Address.State(), // Provincia
                     UbfCiu = faker.Address.City(), // Ciudad
                     UbfDir = faker.Address.StreetAddress(), // Dirección
-                    UbfTipo = faker.Random.Bool() ? "Casa" : "Trabajo" // Tipo aleatorio
+                    UbfLat = (decimal)faker.Address.Latitude(),
+                    UbfLon = (decimal)faker.Address.Longitude()
                 };
 
                 ubicacionesFavoritas.Add(ubicacion);
