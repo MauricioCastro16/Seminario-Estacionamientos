@@ -8,7 +8,7 @@ using System.Security.Claims;
 
 namespace estacionamientos.Controllers
 {
-    public class OcupacionController : Controller
+    public class OcupacionController : BaseController
     {
         private readonly AppDbContext _ctx;
         public OcupacionController(AppDbContext ctx) => _ctx = ctx;
@@ -59,6 +59,11 @@ namespace estacionamientos.Controllers
         private async Task<CobroEgresoVM> CalcularCobro(
             int plyID, int plzNum, string vehPtnt, DateTime ocufFyhIni, DateTime ocufFyhFin)
         {
+
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Ingreso/Egreso", Url = Url.Action("Index", "Ocupacion")! },
+                new BreadcrumbItem { Title = "Egresar Vehículo", Url = Url.Action("CalcularCobro", "Ocupacion")! }
+            );
             // Normalizar fechas a UTC para comparación
             var ocufFyhIniUtc = DateTime.SpecifyKind(ocufFyhIni, DateTimeKind.Utc);
             
@@ -411,6 +416,10 @@ namespace estacionamientos.Controllers
         // ===========================
         public async Task<IActionResult> Index()
         {   
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Ingreso/Egreso", Url = Url.Action("Index", "Ocupacion")! }
+            );
+
             IQueryable<Ocupacion> query = _ctx.Ocupaciones
                 .Include(o => o.Plaza!)
                     .ThenInclude(p => p.Clasificaciones!)
@@ -899,6 +908,11 @@ namespace estacionamientos.Controllers
         // ===========================
         public async Task<IActionResult> Create()
         {
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Ingreso/Egreso", Url = Url.Action("Index", "Ocupacion")! },
+                new BreadcrumbItem { Title = "Ingresar Vehículo", Url = Url.Action("Create", "Ocupacion")! }
+            );
+
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (User.IsInRole("Playero"))
@@ -1202,6 +1216,10 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> ReubicarVehiculo(int plyID, int plzNum, string vehPtnt)
         {   
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Ingreso/Egreso", Url = Url.Action("Index", "Ocupacion")! },
+                new BreadcrumbItem { Title = "Reubicar Vehículo", Url = Url.Action("ReibocarVehículo", "Ocupacion")! }
+            );
             await PrepararVistaReubicar(plyID, plzNum, vehPtnt, string.Empty);
             return View("ReubicarVehiculo");
         }

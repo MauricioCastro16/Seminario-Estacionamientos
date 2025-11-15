@@ -7,7 +7,7 @@ using System.Security.Claims;
 
 namespace estacionamientos.Controllers
 {
-    public class PlayaEstacionamientoController : Controller
+    public class PlayaEstacionamientoController : BaseController
     {
         private readonly AppDbContext _context;
 
@@ -17,6 +17,7 @@ namespace estacionamientos.Controllers
         [Route("Playas")]
         public async Task<IActionResult> Index([FromQuery] PlayasIndexVM vm)
         {
+
             // 1) Usuario actual (seguro ante parseo)
             int usuNU = 0;
             int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out usuNU);
@@ -212,6 +213,7 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> DetailsPlayero(int id)
         {
+
             var playa = await _context.Playas
                 .Include(p => p.Horarios)
                     .ThenInclude(h => h.ClasificacionDias)
@@ -224,6 +226,10 @@ namespace estacionamientos.Controllers
                 .AsNoTracking()
                 .OrderBy(c => c.ClaDiasID)
                 .ToListAsync();
+
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = playa.PlyNom, Url = Url.Action("DetailsPlayero", "PlayaEstacionamiento", new { id = playa.PlyID})! }
+            );
 
             return View(playa);
         }

@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace estacionamientos.Controllers
 {
     [Authorize(Roles = "Duenio,Playero")]
-    public class TarifaServicioController : Controller
+    public class TarifaServicioController : BaseController
     {
         private readonly AppDbContext _ctx;
         public TarifaServicioController(AppDbContext ctx) => _ctx = ctx;
@@ -664,6 +664,12 @@ namespace estacionamientos.Controllers
                 .ToListAsync();
 
             ViewBag.Playa = playa;
+
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = playa.PlyNom, Url = Url.Action("DetailsPlayero", "PlayaEstacionamiento", new { id = playa.PlyID})! },
+                new BreadcrumbItem { Title = "Tarifas Vigentes", Url = Url.Action("VigentesPlayero", "TarifaServicio", new { plyId = playa.PlyID})! }
+            );
+
             return View(tarifas);
         }
         

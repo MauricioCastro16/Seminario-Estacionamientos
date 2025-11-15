@@ -1,0 +1,29 @@
+@model IEnumerable<BreadcrumbItem>
+
+<nav aria-label="breadcrumb d-flex">
+    <ol class="breadcrumb px-2 mb-0 mt-3 ms-3 justify-content-center rounded" style="font-weight: 400; width:max-content;">
+        @foreach (var item in Model)
+        {
+            if (item.Active)
+            {
+                <li class="small breadcrumb-item active fw-semibold text-primary" style="cursor:default;" aria-current="page">
+                    @item.Title
+                </li>
+            }
+            else
+            {
+                <li class="small breadcrumb-item">
+                    <a href="@item.Url" class="text-decoration-none" style="transition: color 0.2s; color:#aaa">
+                        @item.Title
+                    </a>
+                </li>
+            }
+        }
+    </ol>
+</nav>
+
+<style>
+    .breadcrumb a:hover {
+        text-decoration: underline!important;
+    }
+</style>

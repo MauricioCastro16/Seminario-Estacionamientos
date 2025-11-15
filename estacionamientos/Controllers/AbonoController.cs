@@ -15,7 +15,7 @@ using System.Text.Json;
 
 namespace estacionamientos.Controllers
 {
-    public class AbonoController : Controller
+    public class AbonoController : BaseController
     {
         private readonly AppDbContext _ctx;
         public AbonoController(AppDbContext ctx) => _ctx = ctx;
@@ -55,6 +55,9 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> Index()
         {
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Abonos", Url = Url.Action("Index", "Abono")! }
+            );
             List<Abono> abonos;
             
             if (User.IsInRole("Playero"))
@@ -130,6 +133,10 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> Create(string? abonado = null, string? dni = null, string? vehiculos = null, int? plyID = null)
         {
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Abonos", Url = Url.Action("Index", "Abono")! },
+                new BreadcrumbItem { Title = "Agregar Abono", Url = Url.Action("Create", "Abono")! }
+            );
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var model = new AbonoCreateVM { AboFyhIni = DateTime.UtcNow };
 

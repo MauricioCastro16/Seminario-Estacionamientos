@@ -6,7 +6,7 @@ using estacionamientos.Models;
 
 namespace estacionamientos.Controllers
 {
-    public class AceptaMetodoPagoController : Controller
+    public class AceptaMetodoPagoController : BaseController
     {
         private readonly AppDbContext _ctx;
         public AceptaMetodoPagoController(AppDbContext ctx) => _ctx = ctx;
@@ -69,6 +69,11 @@ namespace estacionamientos.Controllers
                 .ToListAsync();
 
             ViewBag.Playa = playa;
+
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = playa.PlyNom, Url = Url.Action("DetailsPlayero", "PlayaEstacionamiento", new { id = playa.PlyID})! },
+                new BreadcrumbItem { Title = "Métodos de pago", Url = Url.Action("Lista", "AceptaMetodoPago")! }
+            );
             return View(metodosAceptados);
         }
 

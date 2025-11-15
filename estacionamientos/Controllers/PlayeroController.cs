@@ -11,7 +11,7 @@ namespace estacionamientos.Controllers
 {
     // Permitir que entren tanto Duenio como Playero
     [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio,Playero")]
-    public class PlayeroController : Controller
+    public class PlayeroController : BaseController
     {
         private readonly AppDbContext _context;
         public PlayeroController(AppDbContext context) => _context = context;
@@ -456,6 +456,10 @@ namespace estacionamientos.Controllers
                 return RedirectToAction("Index", "Home");
             }
 
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = turno.Playa.PlyNom, Url = Url.Action("DetailsPlayero", "PlayaEstacionamiento", new { id = turno.Playa.PlyID})! },
+                new BreadcrumbItem { Title = "Plazas", Url = Url.Action("Plazas", "Playero")! }
+            );
             var plazas = await _context.Plazas
                 .Include(p => p.Clasificaciones)
                     .ThenInclude(pc => pc.Clasificacion)
