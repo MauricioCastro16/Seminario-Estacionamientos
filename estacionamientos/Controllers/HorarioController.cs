@@ -14,7 +14,7 @@ using estacionamientos.Models.ViewModels;
 namespace estacionamientos.Controllers
 {
     [Authorize(Roles = "Duenio")]
-    public class HorarioController : Controller
+    public class HorarioController : BaseController
     {
         private readonly AppDbContext _ctx;
         private static readonly DateTime BaseDate = new(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -132,6 +132,10 @@ namespace estacionamientos.Controllers
                 "Nombre",
                 selectedId);
 
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! },
+                new BreadcrumbItem { Title = $"Horarios ({playaSeleccionada.PlyNom})", Url = Url.Action("Index", "Horario", new {plyID = playaSeleccionada.PlyID})! }
+            );
             return View(vm);
         }
 
@@ -157,6 +161,11 @@ namespace estacionamientos.Controllers
                 Clasificaciones = await BuildClasificacionesAsync(plyID, claDiasID)
             };
 
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! },
+                new BreadcrumbItem { Title = $"Horarios ({playa.PlyNom})", Url = Url.Action("Index", "Horario", new {plyID = playa.PlyID})! },
+                new BreadcrumbItem { Title = "Nuevo Horario", Url = Url.Action("Create", "Horario", new {plyID = playa.PlyID})! }
+            );
             return View(vm);
         }
 
@@ -238,6 +247,11 @@ namespace estacionamientos.Controllers
                 EsEdicion = true
             };
 
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! },
+                new BreadcrumbItem { Title = $"Horarios ({horario.Playa.PlyNom})", Url = Url.Action("Index", "Horario", new {plyID = horario.Playa.PlyID})! },
+                new BreadcrumbItem { Title = "Editar", Url = Url.Action("Edit", "Horario")! }
+            );
             return View(vm);
         }
 

@@ -9,7 +9,7 @@ using estacionamientos.ViewModels;
 
 namespace estacionamientos.Controllers
 {
-    public class TurnoController : Controller
+    public class TurnoController : BaseController
     {
         private readonly AppDbContext _ctx;
         public TurnoController(AppDbContext ctx) => _ctx = ctx;
@@ -83,6 +83,9 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> Index()
         {
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Mis Turnos", Url = Url.Action("Index", "Turno")! }
+            );
             if (User.IsInRole("Playero"))
             {
                 var plaNU = GetCurrentPlaNU();
@@ -116,6 +119,10 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> Details(int plyID, int plaNU, DateTime turFyhIni)
         {
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Mis Turnos", Url = Url.Action("Index", "Turno")! },
+                new BreadcrumbItem { Title = "Ver Detalles", Url = Url.Action("Details", "Turno")! }
+            );
             // Usuario actual
             var currentPlaNU = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
             
@@ -305,6 +312,10 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> Edit(int plyID, int plaNU, DateTime turFyhIni, string? returnUrl = null)
         {
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Mis Turnos", Url = Url.Action("Index", "Turno")! },
+                new BreadcrumbItem { Title = "Finalizar Turno", Url = Url.Action("Index", "Turno")! }
+            );
             ViewBag.ReturnUrl = returnUrl;
 
             var item = await _ctx.Turnos

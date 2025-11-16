@@ -7,7 +7,7 @@ using estacionamientos.ViewModels;
 
 namespace estacionamientos.Controllers
 {
-    public class ServicioProveidoController : Controller
+    public class ServicioProveidoController : BaseController
     {
         private readonly AppDbContext _ctx;
         public ServicioProveidoController(AppDbContext ctx) => _ctx = ctx;
@@ -135,6 +135,10 @@ namespace estacionamientos.Controllers
                 ServiciosAsignados = serviciosAsignados
             };
 
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! },
+                new BreadcrumbItem { Title = $"Gestionar Servicios ({playa.PlyNom})", Url = Url.Action("Servicios", "ServicioProveido", new {plyId = playa.PlyID})! }
+            );
             return View(viewModel);  // Pasar los datos al modelo de vista
         }
 

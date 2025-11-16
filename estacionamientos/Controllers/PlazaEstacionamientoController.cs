@@ -6,7 +6,7 @@ using estacionamientos.Models;
 
 namespace estacionamientos.Controllers
 {
-    public class PlazaEstacionamientoController : Controller
+    public class PlazaEstacionamientoController : BaseController
     {
         private readonly AppDbContext _ctx;
         public PlazaEstacionamientoController(AppDbContext ctx) => _ctx = ctx;
@@ -91,6 +91,10 @@ namespace estacionamientos.Controllers
 
             await LoadClasificaciones();
 
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! },
+                new BreadcrumbItem { Title = $"Configurar Plazas ({playa.PlyNom})", Url = Url.Action("ConfigurarPlazas", "PlazaEstacionamiento", new {plyID = playa.PlyID})! }
+            );
             return View(playa.Plazas.OrderBy(z => z.PlzNum));
         }
 

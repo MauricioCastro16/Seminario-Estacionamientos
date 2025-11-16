@@ -423,6 +423,11 @@
         </nav>
     </header>
 
+    <!-- Breadcrumb trail -->
+    @if (ViewBag.Breadcrumb != null)
+    {
+        @await Html.PartialAsync("_Breadcrumb", (object)ViewBag.Breadcrumb)
+    }
     <!-- Main Content -->
     <main class="main-content">
         <div class="container-fluid">

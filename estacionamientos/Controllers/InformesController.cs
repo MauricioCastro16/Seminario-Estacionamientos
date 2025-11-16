@@ -15,13 +15,13 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;       // Colors
 using QuestPDF.Infrastructure;
 using SkiaSharp;              // Canvas (gráficos)
-
+using estacionamientos.Models;
 
 
 
 namespace estacionamientos.Controllers
 {
-    public class InformesController : Controller
+    public class InformesController : BaseController
     {
         static string F(float v) => v.ToString("0.###", CultureInfo.InvariantCulture);
 
@@ -56,6 +56,10 @@ namespace estacionamientos.Controllers
         // =====================
         public IActionResult Index(DateTime? desde, DateTime? hasta, List<int>? playasIds, int? duenioId = null, int? metodoPagoId = null, List<int>? metodosIds = null)
         {
+
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Informes", Url = Url.Action("Index", "Informes")! }
+            );
             var todayLocal = DateTime.Now;
             var defaultDesdeUtc = DayStartUtc(todayLocal.AddDays(-30));
             var defaultHastaUtc = DayEndUtc(todayLocal);

@@ -7,7 +7,7 @@ using System.Security.Claims;
 
 namespace estacionamientos.Controllers
 {
-    public class PlayaEstacionamientoController : Controller
+    public class PlayaEstacionamientoController : BaseController
     {
         private readonly AppDbContext _context;
 
@@ -17,6 +17,10 @@ namespace estacionamientos.Controllers
         [Route("Playas")]
         public async Task<IActionResult> Index([FromQuery] PlayasIndexVM vm)
         {
+
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! }
+            );
             // 1) Usuario actual (seguro ante parseo)
             int usuNU = 0;
             int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out usuNU);
@@ -212,6 +216,7 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> DetailsPlayero(int id)
         {
+
             var playa = await _context.Playas
                 .Include(p => p.Horarios)
                     .ThenInclude(h => h.ClasificacionDias)
@@ -225,12 +230,23 @@ namespace estacionamientos.Controllers
                 .OrderBy(c => c.ClaDiasID)
                 .ToListAsync();
 
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = playa.PlyNom, Url = Url.Action("DetailsPlayero", "PlayaEstacionamiento", new { id = playa.PlyID})! }
+            );
+
             return View(playa);
         }
 
 
 
-        public IActionResult Create() => View(new PlayaEstacionamiento());
+        public IActionResult Create()
+        {
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! },
+                new BreadcrumbItem { Title = "Agregar Playa", Url = Url.Action("Create", "PlayaEstacionamiento")! }
+            );
+            return View(new PlayaEstacionamiento());
+        }    
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(PlayaEstacionamiento model)

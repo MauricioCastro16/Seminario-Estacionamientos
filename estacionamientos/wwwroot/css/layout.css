@@ -815,3 +815,10 @@ body.sidebar-open {
         margin: 0;
     }
 }
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: '»';
+    font-weight: 400;
+    margin: 0 0.4rem;
+    color: #bbb;
+  }

@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace estacionamientos.Controllers
 {
     [Authorize(Roles = "Playero")]
-    public class ServicioExtraRealizadoController : Controller
+    public class ServicioExtraRealizadoController : BaseController
     {
         private readonly AppDbContext _ctx;
         public ServicioExtraRealizadoController(AppDbContext ctx) => _ctx = ctx;
@@ -116,6 +116,10 @@ namespace estacionamientos.Controllers
         // 🔹 GET: Create
         public async Task<IActionResult> Create(int? plyID = null)
         {
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Servicios Extra", Url = Url.Action("Index", "ServicioExtraRealizado")! },
+                new BreadcrumbItem { Title = "Registrar nuevo servicio", Url = Url.Action("Create", "ServicioExtraRealizado")! }
+            );
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userId, out var plaNU))
                 return BadRequest("ID de usuario inválido");
@@ -306,6 +310,9 @@ namespace estacionamientos.Controllers
         // 🔹 INDEX: lista los servicios extra del turno activo del playero
         public async Task<IActionResult> Index()
         {
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Servicios Extra", Url = Url.Action("Index", "ServicioExtraRealizado")! }
+            );
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(userId, out var plaNU))
                 return BadRequest("ID de usuario inválido");
@@ -358,6 +365,10 @@ namespace estacionamientos.Controllers
         // 🔹 GET: Detalles de un servicio extra realizado
         public async Task<IActionResult> Details(int plyID, int serID, string vehPtnt, DateTime servExFyHIni)
         {
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Servicios Extra", Url = Url.Action("Index", "ServicioExtraRealizado")! },
+                new BreadcrumbItem { Title = "Detalles", Url = Url.Action("Details", "ServicioExtraRealizado")! }
+            );
             var item = await _ctx.ServiciosExtrasRealizados
                 .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
                 .Include(s => s.Vehiculo)

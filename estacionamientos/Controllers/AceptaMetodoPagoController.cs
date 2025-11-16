@@ -6,7 +6,7 @@ using estacionamientos.Models;
 
 namespace estacionamientos.Controllers
 {
-    public class AceptaMetodoPagoController : Controller
+    public class AceptaMetodoPagoController : BaseController
     {
         private readonly AppDbContext _ctx;
         public AceptaMetodoPagoController(AppDbContext ctx) => _ctx = ctx;
@@ -26,7 +26,7 @@ namespace estacionamientos.Controllers
             ViewBag.MepID = new SelectList(metodos, "MepID", "MepNom", mepSel);
         }
 
-        // Vista principal de métodos de pago para una playa
+        // Vista principal de métodos de pago para una playa (dueño)
         [HttpGet("Playas/{plyID}/[controller]")]
         public async Task<IActionResult> Index(int plyID)
         {
@@ -48,6 +48,10 @@ namespace estacionamientos.Controllers
             ViewBag.PlyID  = playa.PlyID;
             ViewBag.PlyNom = playa.PlyNom;
 
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! },
+                new BreadcrumbItem { Title = $"Métodos de pago ({playa.PlyNom})", Url = Url.Action("Index", "AceptaMetodoPago")! }
+            );
             return View((metodos, metodosAceptados, playa));
         }
 
@@ -69,6 +73,11 @@ namespace estacionamientos.Controllers
                 .ToListAsync();
 
             ViewBag.Playa = playa;
+
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = playa.PlyNom, Url = Url.Action("DetailsPlayero", "PlayaEstacionamiento", new { id = playa.PlyID})! },
+                new BreadcrumbItem { Title = "Métodos de pago", Url = Url.Action("Lista", "AceptaMetodoPago")! }
+            );
             return View(metodosAceptados);
         }
 
