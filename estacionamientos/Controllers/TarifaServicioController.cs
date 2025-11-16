@@ -100,8 +100,13 @@ namespace estacionamientos.Controllers
                     .AsNoTracking()
                     .FirstOrDefaultAsync(p => p.PlyID == plyID.Value);
 
-                if (playa != null)
+                if (playa != null){
                     ViewBag.PlayaNombre = playa.PlyNom;
+                    SetBreadcrumb(
+                        new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! },
+                        new BreadcrumbItem { Title = $"Ver Tarifas ({playa.PlyNom})", Url = Url.Action("Index", "TarifaServicio", new {plyID = playa.PlyID})! }
+                    );
+                }      
             }
 
             // quitar un filtro (igual que en Playas)
@@ -428,7 +433,11 @@ namespace estacionamientos.Controllers
                 .FirstOrDefaultAsync(p => p.PlyID == plySel);
 
             ViewBag.PlayaNombre = playa?.PlyNom ?? "";
-
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! },
+                new BreadcrumbItem { Title = $"Ver Tarifas ({playa?.PlyNom})", Url = Url.Action("Index", "TarifaServicio", new {plyID = playa?.PlyID})! },
+                new BreadcrumbItem { Title = $"Agregar Tarifa", Url = Url.Action("Create", "TarifaServicio",new {plySel = playa?.PlyID})! }
+            );
 
             return View(new TarifaServicio
             {
@@ -533,6 +542,16 @@ namespace estacionamientos.Controllers
             if (item is null) return NotFound();
 
             await LoadSelects(item.PlyID, item.SerID, item.ClasVehID);
+            
+            var playa = await _ctx.Playas
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.PlyID == plyID);
+
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! },
+                new BreadcrumbItem { Title = $"Ver Tarifas ({playa?.PlyNom})", Url = Url.Action("Index", "TarifaServicio", new {plyID = item?.PlyID})! },
+                new BreadcrumbItem { Title = $"Editar", Url = Url.Action("Edit", "TarifaServicio", new {plyID = item?.PlyID})! }
+            );
             return View(item);
         }
 
@@ -691,8 +710,16 @@ namespace estacionamientos.Controllers
                     .FirstOrDefaultAsync(p => p.PlyID == plyID.Value);
 
                 if (playa != null)
+                {
                     ViewBag.PlayaNombre = playa.PlyNom;
                     ViewBag.PlyID = plyID.Value;   // 👈 esto es lo que le faltaba
+
+                    SetBreadcrumb(
+                        new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! },
+                        new BreadcrumbItem { Title = $"Ver Tarifas ({playa?.PlyNom})", Url = Url.Action("Index", "TarifaServicio", new {plyID = playa?.PlyID})! },
+                        new BreadcrumbItem { Title = $"Historial", Url = Url.Action("Historial", "TarifaServicio", new {plyID = playa?.PlyID})! }
+                    );
+                }
 
             }
 

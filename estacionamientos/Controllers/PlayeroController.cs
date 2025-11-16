@@ -68,6 +68,10 @@ namespace estacionamientos.Controllers
             List<string>? Todos = null,
             string? remove = null)
         {
+
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playeros", Url = Url.Action("Index", "Playero")! }
+            );
             var dueId = GetCurrentOwnerId();
             var misPlyIds = await PlyIdsDelDuenioAsync(dueId);
 
@@ -196,6 +200,11 @@ namespace estacionamientos.Controllers
         [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
         public async Task<IActionResult> Create()
         {
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playeros", Url = Url.Action("Index", "Playero")! },
+                new BreadcrumbItem { Title = "Agregar Playero", Url = Url.Action("Create", "Playero")! }
+            );
+
             var dueId = GetCurrentOwnerId();
             ViewBag.Playas = await SelectListPlayasDelDuenioAsync(dueId);
             return View(new PlayeroCreateVM
@@ -302,6 +311,11 @@ namespace estacionamientos.Controllers
 
             var dueId = GetCurrentOwnerId();
             ViewBag.Playas = await SelectListPlayasDelDuenioAsync(dueId);
+
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playeros", Url = Url.Action("Index", "Playero")! },
+                new BreadcrumbItem { Title = $"Vincular a una playa", Url = Url.Action("Create", "Playero")! }
+            );
 
             return View(new PlayeroAssignVM
             {
@@ -531,6 +545,11 @@ namespace estacionamientos.Controllers
         [HttpGet]
         public async Task<IActionResult> HistorialAgrupado()
         {
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playeros", Url = Url.Action("Index", "Playero")! },
+                new BreadcrumbItem { Title = "Historial", Url = Url.Action("HistorialAgrupado", "Playero")! }
+            );
+
             var dueId = GetCurrentOwnerId();                          // helper tuyo
             var misPlyIds = await PlyIdsDelDuenioAsync(dueId);        // helper tuyo
 

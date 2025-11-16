@@ -9,13 +9,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace estacionamientos.Controllers;
 
-public class GestionController(AppDbContext ctx) : Controller
+public class GestionController(AppDbContext ctx) : BaseController
 {
     private readonly AppDbContext _ctx = ctx;
 
     [HttpGet]
     public async Task<IActionResult> Index(string? modo = null, int? playaId = null, DateTime? desde = null, DateTime? hasta = null, List<int>? playasIds = null)
     {
+        SetBreadcrumb(
+            new BreadcrumbItem { Title = "Gestión", Url = Url.Action("Index", "Gestion")! }
+        );
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out var duenioId))
         {

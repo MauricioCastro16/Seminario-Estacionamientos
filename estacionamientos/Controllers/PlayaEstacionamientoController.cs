@@ -18,6 +18,9 @@ namespace estacionamientos.Controllers
         public async Task<IActionResult> Index([FromQuery] PlayasIndexVM vm)
         {
 
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! }
+            );
             // 1) Usuario actual (seguro ante parseo)
             int usuNU = 0;
             int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out usuNU);
@@ -236,7 +239,14 @@ namespace estacionamientos.Controllers
 
 
 
-        public IActionResult Create() => View(new PlayaEstacionamiento());
+        public IActionResult Create()
+        {
+            SetBreadcrumb(
+                new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! },
+                new BreadcrumbItem { Title = "Agregar Playa", Url = Url.Action("Create", "PlayaEstacionamiento")! }
+            );
+            return View(new PlayaEstacionamiento());
+        }    
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(PlayaEstacionamiento model)
