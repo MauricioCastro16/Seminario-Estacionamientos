@@ -92,15 +92,23 @@ namespace estacionamientos.Controllers
                     tieneVehiculo = conduceSeleccionado;
                 }
 
-                // Si no hay vehículo seleccionado, verificar si tiene un favorito
+                // Si no hay vehículo seleccionado en sesión, verificar si tiene un favorito
                 if (!tieneVehiculo)
                 {
-                    var tieneFavorito = await _context.Conduces
+                    var conduceFavorito = await _context.Conduces
                         .Where(c => c.ConNU == conductorId && c.Favorito)
                         .AsNoTracking()
-                        .AnyAsync();
+                        .FirstOrDefaultAsync();
                     
-                    tieneVehiculo = tieneFavorito;
+                    if (conduceFavorito != null)
+                    {
+                        tieneVehiculo = true;
+                        // Si hay un favorito pero no está en sesión, guardarlo en sesión automáticamente
+                        if (string.IsNullOrEmpty(vehiculoSeleccionado))
+                        {
+                            HttpContext.Session.SetString("vehiculoSeleccionado", conduceFavorito.VehPtnt);
+                        }
+                    }
                 }
 
                 // Si no tiene vehículo seleccionado ni favorito, verificar si tiene vehículos registrados

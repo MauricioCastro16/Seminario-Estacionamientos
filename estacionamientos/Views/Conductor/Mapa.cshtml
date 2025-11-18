@@ -330,7 +330,18 @@
         }
         
         @@media (max-width:768px){
-            .favorites-panel{ top:140px; left:10px; right:auto; width:260px; max-height:50vh; display:flex; }
+            .favorites-panel{ 
+                top:140px; 
+                left:10px; 
+                right:auto; 
+                width:260px; 
+                max-height:50vh; 
+                /* Oculto por defecto en mobile */
+                display:none;
+            }
+            .favorites-panel.show{
+                display:flex;
+            }
         }
 
         /* Botón de favoritos en la barra */
@@ -624,10 +635,17 @@
             // Mostrar la sidebar si está oculta, ocultarla si está visible
             if (panel.classList.contains('show')) {
                 panel.classList.remove('show');
+                if (icon) { 
+                    icon.classList.remove('fa-chevron-up'); 
+                    icon.classList.add('fa-chevron-down'); 
+                }
             } else {
                 panel.classList.add('show');
-            panel.classList.remove('collapsed');
-            if (icon){ icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
+                panel.classList.remove('collapsed');
+                if (icon) { 
+                    icon.classList.remove('fa-chevron-up'); 
+                    icon.classList.add('fa-chevron-down'); 
+                }
             }
         }
 
@@ -2013,11 +2031,35 @@
         function toggleFavorites(){
             const panel = document.getElementById('favoritesPanel');
             const icon = document.getElementById('favoritesToggleIcon');
-            // Solo permitir colapsar/expandir si la sidebar está visible
-            if (!panel.classList.contains('show')) return;
-            panel.classList.toggle('collapsed');
-            if (panel.classList.contains('collapsed')){ icon.classList.remove('fa-chevron-down'); icon.classList.add('fa-chevron-up'); }
-            else { icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
+            
+            // En mobile, mostrar/ocultar el panel completo
+            if (window.innerWidth <= 768) {
+                if (panel.classList.contains('show')) {
+                    panel.classList.remove('show');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-up'); 
+                        icon.classList.add('fa-chevron-down'); 
+                    }
+                } else {
+                    panel.classList.add('show');
+                    panel.classList.remove('collapsed');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-up'); 
+                        icon.classList.add('fa-chevron-down'); 
+                    }
+                }
+            } else {
+                // En desktop, solo colapsar/expandir si la sidebar está visible
+                if (!panel.classList.contains('show')) return;
+                panel.classList.toggle('collapsed');
+                if (panel.classList.contains('collapsed')){ 
+                    icon.classList.remove('fa-chevron-down'); 
+                    icon.classList.add('fa-chevron-up'); 
+                } else { 
+                    icon.classList.remove('fa-chevron-up'); 
+                    icon.classList.add('fa-chevron-down'); 
+                }
+            }
         }
         
         function toggleFavoritesSection(tipo){
