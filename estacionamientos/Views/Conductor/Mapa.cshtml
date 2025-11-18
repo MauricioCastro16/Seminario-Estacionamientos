@@ -2994,8 +2994,14 @@
         }
         
         function guardarValoracionDesdeDetalle(){
-            if (!playaSeleccionada) return alert('No hay una playa seleccionada.');
-            if (ratingSeleccionadoDetalle === 0 && !valoracionActual) return alert('Por favor selecciona una puntuación.');
+            if (!playaSeleccionada) {
+                mostrarModalMensaje('No hay una playa seleccionada.', 'error');
+                return;
+            }
+            if (ratingSeleccionadoDetalle === 0 && !valoracionActual) {
+                mostrarModalMensaje('Por favor selecciona una puntuación.', 'error');
+                return;
+            }
             
             const rating = ratingSeleccionadoDetalle || (valoracionActual ? valoracionActual.valNumEst : 0);
             const comentario = $('#valComentarioDetalle').val().trim();
@@ -3015,37 +3021,40 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    alert('Valoración guardada correctamente.');
+                    mostrarModalMensaje('Valoración guardada correctamente.', 'success');
                     cargarValoracionesEnDetalle(playaSeleccionada.plyID);
                 } else {
-                    alert(data.error || 'No se pudo guardar la valoración.');
+                    mostrarModalMensaje(data.error || 'No se pudo guardar la valoración.', 'error');
                 }
             })
-            .catch(() => alert('Ocurrió un error al guardar la valoración.'));
+            .catch(() => mostrarModalMensaje('Ocurrió un error al guardar la valoración.', 'error'));
         }
         
         function eliminarValoracionDesdeDetalle(){
-            if (!playaSeleccionada || !valoracionActual) return alert('No hay una valoración para eliminar.');
+            if (!playaSeleccionada || !valoracionActual) {
+                mostrarModalMensaje('No hay una valoración para eliminar.', 'error');
+                return;
+            }
             
-            if (!confirm('¿Eliminar tu valoración?')) return;
-            
-            fetch('@Url.Action("EliminarValoracion", "Conductor")', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': antiforgeryToken },
-                body: JSON.stringify({ PlyID: playaSeleccionada.plyID })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Valoración eliminada correctamente.');
-                    valoracionActual = null;
-                    ratingSeleccionadoDetalle = 0;
-                    cargarValoracionesEnDetalle(playaSeleccionada.plyID);
-                } else {
-                    alert(data.error || 'No se pudo eliminar la valoración.');
-                }
-            })
-            .catch(() => alert('Ocurrió un error al eliminar la valoración.'));
+            mostrarModalConfirmacion('¿Eliminar tu valoración?', function() {
+                fetch('@Url.Action("EliminarValoracion", "Conductor")', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': antiforgeryToken },
+                    body: JSON.stringify({ PlyID: playaSeleccionada.plyID })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        mostrarModalMensaje('Valoración eliminada correctamente.', 'success');
+                        valoracionActual = null;
+                        ratingSeleccionadoDetalle = 0;
+                        cargarValoracionesEnDetalle(playaSeleccionada.plyID);
+                    } else {
+                        mostrarModalMensaje(data.error || 'No se pudo eliminar la valoración.', 'error');
+                    }
+                })
+                .catch(() => mostrarModalMensaje('Ocurrió un error al eliminar la valoración.', 'error'));
+            });
         }
         
         function volverADetalles(){
@@ -3188,13 +3197,13 @@
 
         function guardarValoracion(){
             if(!ratingSeleccionado && !valoracionActual){
-                alert('Por favor selecciona una puntuación.');
+                mostrarModalMensaje('Por favor selecciona una puntuación.', 'error');
                 return;
             }
             
             const rating = ratingSeleccionado || (valoracionActual ? valoracionActual.valNumEst : null);
             if(!rating){
-                alert('Por favor selecciona una puntuación.');
+                mostrarModalMensaje('Por favor selecciona una puntuación.', 'error');
                 return;
             }
             
@@ -3216,38 +3225,38 @@
             })
             .done(data => {
                 if(data.success){
-                    alert('Valoración guardada correctamente.');
+                    mostrarModalMensaje('Valoración guardada correctamente.', 'success');
                     cargarValoraciones(playaValoracionActual.plyID);
                     ratingSeleccionado = null;
                 } else {
-                    alert(data.error || 'No se pudo guardar la valoración.');
+                    mostrarModalMensaje(data.error || 'No se pudo guardar la valoración.', 'error');
                 }
             })
             .fail(() => {
-                alert('Ocurrió un error al guardar la valoración.');
+                mostrarModalMensaje('Ocurrió un error al guardar la valoración.', 'error');
             });
         }
 
         function eliminarValoracion(){
-            if(!confirm('¿Eliminar tu valoración?')) return;
-            
-            $.ajax({
-                url: '/Conductor/EliminarValoracion',
-                method: 'DELETE',
-                data: { id: playaValoracionActual.plyID },
-                headers: { 'RequestVerificationToken': antiforgeryToken }
-            })
-            .done(data => {
-                if(data.success){
-                    alert('Valoración eliminada correctamente.');
-                    cargarValoraciones(playaValoracionActual.plyID);
-                    ratingSeleccionado = null;
-                } else {
-                    alert(data.error || 'No se pudo eliminar la valoración.');
-                }
-            })
-            .fail(() => {
-                alert('Ocurrió un error al eliminar la valoración.');
+            mostrarModalConfirmacion('¿Eliminar tu valoración?', function() {
+                $.ajax({
+                    url: '/Conductor/EliminarValoracion',
+                    method: 'DELETE',
+                    data: { id: playaValoracionActual.plyID },
+                    headers: { 'RequestVerificationToken': antiforgeryToken }
+                })
+                .done(data => {
+                    if(data.success){
+                        mostrarModalMensaje('Valoración eliminada correctamente.', 'success');
+                        cargarValoraciones(playaValoracionActual.plyID);
+                        ratingSeleccionado = null;
+                    } else {
+                        mostrarModalMensaje(data.error || 'No se pudo eliminar la valoración.', 'error');
+                    }
+                })
+                .fail(() => {
+                    mostrarModalMensaje('Ocurrió un error al eliminar la valoración.', 'error');
+                });
             });
         }
 
