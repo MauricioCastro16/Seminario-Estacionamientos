@@ -175,8 +175,8 @@ namespace estacionamientos.Controllers
                     .Distinct()
                     .ToListAsync();
 
-                // Crear un diccionario para almacenar el historial por vehículo
-                var historialPorVehiculo = new Dictionary<Vehiculo, List<object>>();
+                // Crear un diccionario para almacenar el historial por vehículo (usando patente como clave)
+                var historialPorVehiculo = new Dictionary<string, List<object>>();
 
                 foreach (var vehiculo in vehiculos)
                 {
@@ -205,7 +205,7 @@ namespace estacionamientos.Controllers
                         DejoLlaves = o.OcuLlavDej
                     }).ToList<object>();
 
-                    historialPorVehiculo[vehiculo] = historial;
+                    historialPorVehiculo[vehiculo.VehPtnt] = historial;
                 }
 
                 ViewBag.HistorialPorVehiculo = historialPorVehiculo;
