@@ -257,18 +257,24 @@ public class GestionController(AppDbContext ctx) : BaseController
         if (playasIds.Count == 1)
         {
             var plyId = playasIds[0];
-            valoracionesRecientes = await _ctx.Valoraciones
+            var valoracionesRaw = await _ctx.Valoraciones
                 .AsNoTracking()
+                .Include(v => v.Conductor)
                 .Where(v => v.PlyID == plyId)
                 .OrderByDescending(v => v.ConNU)
                 .Take(5)
+                .ToListAsync();
+            
+            valoracionesRecientes = valoracionesRaw
                 .Select(v => new GestionValoracionRecienteVM
                 {
                     Estrellas = v.ValNumEst,
                     Favorito = v.ValFav,
-                    FechaUtc = null
+                    FechaUtc = null,
+                    Comentario = v.ValComentario,
+                    ConductorNombre = v.Conductor?.UsuNyA ?? "Conductor desconocido"
                 })
-                .ToListAsync();
+                .ToList();
         }
 
         var valoracionesLista = await _ctx.Playas
