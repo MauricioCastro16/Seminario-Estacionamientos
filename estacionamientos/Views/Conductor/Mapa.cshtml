@@ -419,8 +419,8 @@
                 <div class="favorites-section-content" id="contentPlayas">
                     <ul id="listaFavoritosPlayas"></ul>
                     <div class="favorites-empty" id="favoritosPlayasVacio" style="display:none;">
-                        Aún no agregaste playas favoritas.<br />
-                        Tocá una playa en el mapa y usá ★ para guardarla.
+                Aún no agregaste playas favoritas.<br />
+                Tocá una playa en el mapa y usá ★ para guardarla.
                     </div>
                 </div>
             </div>
@@ -626,8 +626,8 @@
                 panel.classList.remove('show');
             } else {
                 panel.classList.add('show');
-                panel.classList.remove('collapsed');
-                if (icon){ icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
+            panel.classList.remove('collapsed');
+            if (icon){ icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
             }
         }
 
@@ -697,7 +697,7 @@
                  const tipoVehiculo = vehiculoData?.tipo || null;
                  
                  // Cargar todas las playas
-                 $.get('/Conductor/GetPlayasCercanas', { lat:conductorLat, lon:conductorLon, radioKm:50 })
+            $.get('/Conductor/GetPlayasCercanas', { lat:conductorLat, lon:conductorLon, radioKm:50 })
                   .done(data => {
                       const todasLasPlayas = data || [];
                       
@@ -714,7 +714,7 @@
                       // Filtrar playas que tienen servicios/tarifas para el tipo de vehículo
                       filtrarPlayasPorTipoVehiculo(todasLasPlayas, tipoVehiculo);
                   })
-                  .fail((_,__,err)=> $('#loading').html('<div class="spinner"></div>Error al cargar playas: ' + err));
+             .fail((_,__,err)=> $('#loading').html('<div class="spinner"></div>Error al cargar playas: ' + err));
              })
              .fail(() => {
                  // Si no se puede obtener el vehículo, mostrar todas las playas
@@ -941,7 +941,7 @@
                 } else {
                     // Para ubicaciones favoritas, mantener el comportamiento original
                     marker.bindPopup(`<strong>${fav.apodo}</strong><br>${fav.direccion || fav.ciudad || ''}`);
-                    marker.on('click', () => irAFavorito(fav));
+                marker.on('click', () => irAFavorito(fav));
                 }
                 
                 favoriteMarkers.push(marker);
@@ -965,6 +965,449 @@
             return favorito || null;
         }
 
+        // === Funciones helper para modales ===
+        // Función para mostrar modal de confirmación (reemplaza confirm())
+        function mostrarModalConfirmacion(mensaje, callbackConfirmar, esPlayaFavorita = false) {
+            $('#modalConfirmacionMensaje').text(mensaje);
+            
+            // Cambiar color del header si es para playa favorita
+            const header = $('#modalConfirmacion').find('.modal-header');
+            if (esPlayaFavorita) {
+                header.addClass('bg-primary text-white');
+                header.find('.btn-close').css('filter', 'invert(1)');
+            } else {
+                header.removeClass('bg-primary text-white');
+                header.find('.btn-close').css('filter', '');
+            }
+            
+            const modalElement = document.getElementById('modalConfirmacion');
+            // Cerrar cualquier modal existente primero
+            const existingModal = bootstrap.Modal.getInstance(modalElement);
+            if (existingModal) {
+                existingModal.dispose();
+            }
+            const modal = new bootstrap.Modal(modalElement, {
+                backdrop: 'static',
+                keyboard: true,
+                focus: true
+            });
+            
+            // Remover listeners anteriores
+            $('#modalConfirmacionBtnConfirmar').off('click');
+            
+            // Agregar nuevo listener con captura de eventos usando addEventListener con capture
+            const confirmBtn = document.getElementById('modalConfirmacionBtnConfirmar');
+            if (confirmBtn) {
+                // Remover todos los listeners anteriores usando jQuery
+                $('#modalConfirmacionBtnConfirmar').off('click');
+                
+                const confirmHandler = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    modal.hide();
+                    if (callbackConfirmar) callbackConfirmar();
+                    return false;
+                };
+                
+                // Agregar listener nativo con captura
+                confirmBtn.addEventListener('click', confirmHandler, true);
+                // También con jQuery para compatibilidad
+                $('#modalConfirmacionBtnConfirmar').on('click', confirmHandler);
+            }
+            
+            // También agregar listener al botón Cancelar
+            const cancelBtn = $('#modalConfirmacion').find('[data-bs-dismiss="modal"]')[0];
+            if (cancelBtn) {
+                const cancelHandler = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    modal.hide();
+                    return false;
+                };
+                cancelBtn.removeEventListener('click', cancelHandler, true);
+                cancelBtn.addEventListener('click', cancelHandler, true);
+            }
+            $('#modalConfirmacion').find('[data-bs-dismiss="modal"]').off('click').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                modal.hide();
+                return false;
+            });
+            
+            // Deshabilitar interacción del mapa mientras el modal está abierto
+            if (map) {
+                map.dragging.disable();
+                map.touchZoom.disable();
+                map.doubleClickZoom.disable();
+                map.scrollWheelZoom.disable();
+                map.boxZoom.disable();
+                map.keyboard.disable();
+            }
+            
+            // Asegurar que el modal se muestre correctamente
+            modal.show();
+            
+            // Forzar que el modal esté visible después de un pequeño delay
+            setTimeout(function() {
+                const modalEl = $('#modalConfirmacion');
+                const backdrop = $('.modal-backdrop');
+                
+                modalEl.addClass('show').css({
+                    'display': 'block',
+                    'pointer-events': 'auto',
+                    'z-index': '10000'
+                });
+                
+                backdrop.addClass('show').css({
+                    'z-index': '100',
+                    'pointer-events': 'auto'
+                });
+                
+                // Asegurar que el contenido del modal esté por encima del backdrop
+                const content = modalEl.find('.modal-content');
+                content.css({
+                    'pointer-events': 'auto',
+                    'z-index': '10002',
+                    'position': 'relative'
+                });
+                
+                // Prevenir que el backdrop capture clics - usar captura de eventos
+                const dialog = modalEl.find('.modal-dialog');
+                dialog.css({
+                    'pointer-events': 'none',
+                    'z-index': '10001'
+                });
+                
+                // Asegurar que todos los elementos interactivos funcionen
+                content.find('*').css('pointer-events', 'auto');
+                
+                // Prevenir que clics en el contenido se propaguen al backdrop usando captura
+                const contentEl = content[0];
+                if (contentEl) {
+                    const stopPropagation = function(e) {
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                    };
+                    contentEl.addEventListener('mousedown', stopPropagation, true);
+                    contentEl.addEventListener('click', stopPropagation, true);
+                    contentEl.addEventListener('mouseup', stopPropagation, true);
+                }
+                // También con jQuery
+                content.off('mousedown click mouseup').on('mousedown click mouseup', function(e) {
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                });
+            }, 150);
+            
+            // Rehabilitar interacción del mapa cuando el modal se cierre
+            $('#modalConfirmacion').off('hidden.bs.modal').on('hidden.bs.modal', function() {
+                if (map) {
+                    map.dragging.enable();
+                    map.touchZoom.enable();
+                    map.doubleClickZoom.enable();
+                    map.scrollWheelZoom.enable();
+                    map.boxZoom.enable();
+                    map.keyboard.enable();
+                }
+            });
+        }
+
+        // Función para mostrar modal de input (reemplaza prompt())
+        function mostrarModalInput(titulo, etiqueta, valorInicial, callbackConfirmar, esPlayaFavorita = false) {
+            $('#modalInputLabel').text(titulo);
+            $('#modalInputEtiqueta').text(etiqueta);
+            $('#modalInputCampo').val(valorInicial || '');
+            $('#modalInputError').hide();
+            $('#modalInputCampo').removeClass('is-invalid');
+            
+            // Cambiar color del header si es para agregar/editar playa favorita
+            const header = $('#modalInput').find('.modal-header');
+            if (esPlayaFavorita) {
+                header.addClass('bg-primary text-white');
+                header.find('.btn-close').css('filter', 'invert(1)');
+            } else {
+                header.removeClass('bg-primary text-white');
+                header.find('.btn-close').css('filter', '');
+            }
+            
+            const modalElement = document.getElementById('modalInput');
+            // Cerrar cualquier modal existente primero
+            const existingModal = bootstrap.Modal.getInstance(modalElement);
+            if (existingModal) {
+                existingModal.dispose();
+            }
+            const modal = new bootstrap.Modal(modalElement, {
+                backdrop: 'static',
+                keyboard: true,
+                focus: true
+            });
+            
+            // Remover listeners anteriores
+            $('#modalInputBtnConfirmar').off('click');
+            $('#modalInputCampo').off('keypress');
+            
+            // Función para confirmar
+            const confirmar = function(e) {
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                const valor = $('#modalInputCampo').val().trim();
+                if (valor === '') {
+                    $('#modalInputCampo').addClass('is-invalid');
+                    $('#modalInputError').text('El nombre no puede estar vacío.').show();
+                    return;
+                }
+                modal.hide();
+                if (callbackConfirmar) callbackConfirmar(valor);
+            };
+            
+            // Agregar listener al botón con captura de eventos usando addEventListener
+            const inputConfirmBtn = document.getElementById('modalInputBtnConfirmar');
+            if (inputConfirmBtn) {
+                // Remover todos los listeners anteriores usando jQuery
+                $('#modalInputBtnConfirmar').off('click');
+                
+                const inputConfirmHandler = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    confirmar(e);
+                    return false;
+                };
+                
+                // Agregar listener nativo con captura
+                inputConfirmBtn.addEventListener('click', inputConfirmHandler, true);
+                // También con jQuery para compatibilidad
+                $('#modalInputBtnConfirmar').on('click', inputConfirmHandler);
+            }
+            
+            // También agregar listener al botón Cancelar
+            const inputCancelBtn = $('#modalInput').find('[data-bs-dismiss="modal"]')[0];
+            if (inputCancelBtn) {
+                const inputCancelHandler = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    modal.hide();
+                    return false;
+                };
+                inputCancelBtn.removeEventListener('click', inputCancelHandler, true);
+                inputCancelBtn.addEventListener('click', inputCancelHandler, true);
+            }
+            $('#modalInput').find('[data-bs-dismiss="modal"]').off('click').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                modal.hide();
+                return false;
+            });
+            
+            // Agregar listener para Enter
+            $('#modalInputCampo').on('keypress', function(e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    confirmar(e);
+                }
+            });
+            
+            // Deshabilitar interacción del mapa mientras el modal está abierto
+            if (map) {
+                map.dragging.disable();
+                map.touchZoom.disable();
+                map.doubleClickZoom.disable();
+                map.scrollWheelZoom.disable();
+                map.boxZoom.disable();
+                map.keyboard.disable();
+            }
+            
+            // Asegurar que el modal se muestre correctamente
+            modal.show();
+            
+            // Forzar que el modal esté visible después de un pequeño delay
+            setTimeout(function() {
+                const modalEl = $('#modalInput');
+                const backdrop = $('.modal-backdrop');
+                
+                modalEl.addClass('show').css({
+                    'display': 'block',
+                    'pointer-events': 'auto',
+                    'z-index': '10000'
+                });
+                
+                backdrop.addClass('show').css({
+                    'z-index': '100',
+                    'pointer-events': 'auto'
+                });
+                
+                // Asegurar que el contenido del modal esté por encima del backdrop
+                const content = modalEl.find('.modal-content');
+                content.css({
+                    'pointer-events': 'auto',
+                    'z-index': '10002',
+                    'position': 'relative'
+                });
+                
+                // Prevenir que el backdrop capture clics - usar captura de eventos
+                const dialog = modalEl.find('.modal-dialog');
+                dialog.css({
+                    'pointer-events': 'none',
+                    'z-index': '10001'
+                });
+                
+                // Asegurar que todos los elementos interactivos funcionen
+                content.find('*').css('pointer-events', 'auto');
+                
+                // Prevenir que clics en el contenido se propaguen al backdrop usando captura
+                const contentEl = content[0];
+                if (contentEl) {
+                    const stopPropagation = function(e) {
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                    };
+                    contentEl.addEventListener('mousedown', stopPropagation, true);
+                    contentEl.addEventListener('click', stopPropagation, true);
+                    contentEl.addEventListener('mouseup', stopPropagation, true);
+                }
+                // También con jQuery
+                content.off('mousedown click mouseup').on('mousedown click mouseup', function(e) {
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                });
+            }, 150);
+            
+            // Focus en el input después de que el modal se muestre
+            $('#modalInput').off('shown.bs.modal').on('shown.bs.modal', function() {
+                $('#modalInputCampo').focus();
+            });
+            
+            // Rehabilitar interacción del mapa cuando el modal se cierre
+            $('#modalInput').off('hidden.bs.modal').on('hidden.bs.modal', function() {
+                if (map) {
+                    map.dragging.enable();
+                    map.touchZoom.enable();
+                    map.doubleClickZoom.enable();
+                    map.scrollWheelZoom.enable();
+                    map.boxZoom.enable();
+                    map.keyboard.enable();
+                }
+            });
+        }
+
+        // Función para mostrar modal de mensaje (reemplaza alert())
+        function mostrarModalMensaje(mensaje, tipo = 'info') {
+            $('#modalMensajeTexto').text(mensaje);
+            const header = $('#modalMensajeHeader');
+            const label = $('#modalMensajeLabel');
+            
+            // Remover clases anteriores
+            header.removeClass('bg-success bg-danger bg-info bg-warning');
+            
+            // Agregar clase según tipo
+            if (tipo === 'success') {
+                header.addClass('bg-success');
+                label.text('Éxito');
+            } else if (tipo === 'error' || tipo === 'danger') {
+                header.addClass('bg-danger');
+                label.text('Error');
+            } else {
+                header.addClass('bg-info');
+                label.text('Información');
+            }
+            
+            const modalElement = document.getElementById('modalMensaje');
+            // Cerrar cualquier modal existente primero
+            const existingModal = bootstrap.Modal.getInstance(modalElement);
+            if (existingModal) {
+                existingModal.dispose();
+            }
+            const modal = new bootstrap.Modal(modalElement, {
+                backdrop: 'static',
+                keyboard: true,
+                focus: true
+            });
+            
+            // Deshabilitar interacción del mapa mientras el modal está abierto
+            if (map) {
+                map.dragging.disable();
+                map.touchZoom.disable();
+                map.doubleClickZoom.disable();
+                map.scrollWheelZoom.disable();
+                map.boxZoom.disable();
+                map.keyboard.disable();
+            }
+            
+            // Asegurar que el modal se muestre correctamente
+            modal.show();
+            
+            // Forzar que el modal esté visible después de un pequeño delay
+            setTimeout(function() {
+                const modalEl = $('#modalMensaje');
+                const backdrop = $('.modal-backdrop');
+                
+                modalEl.addClass('show').css({
+                    'display': 'block',
+                    'pointer-events': 'auto',
+                    'z-index': '10000'
+                });
+                
+                backdrop.addClass('show').css({
+                    'z-index': '100',
+                    'pointer-events': 'auto'
+                });
+                
+                // Asegurar que el contenido del modal esté por encima del backdrop
+                const content = modalEl.find('.modal-content');
+                content.css({
+                    'pointer-events': 'auto',
+                    'z-index': '10002',
+                    'position': 'relative'
+                });
+                
+                // Prevenir que el backdrop capture clics - usar captura de eventos
+                const dialog = modalEl.find('.modal-dialog');
+                dialog.css({
+                    'pointer-events': 'none',
+                    'z-index': '10001'
+                });
+                
+                // Asegurar que todos los elementos interactivos funcionen
+                content.find('*').css('pointer-events', 'auto');
+                
+                // Prevenir que clics en el contenido se propaguen al backdrop usando captura
+                const contentEl = content[0];
+                if (contentEl) {
+                    const stopPropagation = function(e) {
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                    };
+                    contentEl.addEventListener('mousedown', stopPropagation, true);
+                    contentEl.addEventListener('click', stopPropagation, true);
+                    contentEl.addEventListener('mouseup', stopPropagation, true);
+                }
+                // También con jQuery
+                content.off('mousedown click mouseup').on('mousedown click mouseup', function(e) {
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                });
+            }, 150);
+            
+            // Rehabilitar interacción del mapa cuando el modal se cierre
+            $('#modalMensaje').off('hidden.bs.modal').on('hidden.bs.modal', function() {
+                if (map) {
+                    map.dragging.enable();
+                    map.touchZoom.enable();
+                    map.doubleClickZoom.enable();
+                    map.scrollWheelZoom.enable();
+                    map.boxZoom.enable();
+                    map.keyboard.enable();
+                }
+            });
+        }
+
         // === Helpers del popup de la playa ===
         window.seleccionarPlayaDesdePopup = function (plyID) {
         const playa = playas.find(p => p.plyID === plyID);
@@ -980,58 +1423,70 @@
 
         window.agregarFavoritaDesdePopup = function(plyID){
         const playa = playas.find(p => p.plyID === plyID);
-        if (!playa) return alert('No se pudo guardar la playa como favorita.');
-        const apodo = prompt('¿Cómo querés llamar a esta playa favorita?', playa.plyNom);
-        if (apodo == null || apodo.trim() === '') return;
-            const payload = { apodo: apodo.trim(), provincia: playa.plyProv || '', ciudad: playa.plyCiu || '', direccion: playa.plyDir || '', tipo:'Playa', lat: playa.plyLat, lon: playa.plyLon, plyID: plyID };
-            guardarUbicacionFavorita(payload).then(() => {
-                cargarUbicacionesFavoritas().then(() => {
-                    // Actualizar el popup del marcador para mostrar el botón de eliminar
-                    const marker = playaIdToMarker.get(plyID);
-                    if (marker) {
-                        const playaActualizada = playas.find(p => p.plyID === plyID);
-                        if (playaActualizada) {
-                            marker.setPopupContent(buildPopupContent(playaActualizada, isSearchMode));
+        if (!playa) {
+            mostrarModalMensaje('No se pudo guardar la playa como favorita.', 'error');
+            return;
+        }
+        mostrarModalInput(
+            'Agregar playa favorita',
+            '¿Cómo querés llamar a esta playa favorita?',
+            playa.plyNom,
+            function(apodo) {
+                const payload = { apodo: apodo, provincia: playa.plyProv || '', ciudad: playa.plyCiu || '', direccion: playa.plyDir || '', tipo:'Playa', lat: playa.plyLat, lon: playa.plyLon, plyID: plyID };
+                guardarUbicacionFavorita(payload).then(() => {
+                    cargarUbicacionesFavoritas().then(() => {
+                        // Actualizar el popup del marcador para mostrar el botón de eliminar
+                        const marker = playaIdToMarker.get(plyID);
+                        if (marker) {
+                            const playaActualizada = playas.find(p => p.plyID === plyID);
+                            if (playaActualizada) {
+                                marker.setPopupContent(buildPopupContent(playaActualizada, isSearchMode));
+                            }
                         }
-                    }
+                        mostrarModalMensaje('Playa de estacionamiento agregada a favoritos correctamente.', 'success');
+                    });
+                }).catch(() => {
+                    mostrarModalMensaje('Ocurrió un error al agregar la playa a favoritos.', 'error');
                 });
-            });
+            },
+            true  // esPlayaFavorita = true
+        );
         };
 
         window.eliminarFavoritaDesdePopup = function(apodo, plyID){
-            if (!confirm(`¿Eliminar "${apodo}" de tus favoritos?`)) return;
-            
-            $.ajax({
-                url: '@Url.Action("EliminarUbicacionFavorita", "Conductor")' + '?apodo=' + encodeURIComponent(apodo) + '&tipo=Playa&plyID=' + plyID,
-                type: 'DELETE'
-            })
-            .done(function(data) {
-                if (data.success) {
-                    // Filtrar por plyID si está disponible, si no por apodo
-                    if (plyID) {
-                        favoritos = favoritos.filter(f => !(f.tipo === 'Playa' && f.plyID === plyID));
-                    } else {
-                        favoritos = favoritos.filter(f => f.apodo !== apodo);
-                    }
-                    refreshFavoritesUI();
-                    
-                    // Actualizar el popup del marcador para mostrar el botón de agregar
-                    const marker = playaIdToMarker.get(plyID);
-                    if (marker) {
-            const playa = playas.find(p => p.plyID === plyID);
-                        if (playa) {
-                            marker.setPopupContent(buildPopupContent(playa, isSearchMode));
+            mostrarModalConfirmacion(`¿Eliminar "${apodo}" de tus favoritos?`, function() {
+                $.ajax({
+                    url: '@Url.Action("EliminarUbicacionFavorita", "Conductor")' + '?apodo=' + encodeURIComponent(apodo) + '&tipo=Playa&plyID=' + plyID,
+                    type: 'DELETE'
+                })
+                .done(function(data) {
+                    if (data.success) {
+                        // Filtrar por plyID si está disponible, si no por apodo
+                        if (plyID) {
+                            favoritos = favoritos.filter(f => !(f.tipo === 'Playa' && f.plyID === plyID));
+                        } else {
+                            favoritos = favoritos.filter(f => f.apodo !== apodo);
                         }
+                        refreshFavoritesUI();
+                        
+                        // Actualizar el popup del marcador para mostrar el botón de agregar
+                        const marker = playaIdToMarker.get(plyID);
+                        if (marker) {
+            const playa = playas.find(p => p.plyID === plyID);
+                            if (playa) {
+                                marker.setPopupContent(buildPopupContent(playa, isSearchMode));
+                            }
+                        }
+                        
+                        mostrarModalMensaje('Playa de estacionamiento favorita eliminada correctamente.', 'success');
+                    } else {
+                        mostrarModalMensaje(data.error || 'No se pudo eliminar el favorito.', 'error');
                     }
-                    
-                    alert('Playa de estacionamiento favorita eliminada correctamente.');
-                } else {
-                    alert(data.error || 'No se pudo eliminar el favorito.');
-                }
-            })
-            .fail(function() {
-                alert('Ocurrió un error al eliminar el favorito.');
-            });
+                })
+                .fail(function() {
+                    mostrarModalMensaje('Ocurrió un error al eliminar el favorito.', 'error');
+                });
+            }, true);  // esPlayaFavorita = true
         };
 
         function buildPopupContent(playa, esResultadoBusqueda = false){
@@ -1604,19 +2059,19 @@
                      const mensaje = esPlaya 
                          ? 'Playa de estacionamiento favorita guardada correctamente.'
                          : 'Ubicación favorita guardada correctamente.';
-                     alert(mensaje);
+                     mostrarModalMensaje(mensaje, 'success');
                  } else {
                      const mensajeError = esPlaya 
                          ? 'No se pudo guardar la playa de estacionamiento favorita.'
                          : 'No se pudo guardar la ubicación favorita.';
-                     alert(d.error || mensajeError);
+                     mostrarModalMensaje(d.error || mensajeError, 'error');
                  }
                 return d;
              }).catch(()=> {
                  const mensajeError = esPlaya 
                      ? 'Ocurrió un error al guardar la playa de estacionamiento favorita.'
                      : 'Ocurrió un error al guardar la ubicación favorita.';
-                 alert(mensajeError);
+                 mostrarModalMensaje(mensajeError, 'error');
              });
         }
 
@@ -1788,7 +2243,10 @@
         function irAPlayaFavorita(fav){
             const lat = parseFloat(fav.lat ?? fav.ubfLat ?? fav.UbfLat);
             const lon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
-            if (isNaN(lat) || isNaN(lon)) return alert('Este favorito no tiene coordenadas válidas.');
+            if (isNaN(lat) || isNaN(lon)) {
+                mostrarModalMensaje('Este favorito no tiene coordenadas válidas.', 'error');
+                return;
+            }
 
             // Buscar la playa correspondiente
             let playa = null;
@@ -1809,10 +2267,10 @@
             }
             
             if (!playa) {
-                alert('No se encontró la playa de estacionamiento en el mapa.');
+                mostrarModalMensaje('No se encontró la playa de estacionamiento en el mapa.', 'error');
                 return;
             }
-            
+
             // Cerrar y ocultar cualquier marcador de búsqueda que esté visible
             if (searchLocationMarker) {
                 searchLocationMarker.closePopup();
@@ -1841,7 +2299,7 @@
                 if (marker) {
                     // Si el marcador existe, abrir su popup
                     marker.openPopup();
-                } else {
+                 } else {
                     // Si no existe el marcador, crear un popup temporal
                     const popupContent = buildPopupContent(playa, false);
                     if (transientPopup) {
@@ -1864,7 +2322,10 @@
             
             const lat = parseFloat(fav.lat ?? fav.ubfLat ?? fav.UbfLat);
             const lon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
-            if (isNaN(lat) || isNaN(lon)) return alert('Este favorito no tiene coordenadas válidas.');
+            if (isNaN(lat) || isNaN(lon)) {
+                mostrarModalMensaje('Este favorito no tiene coordenadas válidas.', 'error');
+                return;
+            }
 
             // Obtener dirección del favorito para el filtro
             const direccionFavorito = fav.direccion || fav.apodo || 'Ubicación favorita';
@@ -1914,36 +2375,36 @@
             const mensajeConfirmacion = esPlaya 
                 ? `¿Eliminar "${fav.apodo}" de tus playas favoritas?`
                 : `¿Eliminar "${fav.apodo}" de tus ubicaciones favoritas?`;
-            
-            if (!confirm(mensajeConfirmacion)) return;
 
+            mostrarModalConfirmacion(mensajeConfirmacion, function() {
             $.ajax({
-                url: '@Url.Action("EliminarUbicacionFavorita", "Conductor")' + '?apodo=' + encodeURIComponent(fav.apodo) + (esPlaya ? '&tipo=Playa' + (fav.plyID ? '&plyID=' + fav.plyID : '') : ''),
+                    url: '@Url.Action("EliminarUbicacionFavorita", "Conductor")' + '?apodo=' + encodeURIComponent(fav.apodo) + (esPlaya ? '&tipo=Playa' + (fav.plyID ? '&plyID=' + fav.plyID : '') : ''),
                 type: 'DELETE'
             })
             .done(function(data) {
             if (data.success) {
-                // Si es una playa y tiene plyID, filtrar por ambos; si no, solo por apodo
-                if (esPlaya && fav.plyID) {
-                    favoritos = favoritos.filter(f => !(f.tipo === 'Playa' && f.plyID === fav.plyID));
-                } else {
-                    favoritos = favoritos.filter(f => f.apodo !== fav.apodo);
-                }
-                    refreshFavoritesUI();
-                    const mensajeExito = esPlaya 
-                        ? 'Playa de estacionamiento favorita eliminada correctamente.'
-                        : 'Ubicación favorita eliminada correctamente.';
-                    alert(mensajeExito);
+                        // Si es una playa y tiene plyID, filtrar por ambos; si no, solo por apodo
+                        if (esPlaya && fav.plyID) {
+                            favoritos = favoritos.filter(f => !(f.tipo === 'Playa' && f.plyID === fav.plyID));
+                        } else {
+                favoritos = favoritos.filter(f => f.apodo !== fav.apodo);
+                        }
+                        refreshFavoritesUI();
+                        const mensajeExito = esPlaya 
+                            ? 'Playa de estacionamiento favorita eliminada correctamente.'
+                            : 'Ubicación favorita eliminada correctamente.';
+                        mostrarModalMensaje(mensajeExito, 'success');
             } else {
-                alert(data.error || 'No se pudo eliminar el favorito.');
+                        mostrarModalMensaje(data.error || 'No se pudo eliminar el favorito.', 'error');
             }
             })
             .fail(function() {
-                const mensajeError = esPlaya 
-                    ? 'Ocurrió un error al eliminar la playa de estacionamiento favorita.'
-                    : 'Ocurrió un error al eliminar la ubicación favorita.';
-                alert(mensajeError);
+                    const mensajeError = esPlaya 
+                        ? 'Ocurrió un error al eliminar la playa de estacionamiento favorita.'
+                        : 'Ocurrió un error al eliminar la ubicación favorita.';
+                    mostrarModalMensaje(mensajeError, 'error');
             });
+            }, esPlaya);
         }
 
 
@@ -1955,31 +2416,37 @@
 
         function editarFavorito(fav){
             const esPlaya = fav.tipo === 'Playa';
-            const textoPrompt = esPlaya 
-                ? 'Nuevo nombre para esta playa de estacionamiento favorita:' 
+            const titulo = esPlaya 
+                ? 'Editar playa favorita'
+                : 'Editar ubicación favorita';
+            const etiqueta = esPlaya 
+                ? 'Nuevo nombre para esta playa de estacionamiento favorita:'
                 : 'Nuevo nombre para esta ubicación favorita:';
-            const nuevo = prompt(textoPrompt, fav.apodo);
-            if (nuevo == null) return;
-            if (nuevo.trim() === '') return alert('El nombre no puede estar vacío.');
+            mostrarModalInput(titulo, etiqueta, fav.apodo, function(nuevo) {
             fetch('@Url.Action("EditarUbicacionFavorita", "Conductor")', {
                 method:'POST', headers:{ 'Content-Type':'application/json', 'RequestVerificationToken': antiforgeryToken },
-                body: JSON.stringify({ apodoActual: fav.apodo, nuevoApodo: nuevo.trim(), tipo: fav.tipo || null, plyID: fav.plyID || null })
+                    body: JSON.stringify({ apodoActual: fav.apodo, nuevoApodo: nuevo, tipo: fav.tipo || null, plyID: fav.plyID || null })
             }).then(r=>r.json()).then(d=>{
-                if (d.success){ 
-                    fav.apodo = nuevo.trim(); 
-                    refreshFavoritesUI(); 
-                } else {
+                    if (d.success){ 
+                        fav.apodo = nuevo; 
+                        refreshFavoritesUI();
+                        const mensajeExito = esPlaya 
+                            ? 'Playa de estacionamiento favorita renombrada correctamente.'
+                            : 'Ubicación favorita renombrada correctamente.';
+                        mostrarModalMensaje(mensajeExito, 'success');
+                    } else {
+                        const mensajeError = esPlaya 
+                            ? 'No se pudo renombrar la playa de estacionamiento favorita.'
+                            : 'No se pudo renombrar la ubicación favorita.';
+                        mostrarModalMensaje(d.error || mensajeError, 'error');
+                    }
+                }).catch(()=> {
                     const mensajeError = esPlaya 
-                        ? 'No se pudo renombrar la playa de estacionamiento favorita.'
-                        : 'No se pudo renombrar la ubicación favorita.';
-                    alert(d.error || mensajeError);
-                }
-            }).catch(()=> {
-                const mensajeError = esPlaya 
-                    ? 'Ocurrió un error al renombrar la playa de estacionamiento favorita.'
-                    : 'Ocurrió un error al renombrar la ubicación favorita.';
-                alert(mensajeError);
-            });
+                        ? 'Ocurrió un error al renombrar la playa de estacionamiento favorita.'
+                        : 'Ocurrió un error al renombrar la ubicación favorita.';
+                    mostrarModalMensaje(mensajeError, 'error');
+                });
+            }, esPlaya);
         }
         
         let modoPinActivo = false;
@@ -2206,13 +2673,13 @@
         
         function guardarNuevaUbicacion(){
             if (!ubicacionSeleccionada) {
-                alert('Por favor seleccioná una ubicación primero.');
+                mostrarModalMensaje('Por favor seleccioná una ubicación primero.', 'error');
                 return;
             }
             
             const nombre = $('#inputNombreUbicacion').val().trim();
             if (!nombre) {
-                alert('Por favor ingresá un nombre para esta ubicación.');
+                mostrarModalMensaje('Por favor ingresá un nombre para esta ubicación.', 'error');
                 return;
             }
             
@@ -2273,22 +2740,26 @@
             const provincia = partes.length > 1 ? partes[partes.length - 2]?.trim() || '' : '';
             const direccionCorta = partes.slice(0, Math.max(1, partes.length - 3)).join(', ') || direccionCompleta;
             
-            const apodo = prompt('¿Cómo querés llamar a esta ubicación favorita?', direccionCorta || 'Mi ubicación');
-            if (apodo == null || apodo.trim() === '') return;
-            
-            const payload = { 
-                apodo: apodo.trim(), 
-                provincia: provincia || 'Chaco', 
-                ciudad: ciudad || 'Resistencia', 
-                direccion: direccionCorta || direccionCompleta, 
-                tipo: 'Ubicación', 
-                lat: lat, 
-                lon: lon 
-            };
-            
-            guardarUbicacionFavorita(payload).then(() => {
-                cargarUbicacionesFavoritas();
-            });
+            mostrarModalInput(
+                'Agregar ubicación favorita',
+                '¿Cómo querés llamar a esta ubicación favorita?',
+                direccionCorta || 'Mi ubicación',
+                function(apodo) {
+                    const payload = { 
+                        apodo: apodo, 
+                        provincia: provincia || 'Chaco', 
+                        ciudad: ciudad || 'Resistencia', 
+                        direccion: direccionCorta || direccionCompleta, 
+                        tipo: 'Ubicación', 
+                        lat: lat, 
+                        lon: lon 
+                    };
+                    
+                    guardarUbicacionFavorita(payload).then(() => {
+                        cargarUbicacionesFavoritas();
+                    });
+                }
+            );
         }
 
         // === Valoraciones ===
@@ -2709,5 +3180,143 @@
             if (e.key === 'c' || e.key === 'C') centerOnConductor();
         });
     </script>
+
+    <!-- Modales de Bootstrap - Fuera del contenedor del mapa -->
+    <!-- Modal de Confirmación -->
+    <div class="modal fade" id="modalConfirmacion" tabindex="-1" aria-labelledby="modalConfirmacionLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalConfirmacionLabel">Confirmar acción</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="modalConfirmacionMensaje"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="modalConfirmacionBtnConfirmar">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Input (para agregar/editar nombres) -->
+    <div class="modal fade" id="modalInput" tabindex="-1" aria-labelledby="modalInputLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalInputLabel">Nombre del favorito</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="modalInputCampo" id="modalInputEtiqueta" class="form-label">Nombre:</label>
+                    <input type="text" class="form-control" id="modalInputCampo" placeholder="Ingresá un nombre">
+                    <div class="invalid-feedback" id="modalInputError" style="display:none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="modalInputBtnConfirmar">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Mensaje (para éxito/error) -->
+    <div class="modal fade" id="modalMensaje" tabindex="-1" aria-labelledby="modalMensajeLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" id="modalMensajeHeader">
+                    <h5 class="modal-title" id="modalMensajeLabel">Mensaje</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="modalMensajeTexto"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Aceptar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Estilos para los modales */
+        .modal {
+            z-index: 10000 !important;
+        }
+        .modal.show {
+            display: block !important;
+            z-index: 10000 !important;
+        }
+        .modal-backdrop {
+            z-index: 100 !important;
+            pointer-events: auto !important;
+            background-color: rgba(0, 0, 0, 0.5) !important;
+        }
+        .modal-backdrop.show {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+        .modal-dialog {
+            pointer-events: none;
+            z-index: 10001 !important;
+            position: relative;
+        }
+        .modal-dialog-centered {
+            display: flex;
+            align-items: center;
+            min-height: calc(100% - 1rem);
+        }
+        .modal-content {
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            pointer-events: auto !important;
+            position: relative !important;
+            z-index: 10002 !important;
+            background-color: white !important;
+        }
+        .modal-header {
+            border-bottom: 1px solid #dee2e6;
+            pointer-events: auto !important;
+        }
+        .modal-header.bg-primary {
+            background-color: #0d6efd !important;
+            color: white !important;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        .modal-header.bg-primary .btn-close {
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
+        .modal-body {
+            pointer-events: auto !important;
+        }
+        .modal-footer {
+            border-top: 1px solid #dee2e6;
+            pointer-events: auto !important;
+        }
+        .modal input.form-control,
+        .modal button,
+        .modal .btn-close,
+        .modal label {
+            pointer-events: auto !important;
+            cursor: pointer !important;
+        }
+        .modal input.form-control {
+            cursor: text !important;
+        }
+        #modalMensajeHeader.bg-success {
+            background-color: #198754 !important;
+            color: white;
+        }
+        #modalMensajeHeader.bg-danger {
+            background-color: #dc3545 !important;
+            color: white;
+        }
+        #modalMensajeHeader.bg-success .btn-close,
+        #modalMensajeHeader.bg-danger .btn-close {
+            filter: invert(1);
+        }
+    </style>
 </body>
 </html>
