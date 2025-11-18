@@ -342,6 +342,14 @@
             .favorites-panel.show{
                 display:flex;
             }
+            /* Cuando está colapsado en mobile, mostrar solo el header */
+            .favorites-panel.show.collapsed{
+                display:flex !important;
+                max-height:44px;
+            }
+            .favorites-panel.show.collapsed .favorites-body{ 
+                display:none; 
+            }
         }
 
         /* Botón de favoritos en la barra */
@@ -632,19 +640,41 @@
         function openFavoritesFromStar(){
             const panel = document.getElementById('favoritesPanel');
             const icon  = document.getElementById('favoritesToggleIcon');
-            // Mostrar la sidebar si está oculta, ocultarla si está visible
-            if (panel.classList.contains('show')) {
-                panel.classList.remove('show');
-                if (icon) { 
-                    icon.classList.remove('fa-chevron-up'); 
-                    icon.classList.add('fa-chevron-down'); 
+            
+            // En mobile, ocultar completamente el panel (incluyendo el header)
+            if (window.innerWidth <= 768) {
+                if (panel.classList.contains('show') || panel.classList.contains('collapsed')) {
+                    // Ocultar completamente
+                    panel.classList.remove('show');
+                    panel.classList.remove('collapsed');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-up'); 
+                        icon.classList.add('fa-chevron-down'); 
+                    }
+                } else {
+                    // Mostrar expandido
+                    panel.classList.add('show');
+                    panel.classList.remove('collapsed');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-down'); 
+                        icon.classList.add('fa-chevron-up'); 
+                    }
                 }
             } else {
-                panel.classList.add('show');
-                panel.classList.remove('collapsed');
-                if (icon) { 
-                    icon.classList.remove('fa-chevron-up'); 
-                    icon.classList.add('fa-chevron-down'); 
+                // En desktop, mostrar/ocultar la sidebar
+                if (panel.classList.contains('show')) {
+                    panel.classList.remove('show');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-up'); 
+                        icon.classList.add('fa-chevron-down'); 
+                    }
+                } else {
+                    panel.classList.add('show');
+                    panel.classList.remove('collapsed');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-up'); 
+                        icon.classList.add('fa-chevron-down'); 
+                    }
                 }
             }
         }
@@ -2032,17 +2062,26 @@
             const panel = document.getElementById('favoritesPanel');
             const icon = document.getElementById('favoritesToggleIcon');
             
-            // En mobile, mostrar/ocultar el panel completo
+            // En mobile, colapsar/expandir (mostrar solo header o todo)
             if (window.innerWidth <= 768) {
-                if (panel.classList.contains('show')) {
-                    panel.classList.remove('show');
-                    if (icon) { 
-                        icon.classList.remove('fa-chevron-up'); 
-                        icon.classList.add('fa-chevron-down'); 
-                    }
-                } else {
+                if (!panel.classList.contains('show')) {
+                    // Si está oculto, mostrarlo expandido
                     panel.classList.add('show');
                     panel.classList.remove('collapsed');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-down'); 
+                        icon.classList.add('fa-chevron-up'); 
+                    }
+                } else if (panel.classList.contains('collapsed')) {
+                    // Si está colapsado, expandirlo
+                    panel.classList.remove('collapsed');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-down'); 
+                        icon.classList.add('fa-chevron-up'); 
+                    }
+                } else {
+                    // Si está expandido, colapsarlo (solo header visible)
+                    panel.classList.add('collapsed');
                     if (icon) { 
                         icon.classList.remove('fa-chevron-up'); 
                         icon.classList.add('fa-chevron-down'); 
