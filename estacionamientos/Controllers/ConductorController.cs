@@ -92,15 +92,23 @@ namespace estacionamientos.Controllers
                     tieneVehiculo = conduceSeleccionado;
                 }
 
-                // Si no hay vehículo seleccionado, verificar si tiene un favorito
+                // Si no hay vehículo seleccionado en sesión, verificar si tiene un favorito
                 if (!tieneVehiculo)
                 {
-                    var tieneFavorito = await _context.Conduces
+                    var conduceFavorito = await _context.Conduces
                         .Where(c => c.ConNU == conductorId && c.Favorito)
                         .AsNoTracking()
-                        .AnyAsync();
+                        .FirstOrDefaultAsync();
                     
-                    tieneVehiculo = tieneFavorito;
+                    if (conduceFavorito != null)
+                    {
+                        tieneVehiculo = true;
+                        // Si hay un favorito pero no está en sesión, guardarlo en sesión automáticamente
+                        if (string.IsNullOrEmpty(vehiculoSeleccionado))
+                        {
+                            HttpContext.Session.SetString("vehiculoSeleccionado", conduceFavorito.VehPtnt);
+                        }
+                    }
                 }
 
                 // Si no tiene vehículo seleccionado ni favorito, verificar si tiene vehículos registrados
@@ -167,8 +175,8 @@ namespace estacionamientos.Controllers
                     .Distinct()
                     .ToListAsync();
 
-                // Crear un diccionario para almacenar el historial por vehículo
-                var historialPorVehiculo = new Dictionary<Vehiculo, List<object>>();
+                // Crear un diccionario para almacenar el historial por vehículo (usando patente como clave)
+                var historialPorVehiculo = new Dictionary<string, List<object>>();
 
                 foreach (var vehiculo in vehiculos)
                 {
@@ -197,7 +205,7 @@ namespace estacionamientos.Controllers
                         DejoLlaves = o.OcuLlavDej
                     }).ToList<object>();
 
-                    historialPorVehiculo[vehiculo] = historial;
+                    historialPorVehiculo[vehiculo.VehPtnt] = historial;
                 }
 
                 ViewBag.HistorialPorVehiculo = historialPorVehiculo;
@@ -893,43 +901,43 @@ namespace estacionamientos.Controllers
                 else
                 {
                     // Es una ubicación normal, guardar en UbicacionFavorita
-                    if (string.IsNullOrWhiteSpace(model.Apodo))
-                    {
-                        model.Apodo = $"Favorito-{DateTime.Now:HHmmss}";
-                    }
+                if (string.IsNullOrWhiteSpace(model.Apodo))
+                {
+                    model.Apodo = $"Favorito-{DateTime.Now:HHmmss}";
+                }
 
-                    // Validar duplicado por (ConNU, Apodo)
-                    bool yaExiste = await _context.UbicacionesFavoritas
-                        .AnyAsync(u => u.ConNU == conductorId && u.UbfApodo == model.Apodo);
+                // Validar duplicado por (ConNU, Apodo)
+                bool yaExiste = await _context.UbicacionesFavoritas
+                    .AnyAsync(u => u.ConNU == conductorId && u.UbfApodo == model.Apodo);
 
-                    if (yaExiste)
-                    {
-                        return Json(new
-                        {
-                            success = false,
-                            error = "Ya tienes una ubicación con ese apodo."
-                        });
-                    }
-
-                    var entidad = new UbicacionFavorita
-                    {
-                        ConNU = conductorId,
-                        UbfApodo = model.Apodo,
-                        UbfProv = model.Provincia,
-                        UbfCiu = model.Ciudad,
-                        UbfDir = model.Direccion,
-                        UbfLat = model.Lat,
-                        UbfLon = model.Lon
-                    };
-
-                    _context.UbicacionesFavoritas.Add(entidad);
-                    await _context.SaveChangesAsync();
-
+                if (yaExiste)
+                {
                     return Json(new
                     {
-                        success = true,
-                        message = "Ubicación favorita guardada correctamente."
+                        success = false,
+                        error = "Ya tienes una ubicación con ese apodo."
                     });
+                }
+
+                var entidad = new UbicacionFavorita
+                {
+                    ConNU = conductorId,
+                    UbfApodo = model.Apodo,
+                    UbfProv = model.Provincia,
+                    UbfCiu = model.Ciudad,
+                    UbfDir = model.Direccion,
+                    UbfLat = model.Lat,
+                    UbfLon = model.Lon
+                };
+
+                _context.UbicacionesFavoritas.Add(entidad);
+                await _context.SaveChangesAsync();
+
+                return Json(new
+                {
+                    success = true,
+                    message = "Ubicación favorita guardada correctamente."
+                });
                 }
             }
             catch (Exception ex)
@@ -985,18 +993,18 @@ namespace estacionamientos.Controllers
                 else
                 {
                     // Es una ubicación normal
-                    var entity = await _context.UbicacionesFavoritas
-                        .FindAsync(conductorId, apodo);
+                var entity = await _context.UbicacionesFavoritas
+                    .FindAsync(conductorId, apodo);
 
-                    if (entity == null)
-                    {
-                        return Json(new { success = false, error = "Ubicación no encontrada" });
-                    }
+                if (entity == null)
+                {
+                    return Json(new { success = false, error = "Ubicación no encontrada" });
+                }
 
-                    _context.UbicacionesFavoritas.Remove(entity);
-                    await _context.SaveChangesAsync();
+                _context.UbicacionesFavoritas.Remove(entity);
+                await _context.SaveChangesAsync();
 
-                    return Json(new { success = true, message = "Ubicación favorita eliminada." });
+                return Json(new { success = true, message = "Ubicación favorita eliminada." });
                 }
             }
             catch (Exception ex)
@@ -1059,40 +1067,40 @@ namespace estacionamientos.Controllers
                 else
                 {
                     // Es una ubicación normal
-                    var favorito = await _context.UbicacionesFavoritas
-                        .FirstOrDefaultAsync(u => u.ConNU == conductorId && u.UbfApodo == model.ApodoActual);
+                var favorito = await _context.UbicacionesFavoritas
+                    .FirstOrDefaultAsync(u => u.ConNU == conductorId && u.UbfApodo == model.ApodoActual);
 
-                    if (favorito == null)
-                        return Json(new { success = false, error = "No se encontró la ubicación favorita." });
+                if (favorito == null)
+                    return Json(new { success = false, error = "No se encontró la ubicación favorita." });
 
-                    // Verificar duplicado
-                    bool yaExiste = await _context.UbicacionesFavoritas
-                        .AnyAsync(u => u.ConNU == conductorId && u.UbfApodo == model.NuevoApodo);
+                // Verificar duplicado
+                bool yaExiste = await _context.UbicacionesFavoritas
+                    .AnyAsync(u => u.ConNU == conductorId && u.UbfApodo == model.NuevoApodo);
 
-                    if (yaExiste)
-                        return Json(new { success = false, error = "Ya tenés otra ubicación con ese nombre." });
+                if (yaExiste)
+                    return Json(new { success = false, error = "Ya tenés otra ubicación con ese nombre." });
 
-                    // Crear una nueva con el nuevo apodo
-                    var nueva = new UbicacionFavorita
-                    {
-                        ConNU = favorito.ConNU,
-                        UbfApodo = model.NuevoApodo,
-                        UbfProv = favorito.UbfProv,
-                        UbfCiu = favorito.UbfCiu,
-                        UbfDir = favorito.UbfDir,
-                        UbfLat = favorito.UbfLat,
-                        UbfLon = favorito.UbfLon
-                    };
+                // Crear una nueva con el nuevo apodo
+                var nueva = new UbicacionFavorita
+                {
+                    ConNU = favorito.ConNU,
+                    UbfApodo = model.NuevoApodo,
+                    UbfProv = favorito.UbfProv,
+                    UbfCiu = favorito.UbfCiu,
+                    UbfDir = favorito.UbfDir,
+                    UbfLat = favorito.UbfLat,
+                    UbfLon = favorito.UbfLon
+                };
 
-                    _context.UbicacionesFavoritas.Add(nueva);
+                _context.UbicacionesFavoritas.Add(nueva);
 
-                    // Eliminar la anterior
-                    _context.UbicacionesFavoritas.Remove(favorito);
+                // Eliminar la anterior
+                _context.UbicacionesFavoritas.Remove(favorito);
 
-                    // Guardar cambios
-                    await _context.SaveChangesAsync();
+                // Guardar cambios
+                await _context.SaveChangesAsync();
 
-                    return Json(new { success = true, message = "Ubicación renombrada correctamente." });
+                return Json(new { success = true, message = "Ubicación renombrada correctamente." });
                 }
             }
             catch (Exception ex)

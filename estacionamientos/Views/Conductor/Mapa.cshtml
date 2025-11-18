@@ -330,7 +330,26 @@
         }
         
         @@media (max-width:768px){
-            .favorites-panel{ top:140px; left:10px; right:auto; width:260px; max-height:50vh; display:flex; }
+            .favorites-panel{ 
+                top:140px; 
+                left:10px; 
+                right:auto; 
+                width:260px; 
+                max-height:50vh; 
+                /* Oculto por defecto en mobile */
+                display:none;
+            }
+            .favorites-panel.show{
+                display:flex;
+            }
+            /* Cuando está colapsado en mobile, mostrar solo el header */
+            .favorites-panel.show.collapsed{
+                display:flex !important;
+                max-height:44px;
+            }
+            .favorites-panel.show.collapsed .favorites-body{ 
+                display:none; 
+            }
         }
 
         /* Botón de favoritos en la barra */
@@ -621,13 +640,42 @@
         function openFavoritesFromStar(){
             const panel = document.getElementById('favoritesPanel');
             const icon  = document.getElementById('favoritesToggleIcon');
-            // Mostrar la sidebar si está oculta, ocultarla si está visible
-            if (panel.classList.contains('show')) {
-                panel.classList.remove('show');
+            
+            // En mobile, ocultar completamente el panel (incluyendo el header)
+            if (window.innerWidth <= 768) {
+                if (panel.classList.contains('show') || panel.classList.contains('collapsed')) {
+                    // Ocultar completamente
+                    panel.classList.remove('show');
+                    panel.classList.remove('collapsed');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-up'); 
+                        icon.classList.add('fa-chevron-down'); 
+                    }
+                } else {
+                    // Mostrar expandido
+                    panel.classList.add('show');
+                    panel.classList.remove('collapsed');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-down'); 
+                        icon.classList.add('fa-chevron-up'); 
+                    }
+                }
             } else {
-                panel.classList.add('show');
-            panel.classList.remove('collapsed');
-            if (icon){ icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
+                // En desktop, mostrar/ocultar la sidebar
+                if (panel.classList.contains('show')) {
+                    panel.classList.remove('show');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-up'); 
+                        icon.classList.add('fa-chevron-down'); 
+                    }
+                } else {
+                    panel.classList.add('show');
+                    panel.classList.remove('collapsed');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-up'); 
+                        icon.classList.add('fa-chevron-down'); 
+                    }
+                }
             }
         }
 
@@ -992,28 +1040,26 @@
                 focus: true
             });
             
-            // Remover listeners anteriores
-            $('#modalConfirmacionBtnConfirmar').off('click');
+            // Definir el handler una vez
+            const confirmHandler = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                modal.hide();
+                if (callbackConfirmar) callbackConfirmar();
+                return false;
+            };
             
-            // Agregar nuevo listener con captura de eventos usando addEventListener con capture
+            // Agregar listener usando jQuery (más confiable para modales)
+            $('#modalConfirmacionBtnConfirmar').off('click').on('click', confirmHandler);
+            
+            // También agregar listener nativo como respaldo
             const confirmBtn = document.getElementById('modalConfirmacionBtnConfirmar');
             if (confirmBtn) {
-                // Remover todos los listeners anteriores usando jQuery
-                $('#modalConfirmacionBtnConfirmar').off('click');
-                
-                const confirmHandler = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                    modal.hide();
-                    if (callbackConfirmar) callbackConfirmar();
-                    return false;
-                };
-                
-                // Agregar listener nativo con captura
-                confirmBtn.addEventListener('click', confirmHandler, true);
-                // También con jQuery para compatibilidad
-                $('#modalConfirmacionBtnConfirmar').on('click', confirmHandler);
+                // Clonar y reemplazar el botón para limpiar listeners nativos anteriores
+                const newBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+                newBtn.addEventListener('click', confirmHandler, true);
             }
             
             // También agregar listener al botón Cancelar
@@ -1058,7 +1104,7 @@
                 modalEl.addClass('show').css({
                     'display': 'block',
                     'pointer-events': 'auto',
-                    'z-index': '10000'
+                    'z-index': '10020'
                 });
                 
                 backdrop.addClass('show').css({
@@ -1070,7 +1116,7 @@
                 const content = modalEl.find('.modal-content');
                 content.css({
                     'pointer-events': 'auto',
-                    'z-index': '10002',
+                    'z-index': '10022',
                     'position': 'relative'
                 });
                 
@@ -1078,28 +1124,27 @@
                 const dialog = modalEl.find('.modal-dialog');
                 dialog.css({
                     'pointer-events': 'none',
-                    'z-index': '10001'
+                    'z-index': '10021'
                 });
                 
                 // Asegurar que todos los elementos interactivos funcionen
                 content.find('*').css('pointer-events', 'auto');
                 
-                // Prevenir que clics en el contenido se propaguen al backdrop usando captura
-                const contentEl = content[0];
-                if (contentEl) {
-                    const stopPropagation = function(e) {
+                // Re-agregar event listeners después de que el modal esté visible
+                const confirmBtn = document.getElementById('modalConfirmacionBtnConfirmar');
+                if (confirmBtn) {
+                    const confirmHandler = function(e) {
+                        e.preventDefault();
                         e.stopPropagation();
                         e.stopImmediatePropagation();
+                        modal.hide();
+                        if (callbackConfirmar) callbackConfirmar();
+                        return false;
                     };
-                    contentEl.addEventListener('mousedown', stopPropagation, true);
-                    contentEl.addEventListener('click', stopPropagation, true);
-                    contentEl.addEventListener('mouseup', stopPropagation, true);
+                    // Asegurar que el listener esté activo
+                    $('#modalConfirmacionBtnConfirmar').off('click').on('click', confirmHandler);
+                    confirmBtn.onclick = confirmHandler;
                 }
-                // También con jQuery
-                content.off('mousedown click mouseup').on('mousedown click mouseup', function(e) {
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                });
             }, 150);
             
             // Rehabilitar interacción del mapa cuando el modal se cierre
@@ -1165,24 +1210,25 @@
                 if (callbackConfirmar) callbackConfirmar(valor);
             };
             
-            // Agregar listener al botón con captura de eventos usando addEventListener
+            // Definir el handler una vez
+            const inputConfirmHandler = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                confirmar(e);
+                return false;
+            };
+            
+            // Agregar listener usando jQuery (más confiable para modales)
+            $('#modalInputBtnConfirmar').off('click').on('click', inputConfirmHandler);
+            
+            // También agregar listener nativo como respaldo
             const inputConfirmBtn = document.getElementById('modalInputBtnConfirmar');
             if (inputConfirmBtn) {
-                // Remover todos los listeners anteriores usando jQuery
-                $('#modalInputBtnConfirmar').off('click');
-                
-                const inputConfirmHandler = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                    confirmar(e);
-                    return false;
-                };
-                
-                // Agregar listener nativo con captura
-                inputConfirmBtn.addEventListener('click', inputConfirmHandler, true);
-                // También con jQuery para compatibilidad
-                $('#modalInputBtnConfirmar').on('click', inputConfirmHandler);
+                // Clonar y reemplazar el botón para limpiar listeners nativos anteriores
+                const newBtn = inputConfirmBtn.cloneNode(true);
+                inputConfirmBtn.parentNode.replaceChild(newBtn, inputConfirmBtn);
+                newBtn.addEventListener('click', inputConfirmHandler, true);
             }
             
             // También agregar listener al botón Cancelar
@@ -1235,7 +1281,7 @@
                 modalEl.addClass('show').css({
                     'display': 'block',
                     'pointer-events': 'auto',
-                    'z-index': '10000'
+                    'z-index': '10020'
                 });
                 
                 backdrop.addClass('show').css({
@@ -1247,7 +1293,7 @@
                 const content = modalEl.find('.modal-content');
                 content.css({
                     'pointer-events': 'auto',
-                    'z-index': '10002',
+                    'z-index': '10022',
                     'position': 'relative'
                 });
                 
@@ -1255,28 +1301,26 @@
                 const dialog = modalEl.find('.modal-dialog');
                 dialog.css({
                     'pointer-events': 'none',
-                    'z-index': '10001'
+                    'z-index': '10021'
                 });
                 
                 // Asegurar que todos los elementos interactivos funcionen
                 content.find('*').css('pointer-events', 'auto');
                 
-                // Prevenir que clics en el contenido se propaguen al backdrop usando captura
-                const contentEl = content[0];
-                if (contentEl) {
-                    const stopPropagation = function(e) {
+                // Re-agregar event listeners después de que el modal esté visible
+                const inputConfirmBtn = document.getElementById('modalInputBtnConfirmar');
+                if (inputConfirmBtn) {
+                    const inputConfirmHandler = function(e) {
+                        e.preventDefault();
                         e.stopPropagation();
                         e.stopImmediatePropagation();
+                        confirmar(e);
+                        return false;
                     };
-                    contentEl.addEventListener('mousedown', stopPropagation, true);
-                    contentEl.addEventListener('click', stopPropagation, true);
-                    contentEl.addEventListener('mouseup', stopPropagation, true);
+                    // Asegurar que el listener esté activo
+                    $('#modalInputBtnConfirmar').off('click').on('click', inputConfirmHandler);
+                    inputConfirmBtn.onclick = inputConfirmHandler;
                 }
-                // También con jQuery
-                content.off('mousedown click mouseup').on('mousedown click mouseup', function(e) {
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                });
             }, 150);
             
             // Focus en el input después de que el modal se muestre
@@ -1351,7 +1395,7 @@
                 modalEl.addClass('show').css({
                     'display': 'block',
                     'pointer-events': 'auto',
-                    'z-index': '10000'
+                    'z-index': '10020'
                 });
                 
                 backdrop.addClass('show').css({
@@ -1363,7 +1407,7 @@
                 const content = modalEl.find('.modal-content');
                 content.css({
                     'pointer-events': 'auto',
-                    'z-index': '10002',
+                    'z-index': '10022',
                     'position': 'relative'
                 });
                 
@@ -1371,7 +1415,7 @@
                 const dialog = modalEl.find('.modal-dialog');
                 dialog.css({
                     'pointer-events': 'none',
-                    'z-index': '10001'
+                    'z-index': '10021'
                 });
                 
                 // Asegurar que todos los elementos interactivos funcionen
@@ -2017,11 +2061,44 @@
         function toggleFavorites(){
             const panel = document.getElementById('favoritesPanel');
             const icon = document.getElementById('favoritesToggleIcon');
-            // Solo permitir colapsar/expandir si la sidebar está visible
-            if (!panel.classList.contains('show')) return;
-            panel.classList.toggle('collapsed');
-            if (panel.classList.contains('collapsed')){ icon.classList.remove('fa-chevron-down'); icon.classList.add('fa-chevron-up'); }
-            else { icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
+            
+            // En mobile, colapsar/expandir (mostrar solo header o todo)
+            if (window.innerWidth <= 768) {
+                if (!panel.classList.contains('show')) {
+                    // Si está oculto, mostrarlo expandido
+                    panel.classList.add('show');
+                    panel.classList.remove('collapsed');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-down'); 
+                        icon.classList.add('fa-chevron-up'); 
+                    }
+                } else if (panel.classList.contains('collapsed')) {
+                    // Si está colapsado, expandirlo
+                    panel.classList.remove('collapsed');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-down'); 
+                        icon.classList.add('fa-chevron-up'); 
+                    }
+                } else {
+                    // Si está expandido, colapsarlo (solo header visible)
+                    panel.classList.add('collapsed');
+                    if (icon) { 
+                        icon.classList.remove('fa-chevron-up'); 
+                        icon.classList.add('fa-chevron-down'); 
+                    }
+                }
+            } else {
+                // En desktop, solo colapsar/expandir si la sidebar está visible
+                if (!panel.classList.contains('show')) return;
+                panel.classList.toggle('collapsed');
+                if (panel.classList.contains('collapsed')){ 
+                    icon.classList.remove('fa-chevron-down'); 
+                    icon.classList.add('fa-chevron-up'); 
+                } else { 
+                    icon.classList.remove('fa-chevron-up'); 
+                    icon.classList.add('fa-chevron-down'); 
+                }
+            }
         }
         
         function toggleFavoritesSection(tipo){
@@ -2917,8 +2994,14 @@
         }
         
         function guardarValoracionDesdeDetalle(){
-            if (!playaSeleccionada) return alert('No hay una playa seleccionada.');
-            if (ratingSeleccionadoDetalle === 0 && !valoracionActual) return alert('Por favor selecciona una puntuación.');
+            if (!playaSeleccionada) {
+                mostrarModalMensaje('No hay una playa seleccionada.', 'error');
+                return;
+            }
+            if (ratingSeleccionadoDetalle === 0 && !valoracionActual) {
+                mostrarModalMensaje('Por favor selecciona una puntuación.', 'error');
+                return;
+            }
             
             const rating = ratingSeleccionadoDetalle || (valoracionActual ? valoracionActual.valNumEst : 0);
             const comentario = $('#valComentarioDetalle').val().trim();
@@ -2938,37 +3021,40 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    alert('Valoración guardada correctamente.');
+                    mostrarModalMensaje('Valoración guardada correctamente.', 'success');
                     cargarValoracionesEnDetalle(playaSeleccionada.plyID);
                 } else {
-                    alert(data.error || 'No se pudo guardar la valoración.');
+                    mostrarModalMensaje(data.error || 'No se pudo guardar la valoración.', 'error');
                 }
             })
-            .catch(() => alert('Ocurrió un error al guardar la valoración.'));
+            .catch(() => mostrarModalMensaje('Ocurrió un error al guardar la valoración.', 'error'));
         }
         
         function eliminarValoracionDesdeDetalle(){
-            if (!playaSeleccionada || !valoracionActual) return alert('No hay una valoración para eliminar.');
+            if (!playaSeleccionada || !valoracionActual) {
+                mostrarModalMensaje('No hay una valoración para eliminar.', 'error');
+                return;
+            }
             
-            if (!confirm('¿Eliminar tu valoración?')) return;
-            
-            fetch('@Url.Action("EliminarValoracion", "Conductor")', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': antiforgeryToken },
-                body: JSON.stringify({ PlyID: playaSeleccionada.plyID })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Valoración eliminada correctamente.');
-                    valoracionActual = null;
-                    ratingSeleccionadoDetalle = 0;
-                    cargarValoracionesEnDetalle(playaSeleccionada.plyID);
-                } else {
-                    alert(data.error || 'No se pudo eliminar la valoración.');
-                }
-            })
-            .catch(() => alert('Ocurrió un error al eliminar la valoración.'));
+            mostrarModalConfirmacion('¿Eliminar tu valoración?', function() {
+                fetch('@Url.Action("EliminarValoracion", "Conductor")', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': antiforgeryToken },
+                    body: JSON.stringify({ PlyID: playaSeleccionada.plyID })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        mostrarModalMensaje('Valoración eliminada correctamente.', 'success');
+                        valoracionActual = null;
+                        ratingSeleccionadoDetalle = 0;
+                        cargarValoracionesEnDetalle(playaSeleccionada.plyID);
+                    } else {
+                        mostrarModalMensaje(data.error || 'No se pudo eliminar la valoración.', 'error');
+                    }
+                })
+                .catch(() => mostrarModalMensaje('Ocurrió un error al eliminar la valoración.', 'error'));
+            });
         }
         
         function volverADetalles(){
@@ -3111,13 +3197,13 @@
 
         function guardarValoracion(){
             if(!ratingSeleccionado && !valoracionActual){
-                alert('Por favor selecciona una puntuación.');
+                mostrarModalMensaje('Por favor selecciona una puntuación.', 'error');
                 return;
             }
             
             const rating = ratingSeleccionado || (valoracionActual ? valoracionActual.valNumEst : null);
             if(!rating){
-                alert('Por favor selecciona una puntuación.');
+                mostrarModalMensaje('Por favor selecciona una puntuación.', 'error');
                 return;
             }
             
@@ -3139,38 +3225,38 @@
             })
             .done(data => {
                 if(data.success){
-                    alert('Valoración guardada correctamente.');
+                    mostrarModalMensaje('Valoración guardada correctamente.', 'success');
                     cargarValoraciones(playaValoracionActual.plyID);
                     ratingSeleccionado = null;
                 } else {
-                    alert(data.error || 'No se pudo guardar la valoración.');
+                    mostrarModalMensaje(data.error || 'No se pudo guardar la valoración.', 'error');
                 }
             })
             .fail(() => {
-                alert('Ocurrió un error al guardar la valoración.');
+                mostrarModalMensaje('Ocurrió un error al guardar la valoración.', 'error');
             });
         }
 
         function eliminarValoracion(){
-            if(!confirm('¿Eliminar tu valoración?')) return;
-            
-            $.ajax({
-                url: '/Conductor/EliminarValoracion',
-                method: 'DELETE',
-                data: { id: playaValoracionActual.plyID },
-                headers: { 'RequestVerificationToken': antiforgeryToken }
-            })
-            .done(data => {
-                if(data.success){
-                    alert('Valoración eliminada correctamente.');
-                    cargarValoraciones(playaValoracionActual.plyID);
-                    ratingSeleccionado = null;
-                } else {
-                    alert(data.error || 'No se pudo eliminar la valoración.');
-                }
-            })
-            .fail(() => {
-                alert('Ocurrió un error al eliminar la valoración.');
+            mostrarModalConfirmacion('¿Eliminar tu valoración?', function() {
+                $.ajax({
+                    url: '/Conductor/EliminarValoracion',
+                    method: 'DELETE',
+                    data: { id: playaValoracionActual.plyID },
+                    headers: { 'RequestVerificationToken': antiforgeryToken }
+                })
+                .done(data => {
+                    if(data.success){
+                        mostrarModalMensaje('Valoración eliminada correctamente.', 'success');
+                        cargarValoraciones(playaValoracionActual.plyID);
+                        ratingSeleccionado = null;
+                    } else {
+                        mostrarModalMensaje(data.error || 'No se pudo eliminar la valoración.', 'error');
+                    }
+                })
+                .fail(() => {
+                    mostrarModalMensaje('Ocurrió un error al eliminar la valoración.', 'error');
+                });
             });
         }
 
@@ -3243,11 +3329,11 @@
     <style>
         /* Estilos para los modales */
         .modal {
-            z-index: 10000 !important;
+            z-index: 10020 !important;
         }
         .modal.show {
             display: block !important;
-            z-index: 10000 !important;
+            z-index: 10020 !important;
         }
         .modal-backdrop {
             z-index: 100 !important;
@@ -3260,7 +3346,7 @@
         }
         .modal-dialog {
             pointer-events: none;
-            z-index: 10001 !important;
+            z-index: 10021 !important;
             position: relative;
         }
         .modal-dialog-centered {
@@ -3273,12 +3359,26 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
             pointer-events: auto !important;
             position: relative !important;
-            z-index: 10002 !important;
+            z-index: 10022 !important;
             background-color: white !important;
         }
         .modal-header {
             border-bottom: 1px solid #dee2e6;
             pointer-events: auto !important;
+            background-color: #0d6efd !important;
+            color: white !important;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            text-align: center !important;
+        }
+        .modal-header .modal-title {
+            font-weight: bold !important;
+            width: 100%;
+            text-align: center !important;
+        }
+        .modal-header .btn-close {
+            filter: invert(1) grayscale(100%) brightness(200%);
+            position: absolute;
+            right: 1rem;
         }
         .modal-header.bg-primary {
             background-color: #0d6efd !important;
