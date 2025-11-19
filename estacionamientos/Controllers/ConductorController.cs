@@ -906,6 +906,12 @@ namespace estacionamientos.Controllers
                     model.Apodo = $"Favorito-{DateTime.Now:HHmmss}";
                 }
 
+                // Validar y truncar apodo si excede el límite
+                if (model.Apodo.Length > 50)
+                {
+                    model.Apodo = model.Apodo.Substring(0, 50);
+                }
+
                 // Validar duplicado por (ConNU, Apodo)
                 bool yaExiste = await _context.UbicacionesFavoritas
                     .AnyAsync(u => u.ConNU == conductorId && u.UbfApodo == model.Apodo);
@@ -919,13 +925,25 @@ namespace estacionamientos.Controllers
                     });
                 }
 
+                // Validar y proporcionar valores por defecto para campos requeridos
+                var provincia = string.IsNullOrWhiteSpace(model.Provincia) ? "Chaco" : model.Provincia.Trim();
+                var ciudad = string.IsNullOrWhiteSpace(model.Ciudad) ? "Resistencia" : model.Ciudad.Trim();
+                var direccion = string.IsNullOrWhiteSpace(model.Direccion) 
+                    ? $"Lat: {model.Lat}, Lon: {model.Lon}" 
+                    : model.Direccion.Trim();
+
+                // Truncar campos si exceden el límite
+                if (provincia.Length > 50) provincia = provincia.Substring(0, 50);
+                if (ciudad.Length > 80) ciudad = ciudad.Substring(0, 80);
+                if (direccion.Length > 120) direccion = direccion.Substring(0, 120);
+
                 var entidad = new UbicacionFavorita
                 {
                     ConNU = conductorId,
                     UbfApodo = model.Apodo,
-                    UbfProv = model.Provincia,
-                    UbfCiu = model.Ciudad,
-                    UbfDir = model.Direccion,
+                    UbfProv = provincia,
+                    UbfCiu = ciudad,
+                    UbfDir = direccion,
                     UbfLat = model.Lat,
                     UbfLon = model.Lon
                 };
@@ -940,9 +958,23 @@ namespace estacionamientos.Controllers
                 });
                 }
             }
+            catch (DbUpdateException dbEx)
+            {
+                // Capturar excepciones de base de datos con más detalle
+                var innerException = dbEx.InnerException?.Message ?? dbEx.Message;
+                return Json(new { 
+                    success = false, 
+                    error = $"Error al guardar en la base de datos: {innerException}" 
+                });
+            }
             catch (Exception ex)
             {
-                return Json(new { success = false, error = ex.Message });
+                // Capturar cualquier otra excepción
+                var innerException = ex.InnerException?.Message ?? ex.Message;
+                return Json(new { 
+                    success = false, 
+                    error = $"Error: {innerException}" 
+                });
             }
         }
 

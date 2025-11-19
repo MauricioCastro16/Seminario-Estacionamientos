@@ -2760,16 +2760,30 @@
                 return;
             }
             
-            const partes = ubicacionSeleccionada.direccion.split(',');
-            const ciudad = partes.length > 1 ? partes[partes.length - 3]?.trim() || '' : '';
-            const provincia = partes.length > 1 ? partes[partes.length - 2]?.trim() || '' : '';
-            const direccionCorta = partes.slice(0, Math.max(1, partes.length - 3)).join(', ') || ubicacionSeleccionada.direccion;
+            // Parsear dirección de forma más robusta
+            let ciudad = 'Resistencia';
+            let provincia = 'Chaco';
+            let direccionCorta = ubicacionSeleccionada.direccion || `Lat: ${ubicacionSeleccionada.lat}, Lon: ${ubicacionSeleccionada.lon}`;
+            
+            if (ubicacionSeleccionada.direccion && ubicacionSeleccionada.direccion.includes(',')) {
+                const partes = ubicacionSeleccionada.direccion.split(',');
+                if (partes.length > 1) {
+                    ciudad = partes[partes.length - 3]?.trim() || 'Resistencia';
+                    provincia = partes[partes.length - 2]?.trim() || 'Chaco';
+                    direccionCorta = partes.slice(0, Math.max(1, partes.length - 3)).join(', ').trim() || direccionCorta;
+                }
+            }
+            
+            // Asegurar que la dirección no esté vacía
+            if (!direccionCorta || direccionCorta.trim() === '') {
+                direccionCorta = `Lat: ${ubicacionSeleccionada.lat.toFixed(6)}, Lon: ${ubicacionSeleccionada.lon.toFixed(6)}`;
+            }
             
             const payload = { 
                 apodo: nombre, 
-                provincia: provincia || 'Chaco', 
-                ciudad: ciudad || 'Resistencia', 
-                direccion: direccionCorta || ubicacionSeleccionada.direccion, 
+                provincia: provincia, 
+                ciudad: ciudad, 
+                direccion: direccionCorta, 
                 tipo: 'Ubicación', 
                 lat: ubicacionSeleccionada.lat, 
                 lon: ubicacionSeleccionada.lon 
@@ -2812,10 +2826,24 @@
         }
         
         function agregarUbicacionFavoritaDesdeCoordenadas(lat, lon, direccionCompleta){
-            const partes = direccionCompleta.split(',');
-            const ciudad = partes.length > 1 ? partes[partes.length - 3]?.trim() || '' : '';
-            const provincia = partes.length > 1 ? partes[partes.length - 2]?.trim() || '' : '';
-            const direccionCorta = partes.slice(0, Math.max(1, partes.length - 3)).join(', ') || direccionCompleta;
+            // Parsear dirección de forma más robusta
+            let ciudad = 'Resistencia';
+            let provincia = 'Chaco';
+            let direccionCorta = direccionCompleta || `Lat: ${lat.toFixed(6)}, Lon: ${lon.toFixed(6)}`;
+            
+            if (direccionCompleta && direccionCompleta.includes(',')) {
+                const partes = direccionCompleta.split(',');
+                if (partes.length > 1) {
+                    ciudad = partes[partes.length - 3]?.trim() || 'Resistencia';
+                    provincia = partes[partes.length - 2]?.trim() || 'Chaco';
+                    direccionCorta = partes.slice(0, Math.max(1, partes.length - 3)).join(', ').trim() || direccionCorta;
+                }
+            }
+            
+            // Asegurar que la dirección no esté vacía
+            if (!direccionCorta || direccionCorta.trim() === '') {
+                direccionCorta = `Lat: ${lat.toFixed(6)}, Lon: ${lon.toFixed(6)}`;
+            }
             
             mostrarModalInput(
                 'Agregar ubicación favorita',
@@ -2824,9 +2852,9 @@
                 function(apodo) {
                     const payload = { 
                         apodo: apodo, 
-                        provincia: provincia || 'Chaco', 
-                        ciudad: ciudad || 'Resistencia', 
-                        direccion: direccionCorta || direccionCompleta, 
+                        provincia: provincia, 
+                        ciudad: ciudad, 
+                        direccion: direccionCorta, 
                         tipo: 'Ubicación', 
                         lat: lat, 
                         lon: lon 
