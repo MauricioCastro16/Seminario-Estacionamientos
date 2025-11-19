@@ -4,39 +4,158 @@
     ViewData["Title"] = "Cambiar contraseña";
 }
 
-<h2>@ViewData["Title"]</h2>
+<div class="d-flex align-items-center justify-content-center p-3" style="min-height: calc(100vh - 80px); padding-top: 100px;">
+    <div class="w-100" style="max-width: 400px;">
+        <div class="card border-0 rounded-3" style="box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="text-center mb-4">
+                    <div class="mb-2">
+                        <i class="fas fa-key text-primary" style="font-size: 2.2rem;"></i>
+                    </div>
+                    <h2 class="fw-bold text-dark mb-0" style="font-size: 1.5rem;">@ViewData["Title"]</h2>
+                </div>
 
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success">
-        @TempData["SuccessMessage"]
+                <!-- Mensaje de éxito -->
+                @if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="alert alert-success alert-dismissible fade show rounded-2 mb-3" role="alert" style="font-size: 0.875rem;">
+                        <i class="fas fa-check-circle me-2"></i>
+                        @TempData["SuccessMessage"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                }
+
+                <!-- Mensajes de error -->
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded-2 mb-3" style="font-size: 0.875rem;"></div>
+
+                <!-- Formulario -->
+                <form asp-action="CambioContrasena" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label asp-for="ContrasenaActual" class="form-label fw-semibold text-dark" style="font-size: 0.9rem;">
+                            <i class="fas fa-lock me-1 text-muted"></i>Contraseña actual
+                        </label>
+                        <div class="input-group">
+                            <input asp-for="ContrasenaActual" class="form-control rounded-2 border-2" 
+                                   type="password" id="passwordActualInput" placeholder="Ingresa tu contraseña actual" style="font-size: 0.9rem;" />
+                            <button type="button" class="btn btn-outline-secondary border-2 rounded-end-2" id="togglePasswordActual">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                        <span asp-validation-for="ContrasenaActual" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="NuevaContrasena" class="form-label fw-semibold text-dark" style="font-size: 0.9rem;">
+                            <i class="fas fa-lock me-1 text-muted"></i>Nueva contraseña
+                        </label>
+                        <div class="input-group">
+                            <input asp-for="NuevaContrasena" class="form-control rounded-2 border-2" 
+                                   type="password" id="passwordNuevaInput" placeholder="Ingresa tu nueva contraseña" style="font-size: 0.9rem;" />
+                            <button type="button" class="btn btn-outline-secondary border-2 rounded-end-2" id="togglePasswordNueva">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                        <span asp-validation-for="NuevaContrasena" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="ConfirmarNuevaContrasena" class="form-label fw-semibold text-dark" style="font-size: 0.9rem;">
+                            <i class="fas fa-lock me-1 text-muted"></i>Confirmar nueva contraseña
+                        </label>
+                        <div class="input-group">
+                            <input asp-for="ConfirmarNuevaContrasena" class="form-control rounded-2 border-2" 
+                                   type="password" id="passwordConfirmarInput" placeholder="Confirma tu nueva contraseña" style="font-size: 0.9rem;" />
+                            <button type="button" class="btn btn-outline-secondary border-2 rounded-end-2" id="togglePasswordConfirmar">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                        <span asp-validation-for="ConfirmarNuevaContrasena" class="text-danger small"></span>
+                    </div>
+
+                    <div class="d-grid gap-2 mb-3">
+                        <button type="submit" class="btn btn-primary rounded-2 fw-semibold py-2" style="font-size: 0.9rem;">
+                            <i class="fas fa-save me-2"></i>Guardar nueva contraseña
+                        </button>
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary rounded-2 fw-semibold py-2" style="font-size: 0.9rem;">
+                            <i class="fas fa-times me-2"></i>Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-}
-
-<form asp-action="CambioContrasena" method="post">
-    @Html.AntiForgeryToken()
-
-    <div class="form-group">
-        <label asp-for="ContrasenaActual"></label>
-        <input asp-for="ContrasenaActual" class="form-control" />
-        <span asp-validation-for="ContrasenaActual" class="text-danger"></span>
-    </div>
-
-    <div class="form-group mt-2">
-        <label asp-for="NuevaContrasena"></label>
-        <input asp-for="NuevaContrasena" class="form-control" />
-        <span asp-validation-for="NuevaContrasena" class="text-danger"></span>
-    </div>
-
-    <div class="form-group mt-2">
-        <label asp-for="ConfirmarNuevaContrasena"></label>
-        <input asp-for="ConfirmarNuevaContrasena" class="form-control" />
-        <span asp-validation-for="ConfirmarNuevaContrasena" class="text-danger"></span>
-    </div>
-
-    <button type="submit" class="btn btn-primary mt-3">Guardar nueva contraseña</button>
-</form>
+</div>
 
 @section Scripts {
-    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Toggle para contraseña actual
+            const togglePasswordActual = document.querySelector("#togglePasswordActual");
+            const passwordActualInput = document.querySelector("#passwordActualInput");
+            const iconActual = togglePasswordActual?.querySelector("i");
+
+            if (togglePasswordActual && iconActual) {
+                togglePasswordActual.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    const type = passwordActualInput.getAttribute("type") === "password" ? "text" : "password";
+                    passwordActualInput.setAttribute("type", type);
+                    iconActual.classList.toggle("fa-eye");
+                    iconActual.classList.toggle("fa-eye-slash");
+                    passwordActualInput.focus();
+                });
+            }
+
+            // Toggle para nueva contraseña
+            const togglePasswordNueva = document.querySelector("#togglePasswordNueva");
+            const passwordNuevaInput = document.querySelector("#passwordNuevaInput");
+            const iconNueva = togglePasswordNueva?.querySelector("i");
+
+            if (togglePasswordNueva && iconNueva) {
+                togglePasswordNueva.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    const type = passwordNuevaInput.getAttribute("type") === "password" ? "text" : "password";
+                    passwordNuevaInput.setAttribute("type", type);
+                    iconNueva.classList.toggle("fa-eye");
+                    iconNueva.classList.toggle("fa-eye-slash");
+                    passwordNuevaInput.focus();
+                });
+            }
+
+            // Toggle para confirmar contraseña
+            const togglePasswordConfirmar = document.querySelector("#togglePasswordConfirmar");
+            const passwordConfirmarInput = document.querySelector("#passwordConfirmarInput");
+            const iconConfirmar = togglePasswordConfirmar?.querySelector("i");
+
+            if (togglePasswordConfirmar && iconConfirmar) {
+                togglePasswordConfirmar.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    const type = passwordConfirmarInput.getAttribute("type") === "password" ? "text" : "password";
+                    passwordConfirmarInput.setAttribute("type", type);
+                    iconConfirmar.classList.toggle("fa-eye");
+                    iconConfirmar.classList.toggle("fa-eye-slash");
+                    passwordConfirmarInput.focus();
+                });
+            }
+
+            // Mejorar navegación entre campos
+            const inputs = document.querySelectorAll('input[type="password"]');
+            inputs.forEach((input, index) => {
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && index < inputs.length - 1) {
+                        e.preventDefault();
+                        inputs[index + 1].focus();
+                    } else if (e.key === 'Enter' && index === inputs.length - 1) {
+                        const form = document.querySelector('form');
+                        if (form) {
+                            form.submit();
+                        }
+                    }
+                });
+            });
+        });
+    </script>
 }
