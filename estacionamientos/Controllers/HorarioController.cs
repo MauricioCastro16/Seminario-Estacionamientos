@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -29,6 +30,14 @@ namespace estacionamientos.Controllers
 
         private static DateTime BuildDate(TimeSpan time) => DateTime.SpecifyKind(BaseDate.Add(time), DateTimeKind.Utc);
         private static TimeSpan ReadTime(DateTime date) => date.TimeOfDay;
+
+        private static DateTime EnsureUtc(DateTime value) =>
+            value.Kind switch
+            {
+                DateTimeKind.Utc => value,
+                DateTimeKind.Local => value.ToUniversalTime(),
+                _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+            };
 
         private async Task<bool> OwnsPlayaAsync(int dueNu, int plyID)
             => await _ctx.AdministraPlayas.AnyAsync(ap => ap.DueNU == dueNu && ap.PlyID == plyID);
@@ -59,6 +68,56 @@ namespace estacionamientos.Controllers
                     : $"{c.ClaDiasTipo} - {c.ClaDiasDesc}",
                 Selected = selected == c.ClaDiasID
             }).ToList();
+        }
+
+        private async Task<List<Horario>> ObtenerSolapamientosAsync(
+            int plyID,
+            int claDiasID,
+            DateTime nuevaApertura,
+            DateTime nuevoCierre,
+            DateTime? inicioOriginal = null,
+            int? claDiasOriginal = null)
+        {
+            nuevaApertura = EnsureUtc(nuevaApertura);
+            nuevoCierre = EnsureUtc(nuevoCierre);
+
+            DateTime? inicioOriginalUtc = null;
+            if (inicioOriginal.HasValue)
+            {
+                inicioOriginalUtc = EnsureUtc(inicioOriginal.Value);
+            }
+
+            var query = _ctx.Horarios
+                .AsNoTracking()
+                .Where(h => h.PlyID == plyID && h.ClaDiasID == claDiasID);
+
+            if (inicioOriginalUtc.HasValue && claDiasOriginal.HasValue)
+            {
+                query = query.Where(h => !(h.HorFyhIni == inicioOriginalUtc.Value && h.ClaDiasID == claDiasOriginal.Value));
+            }
+
+            return await query
+                .Where(h =>
+                    nuevaApertura < (h.HorFyhFin ?? h.HorFyhIni) &&
+                    nuevoCierre > h.HorFyhIni)
+                .OrderBy(h => h.HorFyhIni)
+                .ToListAsync();
+        }
+
+        private static string CrearMensajeSolapamientos(IEnumerable<Horario> solapamientos)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("La franja ingresada se superpone con otras franjas de la misma clasificación:");
+
+            foreach (var horario in solapamientos)
+            {
+                var inicio = ReadTime(horario.HorFyhIni);
+                var fin = ReadTime(horario.HorFyhFin ?? horario.HorFyhIni);
+                sb.AppendLine($"• {inicio:hh\\:mm}–{fin:hh\\:mm}");
+            }
+
+            sb.Append("Por favor, ajuste los horarios para continuar.");
+            return sb.ToString();
         }
 
         private static HorariosIndexVM MapToVm(PlayaEstacionamiento playa, IEnumerable<ClasificacionDias> clasifs, IEnumerable<Horario> horarios)
@@ -184,12 +243,10 @@ namespace estacionamientos.Controllers
             var nuevaApertura = BuildDate(model.HoraApertura);
             var nuevoCierre = BuildDate(model.HoraCierre);
 
-            if (await _ctx.Horarios.AnyAsync(h =>
-                h.PlyID == model.PlyID &&
-                h.ClaDiasID == model.ClaDiasID &&
-                h.HorFyhIni == nuevaApertura))
+            var solapamientos = await ObtenerSolapamientosAsync(model.PlyID, model.ClaDiasID, nuevaApertura, nuevoCierre);
+            if (solapamientos.Any())
             {
-                ModelState.AddModelError(string.Empty, "Ya existe un horario con esa clasificacion y horario de apertura.");
+                ModelState.AddModelError(string.Empty, CrearMensajeSolapamientos(solapamientos));
             }
 
             var playa = await GetPlayaAsync(model.PlyID);
@@ -277,14 +334,18 @@ namespace estacionamientos.Controllers
             var nuevaApertura = BuildDate(model.HoraApertura);
             var nuevoCierre = BuildDate(model.HoraCierre);
 
-            var hayDuplicado = await _ctx.Horarios.AnyAsync(h =>
-                h.PlyID == model.PlyID &&
-                h.ClaDiasID == model.ClaDiasID &&
-                h.HorFyhIni == nuevaApertura &&
-                !(h.PlyID == existente.PlyID && h.ClaDiasID == existente.ClaDiasID && h.HorFyhIni == existente.HorFyhIni));
+            var solapamientos = await ObtenerSolapamientosAsync(
+                model.PlyID,
+                model.ClaDiasID,
+                nuevaApertura,
+                nuevoCierre,
+                model.HorFyhIniOriginal ?? existente.HorFyhIni,
+                model.ClaDiasIDOriginal ?? existente.ClaDiasID);
 
-            if (hayDuplicado)
-                ModelState.AddModelError(string.Empty, "Ya existe un horario con esa clasificacion y horario de apertura.");
+            if (solapamientos.Any())
+            {
+                ModelState.AddModelError(string.Empty, CrearMensajeSolapamientos(solapamientos));
+            }
 
             var playa = await GetPlayaAsync(model.PlyID);
             if (playa is null) return NotFound();
