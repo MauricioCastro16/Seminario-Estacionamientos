@@ -142,9 +142,12 @@ document.addEventListener("DOMContentLoaded", () => {
         // Render dinámico de acciones
 
         if (ocupada) {
+            // Obtener el token anti-forgery del DOM
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            
             panel.innerHTML = `
                 <form action="/Ocupacion/RegistrarEgreso" method="post" style="display: inline;">
-
+                    <input type="hidden" name="__RequestVerificationToken" value="${token}" />
                     <input type="hidden" name="plyID" value="${plyid}" />
                     <input type="hidden" name="plzNum" value="${plznum}" />
                     <input type="hidden" name="vehPtnt" value="${vehptnt}" />
@@ -152,7 +155,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <i class="fa-solid fa-car-rear pe-1"></i> Egresar
                     </button>
                 </form>
-                <a href="/Ocupacion/ReubicarVehiculo?plyID=${plyid}&plzNum=${plznum}&vehPtnt=${vehptnt}" asp-action="Create" class="btn btn-sm btn-outline-primary btn-accion-rapida">
+                <a href="/Ocupacion/ReubicarVehiculo?plyID=${plyid}&plzNum=${plznum}&vehPtnt=${vehptnt}" class="btn btn-sm btn-outline-primary btn-accion-rapida">
                     <i class="fa-solid fa-arrows-alt"></i> Reubicar
                 </a>
             `;
@@ -170,7 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         panel.innerHTML = `
-            <a href="/Ocupacion/Create?plyid=${plyid}&plzNum=${plznum}&techada=${techada}&clasVehID=${clasvehid}&piso=${piso}" asp-action="Create" class="btn btn-sm btn-outline-primary btn-accion-rapida">
+            <a href="/Ocupacion/Create?plyid=${plyid}&plzNum=${plznum}&techada=${techada}&clasVehID=${clasvehid}&piso=${piso}" class="btn btn-sm btn-outline-primary btn-accion-rapida">
                 <i class="fa-solid fa-plus"></i> Ingresar vehículo
             </a>
         `;

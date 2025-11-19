@@ -360,6 +360,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function limpiarCampos() {
+        // Verificar si hay una plaza preseleccionada por parámetros de URL
+        const params = new URLSearchParams(window.location.search);
+        const plazaInicial = params.get("plzNum");
+        
+        // Si hay una plaza preseleccionada por URL, no limpiar los campos
+        if (plazaInicial) {
+            return;
+        }
+        
         selClas.value = "";
         selPiso.innerHTML = `<option value="">-- Seleccione piso --</option>`;
         radiosTechada.forEach(r => r.checked = false);
