@@ -2935,22 +2935,38 @@
             if(valoraciones.length === 0){
                 html += `<div class="alert alert-info" style="background:#cfe2ff; border-color:#0d6efd; color:#0d6efd;">Aún no hay valoraciones de otros usuarios.</div>`;
             } else {
-                html += `<div style="max-height:250px; overflow-y:auto;">`;
+                html += `<div style="max-height:400px; overflow-y:auto;">`;
                 valoraciones.forEach(v => {
-                    html += `<div class="mb-2 p-2" style="background:#fff; border:1px solid #dee2e6; border-radius:8px;">`;
-                    html += `<div class="d-flex justify-content-between align-items-start mb-1">`;
-                    html += `<div>`;
-                    html += `<strong style="color:#333; font-size:0.9em;">${v.conductorNombre || 'Usuario'}</strong>`;
-                    html += `${v.valFav ? ' <span style="color:#f1c40f;">★</span>' : ''}`;
+                    html += `<div class="mb-3 p-3" style="background:#fff; border:1px solid #dee2e6; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">`;
+                    html += `<div class="d-flex justify-content-between align-items-start mb-2">`;
+                    html += `<div class="flex-grow-1">`;
+                    // Estrellas y favorito
+                    html += `<div class="d-flex align-items-center gap-2 mb-2">`;
+                    html += `<div class="text-warning">${generarEstrellas(v.valNumEst, false)}</div>`;
+                    if(v.valFav){
+                        html += `<span class="badge bg-warning text-dark" style="font-size:0.75em;">`;
+                        html += `<i class="fas fa-star"></i> Favorito`;
+                        html += `</span>`;
+                    }
                     html += `</div>`;
-                    html += `<div>${generarEstrellas(v.valNumEst, false)}</div>`;
-                    html += `</div>`;
-                    if(v.valComentario && v.valComentario.trim()){
-                        html += `<div class="mt-2 p-2" style="background:#f8f9fa; border-radius:6px; border-left:3px solid #0d6efd;">`;
-                        html += `<p style="margin:0; color:#333; font-size:0.9em; white-space:pre-wrap;">${v.valComentario}</p>`;
+                    // Nombre del conductor
+                    if(v.conductorNombre){
+                        html += `<div class="fw-semibold text-primary mb-2" style="font-size:0.95em;">`;
+                        html += `<i class="fas fa-user me-1"></i>${v.conductorNombre}`;
                         html += `</div>`;
                     }
-                    html += `<small style="color:#666; font-size:0.8em;">${v.fecha || ''}</small>`;
+                    // Comentario
+                    if(v.valComentario && v.valComentario.trim()){
+                        html += `<div class="mt-2 p-2" style="background:#f8f9fa; border-radius:6px; border-left:3px solid #0d6efd;">`;
+                        html += `<p style="margin:0; color:#333; font-size:0.9em; white-space:pre-wrap; line-height:1.5;">${v.valComentario}</p>`;
+                        html += `</div>`;
+                    }
+                    html += `</div>`;
+                    // Fecha (si está disponible)
+                    if(v.fecha){
+                        html += `<div class="text-muted small ms-3" style="white-space:nowrap;">${v.fecha}</div>`;
+                    }
+                    html += `</div>`;
                     html += `</div>`;
                 });
                 html += `</div>`;
@@ -3122,22 +3138,38 @@
             if(valoraciones.length === 0){
                 html += `<div class="alert alert-info" style="background:#cfe2ff; border-color:#0d6efd; color:#0d6efd;">Aún no hay valoraciones de otros usuarios.</div>`;
             } else {
-                html += `<div style="max-height:250px; overflow-y:auto;">`;
+                html += `<div style="max-height:400px; overflow-y:auto;">`;
                 valoraciones.forEach(v => {
-                    html += `<div class="mb-2 p-2" style="background:#fff; border:1px solid #dee2e6; border-radius:8px;">`;
-                    html += `<div class="d-flex justify-content-between align-items-start mb-1">`;
-                    html += `<div>`;
-                    html += `<strong style="color:#333; font-size:0.9em;">${v.conductorNombre || 'Usuario'}</strong>`;
-                    html += `${v.valFav ? ' <span style="color:#f1c40f;">★</span>' : ''}`;
+                    html += `<div class="mb-3 p-3" style="background:#fff; border:1px solid #dee2e6; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">`;
+                    html += `<div class="d-flex justify-content-between align-items-start mb-2">`;
+                    html += `<div class="flex-grow-1">`;
+                    // Estrellas y favorito
+                    html += `<div class="d-flex align-items-center gap-2 mb-2">`;
+                    html += `<div class="text-warning">${generarEstrellas(v.valNumEst, false)}</div>`;
+                    if(v.valFav){
+                        html += `<span class="badge bg-warning text-dark" style="font-size:0.75em;">`;
+                        html += `<i class="fas fa-star"></i> Favorito`;
+                        html += `</span>`;
+                    }
                     html += `</div>`;
-                    html += `<div>${generarEstrellas(v.valNumEst, false)}</div>`;
-                    html += `</div>`;
-                    if(v.valComentario && v.valComentario.trim()){
-                        html += `<div class="mt-2 p-2" style="background:#f8f9fa; border-radius:6px; border-left:3px solid #0d6efd;">`;
-                        html += `<p style="margin:0; color:#333; font-size:0.9em; white-space:pre-wrap;">${v.valComentario}</p>`;
+                    // Nombre del conductor
+                    if(v.conductorNombre){
+                        html += `<div class="fw-semibold text-primary mb-2" style="font-size:0.95em;">`;
+                        html += `<i class="fas fa-user me-1"></i>${v.conductorNombre}`;
                         html += `</div>`;
                     }
-                    html += `<small style="color:#666; font-size:0.8em;">${v.fecha || ''}</small>`;
+                    // Comentario
+                    if(v.valComentario && v.valComentario.trim()){
+                        html += `<div class="mt-2 p-2" style="background:#f8f9fa; border-radius:6px; border-left:3px solid #0d6efd;">`;
+                        html += `<p style="margin:0; color:#333; font-size:0.9em; white-space:pre-wrap; line-height:1.5;">${v.valComentario}</p>`;
+                        html += `</div>`;
+                    }
+                    html += `</div>`;
+                    // Fecha (si está disponible)
+                    if(v.fecha){
+                        html += `<div class="text-muted small ms-3" style="white-space:nowrap;">${v.fecha}</div>`;
+                    }
+                    html += `</div>`;
                     html += `</div>`;
                 });
                 html += `</div>`;
@@ -3419,4 +3451,6 @@
         }
     </style>
 </body>
+</html>
+</html>
 </html>
