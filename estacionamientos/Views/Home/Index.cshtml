@@ -1,5 +1,7 @@
 ﻿@using System.Security.Claims
 @using estacionamientos.Models
+@using estacionamientos.Data
+@inject AppDbContext _ctx
 
 @{
     ViewData["Title"] = "Inicio";
@@ -13,16 +15,53 @@
     
     var rol = User.FindFirst(ClaimTypes.Role)?.Value ?? "Usuario";
     var nombre = User.FindFirst(ClaimTypes.Name)?.Value ?? "Usuario";
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    int? plyID = null;
+    string? playaActiva = null;
+    if (userId != null && User.IsInRole("Playero"))
+    {
+        var turno = _ctx.Turnos
+            .Where(t => t.PlaNU.ToString() == userId && t.TurFyhFin == null)
+            .FirstOrDefault();
+
+        if (turno != null)
+        {
+            // buscamos la playa del turno y traemos ID + Nombre juntos
+            var playaInfo = _ctx.Playas
+                .Where(p => p.PlyID == turno.PlyID)
+                .Select(p => new { p.PlyID, p.PlyNom })
+                .FirstOrDefault();
+
+            if (playaInfo != null)
+            {
+                plyID = playaInfo.PlyID;         // guardamos el ID
+                playaActiva = playaInfo.PlyNom;  // guardamos el nombre
+            }
+        }
+    }
 }
 
-<div class="d-flex justify-content-center align-items-center" style="min-height:60vh;">
+<div class="d-flex justify-content-center " style="min-height:60vh;">
     <div class="text-center text-secondary">
         <h1 class="display-4">Bienvenido/a @nombre</h1>
         
         @* --- Card de gestión de turno para Playero (modularizado) --- *@
         <partial name="_PlayeroTurnoCard" />
-        
+        @if(plyID != null && playaActiva != null){
+            <div id="dist-plazas-home" class="d-flex flex-column align-items-center flex-shrink-1 card p-3">
+                <h5>Distribución de Plazas</h5>
+                @await Component.InvokeAsync("PlazasGrid", new { plyID = plyID })
+            </div>
+
+        }
         @* --- Aquí se pueden agregar más cards o funcionalidades según el rol --- *@
         @* Por ejemplo: cards para Administrador, Conductor, etc. *@
     </div>
 </div>
+
+<style>
+    #dist-plazas-home .plazas-grid-wrapper, #dist-plazas-home .plazas-grid{
+        height: max-content;
+        overflow-y: auto;
+    }
+</style>
