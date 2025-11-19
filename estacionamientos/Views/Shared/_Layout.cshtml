@@ -426,7 +426,7 @@
     <!-- Breadcrumb trail -->
     @if (ViewBag.Breadcrumb != null)
     {
-        @await Html.PartialAsync("_Breadcrumb", (object)ViewBag.Breadcrumb)
+        @await Html.PartialAsync("Components/_Breadcrumb", (object)ViewBag.Breadcrumb)
     }
     <!-- Main Content -->
     <main class="main-content">
