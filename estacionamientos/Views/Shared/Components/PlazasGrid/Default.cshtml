@@ -1,0 +1,184 @@
+@model IEnumerable<estacionamientos.Models.PlazaViewModel>
+
+@{
+    var pisos = Model.Select(p => p.Piso ?? 0).Distinct().OrderBy(p => p).ToList();
+    var pisoSeleccionado = pisos.FirstOrDefault();
+}
+
+<div class="plazas-container d-flex flex-column w-100"
+     data-pisos='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(pisos))'
+     data-piso-selected="@pisoSeleccionado">
+    <div class="d-flex justify-content-between dist-plazas-acciones" style="height: max-content;">
+        <!-- Navegador de pisos: < 1 > -->
+        <div class="d-flex align-items-center flex-shrink-0 small">
+            <button id="piso-prev" type="button" class="btn px-2 py-0 rounded-pill btn-cambiar-piso">◀</button>
+
+            <div id="piso-display" class="px-2" style="text-align:center;">
+                Piso @pisoSeleccionado
+            </div>
+
+            <button id="piso-next" type="button" class="btn px-2 py-0 rounded-pill btn-cambiar-piso">▶</button>
+        </div>
+        <div id="acciones-plaza" style="min-height:36px;"></div>
+    </div>
+
+    <!-- Contenedor scrollable -->
+    <div class="plazas-grid-wrapper overflow-auto">
+        @foreach (var piso in pisos)
+        {
+            
+            <div class="plazas-grid plazas-grid-compacted py-2" data-piso="@piso" @(piso == pisoSeleccionado ? "" : "style=display:none;"))>
+                @foreach (var plaza in Model.Where(p => (p.Piso ?? 0) == piso))
+                {
+                    var clases = "plaza-card plaza-card-compacted";
+                    if (!plaza.PlzHab) clases += " inhabilitada";
+                    else if (plaza.PlzOcupada) clases += " ocupada";
+                    else if (plaza.TieneAbonoActivo) clases += " abonada";
+                    else clases += " disponible";
+
+                    <div class="@clases"
+                        data-ocupada="@plaza.PlzOcupada"
+                        data-abonada="@plaza.TieneAbonoActivo"
+                        data-plyid="@plaza.PlyID"
+                        data-plznum="@plaza.PlzNum"
+                        data-vehptnt="@plaza.VehPtnt"
+                        data-clasvehid="@(plaza.Clasificaciones != null && plaza.Clasificaciones.Any() ? plaza.Clasificaciones[0].ClasVehID.ToString() : "")"
+                        data-techada="@plaza.Techada"
+                        data-piso="@plaza.Piso"
+                        >
+
+                        <div class="plaza-title">@(plaza.PlzNombre ?? $"Plaza {plaza.PlzNum}")</div>
+
+                        @if (plaza.VehPtnt != null)
+                        {
+                            <div class="plaza-sub mt-1">@plaza.VehPtnt</div>
+                        }
+
+                        @if (plaza.TieneAbonoActivo)
+                        {
+                            <div class="plaza-sub mt-1">Abono</div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+<style>
+    .btn-cambiar-piso:hover{
+        color:#0d6efd;
+    }
+    .btn-cambiar-piso{
+        color:#ddd;
+    }
+    .btn-accion-rapida{
+        font-size:12px;
+        padding: 2px 6px;
+    }
+</style>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    console.log("Script cargado desde ViewComponent OK");
+
+    let pisos = Array.from(document.querySelectorAll(".plazas-grid")).map(x => 
+        parseInt(x.getAttribute("data-piso"))
+    );
+
+    pisos.sort((a,b) => a - b);
+
+    let index = 0;
+
+    function mostrarPiso() {
+        const piso = pisos[index];
+
+        document.querySelectorAll(".plazas-grid").forEach(div => {
+            div.style.display = div.getAttribute("data-piso") == piso ? "grid" : "none";
+        });
+
+        document.getElementById("piso-display").innerText = `Piso ${piso}`;
+    }
+
+    document.getElementById("piso-prev").onclick = () => {
+        if (index > 0) { index--; mostrarPiso(); }
+    };
+
+    document.getElementById("piso-next").onclick = () => {
+        if (index < pisos.length - 1) { index++; mostrarPiso(); }
+    };
+
+    document.addEventListener("click", (e) => {
+        const plaza = e.target.closest(".plaza-card-compacted");
+
+        const panel = document.getElementById("acciones-plaza");
+        
+        if (!plaza) return;
+        
+
+        const estaSeleccionada = plaza.classList.contains("selected");
+
+        // Limpiar selección
+        document.querySelectorAll(".plaza-card.selected")
+        .forEach(p => p.classList.remove("selected"));
+
+        if(estaSeleccionada){
+            panel.innerHTML = "";
+            return;
+        }
+        
+        // Datos de la plaza
+        const ocupada = plaza.getAttribute("data-ocupada") === "True";
+        const abonada = plaza.getAttribute("data-abonada") === "True";
+        const plyid = plaza.getAttribute("data-plyid");
+        const plznum = plaza.getAttribute("data-plznum");
+        const vehptnt = plaza.getAttribute("data-vehptnt");
+        const techada = plaza.getAttribute("data-techada");
+        const clasvehid = plaza.getAttribute("data-clasvehid");
+        const piso = plaza.getAttribute("data-piso");
+
+        plaza.classList.add("selected");
+
+
+        // Render dinámico de acciones
+
+        if (ocupada) {
+            // Obtener el token anti-forgery del DOM
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            
+            panel.innerHTML = `
+                <form action="/Ocupacion/RegistrarEgreso" method="post" style="display: inline;">
+                    <input type="hidden" name="__RequestVerificationToken" value="${token}" />
+                    <input type="hidden" name="plyID" value="${plyid}" />
+                    <input type="hidden" name="plzNum" value="${plznum}" />
+                    <input type="hidden" name="vehPtnt" value="${vehptnt}" />
+                    <button type="submit" class="btn btn-sm btn-outline-danger btn-sm btn-accion-rapida">
+                        <i class="fa-solid fa-car-rear pe-1"></i> Egresar
+                    </button>
+                </form>
+                <a href="/Ocupacion/ReubicarVehiculo?plyID=${plyid}&plzNum=${plznum}&vehPtnt=${vehptnt}" class="btn btn-sm btn-outline-primary btn-accion-rapida">
+                    <i class="fa-solid fa-arrows-alt"></i> Reubicar
+                </a>
+            `;
+            return;
+        }
+        
+        if (abonada) {
+            panel.innerHTML = `
+                <a href="/Abono?plznum=${plznum}"
+                class="btn btn-sm btn-outline-primary btn-sm btn-accion-rapida">
+                    <i class="fa fa-eye pe-1"></i> Detalle abono
+                </a>
+            `;
+            return;
+        }
+        
+        panel.innerHTML = `
+            <a href="/Ocupacion/Create?plyid=${plyid}&plzNum=${plznum}&techada=${techada}&clasVehID=${clasvehid}&piso=${piso}" class="btn btn-sm btn-outline-primary btn-accion-rapida">
+                <i class="fa-solid fa-plus"></i> Ingresar vehículo
+            </a>
+        `;
+        
+    });
+    mostrarPiso();
+});
+</script>

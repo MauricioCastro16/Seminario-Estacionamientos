@@ -360,6 +360,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function limpiarCampos() {
+        // Verificar si hay una plaza preseleccionada por parámetros de URL
+        const params = new URLSearchParams(window.location.search);
+        const plazaInicial = params.get("plzNum");
+        
+        // Si hay una plaza preseleccionada por URL, no limpiar los campos
+        if (plazaInicial) {
+            return;
+        }
+        
         selClas.value = "";
         selPiso.innerHTML = `<option value="">-- Seleccione piso --</option>`;
         radiosTechada.forEach(r => r.checked = false);
@@ -371,6 +380,45 @@ document.addEventListener("DOMContentLoaded", () => {
         clearTimeout(timeout);
         timeout = setTimeout(verificarPatente, 500);
     });
+    const params = new URLSearchParams(window.location.search);
+
+    const plazaInicial = params.get("plzNum");
+    const clasInicial = params.get("clasVehID");
+    const techInicial = params.get("techada");
+    const pisoInicial = params.get("piso");
+
+    // 1️⃣ Preseleccionar techada
+    if (techInicial) {
+        if (techInicial.toLowerCase() === "true") document.getElementById("techadaSi").checked = true;
+        else document.getElementById("techadaNo").checked = true;
+    }
+
+    // 2️⃣ Preseleccionar clasificación
+    if (clasInicial) selClas.value = clasInicial;
+
+    // Esperar a que fetchPlazasYPrepararPisos esté definido
+    const waitForFetch = setInterval(() => {
+        if (typeof window.fetchPlazasYPrepararPisos === "function") {
+            clearInterval(waitForFetch);
+
+            // Llamamos a la función para cargar plazas con los filtros de URL
+            window.fetchPlazasYPrepararPisos(false, plazaInicial).then(() => {
+                // Forzar selección de piso y plaza si aún no se seleccionó
+                if (pisoInicial) selPiso.value = pisoInicial;
+
+                if (plazaInicial) {
+                    const plazaCard = grid.querySelector(`.plaza-card[data-plz-num='${plazaInicial}']`);
+                    if (plazaCard) {
+                        grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
+                        plazaCard.classList.add("selected");
+                        hiddenPlz.value = plazaInicial;
+                        btn.disabled = false;
+                    }
+                }
+            });
+        }
+    }, 50);
+    
 });
 
 (() => {
@@ -438,7 +486,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function renderGrid() {
+    function renderGrid(plazaPreseleccionada = null) {
         const filtroPiso = selPiso.value; // "" o "n"
         grid.innerHTML = "";
 
@@ -504,11 +552,22 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         // Auto-seleccionar la primera plaza disponible si existe
-        if (primeraPlazaDisponible !== null) {
+        if (!plazaPreseleccionada && primeraPlazaDisponible) {
             const primeraCard = cardsMap.get(primeraPlazaDisponible.plzNum);
             if (primeraCard) {
                 primeraCard.classList.add("selected");
                 hiddenPlz.value = primeraPlazaDisponible.plzNum;
+                btn.disabled = false;
+            }
+        }
+
+        // Si hay plazaPreseleccionada, seleccionarla
+        if (plazaPreseleccionada) {
+            const plazaCard = cardsMap.get(plazaPreseleccionada);
+            if (plazaCard) {
+                grid.querySelectorAll(".plaza-card.selected").forEach(el => el.classList.remove("selected"));
+                plazaCard.classList.add("selected");
+                hiddenPlz.value = plazaPreseleccionada;
                 btn.disabled = false;
             }
         }
@@ -550,6 +609,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
             renderPisos(allPlazas, esAbonado);
 
+            if (plazaPreseleccionada) {
+                const plazaObj = allPlazas.find(p => p.plzNum == plazaPreseleccionada);
+                if (plazaObj) selPiso.value = plazaObj.piso ?? "";
+            }
+
             if (esAbonado && plazaPreseleccionada) {
                 const plazaObj = allPlazas.find(p => p.plzNum == plazaPreseleccionada);
 
@@ -557,7 +621,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     selPiso.value = plazaObj.piso ?? "";  // 1️⃣ asignar piso correcto
                 }
 
-                renderGrid();  // 2️⃣ renderizar con el piso correcto
+                renderGrid(plazaPreseleccionada);  // 2️⃣ renderizar con el piso correcto
 
                 // Seleccionar automáticamente la plaza del abonado
                 const plazaCard = [...grid.querySelectorAll(".plaza-card")].find(
@@ -574,12 +638,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (opcionesPiso.length > 0) {
                     selPiso.value = opcionesPiso[0].value;
                     pisoActual = opcionesPiso[0].value;
-                    renderGrid();
+                    renderGrid(plazaPreseleccionada);
                 } else {
                     showPrompt("No hay pisos disponibles.");
                 }
             } else {
-                renderGrid();
+                renderGrid(plazaPreseleccionada);
             }
         } catch (e) {
             console.error(e);
