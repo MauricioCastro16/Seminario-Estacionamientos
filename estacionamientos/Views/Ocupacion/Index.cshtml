@@ -11,8 +11,8 @@
 <!-- ========================= -->
 <!-- KPI de Ocupación (arriba) -->
 <!-- ========================= -->
-<div id="occ-root" class="mb-4" data-plyid="@plyIdFromModel">
-    <div id="occ-container" class="card d-none">
+<div id="occ-root" class="mb-4 d-flex gap-3 flex-wrap" data-plyid="@plyIdFromModel">
+    <div id="occ-container" class="card flex-grow-1 flex-shrink-1" style="min-width: 300px;">
         <div class="card-body">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
                 <div>
@@ -37,6 +37,10 @@
             </div>
         </div>
     </div>
+    <div class="d-flex flex-column justify-content-center flex-shrink-1 card p-3" style="min-width: 250px;">
+        <h5>Distribución de Plazas</h5>
+        @await Component.InvokeAsync("PlazasGrid", new { plyID = Model?.FirstOrDefault()?.PlyID ?? 0 })
+    </div>
 </div>
 
 @if (TempData["Success"] != null)
@@ -58,7 +62,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">Ocupaciones</h2>
     <a asp-action="Create" class="btn btn-primary">
-        <i class="fa-solid fa-plus"></i> Ingresar vehículo
+        <i class="fa-solid fa-plus pe-1"></i> Ingresar vehículo
     </a>
 </div>
 
@@ -93,7 +97,7 @@
                             <input type="hidden" name="plzNum" value="@item.PlzNum" />
                             <input type="hidden" name="vehPtnt" value="@item.VehPtnt" />
                             <button type="submit" class="btn btn-danger btn-sm">
-                                Egresar
+                                <i class="fa-solid fa-car-rear pe-1"></i> Egresar
                             </button>
                         </form>
                     }

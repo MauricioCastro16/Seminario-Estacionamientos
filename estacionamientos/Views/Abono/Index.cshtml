@@ -681,6 +681,7 @@
     
 
     <script>
+
     $(document).ready(function () {
         
         const datatableLanguage = {
@@ -2330,7 +2331,22 @@ modal.addEventListener('hidden.bs.modal', function () {
                 cancelarAbono(plyID, plzNum, aboFyhIni, abonado);
             }
         });
+        const params = new URLSearchParams(window.location.search);
+        const plznum = params.get("plznum");
 
+        if (!plznum) return;
+
+        // Buscamos el botón "ver detalles" correspondiente a ese abono
+        const verDetalleBtn = document.querySelector(`a[data-plznum="${plznum}"][data-bs-target="#detallesAbonoModal"]`);
+
+        if (verDetalleBtn) {
+            // Simula el click para que ejecute tu lógica normal
+            verDetalleBtn.click();
+
+            // Opcional: scrollear la tabla hasta la fila
+            const tr = verDetalleBtn.closest("tr");
+            if (tr) tr.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
     });
     </script>
 }

@@ -279,3 +279,195 @@
         background-color: #d1ecf1 !important;
         border-color: #bee5eb !important;
     }
+
+    /* GRID DE PLAZAS */
+    /* Contenedor centrado para la grilla */
+    .plazas-grid-wrapper {
+        overflow-y: auto;
+        display: flex;
+        align-items: start;
+        justify-content: center;
+        height: 200px;
+        width: 500px;
+        min-width: 100%;
+        max-width: 720px;
+    }
+
+    .dist-plazas-acciones{
+        scrollbar-gutter: stable both-edges!important;
+    }
+    .plazas-grid {
+        padding: 6px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+        gap: 12px;
+        max-width: 720px;
+        margin: 0 auto; /* centra horizontalmente */
+        box-sizing: border-box;
+        width: 100%!important;
+    }
+
+    .plazas-grid-compacted {
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        gap: 6px;
+        margin: 0 auto; /* centra horizontalmente */
+        padding: 0 4px; 
+        box-sizing: border-box;
+    }
+
+    .plazas-grid,
+    .plazas-grid-compacted {
+        width: 100%;           /* ocupa TODO el ancho del WRAPPER, no de la pantalla */
+        max-width: unset;      /* quita tu max-width original */
+        margin: 0;             /* ya no debe centrarse él, sino el wrapper */
+        box-sizing: border-box;
+    }
+    /* Media queries para pantallas más pequeñas */
+    @media (max-width: 992px) { /* tablets grandes */
+        .plazas-grid {
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+        }
+    }
+
+    @media (max-width: 768px) { /* tablets y móviles grandes */
+        .plazas-grid {
+            grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+        }
+    }
+
+    @media (max-width: 576px) { /* móviles pequeños */
+        .plazas-grid {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        }
+        }
+
+    .plazas-grid > .mensaje-inicial {
+        grid-column: 1 / -1;     /* ocupa todo el ancho de la grilla */
+        justify-self: center;    /* centra el ítem dentro de la grilla */
+        text-align: center;
+        color: #6c757d;
+        font-size: 0.9rem;
+        padding: 10px 14px;
+        border: 1px dashed #ced4da;
+        border-radius: 8px;
+        background: #f8f9fa;
+        max-width: 520px;
+        width: 100%;
+    }
+
+
+    .plaza-card {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 14px 8px;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        cursor: pointer;
+        user-select: none;
+        transition: transform .05s, box-shadow .05s, background-color .2s;
+        background: #fff;
+        position: relative;
+    }
+
+    .plaza-card-compacted {
+        text-wrap: nowrap;
+        aspect-ratio: 1/1;
+        overflow: hidden;
+        position: relative;
+    }
+    .plaza-card-compacted > .plaza-title {
+        font-size: 0.6rem;
+    }
+
+    .plaza-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, .06);
+        border-color: #dee2e6;
+    }
+
+    /* Estados */
+    .plaza-card.inhabilitada {
+        background: #f8f9fa;
+        color: #6c757d;
+        border-style: dashed;
+        cursor: not-allowed;
+        opacity: .85;
+    }
+
+    .plaza-card.ocupada {
+        background: #fff7e6;
+        border-color: #ffe8b3;
+        color: #7a5e00;
+        cursor: not-allowed;
+    }
+
+    .plaza-card-compacted.ocupada{
+        cursor: pointer;
+    }
+    .plaza-card.disponible {
+        background: #eef9f2;
+        border-color: #cdeedc;
+    }
+
+    .plaza-card.incompatible {
+        background: #fdecec;
+        border-color: #f5c2c7;
+        color: #7a1a1a;
+    }
+
+    .plaza-card.abonada {
+        background: #fff3cd;
+        border-color: #ffc107;
+        color: #856404;
+        cursor: not-allowed;
+        opacity: 0.85;
+    }
+
+    .plaza-card-compacted.abonada {
+        cursor: pointer;
+    }
+    
+    .plaza-card.selected {
+        outline: 3px solid #0d6efd;
+        background: #e7f1ff;
+        box-shadow: 0 0 0 4px rgba(13, 110, 253, .15);
+    }
+
+    .plaza-title {
+        font-weight: 700;
+        font-size: .98rem;
+        letter-spacing: .2px;
+    }
+
+    .mensaje-inicial {
+        text-align: center;
+        color: #6c757d;               /* gris Bootstrap */
+        font-size: 0.9rem;
+        padding: 10px 14px;
+        border: 1px dashed #ced4da;   /* un marco suave */
+        border-radius: 8px;
+        background: #f8f9fa;          /* gris clarito */
+        max-width: 500px;
+        margin: 0 auto;               /* centra el mensaje */
+    }
+
+    .plaza-sub {
+        font-size: .82rem;
+        color: #6c757d;
+        margin-top: 2px;
+    }
+    .actual > .plaza-sub {
+        font-size: .82rem;
+        color: #0c5460;
+        margin-top: 2px;
+    }
+    .plaza-card.actual {
+        background: #d1ecf1;
+        border: 2px solid #0c5460;
+        color: #000;
+        font-weight: bold;
+        cursor: default;
+    }

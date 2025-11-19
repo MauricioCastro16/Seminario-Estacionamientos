@@ -69,6 +69,8 @@ public class GestionValoracionRecienteVM
     public int Estrellas { get; set; }
     public bool Favorito { get; set; }
     public DateTime? FechaUtc { get; set; }
+    public string? Comentario { get; set; }
+    public string? ConductorNombre { get; set; }
 }
 
 public class GestionEnVivoVM
