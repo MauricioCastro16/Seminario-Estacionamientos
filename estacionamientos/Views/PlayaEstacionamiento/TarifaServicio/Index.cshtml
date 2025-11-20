@@ -534,7 +534,7 @@
                                     <i class="fa-regular fa-pen-to-square"></i>
                                 </a>
 
-                                <!-- Gracia solo para servicios de Abono -->
+                                <!-- Botón de Gracia siempre visible, deshabilitado si no es abono -->
                                 @if (grupo.Key.StartsWith("Abono"))
                                 {
                                     <button type="button"
@@ -543,6 +543,16 @@
                                             data-plyid="@item.PlyID"
                                             data-serid="@item.SerID"
                                             data-servname="@grupo.Key">
+                                        <i class="fa-solid fa-stopwatch"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary me-1 disabled"
+                                            title="Ajustar tiempo de gracia (solo disponible para abonos)"
+                                            tabindex="-1"
+                                            aria-disabled="true">
                                         <i class="fa-solid fa-stopwatch"></i>
                                     </button>
                                 }
@@ -567,6 +577,9 @@
                                 <!-- Botones deshabilitados con el MISMO tamaño (btn-sm) y aspecto consistente -->
                                 <button class="btn btn-sm btn-outline-secondary disabled me-1" title="No vigente" tabindex="-1" aria-disabled="true">
                                     <i class="fa-regular fa-pen-to-square"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary disabled me-1" title="No vigente" tabindex="-1" aria-disabled="true">
+                                    <i class="fa-solid fa-stopwatch"></i>
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary disabled" title="No vigente" tabindex="-1" aria-disabled="true">
                                     <i class="fa-regular fa-circle-xmark"></i>
