@@ -27,6 +27,27 @@
     <div class="mb-3">
         <h1 class="mb-0">Playas</h1>
     </div>
+
+    <!-- Mensaje de éxito -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Mensajes de error -->
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
     <form method="get" id="searchForm" class="row g-2 align-items-center">
 
         <!-- Campo de texto -->
@@ -469,6 +490,19 @@
   // Inicialización
   updateFilterUI();
   toggleAddButton();
+
+  // Auto-ocultar mensajes de éxito/error después de 3 segundos
+  document.addEventListener('DOMContentLoaded', function() {
+    const successAlerts = document.querySelectorAll('.alert-success');
+    const errorAlerts = document.querySelectorAll('.alert-danger');
+    
+    [...successAlerts, ...errorAlerts].forEach(function(alert) {
+      setTimeout(function() {
+        const bsAlert = new bootstrap.Alert(alert);
+        bsAlert.close();
+      }, 3000);
+    });
+  });
 </script>
 
 @section Scripts {
