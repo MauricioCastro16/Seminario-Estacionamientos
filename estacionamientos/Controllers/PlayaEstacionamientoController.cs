@@ -216,7 +216,6 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> DetailsPlayero(int id)
         {
-
             var playa = await _context.Playas
                 .Include(p => p.Horarios)
                     .ThenInclude(h => h.ClasificacionDias)
@@ -228,6 +227,46 @@ namespace estacionamientos.Controllers
             ViewBag.Clasificaciones = await _context.ClasificacionesDias
                 .AsNoTracking()
                 .OrderBy(c => c.ClaDiasID)
+                .ToListAsync();
+
+            // Métodos de pago aceptados
+            ViewBag.MetodosPago = await _context.AceptaMetodosPago
+                .Include(a => a.MetodoPago)
+                .Where(a => a.PlyID == id && a.AmpHab)
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Plazas de la playa
+            ViewBag.Plazas = await _context.Plazas
+                .Include(p => p.Clasificaciones)
+                    .ThenInclude(pc => pc.Clasificacion)
+                .Where(p => p.PlyID == id)
+                .OrderBy(p => p.PlzNum)
+                .Select(p => new
+                {
+                    p.PlyID,
+                    p.PlzNum,
+                    p.PlzNombre,
+                    p.PlzTecho,
+                    p.PlzAlt,
+                    p.PlzHab,
+                    PlzOcupada = _context.Ocupaciones.Any(o => o.PlyID == p.PlyID && o.PlzNum == p.PlzNum && o.OcufFyhFin == null),
+                    Clasificaciones = p.Clasificaciones.Select(pc => pc.Clasificacion.ClasVehTipo).ToList()
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Tarifas vigentes
+            var ahora = DateTime.UtcNow;
+            ViewBag.Tarifas = await _context.TarifasServicio
+                .Include(t => t.ServicioProveido)
+                    .ThenInclude(sp => sp.Servicio)
+                .Include(t => t.ClasificacionVehiculo)
+                .Where(t => t.PlyID == id 
+                    && t.TasFecIni <= ahora 
+                    && (t.TasFecFin == null || t.TasFecFin >= ahora)
+                    && t.ServicioProveido.SerProvHab)
+                .AsNoTracking()
                 .ToListAsync();
 
             SetBreadcrumb(
