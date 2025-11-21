@@ -587,11 +587,29 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Usar las fechas reales de la ocupación y la fecha actual para el egreso
-            var fechaEgreso = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            // Usar las fechas del modelo (que ya se mostraron al usuario) en lugar de recalcular
+            // Esto asegura que el cálculo y la fecha guardada coincidan con lo mostrado
             var fechaInicioReal = ocup.OcufFyhIni;
+            var fechaEgreso = DateTime.SpecifyKind(model.OcufFyhFin, DateTimeKind.Utc);
+            
+            // Validar que la fecha de egreso del modelo sea válida (no muy antigua ni en el futuro)
+            var ahora = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var diferenciaMaxima = TimeSpan.FromHours(1); // Permitir hasta 1 hora de diferencia
+            if (Math.Abs((fechaEgreso - ahora).TotalMinutes) > diferenciaMaxima.TotalMinutes)
+            {
+                // Si la fecha del modelo es muy diferente a la actual, usar la fecha actual
+                // Esto puede pasar si el usuario dejó el formulario abierto por mucho tiempo
+                fechaEgreso = ahora;
+            }
+            
+            // Validar que la fecha de egreso sea posterior a la de inicio
+            if (fechaEgreso < fechaInicioReal)
+            {
+                TempData["Error"] = "La fecha de egreso no puede ser anterior a la fecha de ingreso.";
+                return RedirectToAction(nameof(Index));
+            }
 
-            // Recalcular el modelo para obtener EsAbonado actualizado usando las fechas reales
+            // Recalcular el modelo para obtener EsAbonado actualizado usando las fechas del modelo
             var cobroVM = await CalcularCobro(model.PlyID, model.PlzNum, model.VehPtnt, 
                 fechaInicioReal, fechaEgreso);
             cobroVM.MepID = model.MepID; // Mantener la selección del usuario
@@ -658,8 +676,8 @@ namespace estacionamientos.Controllers
 
                 _ctx.MovimientosPlayeros.Add(movimientoPlayero);
 
-                // Actualizar la ocupación con la fecha de fin y asociar el pago
-                ocup.OcufFyhFin = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+                // Actualizar la ocupación con la fecha de fin del modelo (coincide con el cálculo mostrado)
+                ocup.OcufFyhFin = fechaEgreso;
                 _ctx.Ocupaciones.Update(ocup);
                 await _ctx.SaveChangesAsync();
 

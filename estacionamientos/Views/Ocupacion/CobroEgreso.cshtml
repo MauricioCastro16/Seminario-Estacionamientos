@@ -1,7 +1,28 @@
 @model estacionamientos.Models.ViewModels.CobroEgresoVM
+@using System
 
 @{
     ViewData["Title"] = "Cobro de Egreso";
+    
+    // Helper para convertir fechas UTC a zona horaria de Córdoba
+    DateTime ToCba(DateTime dt)
+    {
+        if (dt.Kind == DateTimeKind.Unspecified)
+            dt = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+        if (dt.Kind == DateTimeKind.Local)
+            dt = dt.ToUniversalTime();
+
+        try
+        {
+            var tz = TimeZoneInfo.FindSystemTimeZoneById("America/Argentina/Cordoba");
+            return TimeZoneInfo.ConvertTimeFromUtc(dt, tz);
+        }
+        catch
+        {
+            // Fallback si la zona horaria no está disponible
+            return dt.ToLocalTime();
+        }
+    }
 }
 
 <div class="container my-4">
@@ -45,11 +66,11 @@
                         <tbody>
                             <tr>
                                 <th class="w-40">Ingreso:</th>
-                                <td>@Model.OcufFyhIni.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@ToCba(Model.OcufFyhIni).ToString("dd/MM/yyyy HH:mm")</td>
                             </tr>
                             <tr>
                                 <th>Egreso:</th>
-                                <td>@Model.OcufFyhFin.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@ToCba(Model.OcufFyhFin).ToString("dd/MM/yyyy HH:mm")</td>
                             </tr>
                             <tr>
                                 <th>Duración:</th>
