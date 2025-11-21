@@ -4,6 +4,12 @@ using estacionamientos.Helpers;
 
 namespace estacionamientos.Models
 {
+    public enum EstadoPlaya
+    {
+        Borrador = 0,
+        Vigente = 1
+    }
+
     public class PlayaEstacionamiento
     {
         [Key]
@@ -43,6 +49,10 @@ namespace estacionamientos.Models
         public decimal? PlyLat { get; set; }
 
         public decimal? PlyLon { get; set; }
+
+        // Estado de la playa (Borrador/Vigente)
+        [Required]
+        public EstadoPlaya PlyEstado { get; set; } = EstadoPlaya.Borrador;
 
         // Navegaciones
         public ICollection<Valoracion> Valoraciones { get; set; } = new List<Valoracion>();

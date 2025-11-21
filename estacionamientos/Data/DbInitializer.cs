@@ -303,7 +303,8 @@ public static class DbInitializer
                     PlyValProm = 0m,
                     PlyLlavReq = faker.Random.Bool(),
                     PlyLat = direccionSeleccionada.lat,
-                    PlyLon = direccionSeleccionada.lon
+                    PlyLon = direccionSeleccionada.lon,
+                    PlyEstado = EstadoPlaya.Borrador // Se actualizará a Vigente cuando tenga métodos de pago y plazas
                 };
                 playas.Add(playa);
 
@@ -1423,6 +1424,28 @@ context.SaveChanges();
                 vehiculoAbonado.Vehiculo = context.Vehiculos.Find(vehiculoAbonado.VehPtnt)!;
             }
         }
+
+        // =========================
+        // Actualizar estado de playas: Borrador -> Vigente si tienen métodos de pago y plazas
+        // =========================
+        var todasLasPlayas = context.Playas.ToList();
+        foreach (var playa in todasLasPlayas)
+        {
+            // Verificar si tiene al menos 1 método de pago habilitado
+            var tieneMetodoPago = context.AceptaMetodosPago
+                .Any(a => a.PlyID == playa.PlyID && a.AmpHab);
+
+            // Verificar si tiene al menos 1 plaza
+            var tienePlaza = context.Plazas
+                .Any(p => p.PlyID == playa.PlyID);
+
+            // Si cumple ambos requisitos, actualizar a Vigente
+            if (tieneMetodoPago && tienePlaza && playa.PlyEstado == EstadoPlaya.Borrador)
+            {
+                playa.PlyEstado = EstadoPlaya.Vigente;
+            }
+        }
+        context.SaveChanges();
 
     }
 

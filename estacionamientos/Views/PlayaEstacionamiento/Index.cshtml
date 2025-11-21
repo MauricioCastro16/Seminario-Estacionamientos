@@ -21,6 +21,33 @@
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
 
+<style>
+  .dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    animation: blink 1.5s infinite;
+  }
+  
+  .dot-green {
+    background-color: #28a745;
+  }
+  
+  .dot-yellow {
+    background-color: #ffc107;
+  }
+  
+  @@keyframes blink {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+</style>
+
 <div class="container">
 
     <!-- Título -->
@@ -273,81 +300,185 @@
     </div>
 }
 
-<!-- TABLA de resultados -->
-<div class="table-responsive mt-3">
-    <table id="playasTable" class="table table-striped table-hover table-sm align-middle text-center">
-        <thead>
-          <tr>
-              <th class="text-center">Nombre</th>
-              <th class="text-center">Provincia</th>
-              <th class="text-center">Ciudad</th>
-              <th class="text-center">Dirección</th>
-              <th class="text-center">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          @if (Model.Playas == null || Model.Playas.Count == 0)
-          {
-              <tr>
-                  <td colspan="5" class="text-center text-muted py-4">
-                      No se encontraron resultados.
-                  </td>
-              </tr>
-          }
-          else
-          {
-              @foreach (var playa in Model.Playas)
-              {
+<!-- TABLA de playas VIGENTES -->
+@{
+    var playasVigentes = Model.Playas?.Where(p => p.PlyEstado == estacionamientos.Models.EstadoPlaya.Vigente).ToList() ?? new List<estacionamientos.Models.PlayaEstacionamiento>();
+    var playasBorrador = Model.Playas?.Where(p => p.PlyEstado == estacionamientos.Models.EstadoPlaya.Borrador).ToList() ?? new List<estacionamientos.Models.PlayaEstacionamiento>();
+}
+
+@if (playasVigentes.Any())
+{
+    <div class="mt-4">
+        <h3 class="mb-3">
+            <span class="dot dot-green me-2"></span>
+            Vigentes
+        </h3>
+        <div class="table-responsive">
+            <table id="playasVigentesTable" class="table table-striped table-hover table-sm align-middle text-center">
+                <thead>
                   <tr>
-                      <td>@playa.PlyNom</td>
-                      <td>@playa.PlyProv</td>
-                      <td>@playa.PlyCiu</td>
-                      <td>@playa.PlyDir</td>
-
-                      <td class="text-center">
-                          <a class="btn btn-outline-primary btn-sm"
-                            asp-action="Index"
-                            asp-controller="Horario"
-                            asp-route-plyID="@playa.PlyID"
-                            title="Horarios">
-                              <i class="fa-regular fa-clock"></i>
-                          </a>
-                          <a class="btn btn-outline-primary btn-sm"
-                            asp-action="Index"
-                            asp-controller="AceptaMetodoPago"
-                            asp-route-plyID="@playa.PlyID"
-                            title="Métodos de pago">
-                              <i class="fa-regular fa-credit-card"></i>
-                          </a>
-                          <a class="btn btn-outline-primary btn-sm"
-                            asp-action="Servicios"
-                            asp-controller="ServicioProveido"
-                            asp-route-plyID="@playa.PlyID"
-                            title="Gestionar servicios">
-                              <i class="fa-regular fa-clipboard"></i>
-                          </a>
-                          <a class="btn btn-outline-primary btn-sm"
-                            asp-action="Index"
-                            asp-controller="TarifaServicio"
-                            asp-route-plyID="@playa.PlyID"
-                            title="Ver tarifas">
-                              <i class="fa-solid fa-money-bills"></i>
-                          </a>
-                          <a class="btn btn-outline-primary btn-sm" 
-                            asp-action="ConfigurarPlazas"
-                            asp-controller="PlazaEstacionamiento" 
-                            asp-route-plyID="@playa.PlyID" 
-                            title="Configurar plazas">
-                              <i class="fa-solid fa-grip"></i>
-                          </a>
-                      </td>
-
+                      <th class="text-center">Nombre</th>
+                      <th class="text-center">Provincia</th>
+                      <th class="text-center">Ciudad</th>
+                      <th class="text-center">Dirección</th>
+                      <th class="text-center">Acciones</th>
                   </tr>
-              }
-          }
-        </tbody>
-    </table>
-</div>
+                </thead>
+                <tbody>
+                  @foreach (var playa in playasVigentes)
+                  {
+                      <tr>
+                          <td>@playa.PlyNom</td>
+                          <td>@playa.PlyProv</td>
+                          <td>@playa.PlyCiu</td>
+                          <td>@playa.PlyDir</td>
+                          <td class="text-center">
+                              <a class="btn btn-outline-primary btn-sm"
+                                asp-action="Index"
+                                asp-controller="Horario"
+                                asp-route-plyID="@playa.PlyID"
+                                title="Horarios">
+                                  <i class="fa-regular fa-clock"></i>
+                              </a>
+                              <a class="btn btn-outline-primary btn-sm"
+                                asp-action="Index"
+                                asp-controller="AceptaMetodoPago"
+                                asp-route-plyID="@playa.PlyID"
+                                title="Métodos de pago">
+                                  <i class="fa-regular fa-credit-card"></i>
+                              </a>
+                              <a class="btn btn-outline-primary btn-sm"
+                                asp-action="Servicios"
+                                asp-controller="ServicioProveido"
+                                asp-route-plyID="@playa.PlyID"
+                                title="Gestionar servicios">
+                                  <i class="fa-regular fa-clipboard"></i>
+                              </a>
+                              <a class="btn btn-outline-primary btn-sm"
+                                asp-action="Index"
+                                asp-controller="TarifaServicio"
+                                asp-route-plyID="@playa.PlyID"
+                                title="Ver tarifas">
+                                  <i class="fa-solid fa-money-bills"></i>
+                              </a>
+                              <a class="btn btn-outline-primary btn-sm" 
+                                asp-action="ConfigurarPlazas"
+                                asp-controller="PlazaEstacionamiento" 
+                                asp-route-plyID="@playa.PlyID" 
+                                title="Configurar plazas">
+                                  <i class="fa-solid fa-grip"></i>
+                              </a>
+                          </td>
+                      </tr>
+                  }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- TABLA de playas BORRADOR -->
+@if (playasBorrador.Any())
+{
+    <div class="mt-4">
+        <h3 class="mb-3">
+            <span class="dot dot-yellow me-2"></span>
+            Borrador
+        </h3>
+        <div class="table-responsive">
+            <table id="playasBorradorTable" class="table table-striped table-hover table-sm align-middle text-center">
+                <thead>
+                  <tr>
+                      <th class="text-center">Nombre</th>
+                      <th class="text-center">Provincia</th>
+                      <th class="text-center">Ciudad</th>
+                      <th class="text-center">Dirección</th>
+                      <th class="text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @foreach (var playa in playasBorrador)
+                  {
+                      var faltaMetodoPago = ViewData[$"FaltaMetodoPago_{playa.PlyID}"] as bool? ?? false;
+                      var faltaPlaza = ViewData[$"FaltaPlaza_{playa.PlyID}"] as bool? ?? false;
+                      
+                      var mensajeTooltip = "";
+                      if (faltaMetodoPago && faltaPlaza)
+                      {
+                          mensajeTooltip = "Falta: Método de pago y Plaza";
+                      }
+                      else if (faltaMetodoPago)
+                      {
+                          mensajeTooltip = "Falta: Método de pago";
+                      }
+                      else if (faltaPlaza)
+                      {
+                          mensajeTooltip = "Falta: Plaza";
+                      }
+                      else
+                      {
+                          mensajeTooltip = "Lista para pasar a Vigente";
+                      }
+                      
+                      <tr data-bs-toggle="tooltip" data-bs-placement="top" title="@mensajeTooltip" style="cursor: help;">
+                          <td>@playa.PlyNom</td>
+                          <td>@playa.PlyProv</td>
+                          <td>@playa.PlyCiu</td>
+                          <td>@playa.PlyDir</td>
+                          <td class="text-center">
+                              <a class="btn btn-outline-primary btn-sm"
+                                asp-action="Index"
+                                asp-controller="Horario"
+                                asp-route-plyID="@playa.PlyID"
+                                title="Horarios">
+                                  <i class="fa-regular fa-clock"></i>
+                              </a>
+                              <a class="btn btn-outline-primary btn-sm"
+                                asp-action="Index"
+                                asp-controller="AceptaMetodoPago"
+                                asp-route-plyID="@playa.PlyID"
+                                title="Métodos de pago">
+                                  <i class="fa-regular fa-credit-card"></i>
+                              </a>
+                              <a class="btn btn-outline-primary btn-sm"
+                                asp-action="Servicios"
+                                asp-controller="ServicioProveido"
+                                asp-route-plyID="@playa.PlyID"
+                                title="Gestionar servicios">
+                                  <i class="fa-regular fa-clipboard"></i>
+                              </a>
+                              <a class="btn btn-outline-primary btn-sm"
+                                asp-action="Index"
+                                asp-controller="TarifaServicio"
+                                asp-route-plyID="@playa.PlyID"
+                                title="Ver tarifas">
+                                  <i class="fa-solid fa-money-bills"></i>
+                              </a>
+                              <a class="btn btn-outline-primary btn-sm" 
+                                asp-action="ConfigurarPlazas"
+                                asp-controller="PlazaEstacionamiento" 
+                                asp-route-plyID="@playa.PlyID" 
+                                title="Configurar plazas">
+                                  <i class="fa-solid fa-grip"></i>
+                              </a>
+                          </td>
+                      </tr>
+                  }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if ((Model.Playas == null || Model.Playas.Count == 0) || (!playasVigentes.Any() && !playasBorrador.Any()))
+{
+    <div class="mt-4">
+        <div class="alert alert-info text-center">
+            <i class="fa-solid fa-info-circle me-2"></i>
+            No se encontraron resultados.
+        </div>
+    </div>
+}
 
 <script>
   const mapLbl = {all:'Todos', nombre:'Nombre', provincia:'Provincia', ciudad:'Ciudad', direccion:'Dirección'};
@@ -502,6 +633,12 @@
         bsAlert.close();
       }, 3000);
     });
+
+    // Inicializar tooltips de Bootstrap
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
   });
 </script>
 
@@ -551,7 +688,8 @@
         }
 
         $(document).ready(function () {
-            initIfExists('#playasTable');
+            initIfExists('#playasVigentesTable');
+            initIfExists('#playasBorradorTable');
         });
     })();
     </script>

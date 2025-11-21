@@ -16,10 +16,11 @@ namespace estacionamientos.Controllers
         {
             var dueId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            // solo las playas administradas por el dueño logueado
+            // solo las playas administradas por el dueño logueado y que estén vigentes
             var playas = await _ctx.Set<AdministraPlaya>()
                 .Where(a => a.DueNU == dueId)
                 .Select(a => a.Playa)
+                .Where(p => p.PlyEstado == EstadoPlaya.Vigente) // Solo mostrar playas vigentes
                 .OrderBy(p => p.PlyNom)
                 .Select(p => new
                 {
@@ -64,6 +65,13 @@ namespace estacionamientos.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> NuevaAsignacionPost(TrabajaEn model, string? returnUrl = null)
         {
+            // Validar que la playa esté en estado Vigente
+            var playa = await _ctx.Playas.FindAsync(model.PlyID);
+            if (playa != null && playa.PlyEstado != EstadoPlaya.Vigente)
+            {
+                ModelState.AddModelError(string.Empty, "No se pueden asignar playeros a playas que estén en estado Borrador. La playa debe estar Vigente (tener al menos 1 método de pago y 1 plaza configurada).");
+            }
+
             // evitar duplicados exactos (misma clave compuesta)
             var existente = await _ctx.Trabajos
                 .FirstOrDefaultAsync(x => x.PlyID == model.PlyID && x.PlaNU == model.PlaNU);

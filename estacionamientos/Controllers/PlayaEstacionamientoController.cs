@@ -178,7 +178,22 @@ namespace estacionamientos.Controllers
                     EF.Functions.ILike(p.PlyDir!, pat)));
             }
 
-            vm.Playas = await query.OrderBy(p => p.PlyNom).ToListAsync();
+            var playas = await query.OrderBy(p => p.PlyNom).ToListAsync();
+
+            // Para cada playa en borrador, verificar qué falta
+            foreach (var playa in playas.Where(p => p.PlyEstado == EstadoPlaya.Borrador))
+            {
+                var tieneMetodoPago = await _context.AceptaMetodosPago
+                    .AnyAsync(a => a.PlyID == playa.PlyID && a.AmpHab);
+                var tienePlaza = await _context.Plazas
+                    .AnyAsync(p => p.PlyID == playa.PlyID);
+
+                // Guardar información en ViewBag para usar en la vista
+                ViewData[$"FaltaMetodoPago_{playa.PlyID}"] = !tieneMetodoPago;
+                ViewData[$"FaltaPlaza_{playa.PlyID}"] = !tienePlaza;
+            }
+
+            vm.Playas = playas;
 
             if (!vm.HayFiltros && Request.QueryString.HasValue)
                 return RedirectToAction(nameof(Index));
@@ -303,6 +318,9 @@ namespace estacionamientos.Controllers
 
             // Asignar el PlyID calculado al modelo de la playa
             model.PlyID = nextPlyId;
+            
+            // Guardar como Borrador por defecto
+            model.PlyEstado = EstadoPlaya.Borrador;
 
             // Agregar la nueva playa a la base de datos
             _context.Playas.Add(model);
@@ -324,6 +342,31 @@ namespace estacionamientos.Controllers
             await _context.SaveChangesAsync();
 
             return RedirectToAction(nameof(Index));
+        }
+
+        /// <summary>
+        /// Verifica si una playa tiene al menos 1 método de pago habilitado y 1 plaza,
+        /// y actualiza el estado a Vigente si cumple los requisitos.
+        /// </summary>
+        public async Task VerificarYActualizarEstado(int plyID)
+        {
+            var playa = await _context.Playas.FindAsync(plyID);
+            if (playa == null) return;
+
+            // Verificar si tiene al menos 1 método de pago habilitado
+            var tieneMetodoPago = await _context.AceptaMetodosPago
+                .AnyAsync(a => a.PlyID == plyID && a.AmpHab);
+
+            // Verificar si tiene al menos 1 plaza
+            var tienePlaza = await _context.Plazas
+                .AnyAsync(p => p.PlyID == plyID);
+
+            // Si cumple ambos requisitos, actualizar a Vigente
+            if (tieneMetodoPago && tienePlaza && playa.PlyEstado == EstadoPlaya.Borrador)
+            {
+                playa.PlyEstado = EstadoPlaya.Vigente;
+                await _context.SaveChangesAsync();
+            }
         }
 
         public async Task<IActionResult> Edit(int id)

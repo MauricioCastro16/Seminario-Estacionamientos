@@ -43,6 +43,7 @@ namespace estacionamientos.Controllers
             var misPlayas = await _context.AdministraPlayas
                 .Where(a => a.DueNU == dueId)
                 .Select(a => a.Playa)
+                .Where(p => p.PlyEstado == EstadoPlaya.Vigente) // Solo mostrar playas vigentes
                 .OrderBy(p => p.PlyCiu).ThenBy(p => p.PlyDir)
                 .Select(p => new
                 {
@@ -224,6 +225,13 @@ namespace estacionamientos.Controllers
             if (!esMia)
                 ModelState.AddModelError(nameof(vm.PlayaId), "No podés asignar a una playa que no administrás.");
 
+            // Validar que la playa esté en estado Vigente
+            var playa = await _context.Playas.FindAsync(vm.PlayaId);
+            if (playa != null && playa.PlyEstado != EstadoPlaya.Vigente)
+            {
+                ModelState.AddModelError(nameof(vm.PlayaId), "No se pueden asignar playeros a playas que estén en estado Borrador. La playa debe estar Vigente (tener al menos 1 método de pago y 1 plaza configurada).");
+            }
+
             if (!ModelState.IsValid)
             {
                 ViewBag.Playas = await SelectListPlayasDelDuenioAsync(dueId, vm.PlayaId);
@@ -338,6 +346,13 @@ namespace estacionamientos.Controllers
                 .AnyAsync(a => a.DueNU == dueId && a.PlyID == vm.PlayaId);
             if (!esMia)
                 ModelState.AddModelError(nameof(vm.PlayaId), "No podés asignar a una playa que no administrás.");
+
+            // Validar que la playa esté en estado Vigente
+            var playa = await _context.Playas.FindAsync(vm.PlayaId);
+            if (playa != null && playa.PlyEstado != EstadoPlaya.Vigente)
+            {
+                ModelState.AddModelError(nameof(vm.PlayaId), "No se pueden asignar playeros a playas que estén en estado Borrador. La playa debe estar Vigente (tener al menos 1 método de pago y 1 plaza configurada).");
+            }
 
             // 2) ¿ya está vigente en ESTA playa?
             var vigenteMisma = await _context.Trabajos
