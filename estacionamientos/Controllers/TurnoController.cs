@@ -167,12 +167,13 @@ namespace estacionamientos.Controllers
             }
             
             // Obtener desglose de pagos por método de pago durante ESE turno específico
-            // Incluye TODOS los pagos de la playa durante el turno:
+            // Incluye SOLO los pagos realizados por el playero del turno durante ese turno:
             // - Pagos de estacionamiento (Ocupaciones)
             // - Pagos de abonos
             var desglosePagos = await _ctx.Pagos
                 .Include(p => p.MetodoPago)
                 .Where(p => p.PlyID == plyID 
+                        && p.PlaNU == plaNU  // 🔹 SOLO pagos del playero del turno
                         && p.PagFyh >= turno.TurFyhIni 
                         && (turno.TurFyhFin == null || p.PagFyh <= turno.TurFyhFin)
                         && p.PagMonto > 0)  // 🔹 Excluir pagos de $0.00
@@ -334,7 +335,7 @@ namespace estacionamientos.Controllers
             ViewBag.NowLocal = DateTime.Now;
             
             // 🔹 Calcular efectivo esperado para mostrar en la vista
-            // Incluye TODOS los pagos de efectivo de la playa durante el turno:
+            // Incluye SOLO los pagos de efectivo realizados por el playero del turno durante ese turno:
             // - Pagos de estacionamiento (Ocupaciones)
             // - Pagos de abonos
             if (User.IsInRole("Playero"))
@@ -342,6 +343,7 @@ namespace estacionamientos.Controllers
                 var esperado = await _ctx.Pagos
                     .Include(p => p.MetodoPago)
                     .Where(p => p.PlyID == item.PlyID
+                            && p.PlaNU == item.PlaNU  // 🔹 SOLO pagos del playero del turno
                             && p.PagFyh >= item.TurFyhIni
                             && (item.TurFyhFin == null || p.PagFyh <= item.TurFyhFin)
                             && p.MetodoPago.MepNom == "Efectivo"
@@ -477,7 +479,7 @@ namespace estacionamientos.Controllers
                 return NotFound();
 
             // 💰 Pagos del método seleccionado
-            // Incluye TODOS los pagos de la playa durante el turno:
+            // Incluye SOLO los pagos realizados por el playero del turno durante ese turno:
             // - Pagos de estacionamiento (Ocupaciones)
             // - Pagos de abonos
             var pagos = await _ctx.Pagos
@@ -485,6 +487,7 @@ namespace estacionamientos.Controllers
                 .Include(p => p.Playa)
                 .Include(p => p.MetodoPago)
                 .Where(p => p.PlyID == plyID
+                        && p.PlaNU == plaNU  // 🔹 SOLO pagos del playero del turno
                         && p.MepID == mepID
                         && p.PagFyh >= turno.TurFyhIni
                         && (turno.TurFyhFin == null || p.PagFyh <= turno.TurFyhFin)
