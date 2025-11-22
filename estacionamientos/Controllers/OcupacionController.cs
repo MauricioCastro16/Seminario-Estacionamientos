@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
 using estacionamientos.Models.ViewModels;
+using estacionamientos.Helpers;
 using System.Security.Claims;
 
 namespace estacionamientos.Controllers
@@ -99,9 +100,134 @@ namespace estacionamientos.Controllers
             if (ocupacion == null)
                 throw new InvalidOperationException("Ocupación no encontrada");
 
-            var tiempoOcupacion = ocufFyhFin - ocufFyhIni;
+            // Normalizar fechas de egreso para comparación
+            var fechaEgresoUtc = DateTime.SpecifyKind(ocufFyhFin, DateTimeKind.Utc);
+            var fechaEgresoDate = fechaEgresoUtc.Date;
+            
+            // Normalizar la patente para comparación case-insensitive
+            var vehPtntNormalized = (vehPtnt?.Trim().ToUpperInvariant() ?? string.Empty);
+            
+            // Obtener la configuración de la playa para cobrar tarifa post abono
+            var playa = await _ctx.Playas
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.PlyID == plyID);
+            
+            bool cobrarTarifaPostAbono = playa?.PlyCobrarTarifaPostAbono ?? false;
+            
+            // Verificar si el vehículo pertenece a un abono y calcular período de cobertura
+            var abonosFiltrados = await _ctx.Abonos
+                .Include(a => a.Vehiculos)
+                .Where(a => a.EstadoPago != EstadoPago.Cancelado &&
+                           a.PlyID == plyID &&
+                           a.PlzNum == plzNum)
+                .ToListAsync();
+            
+            // Variables para calcular qué horas están cubiertas por el abono
+            DateTime? fechaFinAbonoCobertura = null; // Fecha hasta la cual el abono cubre (incluye día de tolerancia)
+            bool tieneAbono = false;
+            
+            foreach (var abono in abonosFiltrados)
+            {
+                var perteneceAlAbono = abono.Vehiculos.Any(v => v.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized);
+                if (!perteneceAlAbono) continue;
+                
+                tieneAbono = true;
+                
+                // Calcular la fecha de fin real del abono (considerando períodos)
+                var fechaFinAbono = abono.AboFyhFin?.Date;
+                if (!fechaFinAbono.HasValue)
+                {
+                    // Si no tiene fecha fin, buscar el último período
+                    var ultimoPeriodo = await _ctx.PeriodosAbono
+                        .Where(p => p.PlyID == abono.PlyID && 
+                                   p.PlzNum == abono.PlzNum && 
+                                   p.AboFyhIni == abono.AboFyhIni)
+                        .OrderByDescending(p => p.PeriodoNumero)
+                        .Select(p => p.PeriodoFechaFin.Date)
+                        .FirstOrDefaultAsync();
+                    if (ultimoPeriodo != default)
+                    {
+                        fechaFinAbono = ultimoPeriodo;
+                    }
+                }
+                
+                if (fechaFinAbono.HasValue)
+                {
+                    // Si el abono terminó, calcular hasta qué fecha cubre considerando tolerancia
+                    if (cobrarTarifaPostAbono)
+                    {
+                        // Con tolerancia: el abono cubre hasta el fin del abono + 1 día de tolerancia
+                        // Fin del abono: 21/11 -> Día de tolerancia: 22/11 -> A partir del 23/11 se cobra
+                        fechaFinAbonoCobertura = fechaFinAbono.Value.AddDays(1); // Día de tolerancia incluido
+                    }
+                    else
+                    {
+                        // Sin tolerancia: el abono cubre solo hasta la fecha de fin
+                        fechaFinAbonoCobertura = fechaFinAbono.Value;
+                    }
+                }
+                else
+                {
+                    // Si no tiene fecha fin, considerar que cubre hasta el egreso si el abono está activo
+                    if (abono.EstadoPago != EstadoPago.Finalizado)
+                    {
+                        fechaFinAbonoCobertura = fechaEgresoDate;
+                    }
+                }
+                
+                break; // Solo necesitamos el primer abono que coincida
+            }
+
+            // Calcular tiempo total de ocupación
+            var tiempoOcupacionTotal = ocufFyhFin - ocufFyhIni;
+            
+            // Calcular qué minutos deben cobrarse (excluyendo los cubiertos por el abono)
+            int minutosACobrar = 0;
+            
+            if (tieneAbono && fechaFinAbonoCobertura.HasValue)
+            {
+                // Verificar si el período de ocupación está completamente cubierto por el abono
+                if (fechaEgresoDate <= fechaFinAbonoCobertura.Value)
+                {
+                    // El egreso está dentro del período cubierto: no se cobra nada
+                    minutosACobrar = 0;
+                }
+                else
+                {
+                    // Hay horas después del período cubierto que deben cobrarse
+                    // Calcular desde el día siguiente al fin del período cubierto
+                    var fechaInicioCobro = fechaFinAbonoCobertura.Value.AddDays(1);
+                    
+                    // Si el inicio del cobro es después del egreso, no hay nada que cobrar
+                    if (fechaInicioCobro.Date > fechaEgresoDate)
+                    {
+                        minutosACobrar = 0;
+                    }
+                    else
+                    {
+                        // Calcular desde el inicio del día de cobro hasta el egreso
+                        var inicioCobroDateTime = new DateTime(
+                            fechaInicioCobro.Year,
+                            fechaInicioCobro.Month,
+                            fechaInicioCobro.Day,
+                            0, 0, 0,
+                            DateTimeKind.Utc
+                        );
+                        
+                        var tiempoACobrar = ocufFyhFin - inicioCobroDateTime;
+                        minutosACobrar = Math.Max(0, (int)tiempoACobrar.TotalMinutes);
+                    }
+                }
+            }
+            else
+            {
+                // No tiene abono, cobrar todo el tiempo
+                minutosACobrar = (int)tiempoOcupacionTotal.TotalMinutes;
+            }
+            
+            var tiempoOcupacion = tiempoOcupacionTotal;
             var horasOcupacion = (int)tiempoOcupacion.TotalHours;
-            var minutosOcupacion = (int)tiempoOcupacion.TotalMinutes;
+            var minutosOcupacion = minutosACobrar; // Usar los minutos que deben cobrarse
 
             // Traer servicios de tipo Estacionamiento habilitados
             var servicios = await _ctx.ServiciosProveidos
@@ -132,86 +258,8 @@ namespace estacionamientos.Controllers
                 }
             }
 
-            // Verificar si el vehículo pertenece a un abono activo Y está en la plaza del abono
-            // Un abono es válido si: no está cancelado, no está finalizado, y está dentro del rango de fechas
-            var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
-            var fechaActualDate = fechaActual.Date;
-            
-            // Normalizar la patente para comparación case-insensitive
-            var vehPtntNormalized = (vehPtnt?.Trim().ToUpperInvariant() ?? string.Empty);
-            
-            // Primero filtrar los abonos por fecha y plaza, luego verificar la patente en memoria
-            var abonosFiltrados = await _ctx.Abonos
-                .Include(a => a.Vehiculos)
-                .Where(a => a.EstadoPago != EstadoPago.Cancelado &&
-                           a.EstadoPago != EstadoPago.Finalizado &&
-                           // Verificar que la fecha actual esté dentro del rango del abono
-                           a.AboFyhIni.Date <= fechaActualDate &&
-                           (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate) &&
-                           a.PlyID == plyID &&
-                           a.PlzNum == plzNum) // Verificar que está en la plaza del abono
-                .ToListAsync();
-            
-            // Comparar patentes de forma case-insensitive en memoria
-            var esAbonado = abonosFiltrados.Any(a => 
-                a.Vehiculos.Any(v => v.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized));
-
-            // Extender beneficio por período de gracia de ABONO (diario/semanal/mensual) si corresponde
-            if (!esAbonado)
-            {
-                // Candidatos fuera de rango de fechas pero en la misma plaza
-                var candidatos = await _ctx.Abonos
-                    .Include(a => a.Vehiculos)
-                    .Include(a => a.Periodos)
-                    .Where(a => a.EstadoPago != EstadoPago.Cancelado &&
-                                a.PlyID == plyID &&
-                                a.PlzNum == plzNum)
-                    .ToListAsync();
-
-                // Identificar servicios de abono por nombre
-                var serviciosAbono = await _ctx.Servicios
-                    .Where(s => s.SerNom == "Abono por 1 día" || s.SerNom == "Abono por 1 semana" || s.SerNom == "Abono por 1 mes")
-                    .Select(s => new { s.SerID, s.SerNom })
-                    .ToListAsync();
-
-                foreach (var ab in candidatos)
-                {
-                    var pertenece = ab.Vehiculos.Any(v => v.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized);
-                    if (!pertenece) continue;
-
-                    // Determinar duración típica del abono a partir del primer período
-                    var primerPeriodo = ab.Periodos.OrderBy(p => p.PeriodoNumero).FirstOrDefault();
-                    if (primerPeriodo == null) continue;
-                    var diasPeriodo = Math.Max(1, (int)(primerPeriodo.PeriodoFechaFin.Date - primerPeriodo.PeriodoFechaInicio.Date).TotalDays);
-                    string etiquetaAbono = diasPeriodo switch { <= 1 => "Abono por 1 día", <= 7 => "Abono por 1 semana", _ => "Abono por 1 mes" };
-                    var ser = serviciosAbono.FirstOrDefault(s => s.SerNom == etiquetaAbono);
-                    if (ser == null) continue;
-
-                    // Buscar la tarifa vigente por servicio (gracia común para todas las clases)
-                    var tarifa = await _ctx.TarifasServicio
-                        .Where(t => t.PlyID == plyID && t.SerID == ser.SerID)
-                        .OrderByDescending(t => t.TasFecIni)
-                        .FirstOrDefaultAsync();
-
-                    if (tarifa == null || !tarifa.TasGraciaValor.HasValue || string.IsNullOrWhiteSpace(tarifa.TasGraciaUnidad))
-                        continue;
-
-                    // Calcular ventana de gracia desde el fin del abono (o fin del último período)
-                    var baseFin = (ab.AboFyhFin?.Date) ?? ab.Periodos.Max(p => p.PeriodoFechaFin.Date);
-                    DateTime finGracia = tarifa.TasGraciaUnidad switch
-                    {
-                        "minutos" => baseFin.AddMinutes(tarifa.TasGraciaValor.Value),
-                        "horas" => baseFin.AddHours(tarifa.TasGraciaValor.Value),
-                        _ => baseFin.AddDays(tarifa.TasGraciaValor.Value)
-                    };
-
-                    if (fechaActualDate <= finGracia.Date)
-                    {
-                        esAbonado = true; // dentro del período de gracia del abono
-                        break;
-                    }
-                }
-            }
+            // Determinar si se debe cobrar estacionamiento (si tiene minutos a cobrar)
+            bool debeCobrarEstacionamiento = minutosACobrar > 0;
 
             // Buscar referencias a fracción (30min) y hora (60min)
             var fraccion = tarifas.FirstOrDefault(t => t.minutos == 30);
@@ -222,9 +270,9 @@ namespace estacionamientos.Controllers
 
             // ======================
             // Reglas especiales cortas
-            // Solo agregar servicios de estacionamiento si NO es abonado
+            // Solo agregar servicios de estacionamiento si debe cobrarse
             // ======================
-            if (!esAbonado && minutosOcupacion <= 30 && fraccion.sp != null)
+            if (debeCobrarEstacionamiento && minutosOcupacion <= 30 && fraccion.sp != null)
             {
                 serviciosAplicables.Add(new ServicioCobroVM
                 {
@@ -237,7 +285,7 @@ namespace estacionamientos.Controllers
                 });
                 totalCobro = fraccion.monto;
             }
-            else if (!esAbonado && minutosOcupacion <= 60 && hora.sp != null)
+            else if (debeCobrarEstacionamiento && minutosOcupacion <= 60 && hora.sp != null)
             {
                 serviciosAplicables.Add(new ServicioCobroVM
                 {
@@ -250,7 +298,7 @@ namespace estacionamientos.Controllers
                 });
                 totalCobro = hora.monto;
             }
-            else if (!esAbonado)
+            else if (debeCobrarEstacionamiento)
             {
                 // ======================
                 // Algoritmo greedy para el resto
@@ -353,9 +401,9 @@ namespace estacionamientos.Controllers
                 }
             }
 
-            // Si es abonado, filtrar los servicios de estacionamiento de la lista
+            // Si no debe cobrarse estacionamiento (está cubierto por abono), filtrar los servicios de estacionamiento
             // pero mantener los servicios extras
-            if (esAbonado)
+            if (!debeCobrarEstacionamiento)
             {
                 // Remover servicios de estacionamiento de la lista de servicios aplicables
                 serviciosAplicables = serviciosAplicables
@@ -378,6 +426,123 @@ namespace estacionamientos.Controllers
                 })
                 .ToListAsync();
 
+            // Calcular información sobre el abono y monto no cobrado
+            decimal montoNoCobrado = 0;
+            DateTime? fechaFinAbonoInfo = null;
+            DateTime? fechaInicioCobroPorHora = null;
+            string? mensajeAbono = null;
+            bool tieneAbonoVencido = false;
+
+            if (tieneAbono && fechaFinAbonoCobertura.HasValue)
+            {
+                // Obtener la fecha de fin real del abono (sin tolerancia)
+                var abonoInfo = abonosFiltrados.FirstOrDefault(a => 
+                    a.Vehiculos.Any(v => v.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized));
+                
+                if (abonoInfo != null)
+                {
+                    var fechaFinAbonoReal = abonoInfo.AboFyhFin?.Date;
+                    if (!fechaFinAbonoReal.HasValue)
+                    {
+                        var ultimoPeriodoInfo = await _ctx.PeriodosAbono
+                            .Where(p => p.PlyID == abonoInfo.PlyID && 
+                                       p.PlzNum == abonoInfo.PlzNum && 
+                                       p.AboFyhIni == abonoInfo.AboFyhIni)
+                            .OrderByDescending(p => p.PeriodoNumero)
+                            .Select(p => p.PeriodoFechaFin.Date)
+                            .FirstOrDefaultAsync();
+                        if (ultimoPeriodoInfo != default)
+                        {
+                            fechaFinAbonoReal = ultimoPeriodoInfo;
+                        }
+                    }
+
+                    fechaFinAbonoInfo = fechaFinAbonoReal;
+                    
+                    // Calcular minutos cubiertos por el abono
+                    int minutosCubiertosPorAbono = 0;
+                    if (fechaEgresoDate <= fechaFinAbonoCobertura.Value)
+                    {
+                        // Todo el tiempo está cubierto
+                        minutosCubiertosPorAbono = (int)tiempoOcupacionTotal.TotalMinutes;
+                    }
+                    else
+                    {
+                        // Calcular desde el inicio hasta el fin del período cubierto
+                        var finPeriodoCubierto = new DateTime(
+                            fechaFinAbonoCobertura.Value.Year,
+                            fechaFinAbonoCobertura.Value.Month,
+                            fechaFinAbonoCobertura.Value.Day,
+                            23, 59, 59,
+                            DateTimeKind.Utc
+                        );
+                        var tiempoCubierto = finPeriodoCubierto - ocufFyhIni;
+                        minutosCubiertosPorAbono = Math.Max(0, (int)tiempoCubierto.TotalMinutes);
+                    }
+
+                    // Calcular el monto que costaría ese tiempo usando las tarifas vigentes
+                    if (minutosCubiertosPorAbono > 0 && tarifas.Any())
+                    {
+                        int minutosRestantesParaCalculo = minutosCubiertosPorAbono;
+                        
+                        // Aplicar algoritmo greedy para calcular el costo del tiempo cubierto
+                        var tarifasLargasParaCalculo = tarifas
+                            .Where(t => t.minutos > 60)
+                            .OrderByDescending(t => t.minutos)
+                            .ToList();
+
+                        foreach (var (sp, monto, duracion) in tarifasLargasParaCalculo)
+                        {
+                            int cantidad = minutosRestantesParaCalculo / duracion;
+                            if (cantidad > 0)
+                            {
+                                montoNoCobrado += monto * cantidad;
+                                minutosRestantesParaCalculo -= cantidad * duracion;
+                            }
+                        }
+
+                        // Resolver sobrante con horas o fracción
+                        if (minutosRestantesParaCalculo > 0)
+                        {
+                            if (minutosRestantesParaCalculo <= 30 && fraccion.sp != null)
+                            {
+                                montoNoCobrado += fraccion.monto;
+                            }
+                            else if (hora.sp != null)
+                            {
+                                int cantHoras = (int)Math.Ceiling(minutosRestantesParaCalculo / 60.0);
+                                montoNoCobrado += hora.monto * cantHoras;
+                            }
+                        }
+                    }
+
+                    // Determinar fecha de inicio de cobro por hora y generar mensaje
+                    // Solo generar mensaje si el abono ha finalizado
+                    if (fechaFinAbonoInfo.HasValue && fechaFinAbonoInfo.Value < fechaEgresoDate)
+                    {
+                        tieneAbonoVencido = true;
+                        var fechaFinFormateada = fechaFinAbonoInfo.Value.ToString("dd/MM/yyyy");
+                        
+                        if (fechaEgresoDate > fechaFinAbonoCobertura.Value)
+                        {
+                            // Hay horas después del período cubierto por el abono que se cobraron
+                            fechaInicioCobroPorHora = fechaFinAbonoCobertura.Value.AddDays(1);
+                            var fechaInicioCobroFormateada = fechaInicioCobroPorHora.Value.ToString("dd/MM/yyyy");
+                            
+                            mensajeAbono = $"El abono a la plaza correspondiente finalizó el {fechaFinFormateada}. " +
+                                          $"Se comenzó a cobrar por hora a partir del {fechaInicioCobroFormateada}.";
+                        }
+                        else
+                        {
+                            // El abono terminó pero el egreso está dentro del día de tolerancia
+                            fechaInicioCobroPorHora = fechaFinAbonoCobertura.Value.AddDays(1);
+                            mensajeAbono = $"El abono a la plaza correspondiente finalizó el {fechaFinFormateada}. " +
+                                          $"El período de ocupación está completamente cubierto por el abono (incluye día de tolerancia).";
+                        }
+                    }
+                }
+            }
+
             return new CobroEgresoVM
             {
                 PlyID = plyID,
@@ -394,7 +559,12 @@ namespace estacionamientos.Controllers
                 ServiciosAplicables = serviciosAplicables,
                 TotalCobro = totalCobro,
                 MetodosPagoDisponibles = metodosPago,
-                EsAbonado = esAbonado
+                EsAbonado = !debeCobrarEstacionamiento, // Si no se cobra estacionamiento, es porque es abonado
+                TieneAbonoVencido = tieneAbonoVencido,
+                FechaFinAbono = fechaFinAbonoInfo.HasValue ? DateTime.SpecifyKind(fechaFinAbonoInfo.Value, DateTimeKind.Utc) : null,
+                FechaInicioCobroPorHora = fechaInicioCobroPorHora.HasValue ? DateTime.SpecifyKind(fechaInicioCobroPorHora.Value, DateTimeKind.Utc) : null,
+                MontoNoCobradoPorAbono = montoNoCobrado,
+                MensajeAbono = mensajeAbono
             };
         }
 
@@ -465,6 +635,37 @@ namespace estacionamientos.Controllers
                 .ThenByDescending(o => o.OcufFyhIni);
 
             var ocupaciones = await query.ToListAsync();
+
+            // Verificar qué ocupaciones tienen abono vigente en su plaza
+            var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var fechaActualDate = fechaActual.Date;
+            var dictAbonoVigente = new Dictionary<string, bool>();
+
+            // Cargar todos los abonos vigentes con sus vehículos en memoria
+            var abonosVigentes = await _ctx.Abonos
+                .Include(a => a.Vehiculos)
+                .AsNoTracking()
+                .Where(a => a.EstadoPago != EstadoPago.Cancelado
+                          && a.EstadoPago != EstadoPago.Finalizado
+                          && a.AboFyhIni.Date <= fechaActualDate
+                          && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate))
+                .ToListAsync();
+
+            foreach (var ocup in ocupaciones.Where(o => o.OcufFyhFin == null))
+            {
+                var key = $"{ocup.PlyID}_{ocup.PlzNum}_{ocup.VehPtnt}";
+                var vehPtntNormalized = ocup.VehPtnt?.Trim().ToUpperInvariant() ?? string.Empty;
+
+                // Verificar si tiene abono vigente en esa plaza (comparación en memoria)
+                var tieneAbonoVigente = abonosVigentes
+                    .Any(a => a.PlyID == ocup.PlyID
+                           && a.PlzNum == ocup.PlzNum
+                           && a.Vehiculos.Any(v => v.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized));
+
+                dictAbonoVigente[key] = tieneAbonoVigente;
+            }
+
+            ViewBag.AbonoVigente = dictAbonoVigente;
 
             return View(ocupaciones);
         }
@@ -599,7 +800,7 @@ namespace estacionamientos.Controllers
             // Validar que el método de pago esté seleccionado solo si hay algo que cobrar
             if (cobroVM.TotalCobro > 0 && cobroVM.MepID == 0)
             {
-                ModelState.AddModelError(nameof(CobroEgresoVM.MepID), "Debe seleccionar un método de pago cuando hay un monto a cobrar.");
+                ModelState.AddModelError(nameof(CobroEgresoVM.MepID), ErrorMessages.SeleccioneMetodoPago);
             }
 
             // Validar otros campos requeridos

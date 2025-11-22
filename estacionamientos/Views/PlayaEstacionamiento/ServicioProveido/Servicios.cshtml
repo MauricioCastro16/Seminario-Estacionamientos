@@ -9,9 +9,20 @@
       class="container d-flex flex-column gap-3 align-items-center"
       style="max-width:1000px;">
       
-    <div class="mb-3 text-center">
-      <h1 class="display-6 fw-semibold">@ViewData["Title"]</h1>
-      <h5 class="text-muted">@Model.PlayaNom</h5>
+    <div class="mb-3 position-relative w-100">
+      <div class="text-center">
+        <h1 class="display-6 fw-semibold mb-0">@ViewData["Title"]</h1>
+        <h5 class="text-muted">@Model.PlayaNom</h5>
+      </div>
+      <button type="button" 
+              class="btn btn-outline-secondary btn-sm position-absolute" 
+              id="btnConfiguracionAbono"
+              data-bs-toggle="modal" 
+              data-bs-target="#modalConfiguracionAbono"
+              disabled
+              style="top: 8px; right: 10px;">
+        <i class="bi bi-gear me-1"></i>Configurar abonos
+      </button>
     </div>
 
     <div class="row row-cols-1 row-cols-md-3 g-4">
@@ -65,6 +76,37 @@
     </div>
 </form>
 
+<!-- Modal de Configuración General de Abono -->
+<div class="modal fade" id="modalConfiguracionAbono" tabindex="-1" aria-labelledby="modalConfiguracionAbonoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="modalConfiguracionAbonoLabel">Configuración general de abono</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3 fw-medium">
+                    ¿Cobrar tarifa de estacionamiento si el vehículo permanece después de que vence el abono?
+                </p>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="chkCobrarTarifaPostAbono" />
+                    <label class="form-check-label" for="chkCobrarTarifaPostAbono">
+                        Sí, aplicar tarifa luego de 1 día.
+                    </label>
+                </div>
+                <p class="small text-muted mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Si se activa, se cobrará al día siguiente si el abono no fue renovado.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarConfiguracion">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 /* Tarjeta base */
 .servicio-card {
@@ -104,6 +146,9 @@
 
 @section Scripts {
 <script>
+  const playaID = @Model.PlayaID;
+  const serviciosAbono = [7, 8, 9]; // SerID de servicios de abono
+  
   // Fallback para navegadores sin :has()
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.servicio-card').forEach(c => {
@@ -117,8 +162,116 @@
         }
       }
       sync();
-      chk.addEventListener('change', sync);
+      chk.addEventListener('change', () => {
+        sync();
+        verificarServiciosAbono();
+      });
     });
+    
+    // Verificar servicios de abono al cargar
+    verificarServiciosAbono();
+    
+    // Prevenir que se abra el modal si no hay abono seleccionado
+    const btnConfig = document.getElementById('btnConfiguracionAbono');
+    if (btnConfig) {
+      btnConfig.addEventListener('click', function(e) {
+        if (btnConfig.disabled) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      });
+    }
+    
+    // Cargar configuración cuando se abre el modal
+    const modal = document.getElementById('modalConfiguracionAbono');
+    if (modal) {
+      modal.addEventListener('show.bs.modal', function () {
+        // Solo cargar si el botón no está deshabilitado
+        if (!btnConfig || !btnConfig.disabled) {
+          cargarConfiguracion();
+        }
+      });
+    }
+    
+    // Guardar configuración
+    const btnGuardarConfig = document.getElementById('btnGuardarConfiguracion');
+    if (btnGuardarConfig) {
+      btnGuardarConfig.addEventListener('click', guardarConfiguracion);
+    }
   });
+  
+  function verificarServiciosAbono() {
+    const btnConfig = document.getElementById('btnConfiguracionAbono');
+    if (!btnConfig) return;
+    
+    // Verificar si algún servicio de abono está seleccionado
+    let hayAbonoSeleccionado = false;
+    serviciosAbono.forEach(serID => {
+      const checkbox = document.getElementById(`ser_${serID}`);
+      if (checkbox && checkbox.checked) {
+        hayAbonoSeleccionado = true;
+      }
+    });
+    
+    // Cambiar el estado del botón según si hay abono seleccionado
+    if (hayAbonoSeleccionado) {
+      // Habilitado y azul cuando hay abono seleccionado
+      btnConfig.disabled = false;
+      btnConfig.classList.remove('btn-outline-secondary');
+      btnConfig.classList.add('btn-outline-primary');
+    } else {
+      // Deshabilitado y gris cuando no hay abono seleccionado
+      btnConfig.disabled = true;
+      btnConfig.classList.remove('btn-outline-primary');
+      btnConfig.classList.add('btn-outline-secondary');
+    }
+  }
+  
+  function cargarConfiguracion() {
+    fetch(`/ServicioProveido/GetConfiguracionAbono?plyID=${playaID}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('chkCobrarTarifaPostAbono').checked = data.cobrarTarifaPostAbono;
+        } else {
+          console.error('Error cargando configuración:', data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
+  }
+  
+  function guardarConfiguracion() {
+    const cobrarTarifa = document.getElementById('chkCobrarTarifaPostAbono').checked;
+    
+    fetch('/ServicioProveido/GuardarConfiguracionAbono', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        PlyID: playaID,
+        CobrarTarifaPostAbono: cobrarTarifa
+      })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Cerrar el modal
+          const modalEl = bootstrap.Modal.getInstance(document.getElementById('modalConfiguracionAbono'));
+          if (modalEl) {
+            modalEl.hide();
+          }
+        } else {
+          alert('Error guardando configuración: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error al guardar la configuración.');
+      });
+  }
 </script>
 }

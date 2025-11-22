@@ -474,34 +474,63 @@ namespace estacionamientos.Controllers
                 new BreadcrumbItem { Title = turno.Playa.PlyNom, Url = Url.Action("DetailsPlayero", "PlayaEstacionamiento", new { id = turno.Playa.PlyID})! },
                 new BreadcrumbItem { Title = "Plazas", Url = Url.Action("Plazas", "Playero")! }
             );
-            var plazas = await _context.Plazas
+            var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var fechaActualDate = fechaActual.Date;
+
+            // Cargar plazas con información de abonos activos
+            var plazasList = await _context.Plazas
                 .Include(p => p.Clasificaciones)
                     .ThenInclude(pc => pc.Clasificacion)
                 .Where(p => p.PlyID == turno.PlyID)
                 .OrderBy(p => p.PlzNum)
-                .Select(p => new PlazaEstacionamiento
-                {
-                    PlyID = p.PlyID,
-                    PlzNum = p.PlzNum,
-                    PlzNombre = p.PlzNombre,
-                    PlzTecho = p.PlzTecho,
-                    PlzAlt = p.PlzAlt,
-                    PlzHab = p.PlzHab,
-                    PlzOcupada = _context.Ocupaciones
-                        .Any(o => o.PlyID == p.PlyID && o.PlzNum == p.PlzNum && o.OcufFyhFin == null),
-
-                    // 🔹 inicializar la colección de clasificaciones (ya no hay un solo campo)
-                    Clasificaciones = p.Clasificaciones.Select(pc => new PlazaClasificacion
-                    {
-                        PlyID = pc.PlyID,
-                        PlzNum = pc.PlzNum,
-                        ClasVehID = pc.ClasVehID,
-                        Clasificacion = pc.Clasificacion
-                    }).ToList()
-                })
                 .AsNoTracking()
                 .ToListAsync();
 
+            // Cargar ocupaciones activas en memoria
+            var ocupacionesActivas = await _context.Ocupaciones
+                .AsNoTracking()
+                .Where(o => o.PlyID == turno.PlyID && o.OcufFyhFin == null)
+                .ToListAsync();
+
+            // Cargar abonos activos en memoria para evitar problemas de traducción LINQ
+            var abonosActivos = await _context.Abonos
+                .AsNoTracking()
+                .Where(a => a.PlyID == turno.PlyID
+                         && a.EstadoPago != estacionamientos.Models.EstadoPago.Cancelado
+                         && a.EstadoPago != estacionamientos.Models.EstadoPago.Finalizado
+                         && a.AboFyhIni.Date <= fechaActualDate
+                         && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate))
+                .ToListAsync();
+
+            // Crear diccionario de abonos activos por plaza
+            var dictAbonosActivos = new Dictionary<string, bool>();
+            foreach (var plaza in plazasList)
+            {
+                var key = $"{plaza.PlyID}_{plaza.PlzNum}";
+                var tieneAbonoActivo = abonosActivos.Any(a => a.PlyID == plaza.PlyID && a.PlzNum == plaza.PlzNum);
+                dictAbonosActivos[key] = tieneAbonoActivo;
+            }
+
+            ViewBag.AbonoActivo = dictAbonosActivos;
+
+            // Mapear plazas a ViewModel
+            var plazas = plazasList.Select(p => new PlazaEstacionamiento
+            {
+                PlyID = p.PlyID,
+                PlzNum = p.PlzNum,
+                PlzNombre = p.PlzNombre,
+                PlzTecho = p.PlzTecho,
+                PlzAlt = p.PlzAlt,
+                PlzHab = p.PlzHab,
+                PlzOcupada = ocupacionesActivas.Any(o => o.PlyID == p.PlyID && o.PlzNum == p.PlzNum),
+                Clasificaciones = p.Clasificaciones.Select(pc => new PlazaClasificacion
+                {
+                    PlyID = pc.PlyID,
+                    PlzNum = pc.PlzNum,
+                    ClasVehID = pc.ClasVehID,
+                    Clasificacion = pc.Clasificacion
+                }).ToList()
+            }).ToList();
 
             ViewBag.PlyID = turno.PlyID;
             ViewBag.Playa = turno.Playa; // pasar datos de la playa a la vista
@@ -524,6 +553,25 @@ namespace estacionamientos.Controllers
             if (plaza.PlzOcupada && plaza.PlzHab)
             {
                 TempData["Mensaje"] = $"No se puede inhabilitar la plaza {plaza.PlzNum} porque está ocupada.";
+                TempData["MensajeCss"] = "danger";
+                return RedirectToAction(nameof(Plazas));
+            }
+
+            // 🚨 Validación: no permitir inhabilitar una plaza con abono activo
+            var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var fechaActualDate = fechaActual.Date;
+            
+            var tieneAbonoActivo = await _context.Abonos
+                .AnyAsync(a => a.PlyID == PlyID 
+                            && a.PlzNum == PlzNum
+                            && a.EstadoPago != estacionamientos.Models.EstadoPago.Cancelado
+                            && a.EstadoPago != estacionamientos.Models.EstadoPago.Finalizado
+                            && a.AboFyhIni.Date <= fechaActualDate
+                            && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate));
+
+            if (tieneAbonoActivo && plaza.PlzHab)
+            {
+                TempData["Mensaje"] = $"No se puede inhabilitar la plaza {plaza.PlzNum} porque tiene un abono activo.";
                 TempData["MensajeCss"] = "danger";
                 return RedirectToAction(nameof(Plazas));
             }

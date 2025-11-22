@@ -31,6 +31,7 @@ namespace estacionamientos.Models.ViewModels
         
         // Método de pago seleccionado
         // Solo requerido si hay un total a cobrar (TotalCobro > 0), validación manual en el controlador
+        [Display(Name = "Método de pago")]
         public int MepID { get; set; }
         
         // Métodos de pago disponibles
@@ -38,6 +39,13 @@ namespace estacionamientos.Models.ViewModels
         
         // Indica si el vehículo pertenece a un abono activo
         public bool EsAbonado { get; set; }
+        
+        // Información sobre el abono (si aplica)
+        public bool TieneAbonoVencido { get; set; }
+        public DateTime? FechaFinAbono { get; set; }
+        public DateTime? FechaInicioCobroPorHora { get; set; }
+        public decimal MontoNoCobradoPorAbono { get; set; }
+        public string? MensajeAbono { get; set; }
     }
     
     public class ServicioCobroVM

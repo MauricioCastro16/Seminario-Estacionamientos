@@ -39,6 +39,9 @@ namespace estacionamientos.Models
 
         public bool PlyLlavReq { get; set; } // ¿requiere dejar llaves?
 
+        // ===== Configuración de abono =====
+        public bool PlyCobrarTarifaPostAbono { get; set; } // ¿cobrar tarifa de estacionamiento después de un día si el vehículo sigue presente y no renueva?
+
         // ===== NUEVO: coordenadas seleccionadas en el mapa =====
         public decimal? PlyLat { get; set; }
 

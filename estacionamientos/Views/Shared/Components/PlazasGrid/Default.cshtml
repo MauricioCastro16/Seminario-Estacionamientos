@@ -39,6 +39,7 @@
                     <div class="@clases"
                         data-ocupada="@plaza.PlzOcupada"
                         data-abonada="@plaza.TieneAbonoActivo"
+                        data-veh-tiene-abono-vigente="@plaza.VehTieneAbonoVigente"
                         data-plyid="@plaza.PlyID"
                         data-plznum="@plaza.PlzNum"
                         data-vehptnt="@plaza.VehPtnt"
@@ -129,6 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Datos de la plaza
         const ocupada = plaza.getAttribute("data-ocupada") === "True";
         const abonada = plaza.getAttribute("data-abonada") === "True";
+        const vehTieneAbonoVigente = plaza.getAttribute("data-veh-tiene-abono-vigente") === "True";
         const plyid = plaza.getAttribute("data-plyid");
         const plznum = plaza.getAttribute("data-plznum");
         const vehptnt = plaza.getAttribute("data-vehptnt");
@@ -145,6 +147,15 @@ document.addEventListener("DOMContentLoaded", () => {
             // Obtener el token anti-forgery del DOM
             const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
             
+            // Si el vehículo tiene abono vigente, deshabilitar el botón de reubicar
+            const botonReubicar = vehTieneAbonoVigente
+                ? `<button type="button" class="btn btn-sm btn-outline-secondary btn-accion-rapida" disabled title="No se puede reubicar: vehículo con abono vigente en esta plaza">
+                    <i class="fa-solid fa-arrows-alt"></i> Reubicar
+                </button>`
+                : `<a href="/Ocupacion/ReubicarVehiculo?plyID=${plyid}&plzNum=${plznum}&vehPtnt=${vehptnt}" class="btn btn-sm btn-outline-primary btn-accion-rapida">
+                    <i class="fa-solid fa-arrows-alt"></i> Reubicar
+                </a>`;
+            
             panel.innerHTML = `
                 <form action="/Ocupacion/RegistrarEgreso" method="post" style="display: inline;">
                     <input type="hidden" name="__RequestVerificationToken" value="${token}" />
@@ -155,9 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <i class="fa-solid fa-car-rear pe-1"></i> Egresar
                     </button>
                 </form>
-                <a href="/Ocupacion/ReubicarVehiculo?plyID=${plyid}&plzNum=${plznum}&vehPtnt=${vehptnt}" class="btn btn-sm btn-outline-primary btn-accion-rapida">
-                    <i class="fa-solid fa-arrows-alt"></i> Reubicar
-                </a>
+                ${botonReubicar}
             `;
             return;
         }

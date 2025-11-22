@@ -53,6 +53,84 @@ namespace estacionamientos.Controllers
         private Task<bool> PagoExiste(int plyID, int pagNum)
             => _ctx.Pagos.AnyAsync(p => p.PlyID == plyID && p.PagNum == pagNum);
 
+        /// <summary>
+        /// Calcula la fecha de fin de un período de abono respetando la hora de inicio.
+        /// </summary>
+        /// <param name="fechaInicio">Fecha y hora de inicio del período</param>
+        /// <param name="tipoServicio">Tipo de servicio: "día", "semana", "mes" o SerID (7=día, 8=semana, 9=mes)</param>
+        /// <param name="cantidadPeriodos">Cantidad de períodos a agregar (default: 1)</param>
+        /// <returns>Fecha de fin calculada preservando la hora de inicio</returns>
+        private DateTime CalcularFechaFinPeriodo(DateTime fechaInicio, string tipoServicio, int cantidadPeriodos = 1)
+        {
+            var fechaInicioUtc = fechaInicio.Kind == DateTimeKind.Utc 
+                ? fechaInicio 
+                : DateTime.SpecifyKind(fechaInicio, DateTimeKind.Utc);
+
+            // Determinar el tipo de servicio
+            string tipo = tipoServicio.ToLower().Trim();
+            
+            // Si viene como SerID, convertir a tipo
+            if (int.TryParse(tipoServicio, out int serID))
+            {
+                tipo = serID switch
+                {
+                    7 => "día",
+                    8 => "semana",
+                    9 => "mes",
+                    _ => "día"
+                };
+            }
+
+            DateTime fechaFin;
+
+            switch (tipo)
+            {
+                case "día":
+                case "dia":
+                case "por día":
+                case "por dia":
+                    // 1 día = +24 horas exactas desde la hora de inicio
+                    fechaFin = fechaInicioUtc.AddHours(24 * cantidadPeriodos);
+                    break;
+
+                case "semana":
+                case "por semana":
+                    // 1 semana = +7 días exactos desde la hora de inicio
+                    fechaFin = fechaInicioUtc.AddDays(7 * cantidadPeriodos);
+                    break;
+
+                case "mes":
+                case "por mes":
+                    // 1 mes = +1 mes exacto preservando la hora
+                    fechaFin = fechaInicioUtc.AddMonths(cantidadPeriodos);
+                    break;
+
+                default:
+                    // Por defecto, usar días
+                    fechaFin = fechaInicioUtc.AddHours(24 * cantidadPeriodos);
+                    break;
+            }
+
+            return fechaFin;
+        }
+
+        /// <summary>
+        /// Calcula la fecha de fin de un período basándose en la duración en minutos.
+        /// </summary>
+        /// <param name="fechaInicio">Fecha y hora de inicio</param>
+        /// <param name="duracionMinutos">Duración en minutos</param>
+        /// <param name="cantidadPeriodos">Cantidad de períodos (default: 1)</param>
+        /// <returns>Fecha de fin calculada</returns>
+        private DateTime CalcularFechaFinPorMinutos(DateTime fechaInicio, int duracionMinutos, int cantidadPeriodos = 1)
+        {
+            var fechaInicioUtc = fechaInicio.Kind == DateTimeKind.Utc 
+                ? fechaInicio 
+                : DateTime.SpecifyKind(fechaInicio, DateTimeKind.Utc);
+
+            // Agregar minutos exactos multiplicados por la cantidad de períodos
+            return fechaInicioUtc.AddMinutes(duracionMinutos * cantidadPeriodos);
+        }
+
         public async Task<IActionResult> Index()
         {
             SetBreadcrumb(
@@ -328,10 +406,55 @@ namespace estacionamientos.Controllers
             }
 
             // 2. Abono
+            // 🔹 Determinar si es un abono programado (fecha futura)
+            // Si es futuro: usar 00:00:00 para inicio y 23:59:59 para fin
+            // Si es hoy: usar hora actual del sistema
+            var fechaInicioConHora = model.AboFyhIni;
+            var hoy = DateTime.UtcNow.Date;
+            var fechaSeleccionada = fechaInicioConHora.Date;
+            
+            if (fechaSeleccionada > hoy)
+            {
+                // Es abono programado: usar 00:00:00
+                fechaInicioConHora = new DateTime(
+                    fechaInicioConHora.Year,
+                    fechaInicioConHora.Month,
+                    fechaInicioConHora.Day,
+                    0, 0, 0,
+                    DateTimeKind.Utc
+                );
+                
+                // Para la fecha de fin, usar 23:59:59
+                if (model.AboFyhFin.HasValue)
+                {
+                    model.AboFyhFin = new DateTime(
+                        model.AboFyhFin.Value.Year,
+                        model.AboFyhFin.Value.Month,
+                        model.AboFyhFin.Value.Day,
+                        23, 59, 59,
+                        DateTimeKind.Utc
+                    );
+                }
+            }
+            else if (fechaInicioConHora.TimeOfDay == TimeSpan.Zero)
+            {
+                // Si es hoy y la hora es medianoche, usar la hora actual
+                var ahora = DateTime.UtcNow;
+                fechaInicioConHora = new DateTime(
+                    fechaInicioConHora.Year,
+                    fechaInicioConHora.Month,
+                    fechaInicioConHora.Day,
+                    ahora.Hour,
+                    ahora.Minute,
+                    ahora.Second,
+                    DateTimeKind.Utc
+                );
+            }
+
             var abono = new Abono
             {
                 PlyID = model.PlyID,
-                AboFyhIni = DateTime.SpecifyKind(model.AboFyhIni, DateTimeKind.Utc),
+                AboFyhIni = DateTime.SpecifyKind(fechaInicioConHora, DateTimeKind.Utc),
                 AboFyhFin = model.AboFyhFin.HasValue ? DateTime.SpecifyKind(model.AboFyhFin.Value, DateTimeKind.Utc) : null,
                 AboDNI = model.AboDNI,
                 EstadoPago = EstadoPago.Activo,
@@ -371,25 +494,37 @@ namespace estacionamientos.Controllers
                     .Where(t => t.PlyID == model.PlyID
                              && t.SerID == model.SerID.Value
                              && t.ClasVehID == clasVehId
-                             && (t.TasFecFin == null || t.TasFecFin >= DateTime.SpecifyKind(model.AboFyhIni, DateTimeKind.Utc)))
+                             && (t.TasFecFin == null || t.TasFecFin >= DateTime.SpecifyKind(fechaInicioConHora, DateTimeKind.Utc)))
                     .OrderByDescending(t => t.TasFecIni)
                     .FirstOrDefaultAsync();
 
                 // Duración base del servicio => calcular fin en base a Periodos
                 var servicio = await _ctx.Servicios.AsNoTracking().FirstOrDefaultAsync(s => s.SerID == model.SerID.Value);
-                int diasBase;
+                var periodos = Math.Max(1, model.Periodos);
+                // 🔹 Usar la fecha de inicio con hora correcta (ya procesada arriba)
+                var inicioUtc = DateTime.SpecifyKind(fechaInicioConHora, DateTimeKind.Utc);
+                
+                DateTime finUtc;
+                // Si tiene duración en minutos, usar cálculo por minutos (más preciso)
                 if (servicio?.SerDuracionMinutos != null)
                 {
-                    diasBase = (int)Math.Ceiling(servicio.SerDuracionMinutos.Value / 1440m);
+                    finUtc = CalcularFechaFinPorMinutos(inicioUtc, servicio.SerDuracionMinutos.Value, periodos);
                 }
                 else
                 {
-                    diasBase = model.SerID.Value switch { 7 => 1, 8 => 7, 9 => 30, _ => 0 };
+                    // Calcular por tipo de servicio (día, semana, mes)
+                    string tipoServicio = model.SerID.Value.ToString(); // Pasar SerID para que el helper lo convierta
+                    finUtc = CalcularFechaFinPeriodo(inicioUtc, tipoServicio, periodos);
                 }
-
-                var periodos = Math.Max(1, model.Periodos);
-                var inicioUtc = DateTime.SpecifyKind(model.AboFyhIni, DateTimeKind.Utc);
-                var finUtc = DateTime.SpecifyKind(inicioUtc.AddDays(diasBase * periodos), DateTimeKind.Utc);
+                
+                // 🔹 Para abonos programados: si el resultado termina a las 00:00:00, 
+                // ajustarlo a las 23:59:59 del día anterior para que incluya el día completo
+                if (fechaSeleccionada > hoy && finUtc.TimeOfDay == TimeSpan.Zero)
+                {
+                    finUtc = finUtc.AddSeconds(-1); // Restar 1 segundo para que sea 23:59:59 del día anterior
+                }
+                
+                finUtc = DateTime.SpecifyKind(finUtc, DateTimeKind.Utc);
                 abono.AboFyhIni = inicioUtc;
                 abono.AboFyhFin = finUtc;
 
@@ -781,13 +916,58 @@ namespace estacionamientos.Controllers
                 await _ctx.SaveChangesAsync();
 
                 // 4. Crear el abono
-                Console.WriteLine($"Creando abono: PlyID={model.PlyID}, PlzNum={model.SelectedPlzNum}, AboFyhIni={model.AboFyhIni}");
+                // 🔹 Determinar si es un abono programado (fecha futura)
+                // Si es futuro: usar 00:00:00 para inicio y 23:59:59 para fin
+                // Si es hoy: usar hora actual del sistema
+                var fechaInicioConHoraConfirmar = model.AboFyhIni;
+                var hoyConfirmar = DateTime.UtcNow.Date;
+                var fechaSeleccionadaConfirmar = fechaInicioConHoraConfirmar.Date;
+                
+                if (fechaSeleccionadaConfirmar > hoyConfirmar)
+                {
+                    // Es abono programado: usar 00:00:00
+                    fechaInicioConHoraConfirmar = new DateTime(
+                        fechaInicioConHoraConfirmar.Year,
+                        fechaInicioConHoraConfirmar.Month,
+                        fechaInicioConHoraConfirmar.Day,
+                        0, 0, 0,
+                        DateTimeKind.Utc
+                    );
+                    
+                    // Para la fecha de fin, usar 23:59:59
+                    if (model.AboFyhFin.HasValue)
+                    {
+                        model.AboFyhFin = new DateTime(
+                            model.AboFyhFin.Value.Year,
+                            model.AboFyhFin.Value.Month,
+                            model.AboFyhFin.Value.Day,
+                            23, 59, 59,
+                            DateTimeKind.Utc
+                        );
+                    }
+                }
+                else if (fechaInicioConHoraConfirmar.TimeOfDay == TimeSpan.Zero)
+                {
+                    // Si es hoy y la hora es medianoche, usar la hora actual
+                    var ahora = DateTime.UtcNow;
+                    fechaInicioConHoraConfirmar = new DateTime(
+                        fechaInicioConHoraConfirmar.Year,
+                        fechaInicioConHoraConfirmar.Month,
+                        fechaInicioConHoraConfirmar.Day,
+                        ahora.Hour,
+                        ahora.Minute,
+                        ahora.Second,
+                        DateTimeKind.Utc
+                    );
+                }
+                
+                Console.WriteLine($"Creando abono: PlyID={model.PlyID}, PlzNum={model.SelectedPlzNum}, AboFyhIni={fechaInicioConHoraConfirmar}");
                 var abono = new Abono
                 {
                     PlyID = model.PlyID,
                     PlzNum = model.SelectedPlzNum,
-                    AboFyhIni = model.AboFyhIni,
-                    AboFyhFin = model.AboFyhFin,
+                    AboFyhIni = DateTime.SpecifyKind(fechaInicioConHoraConfirmar, DateTimeKind.Utc),
+                    AboFyhFin = model.AboFyhFin.HasValue ? DateTime.SpecifyKind(model.AboFyhFin.Value, DateTimeKind.Utc) : null,
                     AboMonto = model.AboMonto,
                     AboDNI = model.AboDNI,
                     PagNum = nuevoPagNum,
@@ -1126,11 +1306,7 @@ namespace estacionamientos.Controllers
         private async Task CrearPeriodosAbono(ConfirmarPagoAbonoVM model, Abono abono)
         {
             var servicio = await _ctx.Servicios.AsNoTracking().FirstOrDefaultAsync(s => s.SerID == model.SerID);
-            int diasPorPeriodo = 0;
-            if (servicio?.SerDuracionMinutos != null)
-                diasPorPeriodo = (int)Math.Ceiling(servicio.SerDuracionMinutos.Value / 1440m);
-            else
-                diasPorPeriodo = model.SerID switch { 7 => 1, 8 => 7, 9 => 30, _ => 1 };
+            string tipoServicio = model.SerID.ToString(); // Para usar en el helper
 
             // Tarifa vigente
             var tarifa = await _ctx.TarifasServicio
@@ -1151,8 +1327,38 @@ namespace estacionamientos.Controllers
 
             for (int i = 1; i <= model.Periodos; i++)
             {
-                var fechaInicio = abono.AboFyhIni.AddDays((i - 1) * diasPorPeriodo);
-                var fechaFin = fechaInicio.AddDays(diasPorPeriodo);
+                // Calcular fecha de inicio del período
+                DateTime fechaInicio;
+                DateTime fechaFin;
+                
+                if (servicio?.SerDuracionMinutos != null)
+                {
+                    // Si tiene duración en minutos, calcular desde el inicio del abono
+                    fechaInicio = abono.AboFyhIni.AddMinutes((i - 1) * servicio.SerDuracionMinutos.Value);
+                    fechaFin = CalcularFechaFinPorMinutos(fechaInicio, servicio.SerDuracionMinutos.Value, 1);
+                }
+                else
+                {
+                    // Calcular por tipo de servicio (día, semana, mes)
+                    // Cada período comienza donde terminó el anterior (o desde el inicio si es el primero)
+                    int periodosAnteriores = i - 1;
+                    fechaInicio = periodosAnteriores == 0 
+                        ? abono.AboFyhIni 
+                        : CalcularFechaFinPeriodo(abono.AboFyhIni, tipoServicio, periodosAnteriores);
+                    
+                    // Calcular fecha de fin: agregar exactamente 1 período desde la fecha de inicio
+                    fechaFin = CalcularFechaFinPeriodo(fechaInicio, tipoServicio, 1);
+                }
+
+                // 🔹 Usar la fecha local actual para la fecha de pago (solo fecha, sin hora)
+                // Convertir a UTC a mediodía para evitar problemas de zona horaria
+                DateTime fechaPagoLocal = DateTime.Now.Date; // Fecha local actual a medianoche
+                DateTime fechaPagoUtc = fechaPagoLocal.ToUniversalTime();
+                // Si la conversión resulta en el día anterior, usar mediodía del día actual en UTC
+                if (fechaPagoUtc.Date < fechaPagoLocal.Date)
+                {
+                    fechaPagoUtc = new DateTime(fechaPagoLocal.Year, fechaPagoLocal.Month, fechaPagoLocal.Day, 12, 0, 0, DateTimeKind.Utc);
+                }
 
                 var periodo = new PeriodoAbono
                 {
@@ -1164,7 +1370,7 @@ namespace estacionamientos.Controllers
                     PeriodoFechaFin = DateTime.SpecifyKind(fechaFin, DateTimeKind.Utc),
                     PeriodoMonto = montoPorPeriodo,
                     PeriodoPagado = i <= model.CantidadPeriodosPagar,
-                    PeriodoFechaPago = i <= model.CantidadPeriodosPagar ? DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc) : null
+                    PeriodoFechaPago = i <= model.CantidadPeriodosPagar ? DateTime.SpecifyKind(fechaPagoUtc, DateTimeKind.Utc) : null
                 };
 
                 // 🔹 Si el período está pagado, generamos un Pago vinculado
@@ -1203,13 +1409,14 @@ namespace estacionamientos.Controllers
                         }
                     }
 
+                    // 🔹 Usar la misma fecha de pago que se usó para el período
                     var pagoPeriodo = new Pago
                     {
                         PlyID = model.PlyID,
                         PagNum = nextPagNum,
                         MepID = model.MepID,
                         PagMonto = montoPorPeriodo,
-                        PagFyh = DateTime.UtcNow,
+                        PagFyh = DateTime.SpecifyKind(fechaPagoUtc, DateTimeKind.Utc),
                         PlaNU = plaNU
                     };
 
@@ -1252,25 +1459,104 @@ namespace estacionamientos.Controllers
                     .ToListAsync();
             }
 
+            // 🔹 Obtener información del abono para incluir fechas con horas
+            var abono = await _ctx.Abonos
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.PlyID == plyID && a.PlzNum == plzNum && a.AboFyhIni.Date == fechaBase.Date);
+            
+            // 🔹 Calcular fechas y horas formateadas según si es abono programado o no
+            DateTime? aboFyhIniLocal = null;
+            DateTime? aboFyhFinLocal = null;
+            string fechaInicioStr = "";
+            string horaInicioStr = "";
+            string fechaFinStr = "";
+            string horaFinStr = "";
+            
+            if (abono != null)
+            {
+                // Asegurar que la fecha esté en UTC antes de convertir
+                var fechaInicioUtc = abono.AboFyhIni.Kind == DateTimeKind.Utc 
+                    ? abono.AboFyhIni 
+                    : DateTime.SpecifyKind(abono.AboFyhIni, DateTimeKind.Utc);
+                aboFyhIniLocal = fechaInicioUtc.ToLocalTime();
+                
+                DateTime? fechaFinUtc = null;
+                if (abono.AboFyhFin.HasValue)
+                {
+                    fechaFinUtc = abono.AboFyhFin.Value.Kind == DateTimeKind.Utc 
+                        ? abono.AboFyhFin.Value 
+                        : DateTime.SpecifyKind(abono.AboFyhFin.Value, DateTimeKind.Utc);
+                    aboFyhFinLocal = fechaFinUtc.Value.ToLocalTime();
+                }
+                
+                // 🔹 Determinar si es abono programado basándose en la hora guardada
+                // Abonos programados tienen hora de inicio 00:00:00 y fin 23:59:59
+                bool esProgramado = fechaInicioUtc.TimeOfDay == TimeSpan.Zero;
+                
+                if (esProgramado)
+                {
+                    // Es abono programado: usar la fecha UTC directamente (sin convertir a local)
+                    // para evitar que cambie el día por diferencias de zona horaria
+                    // La fecha es conceptual (el día 30), no un momento específico
+                    fechaInicioStr = fechaInicioUtc.ToString("dd/MM/yyyy");
+                    horaInicioStr = "00:00";
+                    
+                    if (abono.AboFyhFin.HasValue && fechaFinUtc.HasValue)
+                    {
+                        // Para fecha fin también usar UTC directamente
+                        fechaFinStr = fechaFinUtc.Value.ToString("dd/MM/yyyy");
+                        horaFinStr = "23:59";
+                    }
+                }
+                else
+                {
+                    // No es programado: convertir a hora local para fecha y hora
+                    fechaInicioStr = aboFyhIniLocal.Value.ToString("dd/MM/yyyy");
+                    horaInicioStr = aboFyhIniLocal.Value.ToString("HH:mm");
+                    
+                    if (aboFyhFinLocal.HasValue)
+                    {
+                        fechaFinStr = aboFyhFinLocal.Value.ToString("dd/MM/yyyy");
+                        horaFinStr = aboFyhFinLocal.Value.ToString("HH:mm");
+                    }
+                }
+            }
+
             var resultado = periodos.Select(p =>
             {
                 string estado = p.EstadoPeriodo; // 👈 usamos la propiedad calculada
+                var fechaInicioLocal = p.PeriodoFechaInicio.ToLocalTime();
+                var fechaFinLocal = p.PeriodoFechaFin.ToLocalTime();
 
                 return new
                 {
                     PeriodoNumero = p.PeriodoNumero,
-                    FechaInicio = p.PeriodoFechaInicio.ToString("dd/MM/yyyy"),
-                    FechaFin = p.PeriodoFechaFin.ToString("dd/MM/yyyy"),
+                    FechaInicio = fechaInicioLocal.ToString("dd/MM/yyyy"),
+                    HoraInicio = fechaInicioLocal.ToString("HH:mm"),
+                    FechaFin = fechaFinLocal.ToString("dd/MM/yyyy"),
+                    HoraFin = fechaFinLocal.ToString("HH:mm"),
+                    FechaInicioCompleta = fechaInicioLocal.ToString("dd/MM/yyyy HH:mm"),
+                    FechaFinCompleta = fechaFinLocal.ToString("dd/MM/yyyy HH:mm"),
                     Monto = p.PeriodoMonto,
                     Estado = estado,
                     Pagado = p.PeriodoPagado,
                     FechaPago = p.PeriodoFechaPago.HasValue
-                        ? p.PeriodoFechaPago.Value.ToString("dd/MM/yyyy")
+                        ? p.PeriodoFechaPago.Value.ToLocalTime().ToString("dd/MM/yyyy")
                         : null
                 };
             });
 
-            return Json(resultado);
+            return Json(new
+            {
+                periodos = resultado,
+                abono = abono != null ? new
+                {
+                    fechaInicio = fechaInicioStr,
+                    horaInicio = horaInicioStr,
+                    fechaFin = fechaFinStr,
+                    horaFin = horaFinStr
+                } : null
+            });
         }
 
 
@@ -1387,6 +1673,22 @@ namespace estacionamientos.Controllers
                     return Json(new { success = false, message = "Abono no encontrado." });
                 }
 
+                // 🔹 Calcular fechas y horas formateadas antes de crear el objeto anónimo
+                // Asegurar que la fecha esté en UTC antes de convertir
+                var fechaInicioUtc = abono.AboFyhIni.Kind == DateTimeKind.Utc 
+                    ? abono.AboFyhIni 
+                    : DateTime.SpecifyKind(abono.AboFyhIni, DateTimeKind.Utc);
+                var fechaInicioLocal = fechaInicioUtc.ToLocalTime();
+                
+                var fechaFinLocal = (DateTime?)null;
+                if (abono.AboFyhFin.HasValue)
+                {
+                    var fechaFinUtc = abono.AboFyhFin.Value.Kind == DateTimeKind.Utc 
+                        ? abono.AboFyhFin.Value 
+                        : DateTime.SpecifyKind(abono.AboFyhFin.Value, DateTimeKind.Utc);
+                    fechaFinLocal = fechaFinUtc.ToLocalTime();
+                }
+
                 var abonoData = new
                 {
                     success = true,
@@ -1396,25 +1698,32 @@ namespace estacionamientos.Controllers
                         plzNum = abono.PlzNum,
                         aboFyhIni = abono.AboFyhIni,
                         aboFyhFin = abono.AboFyhFin,
+                        // 🔹 Agregar fechas y horas formateadas
+                        fechaInicio = fechaInicioLocal.ToString("dd/MM/yyyy"),
+                        horaInicio = fechaInicioLocal.ToString("HH:mm"),
+                        fechaFin = fechaFinLocal?.ToString("dd/MM/yyyy"),
+                        horaFin = fechaFinLocal?.ToString("HH:mm"),
                         estadoPago = abono.EstadoPago.ToString(),
                         abonado = new
                         {
                             nombre = abono.Abonado.AboNom,
                             dni = abono.Abonado.AboDNI
                         },
-                        periodos = abono.Periodos.Select(p => new
-                        {
-                            perNum = p.PeriodoNumero,
-                            perFyhIni = p.PeriodoFechaInicio,
-                            perFyhFin = p.PeriodoFechaFin,
-                            // 🔹 Convertimos el monto a decimal fijo con dos decimales
-                            perMonto = Math.Round(p.PeriodoMonto, 2),
-                            // 🔹 EstadoPago correcto (Pagado / Pendiente)
-                            estadoPago = p.PeriodoPagado ? "Pagado" : "Pendiente",
-                            // 🔹 Fecha de pago y número asociados (si existen)
-                            fechaPago = p.Pago?.PagFyh,
-                            pagoNum = p.Pago?.PagNum
-                        }).ToList(),
+                        periodos = abono.Periodos
+                            .OrderBy(p => p.PeriodoNumero) // 🔹 Asegurar orden por número
+                            .Select(p => new
+                            {
+                                perNum = p.PeriodoNumero,
+                                perFyhIni = p.PeriodoFechaInicio,
+                                perFyhFin = p.PeriodoFechaFin,
+                                // 🔹 Convertimos el monto a decimal fijo con dos decimales
+                                perMonto = Math.Round(p.PeriodoMonto, 2),
+                                // 🔹 EstadoPago correcto (Pagado / Pendiente)
+                                estadoPago = p.PeriodoPagado ? "Pagado" : "Pendiente",
+                                // 🔹 Fecha de pago y número asociados (si existen)
+                                fechaPago = p.Pago?.PagFyh,
+                                pagoNum = p.Pago?.PagNum
+                            }).ToList(),
                         vehiculos = abono.Vehiculos.Select(v => new
                         {
                             patente = v.VehPtnt,
@@ -1568,10 +1877,16 @@ namespace estacionamientos.Controllers
                     .MaxAsync() ?? 0) + 1;
 
                 // 🔹 Crear nuevo registro de pago
-                // Asegurar que la fecha de pago esté en UTC para PostgreSQL
-                var fechaPagoUtc = request.FechaPago.Kind == DateTimeKind.Utc 
-                    ? request.FechaPago 
-                    : DateTime.SpecifyKind(request.FechaPago, DateTimeKind.Utc);
+                // Usar la fecha local actual del servidor para la fecha de pago (solo fecha, sin hora)
+                // Convertir a UTC a mediodía para evitar problemas de zona horaria
+                DateTime fechaPagoLocal = DateTime.Now.Date; // Fecha local actual a medianoche
+                DateTime fechaPagoUtc = fechaPagoLocal.ToUniversalTime();
+                // Si la conversión resulta en el día anterior, usar mediodía del día actual en UTC
+                if (fechaPagoUtc.Date < fechaPagoLocal.Date)
+                {
+                    fechaPagoUtc = new DateTime(fechaPagoLocal.Year, fechaPagoLocal.Month, fechaPagoLocal.Day, 12, 0, 0, DateTimeKind.Utc);
+                }
+                fechaPagoUtc = DateTime.SpecifyKind(fechaPagoUtc, DateTimeKind.Utc);
                 
                 // 🔹 Obtener PlaNU: buscar turno activo en la playa para asignar el playero
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -1755,22 +2070,8 @@ namespace estacionamientos.Controllers
 
                 // 🔹 Calcular fecha de fin según el tipo de abono y la cantidad de períodos
                 DateTime fechaFinExtension;
-                // 🔹 A todas las extensiones se les suma +1 día adicional
-                switch (tipoAbonoOriginal.ToLower().Trim())
-                {
-                    case "por día":
-                        fechaFinExtension = fechaInicioExtension.AddDays(request.cantidadPeriodos + 1);
-                        break;
-                    case "por semana":
-                        fechaFinExtension = fechaInicioExtension.AddDays((request.cantidadPeriodos * 7) + 1);
-                        break;
-                    case "por mes":
-                        fechaFinExtension = fechaInicioExtension.AddMonths(request.cantidadPeriodos).AddDays(1);
-                        break;
-                    default:
-                        fechaFinExtension = fechaInicioExtension.AddDays(request.cantidadPeriodos + 1);
-                        break;
-                }
+                // Usar el helper para calcular correctamente respetando la hora de inicio
+                fechaFinExtension = CalcularFechaFinPeriodo(fechaInicioExtension, tipoAbonoOriginal, request.cantidadPeriodos);
 
                 // ✅ Nueva validación: no permitir que la extensión choque con un abono FUTURO programado para la misma plaza
                 // Buscamos el próximo abono (no cancelado) cuya fecha de inicio sea posterior al inicio de la extensión
@@ -1815,33 +2116,28 @@ namespace estacionamientos.Controllers
             // 🔹 Crear los nuevos períodos con la misma estructura que el Create
                 DateTime fechaInicioPeriodo = fechaInicioExtension;
 
+                // 🔹 Obtener el siguiente número de período disponible UNA SOLA VEZ antes del loop
+                var maxPeriodoNumero = abono.Periodos.Any() 
+                    ? abono.Periodos.Max(p => p.PeriodoNumero) 
+                    : 0;
+
                 for (int i = 1; i <= request.cantidadPeriodos; i++)
                 {
-                    DateTime fechaFinPeriodo;
-
-                    switch (tipoAbonoOriginal.ToLower().Trim())
+                    // Calcular fecha de inicio del período
+                    // El primer período comienza desde fechaInicioExtension
+                    // Los siguientes períodos comienzan donde terminó el anterior
+                    if (i > 1)
                     {
-                        case "por día":
-                            fechaFinPeriodo = fechaInicioPeriodo.AddDays(1); // +1 día
-                            break;
-                        case "por semana":
-                            fechaFinPeriodo = fechaInicioPeriodo.AddDays(8); // 7 + 1 día extra
-                            break;
-                        case "por mes":
-                            fechaFinPeriodo = fechaInicioPeriodo.AddMonths(1).AddDays(1); // +1 día extra
-                            break;
-                        default:
-                            fechaFinPeriodo = fechaInicioPeriodo.AddDays(1);
-                            break;
+                        // Calcular desde fechaInicioExtension acumulando períodos anteriores
+                        int periodosAnteriores = i - 1;
+                        fechaInicioPeriodo = CalcularFechaFinPeriodo(fechaInicioExtension, tipoAbonoOriginal, periodosAnteriores);
                     }
+                    
+                    // Calcular fecha de fin usando el helper (respetando la hora)
+                    DateTime fechaFinPeriodo = CalcularFechaFinPeriodo(fechaInicioPeriodo, tipoAbonoOriginal, 1);
 
-                        fechaInicioPeriodo = DateTime.SpecifyKind(fechaInicioPeriodo, DateTimeKind.Utc);
-                        fechaFinPeriodo = DateTime.SpecifyKind(fechaFinPeriodo, DateTimeKind.Utc);
-
-                    // 🔹 Obtener el siguiente número de período disponible
-                    var maxPeriodoNumero = abono.Periodos.Any() 
-                        ? abono.Periodos.Max(p => p.PeriodoNumero) 
-                        : 0;
+                    fechaInicioPeriodo = DateTime.SpecifyKind(fechaInicioPeriodo, DateTimeKind.Utc);
+                    fechaFinPeriodo = DateTime.SpecifyKind(fechaFinPeriodo, DateTimeKind.Utc);
                     
                     // 🔹 Forzar todas las fechas a UTC antes de guardar
                     var periodo = new PeriodoAbono
@@ -1858,8 +2154,9 @@ namespace estacionamientos.Controllers
 
                     _ctx.PeriodosAbono.Add(periodo);
 
-                    // Siguiente período comienza al día siguiente del fin
-                    fechaInicioPeriodo = fechaFinPeriodo.AddDays(1);
+                    // 🔹 Siguiente período comienza exactamente donde terminó el anterior (sin gaps)
+                    // No agregar días adicionales, el siguiente período comienza donde terminó este
+                    fechaInicioPeriodo = fechaFinPeriodo;
                 }
 
                 // 🔹 Actualizar fecha fin del abono
@@ -1942,7 +2239,10 @@ namespace estacionamientos.Controllers
                 }
 
                 // Validar que la plaza no esté ocupada en el nuevo período
-                var fechaInicioNueva = abonoOriginal.AboFyhFin?.AddDays(1) ?? DateTime.Now.AddDays(1);
+                // 🔹 Nuevo abono comienza inmediatamente después del anterior (sin gap)
+                // Si el anterior termina el 24/11 a las 18:35, el nuevo comienza el 24/11 a las 18:35
+                var fechaInicioNueva = abonoOriginal.AboFyhFin ?? DateTime.UtcNow;
+                fechaInicioNueva = DateTime.SpecifyKind(fechaInicioNueva, DateTimeKind.Utc);
                 var fechaFinNueva = CalcularFechaFin(fechaInicioNueva, request.tipoExtension, request.cantidadPeriodos);
 
                 var plazaOcupada = await _ctx.Abonos
@@ -2001,7 +2301,8 @@ namespace estacionamientos.Controllers
                     };
 
                     _ctx.PeriodosAbono.Add(periodo);
-                    fechaActual = fechaFinPeriodo.AddDays(1);
+                    // 🔹 Siguiente período comienza exactamente donde terminó el anterior (sin gaps)
+                    fechaActual = fechaFinPeriodo;
                 }
 
                 // Copiar vehículos del abono original
@@ -2124,13 +2425,8 @@ namespace estacionamientos.Controllers
 
         private DateTime CalcularFechaFin(DateTime fechaInicio, string tipoExtension, int cantidadPeriodos)
         {
-            return tipoExtension switch
-            {
-                "Diario" => fechaInicio.AddDays(cantidadPeriodos),
-                "Semanal" => fechaInicio.AddDays(cantidadPeriodos * 7),
-                "Mensual" => fechaInicio.AddMonths(cantidadPeriodos),
-                _ => fechaInicio
-            };
+            // 🔹 Usar el helper correcto que respeta las horas
+            return CalcularFechaFinPeriodo(fechaInicio, tipoExtension, cantidadPeriodos);
         }
         // =========================================================
         // 🔹 FUNCIONES AUXILIARES PARA ESTADO DE PAGO DEL ABONO
@@ -2380,35 +2676,27 @@ namespace estacionamientos.Controllers
 
         private DateTime CalcularFechaFinExtension(string tipoPeriodo, int cantidad, DateTime fechaInicio)
         {
-            return tipoPeriodo switch
-            {
-                "Diario" => fechaInicio.AddDays(cantidad),
-                "Semanal" => fechaInicio.AddDays(cantidad * 7),
-                "Mensual" => fechaInicio.AddMonths(cantidad),
-                _ => fechaInicio.AddDays(cantidad)
-            };
+            // 🔹 Usar el helper correcto que respeta las horas
+            return CalcularFechaFinPeriodo(fechaInicio, tipoPeriodo, cantidad);
         }
 
         private DateTime CalcularFechaInicioPeriodo(string tipoPeriodo, int numeroPeriodo, DateTime fechaInicio)
         {
-            return tipoPeriodo switch
+            // 🔹 Para períodos consecutivos, calcular acumulativamente desde el inicio
+            // Esto preserva la hora correctamente usando el helper
+            if (numeroPeriodo == 1)
             {
-                "Diario" => fechaInicio.AddDays(numeroPeriodo - 1),
-                "Semanal" => fechaInicio.AddDays((numeroPeriodo - 1) * 7),
-                "Mensual" => fechaInicio.AddMonths(numeroPeriodo - 1),
-                _ => fechaInicio.AddDays(numeroPeriodo - 1)
-            };
+                return fechaInicio;
+            }
+            
+            // Para períodos siguientes, calcular desde el inicio acumulando períodos anteriores
+            return CalcularFechaFinPeriodo(fechaInicio, tipoPeriodo, numeroPeriodo - 1);
         }
 
         private DateTime CalcularFechaFinPeriodo(string tipoPeriodo, DateTime fechaInicioPeriodo)
         {
-            return tipoPeriodo switch
-            {
-                "Diario" => fechaInicioPeriodo,
-                "Semanal" => fechaInicioPeriodo.AddDays(7),
-                "Mensual" => fechaInicioPeriodo.AddMonths(1),
-                _ => fechaInicioPeriodo
-            };
+            // 🔹 Usar el helper correcto que respeta las horas (sobrecarga con 1 período)
+            return CalcularFechaFinPeriodo(fechaInicioPeriodo, tipoPeriodo, 1);
         }
 
         private string CalcularEstadoColor(Abono abono, DateTime hoy)

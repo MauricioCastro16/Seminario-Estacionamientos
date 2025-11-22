@@ -232,5 +232,52 @@ namespace estacionamientos.Controllers
             await _ctx.SaveChangesAsync();
             return RedirectToAction("Index", "PlayaEstacionamiento");
         }
+
+        // ======================================================
+        // Configuración general de abono
+        // ======================================================
+        
+        [HttpGet]
+        public async Task<IActionResult> GetConfiguracionAbono(int plyID)
+        {
+            try
+            {
+                var playa = await _ctx.Playas
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PlyID == plyID);
+
+                if (playa == null)
+                    return Json(new { success = false, message = "Playa no encontrada." });
+
+                return Json(new { success = true, cobrarTarifaPostAbono = playa.PlyCobrarTarifaPostAbono });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error obteniendo configuración: {ex.Message}" });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> GuardarConfiguracionAbono([FromBody] GuardarConfiguracionAbonoRequest request)
+        {
+            try
+            {
+                var playa = await _ctx.Playas
+                    .FirstOrDefaultAsync(p => p.PlyID == request.PlyID);
+
+                if (playa == null)
+                    return Json(new { success = false, message = "Playa no encontrada." });
+
+                playa.PlyCobrarTarifaPostAbono = request.CobrarTarifaPostAbono;
+                _ctx.Playas.Update(playa);
+                await _ctx.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Configuración guardada correctamente." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error guardando configuración: {ex.Message}" });
+            }
+        }
     }
 }

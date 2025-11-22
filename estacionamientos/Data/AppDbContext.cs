@@ -278,6 +278,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 e.Property(p => p.PlyValProm).HasPrecision(4, 2).HasDefaultValue(0m);
 
                 e.Property(p => p.PlyLlavReq);
+                e.Property(p => p.PlyCobrarTarifaPostAbono).HasDefaultValue(false);
             });
         modelBuilder.Entity<Valoracion>(e =>
             {

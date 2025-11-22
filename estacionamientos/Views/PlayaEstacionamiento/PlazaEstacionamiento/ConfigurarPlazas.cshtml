@@ -207,6 +207,11 @@
 
                 <!-- HABILITADA -->
                 <td class="text-center">
+                    @{
+                        var keyAbono = $"{plaza.PlyID}_{plaza.PlzNum}";
+                        bool tieneAbonoActivo = ViewBag.AbonoActivo?.ContainsKey(keyAbono) == true && ViewBag.AbonoActivo[keyAbono];
+                        bool puedeDeshabilitar = !plaza.PlzOcupada && !tieneAbonoActivo;
+                    }
                     <form asp-controller="PlazaEstacionamiento" asp-action="ToggleHabilitadaDueño" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="plyID" value="@plaza.PlyID" />
@@ -215,18 +220,24 @@
                         <input class="form-check-input" type="checkbox"
                             onchange="this.form.submit();"
                             @(plaza.PlzHab ? "checked" : "")
-                            @(plaza.PlzOcupada ? "disabled" : "") />
-
+                            @(!puedeDeshabilitar ? "disabled" : "")
+                            title="@(tieneAbonoActivo ? "No se puede deshabilitar: tiene un abono activo" : (plaza.PlzOcupada ? "No se puede deshabilitar: está ocupada" : ""))" />
                         </div>
                     </form>
                 </td>
 
                 <!-- ACCIONES -->
                 <td class="text-center">
+                    @{
+                        var keyAbonoAcciones = $"{plaza.PlyID}_{plaza.PlzNum}";
+                        bool tieneAbonoActivoAcciones = ViewBag.AbonoActivo?.ContainsKey(keyAbonoAcciones) == true && ViewBag.AbonoActivo[keyAbonoAcciones];
+                        bool puedeEditarBorrar = !plaza.PlzOcupada && !tieneAbonoActivoAcciones;
+                        string tooltipAcciones = tieneAbonoActivoAcciones ? "No se puede editar/eliminar: tiene un abono activo" : (plaza.PlzOcupada ? "No se puede editar/eliminar: está ocupada" : "");
+                    }
                     <div class="d-flex justify-content-center align-items-center gap-1">
 
-                        <button type="button" class="btn btn-sm btn-outline-secondary btn-edit" data-row="@rowKey" title="Editar"
-                        @(plaza.PlzOcupada ? "disabled" : "")>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-edit" data-row="@rowKey" title="@(puedeEditarBorrar ? "Editar" : tooltipAcciones)"
+                        @(!puedeEditarBorrar ? "disabled" : "")>
 
                             <i class="fa-regular fa-pen-to-square"></i>
                             <span class="visually-hidden">Editar</span>
@@ -234,13 +245,13 @@
 
                         <button type="submit" class="btn btn-sm btn-success d-none btn-save"
                                 form="edit-form-@rowKey" formnovalidate title="Guardar"
-                                @(plaza.PlzOcupada ? "disabled" : "")>
+                                @(!puedeEditarBorrar ? "disabled" : "")>
                             <i class="fa-solid fa-check"></i>
                             <span class="visually-hidden">Guardar</span>
                         </button>
 
                         <button type="button" class="btn btn-sm btn-secondary d-none btn-cancel" data-row="@rowKey" title="Cancelar"
-                        @(plaza.PlzOcupada ? "disabled" : "")>
+                        @(!puedeEditarBorrar ? "disabled" : "")>
 
                             <i class="fa-solid fa-xmark"></i>
                             <span class="visually-hidden">Cancelar</span>
@@ -255,8 +266,8 @@
                             <input type="hidden" name="plzNum" value="@plaza.PlzNum" />
                             <button type="submit" class="btn btn-sm btn-outline-danger"
                                     onclick="return confirm('¿Quiere eliminar la plaza?');"
-                                    title="Eliminar"
-                                    @(plaza.PlzOcupada ? "disabled" : "")>
+                                    title="@(puedeEditarBorrar ? "Eliminar" : tooltipAcciones)"
+                                    @(!puedeEditarBorrar ? "disabled" : "")>
                                 <i class="fa-regular fa-trash-can"></i>
                                 <span class="visually-hidden">Eliminar</span>
                             </button>

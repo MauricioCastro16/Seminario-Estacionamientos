@@ -45,11 +45,11 @@
                         <tbody>
                             <tr>
                                 <th class="w-40">Ingreso:</th>
-                                <td>@Model.OcufFyhIni.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@Model.OcufFyhIni.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                             </tr>
                             <tr>
                                 <th>Egreso:</th>
-                                <td>@Model.OcufFyhFin.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@Model.OcufFyhFin.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                             </tr>
                             <tr>
                                 <th>Duración:</th>
@@ -65,9 +65,27 @@
 
             @if (Model.EsAbonado)
             {
-                <div class="alert alert-success text-center d-flex justify-content-center align-items-center" role="alert">
-                    <i class="fas fa-check-circle me-2"></i>
+                <div class="alert alert-info text-center d-flex justify-content-center align-items-center" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>
                     <div>Este vehículo pertenece a un abono activo. @(Model.TotalCobro > 0 ? "Solo se cobrarán los servicios extras." : "Sin costo de egreso.")</div>
+                </div>
+            }
+
+            @if (Model.TieneAbonoVencido && !string.IsNullOrEmpty(Model.MensajeAbono))
+            {
+                <div class="alert alert-info d-flex align-items-start" role="alert">
+                    <i class="fas fa-info-circle me-2 mt-1"></i>
+                    <div>
+                        <strong>Información sobre el abono:</strong>
+                        <p class="mb-0">@Model.MensajeAbono</p>
+                        @if (Model.MontoNoCobradoPorAbono > 0)
+                        {
+                            <p class="mb-0 mt-2">
+                                <strong>Monto no cobrado debido al abono:</strong> 
+                                <span class="text-success">$@Model.MontoNoCobradoPorAbono.ToString("F2")</span>
+                            </p>
+                        }
+                    </div>
                 </div>
             }
 
@@ -107,6 +125,17 @@
                                     }
                                 </tbody>
                                 <tfoot class="table-light">
+                                    @if (Model.MontoNoCobradoPorAbono > 0)
+                                    {
+                                        <tr>
+                                            <td colspan="3" class="text-end text-muted">
+                                                <small>Monto no cobrado (cubierto por abono):</small>
+                                            </td>
+                                            <td class="text-end text-muted">
+                                                <small>-$@Model.MontoNoCobradoPorAbono.ToString("F2")</small>
+                                            </td>
+                                        </tr>
+                                    }
                                     <tr>
                                         <th colspan="3" class="text-end">TOTAL A COBRAR:</th>
                                         <th class="text-end text-success fs-5">
@@ -144,14 +173,14 @@
                             <label asp-for="MepID" class="form-label fw-bold">
                                 <i class="fas fa-credit-card me-1"></i> Método de pago
                             </label>
-                            <select asp-for="MepID" class="form-select" required>
+                            <select asp-for="MepID" class="form-select" data-val="true" data-val-required="* Seleccione un método de pago">
                                 <option value="">Seleccione...</option>
                                 @foreach (var metodo in Model.MetodosPagoDisponibles)
                                 {
                                     <option value="@metodo.MepID">@metodo.MepNom</option>
                                 }
                             </select>
-                            <span asp-validation-for="MepID" class="text-danger"></span>
+                            <span asp-validation-for="MepID" class="text-danger small d-block mt-1"></span>
                         </div>
                     </div>
                 }
@@ -173,4 +202,26 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        // Configurar mensajes de validación en español para jQuery Validation
+        $.validator.setDefaults({
+            messages: {
+                required: "* Este campo es obligatorio",
+                remote: "Por favor corrija este campo",
+                email: "Por favor ingrese un correo electrónico válido",
+                url: "Por favor ingrese una URL válida",
+                date: "Por favor ingrese una fecha válida",
+                dateISO: "Por favor ingrese una fecha válida (ISO)",
+                number: "Por favor ingrese un número válido",
+                digits: "Por favor ingrese solo dígitos",
+                equalTo: "Por favor ingrese el mismo valor nuevamente",
+                maxlength: $.validator.format("Por favor no ingrese más de {0} caracteres"),
+                minlength: $.validator.format("Por favor ingrese al menos {0} caracteres"),
+                rangelength: $.validator.format("Por favor ingrese un valor entre {0} y {1} caracteres"),
+                range: $.validator.format("Por favor ingrese un valor entre {0} y {1}"),
+                max: $.validator.format("Por favor ingrese un valor menor o igual a {0}"),
+                min: $.validator.format("Por favor ingrese un valor mayor o igual a {0}")
+            }
+        });
+    </script>
 }

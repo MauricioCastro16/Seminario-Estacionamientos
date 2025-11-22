@@ -529,21 +529,102 @@ namespace estacionamientos.Controllers
                 .ToList();
 
             // 🅿 Servicios base de estacionamiento (desde la Playa)
-            var serviciosBase = (await _ctx.Ocupaciones
+            // 🔹 Solo incluir si realmente se cobró estacionamiento (no estaba cubierto por abono)
+            // Obtener todas las ocupaciones con sus fechas de egreso
+            // Primero cargar en memoria y luego filtrar por claves de pagos
+            var todasOcupacionesConFechas = await _ctx.Ocupaciones
+                .AsNoTracking()
+                .Where(o => o.PagNum != null && o.OcufFyhFin != null)
+                .Select(o => new
+                {
+                    o.PlyID,
+                    o.PlzNum,
+                    o.VehPtnt,
+                    PagNum = o.PagNum!.Value,
+                    o.OcufFyhFin
+                })
+                .ToListAsync();
+
+            // Filtrar en memoria por claves de pagos
+            var ocupacionesConFechas = todasOcupacionesConFechas
+                .Where(o => clavesPagos.Any(k => k.PlyID == o.PlyID && k.PagNum == o.PagNum))
+                .ToList();
+
+            // Cargar todos los abonos vigentes de una vez
+            // Primero normalizar los vehPtnts de las ocupaciones en memoria
+            var vehPtnts = ocupacionesConFechas.Select(o => o.VehPtnt.Trim().ToUpperInvariant()).Distinct().ToList();
+            
+            // Cargar todos los vehículos abonados sin normalización en la consulta
+            var todosAbonosVigentes = await _ctx.VehiculosAbonados
+                .AsNoTracking()
+                .Include(va => va.Abono)
+                .Where(va => va.Abono.EstadoPago != EstadoPago.Cancelado)
+                .Select(va => new
+                {
+                    va.VehPtnt,
+                    va.Abono.PlyID,
+                    va.Abono.PlzNum,
+                    va.Abono.AboFyhIni,
+                    va.Abono.AboFyhFin
+                })
+                .ToListAsync();
+
+            // Normalizar en memoria y filtrar por los vehPtnts que necesitamos
+            var abonosVigentes = todosAbonosVigentes
+                .Where(va => vehPtnts.Contains(va.VehPtnt.Trim().ToUpperInvariant()))
+                .Select(va => new
+                {
+                    VehPtnt = va.VehPtnt.Trim().ToUpperInvariant(),
+                    va.PlyID,
+                    va.PlzNum,
+                    va.AboFyhIni,
+                    va.AboFyhFin
+                })
+                .ToList();
+
+            // Identificar ocupaciones que realmente cobraron estacionamiento (sin abono vigente)
+            var ocupacionesConEstacionamientoCobrado = ocupacionesConFechas
+                .Where(ocup =>
+                {
+                    if (!ocup.OcufFyhFin.HasValue) return false;
+                    
+                    var vehPtntNormalizado = ocup.VehPtnt.Trim().ToUpperInvariant();
+                    var fechaEgreso = ocup.OcufFyhFin.Value;
+                    
+                    // Verificar si tenía abono vigente al momento del egreso
+                    var tieneAbonoVigente = abonosVigentes.Any(ab =>
+                        ab.VehPtnt == vehPtntNormalizado &&
+                        ab.PlyID == ocup.PlyID &&
+                        ab.PlzNum == ocup.PlzNum &&
+                        ab.AboFyhIni <= fechaEgreso &&
+                        (ab.AboFyhFin == null || ab.AboFyhFin >= fechaEgreso));
+                    
+                    // Solo incluir si NO tenía abono vigente
+                    return !tieneAbonoVigente;
+                })
+                .Select(o => (o.PlyID, o.PagNum))
+                .ToHashSet();
+
+            // Cargar todas las ocupaciones con PagNum (sin filtrar por clavesPagos en la consulta)
+            var todasOcupaciones = await _ctx.Ocupaciones
                 .AsNoTracking()
                 .Include(o => o.Plaza!).ThenInclude(p => p.Playa!)
                     .ThenInclude(pl => pl.ServiciosProveidos!)
                         .ThenInclude(sp => sp.Servicio)
                 .Where(o => o.PagNum != null)
+                .ToListAsync();
+
+            // Filtrar en memoria: primero por clavesPagos, luego por las que realmente cobraron estacionamiento
+            var serviciosBase = todasOcupaciones
+                .Where(o => clavesPagos.Any(k => k.PlyID == o.PlyID && k.PagNum == o.PagNum) &&
+                           ocupacionesConEstacionamientoCobrado.Contains((o.PlyID, o.PagNum!.Value)))
                 .Select(o => new
                 {
-                    o.PlyID,
+                    PlyID = o.PlyID,
                     PagNum = o.PagNum!.Value,
                     SerNom = o.Plaza!.Playa!.ServiciosProveidos!
-                        .FirstOrDefault(sp => sp.Servicio.SerTipo == "Estacionamiento")!.Servicio.SerNom
+                        .FirstOrDefault(sp => sp.Servicio.SerTipo == "Estacionamiento")?.Servicio.SerNom ?? "Estacionamiento"
                 })
-                .ToListAsync())
-                .Where(o => clavesPagos.Any(k => k.PlyID == o.PlyID && k.PagNum == o.PagNum))
                 .ToList();
 
             // 🔹 Servicios de abonos (Abonos y períodos de abono)

@@ -6,6 +6,57 @@
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
 
+<style>
+    /* Bootstrap 5 aplica colores mediante CSS variables y box-shadow en los TD, no en TR */
+    /* Finalizado: gris oscuro - Aplicar a TR y TD */
+    table#abonosTable tbody tr.table-row-finalizado,
+    table#abonosTable tbody tr.table-row-finalizado td {
+        --bs-table-bg: #e9ecef !important;
+        --bs-table-bg-state: #e9ecef !important;
+        --bs-table-bg-type: #e9ecef !important;
+        background-color: #e9ecef !important;
+        background: #e9ecef !important;
+        box-shadow: inset 0 0 0 9999px #e9ecef !important;
+    }
+    
+    table#abonosTable tbody tr.table-row-finalizado:hover,
+    table#abonosTable tbody tr.table-row-finalizado:hover td {
+        --bs-table-bg-state: #dee2e6 !important;
+        background-color: #dee2e6 !important;
+        box-shadow: inset 0 0 0 9999px #dee2e6 !important;
+    }
+    
+    /* Pendiente: amarillo sutil pero visible - Aplicar a TR y TD con máxima especificidad */
+    /* Forzar que siempre se vea, incluso antes de hover */
+    table#abonosTable tbody tr.table-row-pendiente,
+    table#abonosTable tbody tr.table-row-pendiente > td,
+    table#abonosTable.table-hover tbody tr.table-row-pendiente,
+    table#abonosTable.table-hover tbody tr.table-row-pendiente > td,
+    table#abonosTable tbody tr.table-row-pendiente td,
+    table#abonosTable.table-hover tbody tr.table-row-pendiente:hover,
+    table#abonosTable.table-hover tbody tr.table-row-pendiente:hover > td,
+    table#abonosTable.table-hover tbody tr.table-row-pendiente:hover td {
+        --bs-table-bg: #fff5d6 !important;
+        --bs-table-bg-state: #fff5d6 !important;
+        --bs-table-bg-type: #fff5d6 !important;
+        --bs-table-accent-bg: #fff5d6 !important;
+        --bs-table-hover-bg: #fff2c7 !important;
+        background-color: #fff5d6 !important;
+        background: #fff5d6 !important;
+        box-shadow: inset 0 0 0 9999px #fff5d6 !important;
+    }
+    
+    /* Hover un poco más fuerte */
+    table#abonosTable tbody tr.table-row-pendiente:hover,
+    table#abonosTable tbody tr.table-row-pendiente:hover > td,
+    table#abonosTable tbody tr.table-row-pendiente:hover td {
+        --bs-table-bg-state: #fff2c7 !important;
+        background-color: #fff2c7 !important;
+        background: #fff2c7 !important;
+        box-shadow: inset 0 0 0 9999px #fff2c7 !important;
+    }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">Abonos</h2>
     <a asp-action="Create" class="btn btn-primary">
@@ -23,7 +74,7 @@
 }
 
 
-<table id="abonosTable" class="table table-striped table-hover table-sm align-middle text-center">
+<table id="abonosTable" class="table table-hover table-sm align-middle text-center">
     <thead>
         <tr>
             <th class="text-center">Plaza</th>
@@ -39,7 +90,19 @@
     <tbody>
     @foreach (var item in Model)
     {
-        <tr>
+        string rowClass = "";
+        string rowStyle = "";
+        if (item.EstadoPago == estacionamientos.Models.EstadoPago.Finalizado)
+        {
+            rowClass = "table-row-finalizado";
+            rowStyle = "background-color: #e9ecef !important;";
+        }
+        else if (item.EstadoPago == estacionamientos.Models.EstadoPago.Pendiente)
+        {
+            rowClass = "table-row-pendiente";
+            rowStyle = "background-color: #fff5d6 !important; --bs-table-bg: #fff5d6 !important; --bs-table-bg-state: #fff5d6 !important; --bs-table-bg-type: #fff5d6 !important;";
+        }
+        <tr class="@rowClass" data-estado="@item.EstadoPago" style="@rowStyle">
             <td>
                 <span class="fw-medium">@item.PlzNum</span>
             </td>
@@ -49,7 +112,18 @@
             </td>
             <td>@item.AboFyhIni.ToString("dd/MM/yyyy")</td>
             <td>@item.AboFyhFin?.ToString("dd/MM/yyyy")</td>
-            <td>
+            <td data-order="@{
+                // Orden personalizado: 1=Pendiente, 2=Al Día, 3=Cancelado, 4=Finalizado
+                int estadoOrden = item.EstadoPago switch
+                {
+                    estacionamientos.Models.EstadoPago.Pendiente => 1,
+                    estacionamientos.Models.EstadoPago.Activo => 2,
+                    estacionamientos.Models.EstadoPago.Cancelado => 3,
+                    estacionamientos.Models.EstadoPago.Finalizado => 4,
+                    _ => 99
+                };
+                @estadoOrden;
+            }">
                 @{
                     string estadoTexto = item.EstadoPago switch
                     {
@@ -693,17 +767,21 @@
             },
         };
 
-        // Inicialización de DataTable
-        $('#abonosTable').DataTable({
+        // Inicialización de DataTable - SIMPLE, sin callbacks complejos
+        var table = $('#abonosTable').DataTable({
             "columnDefs": [
-                { "orderable": false, "targets": [6, 7] } // Vehículos y Acciones no ordenables
+                { "orderable": false, "targets": [6, 7] }, // Vehículos y Acciones no ordenables
+                { 
+                    "type": "num", 
+                    "targets": [4] // Columna de Estado - usar data-order para ordenar
+                }
             ],
             "dom": 'lrtp', 
-            "order": [[2, "desc"]], // Ordenar por fecha inicio descendente
+            "order": [[4, "asc"]], // Ordenar por Estado (columna 4) ascendente: Pendiente(1), Al Día(2), Cancelado(3), Finalizado(4)
             "pageLength": 10,
             "lengthMenu": [5, 10, 25, 50],
             "pagingType": "simple_numbers", 
-            "language": datatableLanguage 
+            "language": datatableLanguage
         });
 
         // Modal de vehículos - Variables globales para gestión
@@ -1136,6 +1214,22 @@ modal.addEventListener('hidden.bs.modal', function () {
             const plaza = button.getAttribute('data-plznum');
             const fechaIni = button.getAttribute('data-fechaini');
             const fechaFin = button.getAttribute('data-fechafin');
+            // 🔹 Parsear fecha de inicio para extraer fecha y hora
+            let horaIni = '';
+            if (aboFyhIni) {
+                try {
+                    const fechaIniDate = new Date(aboFyhIni);
+                    horaIni = fechaIniDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+                } catch (e) {
+                    horaIni = '';
+                }
+            }
+            // 🔹 Parsear fecha de fin para extraer fecha y hora (si existe)
+            let horaFin = '';
+            if (aboFyhIni) {
+                // La fecha de fin viene en otro atributo, necesitamos obtenerla del backend
+                horaFin = 'No especificada';
+            }
             const monto = button.getAttribute('data-monto');
             const clasificacion = button.getAttribute('data-clasificacion');
             const patentes = button.getAttribute('data-patentes').split(',');
@@ -1153,7 +1247,10 @@ modal.addEventListener('hidden.bs.modal', function () {
                     throw new Error(`Error HTTP ${response.status}`);
                 }
 
-                const periodos = await response.json();
+                const responseData = await response.json();
+                // 🔹 Manejar ambos formatos: array directo o objeto con periodos y abono
+                const periodos = Array.isArray(responseData) ? responseData : (responseData.periodos || []);
+                const abonoInfo = responseData.abono || null;
 
                 // Contar estados
                 const periodosPagados = periodos.filter(p => p.pagado === true).length;
@@ -1163,8 +1260,8 @@ modal.addEventListener('hidden.bs.modal', function () {
                 const hoy = new Date();
 
                 const periodosHTML = periodos.map(p => {
-                    const fechaInicio = new Date(p.fechaInicio);
-                    const fechaFin = new Date(p.fechaFin);
+                    const fechaInicio = p.fechaInicioCompleta ? new Date(p.fechaInicioCompleta) : new Date(p.fechaInicio);
+                    const fechaFin = p.fechaFinCompleta ? new Date(p.fechaFinCompleta) : new Date(p.fechaFin);
                     let estadoTexto = '';
                     let estadoClase = '';
 
@@ -1182,12 +1279,15 @@ modal.addEventListener('hidden.bs.modal', function () {
                         }
                     }
 
+                    // 🔹 Mostrar fecha y hora completa si está disponible
+                    const fechaInicioStr = p.fechaInicioCompleta || p.fechaInicio || '-';
+                    const fechaFinStr = p.fechaFinCompleta || p.fechaFin || '-';
 
                     return `
                         <tr class="${estadoClase}">
                             <td>${p.periodoNumero}</td>
-                            <td>${p.fechaInicio}</td>
-                            <td>${p.fechaFin}</td>
+                            <td>${fechaInicioStr}</td>
+                            <td>${fechaFinStr}</td>
                             <td>${Number(p.monto).toFixed(2)} $</td>
                             <td>${estadoTexto}</td>
                             <td>${p.pagado && p.fechaPago ? `<span class="text-success fw-medium">${p.fechaPago}</span>` : '<span class="text-muted">-</span>'}</td>
@@ -1215,8 +1315,10 @@ modal.addEventListener('hidden.bs.modal', function () {
                         <div class="col-md-6">
                             <h6 class="text-dark mb-1">Información del Abono</h6>
                             <table class="table table-sm table-borderless mb-0">
-                                <tr><td class="py-0"><strong>Fecha Inicio:</strong></td><td class="py-0">${fechaIni}</td></tr>
-                                <tr><td class="py-0"><strong>Fecha Fin:</strong></td><td class="py-0">${fechaFin || 'No especificada'}</td></tr>
+                                <tr><td class="py-0"><strong>Fecha Inicio:</strong></td><td class="py-0">${abonoInfo ? abonoInfo.fechaInicio : fechaIni}</td></tr>
+                                <tr><td class="py-0"><strong>Hora Inicio:</strong></td><td class="py-0">${abonoInfo ? abonoInfo.horaInicio : '-'}</td></tr>
+                                <tr><td class="py-0"><strong>Fecha Fin:</strong></td><td class="py-0">${abonoInfo ? (abonoInfo.fechaFin || 'No especificada') : (fechaFin || 'No especificada')}</td></tr>
+                                <tr><td class="py-0"><strong>Hora Fin:</strong></td><td class="py-0">${abonoInfo ? (abonoInfo.horaFin || 'No especificada') : '-'}</td></tr>
                                 <tr><td class="py-0"><strong>Monto Total:</strong></td><td class="py-0 fw-bold text-success">${monto}</td></tr>
                             </table>
                         </div>
@@ -1583,14 +1685,17 @@ modal.addEventListener('hidden.bs.modal', function () {
 
         function actualizarPeriodosPorCantidad() {
             const cantidad = parseInt(document.getElementById('cantidadPeriodosPagar').value) || 0;
-            const periodosPendientes = abonoActual.periodos.filter(p => p.estadoPago === 'Pendiente');
+            // Filtrar períodos pendientes y ordenarlos por número de período para evitar saltos
+            const periodosPendientes = abonoActual.periodos
+                .filter(p => p.estadoPago === 'Pendiente')
+                .sort((a, b) => a.perNum - b.perNum); // Ordenar por número de período
 
             
             periodosSeleccionados = [];
             let total = 0;
 
             if (cantidad > 0 && periodosPendientes.length > 0) {
-                // Seleccionar los primeros 'cantidad' períodos pendientes
+                // Seleccionar los primeros 'cantidad' períodos pendientes ordenados
                 const periodosAseleccionar = periodosPendientes.slice(0, cantidad);
                 
                 periodosAseleccionar.forEach(periodo => {

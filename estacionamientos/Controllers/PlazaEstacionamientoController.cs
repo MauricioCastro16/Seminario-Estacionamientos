@@ -91,6 +91,31 @@ namespace estacionamientos.Controllers
 
             await LoadClasificaciones();
 
+            // Verificar abonos activos para cada plaza
+            var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var fechaActualDate = fechaActual.Date;
+
+            // Cargar abonos activos en memoria para evitar problemas de traducción LINQ
+            var abonosActivos = await _ctx.Abonos
+                .AsNoTracking()
+                .Where(a => a.PlyID == plyID
+                         && a.EstadoPago != estacionamientos.Models.EstadoPago.Cancelado
+                         && a.EstadoPago != estacionamientos.Models.EstadoPago.Finalizado
+                         && a.AboFyhIni.Date <= fechaActualDate
+                         && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate))
+                .ToListAsync();
+
+            // Crear diccionario de abonos activos por plaza
+            var dictAbonosActivos = new Dictionary<string, bool>();
+            foreach (var plaza in playa.Plazas)
+            {
+                var key = $"{plaza.PlyID}_{plaza.PlzNum}";
+                var tieneAbonoActivo = abonosActivos.Any(a => a.PlyID == plaza.PlyID && a.PlzNum == plaza.PlzNum);
+                dictAbonosActivos[key] = tieneAbonoActivo;
+            }
+
+            ViewBag.AbonoActivo = dictAbonosActivos;
+
             SetBreadcrumb(
                 new BreadcrumbItem { Title = "Playas", Url = Url.Action("Index", "PlayaEstacionamiento")! },
                 new BreadcrumbItem { Title = $"Configurar Plazas ({playa.PlyNom})", Url = Url.Action("ConfigurarPlazas", "PlazaEstacionamiento", new {plyID = playa.PlyID})! }
@@ -242,6 +267,25 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
             }
 
+            // 🚨 Validación: no permitir editar una plaza con abono activo
+            var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var fechaActualDate = fechaActual.Date;
+            
+            var tieneAbonoActivo = await _ctx.Abonos
+                .AnyAsync(a => a.PlyID == plyID 
+                            && a.PlzNum == plzNum
+                            && a.EstadoPago != estacionamientos.Models.EstadoPago.Cancelado
+                            && a.EstadoPago != estacionamientos.Models.EstadoPago.Finalizado
+                            && a.AboFyhIni.Date <= fechaActualDate
+                            && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate));
+
+            if (tieneAbonoActivo)
+            {
+                TempData["Error"] = $"No se puede editar la plaza {plzNum} porque tiene un abono activo.";
+                TempData["MensajeCss"] = "danger";
+                return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
+            }
+
             if (clasVehID == null || !clasVehID.Any())
             {
                 TempData["Error"] = "Debe seleccionar al menos una clasificación.";
@@ -296,6 +340,25 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
             }
 
+            // 🚨 Validación: no permitir eliminar una plaza con abono activo
+            var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var fechaActualDate = fechaActual.Date;
+            
+            var tieneAbonoActivo = await _ctx.Abonos
+                .AnyAsync(a => a.PlyID == plyID 
+                            && a.PlzNum == plzNum
+                            && a.EstadoPago != estacionamientos.Models.EstadoPago.Cancelado
+                            && a.EstadoPago != estacionamientos.Models.EstadoPago.Finalizado
+                            && a.AboFyhIni.Date <= fechaActualDate
+                            && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate));
+
+            if (tieneAbonoActivo)
+            {
+                TempData["Error"] = $"No se puede eliminar la plaza {plzNum} porque tiene un abono activo.";
+                TempData["MensajeCss"] = "danger";
+                return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
+            }
+
             _ctx.Plazas.Remove(plaza);
             await _ctx.SaveChangesAsync();
 
@@ -311,6 +374,25 @@ namespace estacionamientos.Controllers
             if (plaza is null)
             {
                 TempData["Error"] = $"No se encontró la plaza {plzNum}.";
+                TempData["MensajeCss"] = "danger";
+                return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
+            }
+
+            // 🚨 Validación: no permitir inhabilitar una plaza con abono activo
+            var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var fechaActualDate = fechaActual.Date;
+            
+            var tieneAbonoActivo = await _ctx.Abonos
+                .AnyAsync(a => a.PlyID == plyID 
+                            && a.PlzNum == plzNum
+                            && a.EstadoPago != estacionamientos.Models.EstadoPago.Cancelado
+                            && a.EstadoPago != estacionamientos.Models.EstadoPago.Finalizado
+                            && a.AboFyhIni.Date <= fechaActualDate
+                            && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate));
+
+            if (tieneAbonoActivo && plaza.PlzHab)
+            {
+                TempData["Error"] = $"No se puede inhabilitar la plaza {plzNum} porque tiene un abono activo.";
                 TempData["MensajeCss"] = "danger";
                 return RedirectToAction(nameof(ConfigurarPlazas), new { plyID });
             }

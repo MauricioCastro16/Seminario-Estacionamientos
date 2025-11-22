@@ -114,20 +114,35 @@
                         <i class="fa fa-eye"></i>
                     </button>
 
+                    @{
+                        var dictAbonoVigente = ViewBag.AbonoVigente as Dictionary<string, bool> ?? new Dictionary<string, bool>();
+                        var keyAbono = $"{item.PlyID}_{item.PlzNum}_{item.VehPtnt}";
+                        var tieneAbonoVigente = dictAbonoVigente.ContainsKey(keyAbono) && dictAbonoVigente[keyAbono];
+                        var puedeReubicar = item.OcufFyhFin == null && !tieneAbonoVigente;
+                    }
                     @if (item.OcufFyhFin == null)
                     {
-                        <form asp-action="ReubicarVehiculo" method="get" class="d-inline">
-                            <input type="hidden" name="plyID" value="@item.PlyID" />
-                            <input type="hidden" name="plzNum" value="@item.PlzNum" />
-                            <input type="hidden" name="vehPtnt" value="@item.VehPtnt" />
-                            <button type="submit" class="btn btn-outline-primary btn-sm" title="Reubicar vehículo">
+                        @if (tieneAbonoVigente)
+                        {
+                            <button type="button" class="btn btn-outline-secondary btn-sm" title="No se puede reubicar: vehículo con abono vigente en esta plaza" disabled>
                                 <i class="fa-solid fa-arrows-alt"></i>
                             </button>
-                        </form>
+                        }
+                        else
+                        {
+                            <form asp-action="ReubicarVehiculo" method="get" class="d-inline">
+                                <input type="hidden" name="plyID" value="@item.PlyID" />
+                                <input type="hidden" name="plzNum" value="@item.PlzNum" />
+                                <input type="hidden" name="vehPtnt" value="@item.VehPtnt" />
+                                <button type="submit" class="btn btn-outline-primary btn-sm" title="Reubicar vehículo">
+                                    <i class="fa-solid fa-arrows-alt"></i>
+                                </button>
+                            </form>
+                        }
                     }
                     else
                     {
-                        <button type="button" class="btn btn-outline-primary btn-sm" title="Reubicar vehículo" disabled>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" title="Reubicar vehículo" disabled>
                             <i class="fa-solid fa-arrows-alt"></i>
                         </button>
                     }

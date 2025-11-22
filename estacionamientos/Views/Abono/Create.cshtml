@@ -139,7 +139,9 @@
 
                                         <!-- Grilla de plazas -->
                                         <div class="mt-3">
-                                            <div id="PlazasGridAbono" class="plazas-grid mb-3"></div>
+                                            <div id="PlazasGridAbonoWrapper" style="height: 180px; overflow-y: auto; overflow-x: hidden; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 0.5rem;">
+                                                <div id="PlazasGridAbono" class="plazas-grid"></div>
+                                            </div>
                                         </div>
 
                                         <!-- Hidden inputs para el POST -->
@@ -249,7 +251,9 @@
                                                 </div>
                                                 <div class="col-md-6">
                                                     <strong>Fecha Inicio:</strong> <span id="modalFechaInicio"></span><br>
-                                                    <strong>Fecha Fin:</strong> <span id="modalFechaFin"></span>
+                                                    <strong>Hora Inicio:</strong> <span id="modalHoraInicio"></span><br>
+                                                    <strong>Fecha Fin:</strong> <span id="modalFechaFin"></span><br>
+                                                    <strong>Hora Fin:</strong> <span id="modalHoraFin"></span>
                                                 </div>
                                             </div>
                                         </div>
@@ -350,10 +354,32 @@
 
 
 <style>
+    /* Estilo para el mensaje inicial dentro del grid de plazas - más compacto */
+    #PlazasGridAbono .mensaje-inicial {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 0.5rem 1rem !important;
+        color: #6c757d;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: auto !important;
+        margin: 0 !important;
+        border: 1px dashed #ced4da;
+        border-radius: 6px;
+        background: #f8f9fa;
+        max-width: 100%;
+        width: auto;
+    }
+
     @@media (max-width: 576px) {
         .plazas-grid {
             grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-            max-height: 180px;
+        }
+        #PlazasGridAbonoWrapper {
+            height: 150px !important;
         }
     }
 
@@ -382,6 +408,29 @@
             const mes = String(d.getUTCMonth() + 1).padStart(2, '0');
             const anio = d.getUTCFullYear();
             return `${dia}-${mes}-${anio}`;
+        }
+
+        // Función para formatear fecha con hora
+        function formatDateDisplayWithTime(dateStr) {
+            if (!dateStr) return "";
+            const d = new Date(dateStr);
+            const dia = String(d.getUTCDate()).padStart(2, '0');
+            const mes = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const anio = d.getUTCFullYear();
+            const hora = String(d.getUTCHours()).padStart(2, '0');
+            const minuto = String(d.getUTCMinutes()).padStart(2, '0');
+            return `${dia}/${mes}/${anio} ${hora}:${minuto}`;
+        }
+
+        // Función para determinar si una fecha es futura (posterior al día de hoy)
+        function esFechaFutura(fechaStr) {
+            if (!fechaStr) return false;
+            const fechaSeleccionada = new Date(fechaStr);
+            const hoy = new Date();
+            // Comparar solo las fechas (sin hora)
+            fechaSeleccionada.setUTCHours(0, 0, 0, 0);
+            hoy.setUTCHours(0, 0, 0, 0);
+            return fechaSeleccionada > hoy;
         }
 
 
@@ -518,14 +567,28 @@
                 
                 // Si ya hay una fecha seleccionada, usarla; si no, usar la fecha actual
                 if (iniInput && iniInput.value) {
-                    ini = new Date(iniInput.value + 'T00:00:00Z');
+                    // Parsear la fecha directamente desde YYYY-MM-DD en UTC
+                    const [year, month, day] = iniInput.value.split('-').map(Number);
+                    ini = new Date(Date.UTC(year, month - 1, day));
                 } else {
                     const hoy = new Date();
                     ini = new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()));
                 }
                 
+                // 🔹 Para abonos programados: calcular fecha de fin correctamente
+                // Si la fecha es futura, terminar el día anterior (para incluir el día completo)
+                // Ejemplo: 7 días desde 30/11 = termina el 06/12 (30, 1, 2, 3, 4, 5, 6)
+                const hoyUTC = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
+                const esProgramado = ini.getTime() > hoyUTC;
+                
                 const fin = new Date(ini);
-                fin.setUTCDate(fin.getUTCDate() + duracionTotalDias);
+                if (esProgramado && duracionTotalDias > 0) {
+                    // Para abonos programados: agregar días - 1 para terminar el último día incluido
+                    fin.setUTCDate(fin.getUTCDate() + duracionTotalDias - 1);
+                } else {
+                    // Para abonos no programados: agregar días normalmente
+                    fin.setUTCDate(fin.getUTCDate() + duracionTotalDias);
+                }
 
                 const finInput = document.querySelector('input[name="AboFyhFin"]');
                 const montoInput = document.getElementById('AboMonto');
@@ -1303,11 +1366,55 @@
 
          // Función para llenar los datos del modal
          async function llenarModalPago() {
-             // Datos básicos
-             document.getElementById('modalAbonado').textContent = document.querySelector('input[name="AboNom"]').value;
-             document.getElementById('modalPlaza').textContent = 'Plaza ' + document.getElementById('PlzNumAbono').value;
-             document.getElementById('modalFechaInicio').textContent = formatDateDisplay(document.querySelector('input[name="AboFyhIni"]').value);
-             document.getElementById('modalFechaFin').textContent = formatDateDisplay(document.querySelector('input[name="AboFyhFin"]').value);
+            // Datos básicos
+            document.getElementById('modalAbonado').textContent = document.querySelector('input[name="AboNom"]').value;
+            document.getElementById('modalPlaza').textContent = 'Plaza ' + document.getElementById('PlzNumAbono').value;
+            
+            // 🔹 Calcular fecha/hora de inicio y fin para mostrar en el modal
+            // Usar la misma lógica que se usará al guardar el abono
+            const fechaInicioInput = document.querySelector('input[name="AboFyhIni"]').value;
+            const fechaFinInput = document.querySelector('input[name="AboFyhFin"]').value;
+            
+            // Determinar si es abono programado
+            const esProgramado = esFechaFutura(fechaInicioInput);
+            
+            let fechaInicioLocal, horaInicioLocal, fechaFinLocal, horaFinLocal;
+            
+            if (fechaInicioInput) {
+                const [year, month, day] = fechaInicioInput.split('-').map(Number);
+                
+                if (esProgramado) {
+                    // Abono programado: inicio a las 00:00:00
+                    fechaInicioLocal = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+                    horaInicioLocal = "00:00";
+                } else {
+                    // Abono para hoy: usar hora actual LOCAL del usuario
+                    const ahora = new Date();
+                    fechaInicioLocal = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+                    horaInicioLocal = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
+                }
+            }
+            
+            if (fechaFinInput) {
+                const [year, month, day] = fechaFinInput.split('-').map(Number);
+                
+                if (esProgramado) {
+                    // Abono programado: fin a las 23:59:59
+                    fechaFinLocal = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+                    horaFinLocal = "23:59";
+                } else {
+                    // Abono para hoy: usar hora actual LOCAL del usuario
+                    const ahora = new Date();
+                    fechaFinLocal = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+                    horaFinLocal = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
+                }
+            }
+            
+            // Mostrar fechas y horas en el modal
+            document.getElementById('modalFechaInicio').textContent = fechaInicioLocal || "";
+            document.getElementById('modalHoraInicio').textContent = horaInicioLocal || "";
+            document.getElementById('modalFechaFin').textContent = fechaFinLocal || "";
+            document.getElementById('modalHoraFin').textContent = horaFinLocal || "";
 
              
              // Duración total
@@ -1773,8 +1880,48 @@
                 ClasVehID: parseInt(document.getElementById('ClasVehID').value, 10),
                 Periodos: parseInt(document.getElementById('Periodos').value, 10),         // 🔹 faltaba
 
-                AboFyhIni: new Date(document.querySelector('input[name="AboFyhIni"]').value).toISOString(),
-                AboFyhFin: new Date(document.querySelector('input[name="AboFyhFin"]').value).toISOString(),
+                // 🔹 Determinar hora según si es abono programado o no
+                // Si la fecha es futura: 00:00:00 para inicio, 23:59:59 para fin
+                // Si es hoy: usar hora actual
+                AboFyhIni: (function() {
+                    const fechaInput = document.querySelector('input[name="AboFyhIni"]').value;
+                    if (!fechaInput) return new Date().toISOString();
+                    
+                    const [year, month, day] = fechaInput.split('-').map(Number);
+                    // Comparar solo las fechas (sin hora) en UTC
+                    const fechaSeleccionadaUTC = Date.UTC(year, month - 1, day);
+                    const hoyUTC = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
+                    
+                    if (fechaSeleccionadaUTC > hoyUTC) {
+                        // Es abono programado: usar 00:00:00 UTC del día seleccionado
+                        return new Date(Date.UTC(year, month - 1, day, 0, 0, 0)).toISOString();
+                    } else {
+                        // Es hoy: usar hora actual
+                        const ahora = new Date();
+                        return new Date(Date.UTC(year, month - 1, day, ahora.getUTCHours(), ahora.getUTCMinutes(), ahora.getUTCSeconds())).toISOString();
+                    }
+                })(),
+                AboFyhFin: (function() {
+                    const fechaInput = document.querySelector('input[name="AboFyhFin"]').value;
+                    if (!fechaInput) return null;
+                    
+                    const [year, month, day] = fechaInput.split('-').map(Number);
+                    const fechaInicioInput = document.querySelector('input[name="AboFyhIni"]').value;
+                    const [yearIni, monthIni, dayIni] = fechaInicioInput.split('-').map(Number);
+                    
+                    // Comparar solo las fechas (sin hora) en UTC
+                    const fechaSeleccionadaUTC = Date.UTC(yearIni, monthIni - 1, dayIni);
+                    const hoyUTC = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
+                    
+                    if (fechaSeleccionadaUTC > hoyUTC) {
+                        // Es abono programado: usar 23:59:59 UTC del día de fin
+                        return new Date(Date.UTC(year, month - 1, day, 23, 59, 59)).toISOString();
+                    } else {
+                        // No es programado: usar hora actual
+                        const ahora = new Date();
+                        return new Date(Date.UTC(year, month - 1, day, ahora.getUTCHours(), ahora.getUTCMinutes(), ahora.getUTCSeconds())).toISOString();
+                    }
+                })(),
                 AboMonto: parseFloat(document.getElementById('AboMontoHidden').value),
 
                 AboDNI: document.querySelector('input[name="AboDNI"]').value,

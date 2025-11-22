@@ -85,6 +85,11 @@
                     }
                 </td>
                 <td class="text-center">
+                    @{
+                        var keyAbono = $"{plaza.PlyID}_{plaza.PlzNum}";
+                        bool tieneAbonoActivo = ViewBag.AbonoActivo?.ContainsKey(keyAbono) == true && ViewBag.AbonoActivo[keyAbono];
+                        bool puedeDeshabilitar = !plaza.PlzOcupada && !tieneAbonoActivo;
+                    }
                     <form asp-action="ToggleHabilitada" asp-controller="Playero" method="post" class="d-inline">
                         <input type="hidden" name="PlyID" value="@plaza.PlyID" />
                         <input type="hidden" name="PlzNum" value="@plaza.PlzNum" />
@@ -93,8 +98,8 @@
                             <input class="form-check-input" type="checkbox"
                                 onchange="this.form.submit();"
                                 @(plaza.PlzHab ? "checked" : "")
-                                @(plaza.PlzOcupada ? "disabled" : "") />
-
+                                @(!puedeDeshabilitar ? "disabled" : "")
+                                title="@(tieneAbonoActivo ? "No se puede deshabilitar: tiene un abono activo" : (plaza.PlzOcupada ? "No se puede deshabilitar: está ocupada" : ""))" />
                         </div>
                     </form>
                 </td>
