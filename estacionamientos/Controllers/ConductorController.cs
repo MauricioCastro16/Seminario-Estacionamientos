@@ -180,6 +180,8 @@ namespace estacionamientos.Controllers
 
                 foreach (var vehiculo in vehiculos)
                 {
+                    var historial = new List<object>();
+
                     // Obtener todas las ocupaciones de este vehículo con información relacionada
                     var ocupaciones = await _context.Ocupaciones
                         .Include(o => o.Plaza)
@@ -190,20 +192,176 @@ namespace estacionamientos.Controllers
                         .OrderByDescending(o => o.OcufFyhIni)
                         .ToListAsync();
 
-                    var historial = ocupaciones.Select(o => new
+                    // Obtener servicios extra realizados de este vehículo
+                    var serviciosExtras = await _context.ServiciosExtrasRealizados
+                        .Include(s => s.ServicioProveido)
+                            .ThenInclude(sp => sp.Servicio)
+                        .Include(s => s.ServicioProveido)
+                            .ThenInclude(sp => sp.Playa)
+                        .Include(s => s.Pago)
+                            .ThenInclude(p => p.MetodoPago)
+                        .Where(s => s.VehPtnt == vehiculo.VehPtnt)
+                        .ToListAsync();
+
+                    // Obtener abonos de este vehículo (solo abonos activos o recientes)
+                    var vehiculosAbonados = await _context.VehiculosAbonados
+                        .Include(va => va.Abono)
+                            .ThenInclude(a => a.Plaza)
+                                .ThenInclude(p => p.Playa)
+                        .Include(va => va.Abono)
+                            .ThenInclude(a => a.Pago)
+                                .ThenInclude(p => p.MetodoPago)
+                        .Where(va => va.VehPtnt == vehiculo.VehPtnt)
+                        .ToListAsync();
+
+                    foreach (var o in ocupaciones)
                     {
-                        PlayaNombre = o.Plaza?.Playa?.PlyNom ?? "Desconocida",
-                        PlayaDireccion = o.Plaza?.Playa?.PlyDir ?? "",
-                        FechaHoraIngreso = o.OcufFyhIni,
-                        FechaHoraEgreso = o.OcufFyhFin,
-                        Duracion = o.OcufFyhFin.HasValue 
-                            ? (o.OcufFyhFin.Value - o.OcufFyhIni).TotalHours 
-                            : (double?)null,
-                        MontoPagado = o.Pago?.PagMonto ?? 0,
-                        MetodoPago = o.Pago?.MetodoPago?.MepNom ?? "Sin pago",
-                        PlazaNumero = o.PlzNum,
-                        DejoLlaves = o.OcuLlavDej
-                    }).ToList<object>();
+                        // Buscar servicios extra asociados a esta ocupación:
+                        // 1. Mismo pago (mismo PagNum y PlyID) - mismo vehículo
+                        // 2. O durante el tiempo de la ocupación (misma playa, mismo vehículo, durante la ocupación)
+                        var serviciosMismoPago = new List<ServicioExtraRealizado>();
+                        if (o.Pago != null)
+                        {
+                            serviciosMismoPago = serviciosExtras
+                                .Where(s => s.PlyID == o.PlyID && 
+                                           s.VehPtnt == o.VehPtnt &&
+                                           s.PagNum == o.Pago.PagNum &&
+                                           s.PagNum != null)
+                                .ToList();
+                        }
+
+                        var serviciosDuranteOcupacion = serviciosExtras
+                            .Where(s => s.PlyID == o.PlyID && 
+                                       s.VehPtnt == o.VehPtnt &&
+                                       s.ServExFyHIni >= o.OcufFyhIni && 
+                                       (o.OcufFyhFin == null || s.ServExFyHIni <= o.OcufFyhFin.Value))
+                            .ToList();
+
+                        // Combinar ambos grupos (sin duplicados)
+                        var serviciosDeEstaOcupacion = serviciosMismoPago
+                            .Union(serviciosDuranteOcupacion)
+                            .GroupBy(s => new { s.PlyID, s.SerID, s.VehPtnt, s.ServExFyHIni })
+                            .Select(g => g.First())
+                            .ToList();
+
+                        // Obtener nombres de servicios extra (TODOS los servicios)
+                        var serviciosNombres = serviciosDeEstaOcupacion
+                            .Select(s => s.ServicioProveido?.Servicio?.SerNom ?? "Servicio Extra")
+                            .Distinct()
+                            .ToList();
+
+                        // Calcular monto total (ocupación + servicios extra pagados del mismo pago)
+                        var montoServicios = serviciosMismoPago
+                            .Where(s => s.Pago != null)
+                            .Sum(s => s.Pago.PagMonto);
+                        var montoTotal = (o.Pago?.PagMonto ?? 0) + montoServicios;
+
+                        // Determinar si hay servicios en curso
+                        var tieneServiciosEnCurso = serviciosDeEstaOcupacion.Any(s => s.ServExEstado == "En curso");
+                        var tieneServiciosPendientes = serviciosDeEstaOcupacion.Any(s => s.ServExEstado == "Pendiente");
+
+                        // Determinar si hay múltiples servicios (estacionamiento + al menos 1 servicio extra)
+                        var cantidadServicios = serviciosNombres.Count;
+                        var mostrarVarios = cantidadServicios > 0; // Si hay al menos 1 servicio extra además del estacionamiento
+                        
+                        // Crear lista completa de servicios incluyendo "Estacionamiento" cuando hay servicios extra
+                        var todosLosServicios = new List<string> { "Estacionamiento" };
+                        todosLosServicios.AddRange(serviciosNombres);
+
+                        historial.Add(new
+                        {
+                            PlayaNombre = o.Plaza?.Playa?.PlyNom ?? "Desconocida",
+                            PlayaDireccion = o.Plaza?.Playa?.PlyDir ?? "",
+                            FechaHoraIngreso = o.OcufFyhIni,
+                            FechaHoraEgreso = o.OcufFyhFin,
+                            Duracion = o.OcufFyhFin.HasValue 
+                                ? (o.OcufFyhFin.Value - o.OcufFyhIni).TotalHours 
+                                : (double?)null,
+                            MontoPagado = montoTotal,
+                            MetodoPago = o.Pago?.MetodoPago?.MepNom ?? "Sin pago",
+                            PlazaNumero = o.PlzNum,
+                            DejoLlaves = o.OcuLlavDej,
+                            Tipo = "Estacionamiento",
+                            ServiciosNombres = todosLosServicios, // Incluir "Estacionamiento" + servicios extra
+                            MostrarVarios = mostrarVarios,
+                            TieneServiciosEnCurso = tieneServiciosEnCurso,
+                            TieneServiciosPendientes = tieneServiciosPendientes
+                        });
+                    }
+
+                    // Agregar servicios extra que NO están asociados a ninguna ocupación
+                    // Un servicio está asociado si:
+                    // 1. Comparte el mismo PagNum y PlyID con una ocupación (mismo vehículo), O
+                    // 2. Está en el rango de tiempo de una ocupación (misma playa, mismo vehículo)
+                    var serviciosSinOcupacion = serviciosExtras
+                        .Where(s => {
+                            // Verificar si está asociado por PagNum
+                            var asociadoPorPago = ocupaciones.Any(o => 
+                                o.Pago != null && 
+                                o.PlyID == s.PlyID && 
+                                o.VehPtnt == s.VehPtnt &&
+                                o.Pago.PagNum == s.PagNum && 
+                                s.PagNum != null);
+                            
+                            // Verificar si está asociado por tiempo
+                            var asociadoPorTiempo = ocupaciones.Any(o => 
+                                o.PlyID == s.PlyID && 
+                                o.VehPtnt == s.VehPtnt &&
+                                s.ServExFyHIni >= o.OcufFyhIni && 
+                                (o.OcufFyhFin == null || s.ServExFyHIni <= o.OcufFyhFin.Value));
+                            
+                            return !asociadoPorPago && !asociadoPorTiempo;
+                        })
+                        .ToList();
+
+                    foreach (var s in serviciosSinOcupacion)
+                    {
+                        historial.Add(new
+                        {
+                            PlayaNombre = s.ServicioProveido?.Playa?.PlyNom ?? "Desconocida",
+                            PlayaDireccion = s.ServicioProveido?.Playa?.PlyDir ?? "",
+                            FechaHoraIngreso = s.ServExFyHIni,
+                            FechaHoraEgreso = (DateTime?)null,
+                            Duracion = (double?)null,
+                            MontoPagado = s.Pago?.PagMonto ?? 0,
+                            MetodoPago = s.Pago?.MetodoPago?.MepNom ?? "Sin pago",
+                            PlazaNumero = (int?)null,
+                            DejoLlaves = false,
+                            Tipo = s.ServicioProveido?.Servicio?.SerNom ?? "Servicio Extra",
+                            ServiciosNombres = new List<string>(),
+                            MostrarVarios = false,
+                            TieneServiciosEnCurso = s.ServExEstado == "En curso",
+                            TieneServiciosPendientes = s.ServExEstado == "Pendiente"
+                        });
+                    }
+
+                    // Agregar abonos
+                    foreach (var va in vehiculosAbonados)
+                    {
+                        historial.Add(new
+                        {
+                            PlayaNombre = va.Abono.Plaza?.Playa?.PlyNom ?? "Desconocida",
+                            PlayaDireccion = va.Abono.Plaza?.Playa?.PlyDir ?? "",
+                            FechaHoraIngreso = va.Abono.AboFyhIni,
+                            FechaHoraEgreso = va.Abono.AboFyhFin,
+                            Duracion = va.Abono.AboFyhFin.HasValue 
+                                ? (va.Abono.AboFyhFin.Value - va.Abono.AboFyhIni).TotalDays 
+                                : (double?)null,
+                            MontoPagado = 0, // No mostrar monto
+                            MetodoPago = "", // No mostrar método de pago
+                            PlazaNumero = va.PlzNum,
+                            DejoLlaves = false,
+                            Tipo = "Abono",
+                            ServiciosNombres = new List<string>(),
+                            MostrarVarios = false,
+                            TieneServiciosEnCurso = false,
+                            TieneServiciosPendientes = false,
+                            EstadoAbono = va.Abono.EstadoPago.ToString() // EstadoPago es un enum
+                        });
+                    }
+
+                    // Ordenar todo el historial por fecha de ingreso descendente
+                    historial = historial.OrderByDescending(h => ((dynamic)h).FechaHoraIngreso).ToList();
 
                     historialPorVehiculo[vehiculo.VehPtnt] = historial;
                 }
@@ -546,25 +704,27 @@ namespace estacionamientos.Controllers
 
                 var conductorId = int.Parse(userId);
 
-                // Verificar que la patente no esté vacía
                 if (string.IsNullOrWhiteSpace(patente))
                 {
-                    return Json(new { success = false, error = "La patente es requerida" });
+                    return Json(new { success = false, error = "La patente es obligatoria" });
                 }
 
-                // Verificar que la marca no esté vacía
                 if (string.IsNullOrWhiteSpace(marca))
                 {
-                    return Json(new { success = false, error = "La marca es requerida" });
+                    return Json(new { success = false, error = "La marca es obligatoria" });
                 }
 
-                // Verificar que la clasificación existe
+                if (clasificacionId <= 0)
+                {
+                    return Json(new { success = false, error = "Debes seleccionar un tipo de vehículo" });
+                }
+
                 var clasificacion = await _context.ClasificacionesVehiculo
                     .FirstOrDefaultAsync(c => c.ClasVehID == clasificacionId);
 
                 if (clasificacion == null)
                 {
-                    return Json(new { success = false, error = "Clasificación de vehículo no válida" });
+                    return Json(new { success = false, error = "Debes seleccionar un tipo de vehículo" });
                 }
 
                 // Verificar si el vehículo ya existe
