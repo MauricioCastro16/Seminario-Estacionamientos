@@ -701,8 +701,18 @@
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('btnConfirmarDesvincular').addEventListener('click', confirmarDesvincularVehiculo);
 
+        // Convertir patente a mayúsculas automáticamente
+        const patenteInput = document.getElementById('patenteInput');
+        if (patenteInput) {
+            patenteInput.addEventListener('input', function(e) {
+                const cursorPosition = e.target.selectionStart;
+                e.target.value = e.target.value.toUpperCase();
+                e.target.setSelectionRange(cursorPosition, cursorPosition);
+                limpiarErrorCampo('patenteInput');
+            });
+        }
+
         document.addEventListener('input', function(e) {
-            if (e.target.id === 'patenteInput') limpiarErrorCampo('patenteInput');
             if (e.target.id === 'marcaInput') limpiarErrorCampo('marcaInput');
         });
         
