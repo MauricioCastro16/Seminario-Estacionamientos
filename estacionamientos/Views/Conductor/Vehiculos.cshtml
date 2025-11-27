@@ -195,19 +195,19 @@
                     <div class="mb-3">
                         <label for="patenteInput" class="form-label fw-semibold">Patente</label>
                         <input type="text" class="form-control rounded-3" id="patenteInput">
-                        <span id="patenteError" class="text-danger"></span>
+                        <span id="patenteError" class="text-danger" style="display: none;"></span>
                     </div>
                     <div class="mb-3">
                         <label for="marcaInput" class="form-label fw-semibold">Marca</label>
                         <input type="text" class="form-control rounded-3" id="marcaInput" placeholder="Ej: Toyota, Ford, Honda">
-                        <span id="marcaError" class="text-danger"></span>
+                        <span id="marcaError" class="text-danger" style="display: none;"></span>
                     </div>
                     <div class="mb-3">
                         <label for="clasificacionSelect" class="form-label fw-semibold">Tipo de Vehículo</label>
                         <select class="form-select rounded-3" id="clasificacionSelect" asp-items="ViewBag.ClasVehID">
                             <option value="">-- Seleccione un tipo --</option>
                         </select>
-                        <span id="clasificacionError" class="text-danger"></span>
+                        <span id="clasificacionError" class="text-danger" style="display: none;"></span>
                     </div>
                 </form>
             </div>
@@ -537,7 +537,15 @@
 
 
     function mostrarErrorCampo(campoId, mensaje) {
-        const errorSpan = document.getElementById(campoId + 'Error');
+        // Mapear IDs de campos a IDs de spans de error
+        const errorIdMap = {
+            'patenteInput': 'patenteError',
+            'marcaInput': 'marcaError',
+            'clasificacionSelect': 'clasificacionError'
+        };
+        
+        const errorId = errorIdMap[campoId] || (campoId + 'Error');
+        const errorSpan = document.getElementById(errorId);
         if (errorSpan) {
             errorSpan.textContent = mensaje;
             errorSpan.style.display = 'block';
@@ -545,9 +553,18 @@
     }
 
     function limpiarErrorCampo(campoId) {
-        const errorSpan = document.getElementById(campoId + 'Error');
+        // Mapear IDs de campos a IDs de spans de error
+        const errorIdMap = {
+            'patenteInput': 'patenteError',
+            'marcaInput': 'marcaError',
+            'clasificacionSelect': 'clasificacionError'
+        };
+        
+        const errorId = errorIdMap[campoId] || (campoId + 'Error');
+        const errorSpan = document.getElementById(errorId);
         if (errorSpan) {
             errorSpan.textContent = '';
+            errorSpan.style.display = 'none';
         }
     }
 
