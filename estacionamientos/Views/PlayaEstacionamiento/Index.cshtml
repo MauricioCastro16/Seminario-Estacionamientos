@@ -46,6 +46,52 @@
       opacity: 0.3;
     }
   }
+
+  /* Estilos para el switch de estado */
+  /* Borrador: switch OFF (no checked) - amarillo */
+  .form-switch .estado-switch.switch-borrador:not(:checked) {
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+  }
+
+  .form-switch .estado-switch.switch-borrador:not(:checked):focus {
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
+  }
+
+  .form-switch .estado-switch.switch-borrador:not(:checked):hover:not(:disabled) {
+    background-color: #ffb300 !important;
+    border-color: #ffb300 !important;
+  }
+
+  /* Vigente: switch ON (checked) - verde */
+  .form-switch .estado-switch.switch-vigente:checked {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+  }
+
+  .form-switch .estado-switch.switch-vigente:checked:focus {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+    box-shadow: 0 0 0 0.25rem rgba(40, 167, 69, 0.25) !important;
+  }
+
+  .form-switch .estado-switch.switch-vigente:checked:hover:not(:disabled) {
+    background-color: #218838 !important;
+    border-color: #218838 !important;
+  }
+
+  /* Cuando el switch está deshabilitado */
+  .form-switch .estado-switch:disabled {
+    opacity: 0.65;
+    cursor: not-allowed !important;
+  }
+
+  .form-switch .estado-switch.switch-borrador:not(:checked):disabled {
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+  }
 </style>
 
 <div class="container">
@@ -300,95 +346,18 @@
     </div>
 }
 
-<!-- TABLA de playas VIGENTES -->
-@{
-    var playasVigentes = Model.Playas?.Where(p => p.PlyEstado == estacionamientos.Models.EstadoPlaya.Vigente).ToList() ?? new List<estacionamientos.Models.PlayaEstacionamiento>();
-    var playasBorrador = Model.Playas?.Where(p => p.PlyEstado == estacionamientos.Models.EstadoPlaya.Borrador).ToList() ?? new List<estacionamientos.Models.PlayaEstacionamiento>();
-}
-
-@if (playasVigentes.Any())
+<!-- TABLA unificada de playas -->
+@if (Model.Playas != null && Model.Playas.Any())
 {
     <div class="mt-4">
-        <h3 class="mb-3">
-            <span class="dot dot-green me-2"></span>
-            Vigentes
-        </h3>
-        <div class="table-responsive">
-            <table id="playasVigentesTable" class="table table-striped table-hover table-sm align-middle text-center">
-                <thead>
-                  <tr>
-                      <th class="text-center">Nombre</th>
-                      <th class="text-center">Provincia</th>
-                      <th class="text-center">Ciudad</th>
-                      <th class="text-center">Dirección</th>
-                      <th class="text-center">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @foreach (var playa in playasVigentes)
-                  {
-                      <tr>
-                          <td>@playa.PlyNom</td>
-                          <td>@playa.PlyProv</td>
-                          <td>@playa.PlyCiu</td>
-                          <td>@playa.PlyDir</td>
-                          <td class="text-center">
-                              <a class="btn btn-outline-primary btn-sm"
-                                asp-action="Index"
-                                asp-controller="Horario"
-                                asp-route-plyID="@playa.PlyID"
-                                title="Horarios">
-                                  <i class="fa-regular fa-clock"></i>
-                              </a>
-                              <a class="btn btn-outline-primary btn-sm"
-                                asp-action="Index"
-                                asp-controller="AceptaMetodoPago"
-                                asp-route-plyID="@playa.PlyID"
-                                title="Métodos de pago">
-                                  <i class="fa-regular fa-credit-card"></i>
-                              </a>
-                              <a class="btn btn-outline-primary btn-sm"
-                                asp-action="Servicios"
-                                asp-controller="ServicioProveido"
-                                asp-route-plyID="@playa.PlyID"
-                                title="Gestionar servicios">
-                                  <i class="fa-regular fa-clipboard"></i>
-                              </a>
-                              <a class="btn btn-outline-primary btn-sm"
-                                asp-action="Index"
-                                asp-controller="TarifaServicio"
-                                asp-route-plyID="@playa.PlyID"
-                                title="Ver tarifas">
-                                  <i class="fa-solid fa-money-bills"></i>
-                              </a>
-                              <a class="btn btn-outline-primary btn-sm" 
-                                asp-action="ConfigurarPlazas"
-                                asp-controller="PlazaEstacionamiento" 
-                                asp-route-plyID="@playa.PlyID" 
-                                title="Configurar plazas">
-                                  <i class="fa-solid fa-grip"></i>
-                              </a>
-                          </td>
-                      </tr>
-                  }
-                </tbody>
-            </table>
+        <div class="mb-3">
+            <h4 class="mb-0">Playas</h4>
         </div>
-    </div>
-}
-
-<!-- TABLA de playas BORRADOR -->
-@if (playasBorrador.Any())
-{
-    <div class="mt-4">
-        <h3 class="mb-3">
-            <span class="dot dot-yellow me-2"></span>
-            Borrador
-        </h3>
         <div class="table-responsive">
-            <table id="playasBorradorTable" class="table table-striped table-hover table-sm align-middle text-center">
+            <table id="playasTable" class="table table-striped table-hover table-sm align-middle text-center">
                 <thead>
                   <tr>
+                      <th class="text-center">Estado</th>
                       <th class="text-center">Nombre</th>
                       <th class="text-center">Provincia</th>
                       <th class="text-center">Ciudad</th>
@@ -397,30 +366,75 @@
                   </tr>
                 </thead>
                 <tbody>
-                  @foreach (var playa in playasBorrador)
+                  @foreach (var playa in Model.Playas)
                   {
+                      var isVigente = playa.PlyEstado == estacionamientos.Models.EstadoPlaya.Vigente;
+                      var isBorrador = playa.PlyEstado == estacionamientos.Models.EstadoPlaya.Borrador;
+                      
                       var faltaMetodoPago = ViewData[$"FaltaMetodoPago_{playa.PlyID}"] as bool? ?? false;
                       var faltaPlaza = ViewData[$"FaltaPlaza_{playa.PlyID}"] as bool? ?? false;
                       
                       var mensajeTooltip = "";
-                      if (faltaMetodoPago && faltaPlaza)
+                      var rowAttributes = "";
+                      
+                      if (isBorrador)
                       {
-                          mensajeTooltip = "Falta: Método de pago y Plaza";
-                      }
-                      else if (faltaMetodoPago)
-                      {
-                          mensajeTooltip = "Falta: Método de pago";
-                      }
-                      else if (faltaPlaza)
-                      {
-                          mensajeTooltip = "Falta: Plaza";
-                      }
-                      else
-                      {
-                          mensajeTooltip = "Lista para pasar a Vigente";
+                          if (faltaMetodoPago && faltaPlaza)
+                          {
+                              mensajeTooltip = "Falta: Método de pago y Plaza";
+                          }
+                          else if (faltaMetodoPago)
+                          {
+                              mensajeTooltip = "Falta: Método de pago";
+                          }
+                          else if (faltaPlaza)
+                          {
+                              mensajeTooltip = "Falta: Plaza";
+                          }
+                          else
+                          {
+                              mensajeTooltip = "Lista para pasar a Vigente";
+                          }
+                          rowAttributes = "data-bs-toggle=\"tooltip\" data-bs-placement=\"top\" title=\"" + mensajeTooltip + "\" style=\"cursor: help;\"";
                       }
                       
-                      <tr data-bs-toggle="tooltip" data-bs-placement="top" title="@mensajeTooltip" style="cursor: help;">
+                      @{
+                          var puedeCambiarAVigente = isBorrador && !faltaMetodoPago && !faltaPlaza;
+                          var switchHabilitado = isVigente || puedeCambiarAVigente;
+                          var tooltipSwitch = "";
+                          if (!switchHabilitado && isBorrador)
+                          {
+                              if (faltaMetodoPago && faltaPlaza)
+                              {
+                                  tooltipSwitch = "Falta: Método de pago y Plaza para cambiar a Vigente";
+                              }
+                              else if (faltaMetodoPago)
+                              {
+                                  tooltipSwitch = "Falta: Método de pago para cambiar a Vigente";
+                              }
+                              else if (faltaPlaza)
+                              {
+                                  tooltipSwitch = "Falta: Plaza para cambiar a Vigente";
+                              }
+                          }
+                      }
+                      <tr class="playa-row" data-estado="@(isVigente ? "vigente" : "borrador")" @Html.Raw(rowAttributes)>
+                          <td class="text-center">
+                              <form asp-controller="PlayaEstacionamiento" asp-action="ToggleEstado" method="post" class="d-inline">
+                                  @Html.AntiForgeryToken()
+                                  <input type="hidden" name="plyID" value="@playa.PlyID" />
+                                  <input type="hidden" name="nuevoEstado" id="nuevoEstado_@playa.PlyID" value="@(isVigente ? "false" : "true")" />
+                                  <div class="form-check form-switch d-inline-block" @(string.IsNullOrEmpty(tooltipSwitch) ? "" : $"data-bs-toggle=\"tooltip\" data-bs-placement=\"top\" title=\"{tooltipSwitch}\"") style="@(!string.IsNullOrEmpty(tooltipSwitch) ? "cursor: help;" : "")">
+                                      <input class="form-check-input estado-switch @(isVigente ? "switch-vigente" : "switch-borrador")" 
+                                             type="checkbox" 
+                                             id="estadoSwitch_@playa.PlyID"
+                                             @(isVigente ? "checked" : "")
+                                             @(!switchHabilitado ? "disabled" : "")
+                                             onchange="document.getElementById('nuevoEstado_@playa.PlyID').value = this.checked ? 'true' : 'false'; this.form.submit();"
+                                             style="cursor: @(switchHabilitado ? "pointer" : "not-allowed");" />
+                                  </div>
+                              </form>
+                          </td>
                           <td>@playa.PlyNom</td>
                           <td>@playa.PlyProv</td>
                           <td>@playa.PlyCiu</td>
@@ -469,8 +483,7 @@
         </div>
     </div>
 }
-
-@if ((Model.Playas == null || Model.Playas.Count == 0) || (!playasVigentes.Any() && !playasBorrador.Any()))
+else
 {
     <div class="mt-4">
         <div class="alert alert-info text-center">
@@ -622,24 +635,18 @@
   updateFilterUI();
   toggleAddButton();
 
-  // Auto-ocultar mensajes de éxito/error después de 3 segundos
-  document.addEventListener('DOMContentLoaded', function() {
-    const successAlerts = document.querySelectorAll('.alert-success');
-    const errorAlerts = document.querySelectorAll('.alert-danger');
-    
-    [...successAlerts, ...errorAlerts].forEach(function(alert) {
-      setTimeout(function() {
-        const bsAlert = new bootstrap.Alert(alert);
-        bsAlert.close();
-      }, 3000);
+    // Auto-ocultar mensajes de éxito/error después de 3 segundos
+    document.addEventListener('DOMContentLoaded', function() {
+        const successAlerts = document.querySelectorAll('.alert-success');
+        const errorAlerts = document.querySelectorAll('.alert-danger');
+        
+        [...successAlerts, ...errorAlerts].forEach(function(alert) {
+            setTimeout(function() {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            }, 3000);
+        });
     });
-
-    // Inicializar tooltips de Bootstrap
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-      return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-  });
 </script>
 
 @section Scripts {
@@ -672,12 +679,14 @@
 
                 $(selector).DataTable({
                     dom: domLayout,
-                    order: [[0, "asc"]],
+                    order: [[1, "asc"]], // Ordenar por Nombre (columna 1)
                     pageLength: 10,
                     lengthMenu: [5, 10, 25, 50],
                     pagingType: "simple_numbers",
                     language: datatableLanguage,
-                    columnDefs: [{ "orderable": false, "targets": -1 } ],
+                    columnDefs: [
+                        { "orderable": false, "targets": [0, -1] } // Columna del switch (0) y Acciones (-1) no ordenables
+                    ],
                     searching: false,
                     responsive: true,
                     info: false,
@@ -688,8 +697,13 @@
         }
 
         $(document).ready(function () {
-            initIfExists('#playasVigentesTable');
-            initIfExists('#playasBorradorTable');
+            initIfExists('#playasTable');
+            
+            // Inicializar tooltips de Bootstrap
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
         });
     })();
     </script>

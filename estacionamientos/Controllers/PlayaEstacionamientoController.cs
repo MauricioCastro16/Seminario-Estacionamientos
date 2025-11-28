@@ -369,6 +369,53 @@ namespace estacionamientos.Controllers
             }
         }
 
+        /// <summary>
+        /// Cambia el estado de una playa (Borrador <-> Vigente).
+        /// Solo permite cambiar a Vigente si cumple los requisitos.
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
+        public async Task<IActionResult> ToggleEstado(int plyID, bool nuevoEstado)
+        {
+            // Verificar que el usuario sea dueño de la playa
+            int usuNU = 0;
+            int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out usuNU);
+
+            var esMia = await _context.AdministraPlayas
+                .AnyAsync(a => a.PlyID == plyID && a.DueNU == usuNU);
+            
+            if (!esMia)
+                return Forbid();
+
+            var playa = await _context.Playas.FindAsync(plyID);
+            if (playa == null)
+                return NotFound();
+
+            // Si se intenta cambiar a Vigente, verificar requisitos
+            if (nuevoEstado && playa.PlyEstado == EstadoPlaya.Borrador)
+            {
+                var tieneMetodoPago = await _context.AceptaMetodosPago
+                    .AnyAsync(a => a.PlyID == plyID && a.AmpHab);
+                
+                var tienePlaza = await _context.Plazas
+                    .AnyAsync(p => p.PlyID == plyID);
+
+                if (!tieneMetodoPago || !tienePlaza)
+                {
+                    TempData["ErrorMessage"] = "No se puede cambiar a Vigente. La playa debe tener al menos 1 método de pago habilitado y 1 plaza configurada.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+
+            // Cambiar el estado
+            playa.PlyEstado = nuevoEstado ? EstadoPlaya.Vigente : EstadoPlaya.Borrador;
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = $"Estado de la playa actualizado a {(nuevoEstado ? "Vigente" : "Borrador")}.";
+            return RedirectToAction(nameof(Index));
+        }
+
         public async Task<IActionResult> Edit(int id)
         {
             var playa = await _context.Playas.FindAsync(id);
