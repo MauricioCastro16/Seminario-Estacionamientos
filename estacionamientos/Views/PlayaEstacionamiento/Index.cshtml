@@ -398,24 +398,22 @@
                           rowAttributes = "data-bs-toggle=\"tooltip\" data-bs-placement=\"top\" title=\"" + mensajeTooltip + "\" style=\"cursor: help;\"";
                       }
                       
-                      @{
-                          var puedeCambiarAVigente = isBorrador && !faltaMetodoPago && !faltaPlaza;
-                          var switchHabilitado = isVigente || puedeCambiarAVigente;
-                          var tooltipSwitch = "";
-                          if (!switchHabilitado && isBorrador)
+                      var puedeCambiarAVigente = isBorrador && !faltaMetodoPago && !faltaPlaza;
+                      var switchHabilitado = isVigente || puedeCambiarAVigente;
+                      var tooltipSwitch = "";
+                      if (!switchHabilitado && isBorrador)
+                      {
+                          if (faltaMetodoPago && faltaPlaza)
                           {
-                              if (faltaMetodoPago && faltaPlaza)
-                              {
-                                  tooltipSwitch = "Falta: Método de pago y Plaza para cambiar a Vigente";
-                              }
-                              else if (faltaMetodoPago)
-                              {
-                                  tooltipSwitch = "Falta: Método de pago para cambiar a Vigente";
-                              }
-                              else if (faltaPlaza)
-                              {
-                                  tooltipSwitch = "Falta: Plaza para cambiar a Vigente";
-                              }
+                              tooltipSwitch = "Falta: Método de pago y Plaza para cambiar a Vigente";
+                          }
+                          else if (faltaMetodoPago)
+                          {
+                              tooltipSwitch = "Falta: Método de pago para cambiar a Vigente";
+                          }
+                          else if (faltaPlaza)
+                          {
+                              tooltipSwitch = "Falta: Plaza para cambiar a Vigente";
                           }
                       }
                       <tr class="playa-row" data-estado="@(isVigente ? "vigente" : "borrador")" @Html.Raw(rowAttributes)>
