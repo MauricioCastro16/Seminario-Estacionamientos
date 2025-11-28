@@ -372,6 +372,7 @@ namespace estacionamientos.Controllers
         /// <summary>
         /// Cambia el estado de una playa (Borrador <-> Vigente).
         /// Solo permite cambiar a Vigente si cumple los requisitos.
+        /// Solo permite cambiar a Borrador si no tiene ocupaciones activas, turnos abiertos o abonos vigentes.
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -404,6 +405,41 @@ namespace estacionamientos.Controllers
                 if (!tieneMetodoPago || !tienePlaza)
                 {
                     TempData["ErrorMessage"] = "No se puede cambiar a Vigente. La playa debe tener al menos 1 método de pago habilitado y 1 plaza configurada.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+
+            // Si se intenta cambiar a Borrador, verificar que no tenga relaciones activas
+            if (!nuevoEstado && playa.PlyEstado == EstadoPlaya.Vigente)
+            {
+                var ahora = DateTime.UtcNow;
+                var razones = new List<string>();
+
+                // Verificar ocupaciones activas
+                var tieneOcupacionesActivas = await _context.Ocupaciones
+                    .AnyAsync(o => o.PlyID == plyID && o.OcufFyhFin == null);
+                if (tieneOcupacionesActivas)
+                    razones.Add("ocupaciones activas");
+
+                // Verificar turnos abiertos
+                var tieneTurnosAbiertos = await _context.Turnos
+                    .AnyAsync(t => t.PlyID == plyID && t.TurFyhFin == null);
+                if (tieneTurnosAbiertos)
+                    razones.Add("turnos de playeros abiertos");
+
+                // Verificar abonos activos (abonos con estado Activo o que no hayan finalizado)
+                var tieneAbonosActivos = await _context.Abonos
+                    .AnyAsync(a => a.PlyID == plyID && 
+                        (a.EstadoPago == EstadoPago.Activo || 
+                         (a.AboFyhFin == null || a.AboFyhFin > ahora)));
+                if (tieneAbonosActivos)
+                    razones.Add("abonos vigentes");
+
+                if (razones.Count > 0)
+                {
+                    var mensaje = "No se puede cambiar a Borrador. La playa tiene: " + 
+                        string.Join(", ", razones) + ".";
+                    TempData["ErrorMessage"] = mensaje;
                     return RedirectToAction(nameof(Index));
                 }
             }
