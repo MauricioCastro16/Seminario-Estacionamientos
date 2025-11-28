@@ -58,6 +58,7 @@ namespace estacionamientos.Controllers
             ViewBag.PlaNU = new SelectList(await playerosQuery.ToListAsync(), "UsuNU", "UsuNyA", plaSel);
 
             var playasQuery = _ctx.Playas.AsNoTracking()
+                .Where(p => p.PlyEstado == EstadoPlaya.Vigente) // Solo playas vigentes
                 .OrderBy(p => p.PlyCiu).ThenBy(p => p.PlyDir)
                 .Select(p => new { p.PlyID, Nombre = p.PlyNom + " (" + p.PlyCiu + ")" });
 
@@ -285,6 +286,16 @@ namespace estacionamientos.Controllers
                 if (!await TrabajaEnAsync(model.PlyID, plaNU))
                     ModelState.AddModelError(string.Empty, "No trabajás en esa playa.");
 
+                // Verificar que la playa esté en estado Vigente
+                var playa = await _ctx.Playas
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PlyID == model.PlyID);
+                
+                if (playa == null)
+                    ModelState.AddModelError(string.Empty, "La playa no existe.");
+                else if (playa.PlyEstado != EstadoPlaya.Vigente)
+                    ModelState.AddModelError(string.Empty, "Solo se pueden iniciar turnos en playas vigentes.");
+
                 // SIEMPRE guardar turnos en UTC
                 model.TurFyhIni = DateTime.UtcNow;
             }
@@ -292,6 +303,16 @@ namespace estacionamientos.Controllers
             {
                 if (!await TrabajaEnAsync(model.PlyID, model.PlaNU))
                     ModelState.AddModelError(string.Empty, "El playero no trabaja en esa playa.");
+
+                // Verificar que la playa esté en estado Vigente
+                var playa = await _ctx.Playas
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PlyID == model.PlyID);
+                
+                if (playa == null)
+                    ModelState.AddModelError(string.Empty, "La playa no existe.");
+                else if (playa.PlyEstado != EstadoPlaya.Vigente)
+                    ModelState.AddModelError(string.Empty, "Solo se pueden iniciar turnos en playas vigentes.");
 
                 model.TurFyhIni = model.TurFyhIni == default ? DateTime.UtcNow : ToUtc(model.TurFyhIni);
             }
