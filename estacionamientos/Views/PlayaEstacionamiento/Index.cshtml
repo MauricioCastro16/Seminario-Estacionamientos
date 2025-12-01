@@ -48,19 +48,19 @@
   }
 
   /* Estilos para el switch de estado */
-  /* Borrador: switch OFF (no checked) - amarillo */
-  .form-switch .estado-switch.switch-borrador:not(:checked) {
+  /* Oculto: switch OFF (no checked) - amarillo */
+  .form-switch .estado-switch.switch-oculto:not(:checked) {
     background-color: #ffc107 !important;
     border-color: #ffc107 !important;
   }
 
-  .form-switch .estado-switch.switch-borrador:not(:checked):focus {
+  .form-switch .estado-switch.switch-oculto:not(:checked):focus {
     background-color: #ffc107 !important;
     border-color: #ffc107 !important;
     box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
   }
 
-  .form-switch .estado-switch.switch-borrador:not(:checked):hover:not(:disabled) {
+  .form-switch .estado-switch.switch-oculto:not(:checked):hover:not(:disabled) {
     background-color: #ffb300 !important;
     border-color: #ffb300 !important;
   }
@@ -88,7 +88,7 @@
     cursor: not-allowed !important;
   }
 
-  .form-switch .estado-switch.switch-borrador:not(:checked):disabled {
+  .form-switch .estado-switch.switch-oculto:not(:checked):disabled {
     background-color: #ffc107 !important;
     border-color: #ffc107 !important;
   }
@@ -369,7 +369,7 @@
                   @foreach (var playa in Model.Playas)
                   {
                       var isVigente = playa.PlyEstado == estacionamientos.Models.EstadoPlaya.Vigente;
-                      var isBorrador = playa.PlyEstado == estacionamientos.Models.EstadoPlaya.Borrador;
+                      var isOculto = playa.PlyEstado == estacionamientos.Models.EstadoPlaya.Oculto;
                       
                       var faltaMetodoPago = ViewData[$"FaltaMetodoPago_{playa.PlyID}"] as bool? ?? false;
                       var faltaPlaza = ViewData[$"FaltaPlaza_{playa.PlyID}"] as bool? ?? false;
@@ -377,7 +377,7 @@
                       var mensajeTooltip = "";
                       var rowAttributes = "";
                       
-                      if (isBorrador)
+                      if (isOculto)
                       {
                           if (faltaMetodoPago && faltaPlaza)
                           {
@@ -398,10 +398,10 @@
                           rowAttributes = "data-bs-toggle=\"tooltip\" data-bs-placement=\"top\" title=\"" + mensajeTooltip + "\" style=\"cursor: help;\"";
                       }
                       
-                      var puedeCambiarAVigente = isBorrador && !faltaMetodoPago && !faltaPlaza;
+                      var puedeCambiarAVigente = isOculto && !faltaMetodoPago && !faltaPlaza;
                       var switchHabilitado = isVigente || puedeCambiarAVigente;
                       var tooltipSwitch = "";
-                      if (!switchHabilitado && isBorrador)
+                      if (!switchHabilitado && isOculto)
                       {
                           if (faltaMetodoPago && faltaPlaza)
                           {
@@ -416,14 +416,14 @@
                               tooltipSwitch = "Falta: Plaza para cambiar a Vigente";
                           }
                       }
-                      <tr class="playa-row" data-estado="@(isVigente ? "vigente" : "borrador")" @Html.Raw(rowAttributes)>
+                      <tr class="playa-row" data-estado="@(isVigente ? "vigente" : "oculto")" @Html.Raw(rowAttributes)>
                           <td class="text-center">
                               <form asp-controller="PlayaEstacionamiento" asp-action="ToggleEstado" method="post" class="d-inline">
                                   @Html.AntiForgeryToken()
                                   <input type="hidden" name="plyID" value="@playa.PlyID" />
                                   <input type="hidden" name="nuevoEstado" id="nuevoEstado_@playa.PlyID" value="@(isVigente ? "false" : "true")" />
                                   <div class="form-check form-switch d-inline-block" @(string.IsNullOrEmpty(tooltipSwitch) ? "" : $"data-bs-toggle=\"tooltip\" data-bs-placement=\"top\" title=\"{tooltipSwitch}\"") style="@(!string.IsNullOrEmpty(tooltipSwitch) ? "cursor: help;" : "")">
-                                      <input class="form-check-input estado-switch @(isVigente ? "switch-vigente" : "switch-borrador")" 
+                                      <input class="form-check-input estado-switch @(isVigente ? "switch-vigente" : "switch-oculto")" 
                                              type="checkbox" 
                                              id="estadoSwitch_@playa.PlyID"
                                              @(isVigente ? "checked" : "")

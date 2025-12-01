@@ -7,6 +7,7 @@ namespace estacionamientos.Models
     public enum EstadoPlaya
     {
         Borrador = 0,
+        Oculto = 0,
         Vigente = 1
     }
 
@@ -50,9 +51,9 @@ namespace estacionamientos.Models
 
         public decimal? PlyLon { get; set; }
 
-        // Estado de la playa (Borrador/Vigente)
+        // Estado de la playa (Oculto/Vigente)
         [Required]
-        public EstadoPlaya PlyEstado { get; set; } = EstadoPlaya.Borrador;
+        public EstadoPlaya PlyEstado { get; set; } = EstadoPlaya.Oculto;
 
         // Navegaciones
         public ICollection<Valoracion> Valoraciones { get; set; } = new List<Valoracion>();

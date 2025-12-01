@@ -304,7 +304,7 @@ public static class DbInitializer
                     PlyLlavReq = faker.Random.Bool(),
                     PlyLat = direccionSeleccionada.lat,
                     PlyLon = direccionSeleccionada.lon,
-                    PlyEstado = EstadoPlaya.Borrador // Se actualizará a Vigente cuando tenga métodos de pago y plazas
+                    PlyEstado = EstadoPlaya.Oculto // Se actualizará a Vigente cuando tenga métodos de pago y plazas
                 };
                 playas.Add(playa);
 
@@ -1426,7 +1426,7 @@ context.SaveChanges();
         }
 
         // =========================
-        // Actualizar estado de playas: Borrador -> Vigente si tienen métodos de pago y plazas
+        // Actualizar estado de playas: Oculto -> Vigente si tienen métodos de pago y plazas
         // =========================
         var todasLasPlayas = context.Playas.ToList();
         foreach (var playa in todasLasPlayas)
@@ -1440,7 +1440,7 @@ context.SaveChanges();
                 .Any(p => p.PlyID == playa.PlyID);
 
             // Si cumple ambos requisitos, actualizar a Vigente
-            if (tieneMetodoPago && tienePlaza && playa.PlyEstado == EstadoPlaya.Borrador)
+            if (tieneMetodoPago && tienePlaza && playa.PlyEstado == EstadoPlaya.Oculto)
             {
                 playa.PlyEstado = EstadoPlaya.Vigente;
             }

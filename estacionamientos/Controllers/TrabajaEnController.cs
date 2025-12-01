@@ -69,7 +69,7 @@ namespace estacionamientos.Controllers
             var playa = await _ctx.Playas.FindAsync(model.PlyID);
             if (playa != null && playa.PlyEstado != EstadoPlaya.Vigente)
             {
-                ModelState.AddModelError(string.Empty, "No se pueden asignar playeros a playas que estén en estado Borrador. La playa debe estar Vigente (tener al menos 1 método de pago y 1 plaza configurada).");
+                ModelState.AddModelError(string.Empty, "No se pueden asignar playeros a playas que estén en estado Oculto. La playa debe estar Vigente (tener al menos 1 método de pago y 1 plaza configurada).");
             }
 
             // evitar duplicados exactos (misma clave compuesta)
