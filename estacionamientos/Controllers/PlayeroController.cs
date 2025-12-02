@@ -232,6 +232,24 @@ namespace estacionamientos.Controllers
                 ModelState.AddModelError(nameof(vm.PlayaId), "No se pueden asignar playeros a playas que estén en estado Oculto. La playa debe estar Vigente (tener al menos 1 método de pago y 1 plaza configurada).");
             }
 
+            // Validación de unicidad de email
+            var emailUsado = await _context.Usuarios
+                .AsNoTracking()
+                .AnyAsync(u => u.UsuEmail == vm.Playero.UsuEmail);
+            if (emailUsado)
+            {
+                ModelState.AddModelError("Playero.UsuEmail", "El email ya está en uso.");
+            }
+
+            // Validación de unicidad de nombre de usuario
+            var nombreUsuarioUsado = await _context.Usuarios
+                .AsNoTracking()
+                .AnyAsync(u => u.UsuNomUsu == vm.Playero.UsuNomUsu);
+            if (nombreUsuarioUsado)
+            {
+                ModelState.AddModelError("Playero.UsuNomUsu", "El nombre de usuario ya está en uso.");
+            }
+
             if (!ModelState.IsValid)
             {
                 ViewBag.Playas = await SelectListPlayasDelDuenioAsync(dueId, vm.PlayaId);
@@ -239,7 +257,7 @@ namespace estacionamientos.Controllers
             }
 
             // Calcular el siguiente UsuNU disponible dinámicamente:
-            int nextUsuNu = Math.Max(9, (await _context.Usuarios.MaxAsync(u => u.UsuNU)) + 1);
+            int nextUsuNu = Math.Max(9, (await _context.Usuarios.AnyAsync() ? await _context.Usuarios.MaxAsync(u => u.UsuNU) : 0) + 1);
 
             // Verificar que no haya colisión con el valor de UsuNU
             while (await _context.Usuarios.AnyAsync(u => u.UsuNU == nextUsuNu))

@@ -174,7 +174,7 @@ namespace estacionamientos.Controllers
             }
 
             // Calcular el siguiente UsuNU disponible dinámicamente:
-            int nextUsuNu = Math.Max(9, (await _ctx.Usuarios.MaxAsync(u => u.UsuNU)) + 1);
+            int nextUsuNu = Math.Max(9, (await _ctx.Usuarios.AnyAsync() ? await _ctx.Usuarios.MaxAsync(u => u.UsuNU) : 0) + 1);
 
             // Verificar que no haya colisión con el valor de UsuNU
             while (await _ctx.Usuarios.AnyAsync(u => u.UsuNU == nextUsuNu))

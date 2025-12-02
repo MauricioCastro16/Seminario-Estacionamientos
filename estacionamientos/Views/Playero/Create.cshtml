@@ -26,9 +26,9 @@
         </div>
 
         <div class="mb-3">
-            <label asp-for="Playero.UsuNomUsu" class="form-label">Nombre de usuario</label>
-            <input asp-for="Playero.UsuNomUsu" class="form-control" />
-            <span asp-validation-for="Playero.UsuNomUsu" ></span>
+            <label asp-for="Playero.UsuNomUsu" class="form-label">Nombre de usuario <span class="text-danger">*</span></label>
+            <input asp-for="Playero.UsuNomUsu" class="form-control" required />
+            <span asp-validation-for="Playero.UsuNomUsu" class="text-danger"></span>
         </div>
 
         <div class="mb-3">
