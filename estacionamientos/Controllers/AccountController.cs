@@ -126,7 +126,15 @@ namespace estacionamientos.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
         {
+            // Limpiar todas las cookies
+            foreach (var cookie in Request.Cookies.Keys)
+            {
+                Response.Cookies.Delete(cookie);
+            }
+
+            // Cerrar sesión
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            
             return RedirectToAction(nameof(Login));
         }
 

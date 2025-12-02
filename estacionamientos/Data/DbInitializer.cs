@@ -225,6 +225,6 @@ public static class DbInitializer
         {
             // Si falla (por ejemplo, si la secuencia tiene otro nombre), no es crítico
             // El cálculo manual de UsuNU en los controladores debería manejar esto
-        }
-    }
+                                }
+                            }
 }
