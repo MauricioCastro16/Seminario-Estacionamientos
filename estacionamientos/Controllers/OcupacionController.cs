@@ -302,13 +302,10 @@ namespace estacionamientos.Controllers
             // Un abono es válido si: no está cancelado, no está finalizado, y está dentro del rango de fechas
             var fechaActualDate = fechaActual.Date;
             
-            // Normalizar la patente para comparación case-insensitive
-            var vehPtntNormalized = (vehPtnt?.Trim().ToUpperInvariant() ?? string.Empty);
-            
             // Validar que exista al menos una tarifa vigente AL MOMENTO DEL COBRO
             // Esta validación es crítica: no podemos cobrar si no hay tarifas vigentes ahora (excepto si es abonado)
             // Primero verificamos si es abonado para evitar el error innecesario
-            var abonosFiltrados = await _ctx.Abonos
+            var abonosFiltradosActivos = await _ctx.Abonos
                 .Include(a => a.Vehiculos)
                 .Where(a => a.EstadoPago != EstadoPago.Cancelado &&
                            a.EstadoPago != EstadoPago.Finalizado &&
@@ -319,8 +316,8 @@ namespace estacionamientos.Controllers
                            a.PlzNum == plzNum) // Verificar que está en la plaza del abono
                 .ToListAsync();
             
-            // Comparar patentes de forma case-insensitive en memoria
-            var esAbonado = abonosFiltrados.Any(a => 
+            // Comparar patentes de forma case-insensitive en memoria (usamos la patente ya normalizada)
+            var esAbonado = abonosFiltradosActivos.Any(a => 
                 a.Vehiculos.Any(v => v.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized));
             
             // Solo validar tarifas si NO es abonado
