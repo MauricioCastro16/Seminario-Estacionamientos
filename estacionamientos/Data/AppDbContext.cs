@@ -365,6 +365,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 // PK compuesta
                 e.HasKey(h => new { h.PlyID, h.ClaDiasID, h.HorFyhIni });
 
+                // Configurar tipo de columna para PostgreSQL (timestamptz)
+                // Esto asegura que los DateTime se manejen correctamente con zona horaria
+                e.Property(h => h.HorFyhIni).HasColumnType("timestamptz").IsRequired();
+                e.Property(h => h.HorFyhFin).HasColumnType("timestamptz");
+
                 // FK a Playa
                 e.HasOne(h => h.Playa)
                 .WithMany(p => p.Horarios)     // si querés, agregá esta colección en PlayaEstacionamiento

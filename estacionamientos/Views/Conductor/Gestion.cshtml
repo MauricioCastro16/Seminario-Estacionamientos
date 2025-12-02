@@ -6,6 +6,8 @@
     var historialPorVehiculo = ViewBag.HistorialPorVehiculo as Dictionary<string, List<object>>;
 }
 
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+
 <div class="container-fluid py-4">
     <div class="row">
         <div class="col-12 mb-4">
@@ -63,7 +65,7 @@
                                                     <h6 class="ms-3 mb-2 fw-semibold">
                                                         <i class="bi bi-credit-card me-2 text-primary"></i>Abonos
                                                     </h6>
-                                                    <table class="table table-striped table-hover table-sm align-middle text-center shadow-sm">
+                                                    <table class="table table-striped table-hover table-sm align-middle text-center shadow-sm datatable-abonos">
                                                         <thead class="table-light">
                                                             <tr>
                                                                 <th class="text-center">Playa</th>
@@ -118,7 +120,7 @@
                                                             <i class="bi bi-clock-history me-2 text-primary"></i>Visitas
                                                         </h6>
                                                     }
-                                                    <table class="table table-striped table-hover table-sm align-middle text-center shadow-sm">
+                                                    <table class="table table-striped table-hover table-sm align-middle text-center shadow-sm datatable-visitas">
                                                         <thead class="table-light">
                                                             <tr>
                                                                 <th class="text-center">Playa</th>
@@ -192,102 +194,133 @@
                                             }
                                         </div>
 
-                                        <!-- Vista Mobile: Cards -->
+                                        <!-- Vista Mobile: Cards (separadas por Abonos y Visitas con paginación simple) -->
                                         <div class="d-lg-none">
                                             <div class="p-2">
-                                                @foreach (dynamic visita in historial)
+                                                @if (abonos.Any())
                                                 {
-                                                    <div class="card mb-2 border-0 shadow-sm visita-card-mobile">
-                                                        <div class="card-body p-2">
-                                                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                                                <div class="flex-grow-1">
-                                                                    @if (visita.Tipo == "Abono")
-                                                                    {
-                                                                        <strong class="small d-block mb-1">@visita.PlayaNombre</strong>
-                                                                        <small class="text-muted d-block">Plaza @visita.PlazaNumero</small>
-                                                                        <small class="text-muted d-block">
-                                                                            Inicio: @visita.FechaHoraIngreso.ToString("dd/MM/yyyy")
-                                                                        </small>
-                                                                        @if (visita.FechaHoraEgreso != null)
-                                                                        {
-                                                                            <small class="text-muted d-block">
-                                                                                Fin: @(((DateTime)visita.FechaHoraEgreso).ToString("dd/MM/yyyy"))
-                                                                            </small>
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            <small class="text-muted d-block">Fin: -</small>
-                                                                        }
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        <strong class="small d-block mb-1">@visita.PlayaNombre</strong>
-                                                                        <small class="text-muted">
-                                                                            @visita.FechaHoraIngreso.ToString("dd/MM/yyyy HH:mm")
-                                                                        </small>
-                                                                    }
-                                                                </div>
-                                                                <div class="text-end">
-                                                                    @if (visita.Tipo == "Abono")
-                                                                    {
-                                                                        <small class="d-block mb-1">Abono</small>
-                                                                        @if (visita.EstadoAbono != null)
-                                                                        {
-                                                                            <small class="fw-bold @(visita.EstadoAbono == "Activo" ? "text-success" : 
-                                                                                  visita.EstadoAbono == "Pendiente" ? "text-warning" : 
-                                                                                  visita.EstadoAbono == "Finalizado" ? "text-secondary" : 
-                                                                                  visita.EstadoAbono == "Cancelado" ? "text-danger" : "text-secondary")">
-                                                                                @visita.EstadoAbono
-                                                                            </small>
-                                                                        }
-                                                                    }
-                                                                    else if (visita.MostrarVarios == true)
-                                                                    {
-                                                                        <div class="d-inline-block position-relative">
-                                                                            <small class="toggle-varios-servicios text-dark d-block" style="cursor: pointer;" data-servicios='@Html.Raw(Json.Serialize(visita.ServiciosNombres ?? new List<string>()))'>
-                                                                                Varios <i class="bi bi-caret-right-fill text-dark"></i>
-                                                                            </small>
-                                                                            <div class="varios-servicios-list bg-light border rounded p-2 position-absolute d-none shadow-sm"
-                                                                                style="white-space: nowrap; z-index: 1000; min-width: 150px;">
+                                                    <div class="mb-3 mobile-paged-section" data-page-size="5">
+                                                        <div class="d-flex justify-content-between align-items-center mb-2 mobile-section-header">
+                                                            <h6 class="mb-0 fw-semibold">
+                                                                <i class="bi bi-credit-card me-2 text-primary"></i>Abonos
+                                                            </h6>
+                                                            <div class="mobile-pager d-none">
+                                                                <button type="button" class="btn btn-link btn-sm mobile-prev px-1">« Anterior</button>
+                                                                <span class="badge bg-primary mobile-page-indicator">1</span>
+                                                                <button type="button" class="btn btn-link btn-sm mobile-next px-1">Siguiente »</button>
+                                                            </div>
+                                                        </div>
+                                                        <div class="mobile-items">
+                                                            @foreach (dynamic abono in abonos)
+                                                            {
+                                                                <div class="card mb-2 border-0 shadow-sm visita-card-mobile mobile-item">
+                                                                    <div class="card-body p-2">
+                                                                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                                                            <div class="flex-grow-1">
+                                                                                <strong class="small d-block mb-1">@abono.PlayaNombre</strong>
+                                                                                <small class="text-muted d-block">Plaza @abono.PlazaNumero</small>
+                                                                                <small class="text-muted d-block">
+                                                                                    Inicio: @abono.FechaHoraIngreso.ToString("dd/MM/yyyy")
+                                                                                </small>
+                                                                                @if (abono.FechaHoraEgreso != null)
+                                                                                {
+                                                                                    <small class="text-muted d-block">
+                                                                                        Fin: @(((DateTime)abono.FechaHoraEgreso).ToString("dd/MM/yyyy"))
+                                                                                    </small>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <small class="text-muted d-block">Fin: -</small>
+                                                                                }
+                                                                            </div>
+                                                                            <div class="text-end">
+                                                                                <small class="d-block mb-1">Abono</small>
+                                                                                @if (abono.EstadoAbono != null)
+                                                                                {
+                                                                                    <small class="fw-bold @(abono.EstadoAbono == "Activo" ? "text-success" : 
+                                                                                          abono.EstadoAbono == "Pendiente" ? "text-warning" : 
+                                                                                          abono.EstadoAbono == "Finalizado" ? "text-secondary" : 
+                                                                                          abono.EstadoAbono == "Cancelado" ? "text-danger" : "text-secondary")">
+                                                                                        @abono.EstadoAbono
+                                                                                    </small>
+                                                                                }
                                                                             </div>
                                                                         </div>
-                                                                        @if (visita.TieneServiciosEnCurso == true)
-                                                                        {
-                                                                            <small class="badge bg-info d-block mt-1">En curso</small>
-                                                                        }
-                                                                        else if (visita.TieneServiciosPendientes == true)
-                                                                        {
-                                                                            <small class="badge bg-warning d-block mt-1">Pendiente</small>
-                                                                        }
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        <small class="d-block">@(visita.Tipo?.ToString() ?? "Servicio")</small>
-                                                                        @if (visita.TieneServiciosEnCurso == true)
-                                                                        {
-                                                                            <small class="badge bg-info d-block mt-1">En curso</small>
-                                                                        }
-                                                                        else if (visita.TieneServiciosPendientes == true)
-                                                                        {
-                                                                            <small class="badge bg-warning d-block mt-1">Pendiente</small>
-                                                                        }
-                                                                    }
-                                                                    @if (visita.Tipo != "Abono")
-                                                                    {
-                                                                        @if (visita.MontoPagado > 0)
-                                                                        {
-                                                                            <strong class="text-dark small d-block mt-1">
-                                                                                $@visita.MontoPagado.ToString("F2")
-                                                                            </strong>
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            <small class="text-muted d-block mt-1">$0.00</small>
-                                                                        }
-                                                                        <small class="text-muted d-block mt-1">@visita.MetodoPago</small>
-                                                                    }
+                                                                    </div>
                                                                 </div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+
+                                                @if (visitas.Any())
+                                                {
+                                                    <div class="mobile-paged-section" data-page-size="5">
+                                                        <div class="d-flex justify-content-between align-items-center mb-2 mobile-section-header">
+                                                            <h6 class="mb-0 fw-semibold">
+                                                                <i class="bi bi-clock-history me-2 text-primary"></i>Visitas
+                                                            </h6>
+                                                            <div class="mobile-pager d-none">
+                                                                <button type="button" class="btn btn-link btn-sm mobile-prev px-1">« Anterior</button>
+                                                                <span class="badge bg-primary mobile-page-indicator">1</span>
+                                                                <button type="button" class="btn btn-link btn-sm mobile-next px-1">Siguiente »</button>
                                                             </div>
+                                                        </div>
+                                                        <div class="mobile-items">
+                                                            @foreach (dynamic visita in visitas)
+                                                            {
+                                                                <div class="card mb-2 border-0 shadow-sm visita-card-mobile mobile-item">
+                                                                    <div class="card-body p-2">
+                                                                        <div class="mb-1">
+                                                                            <strong class="small d-block mb-1">@visita.PlayaNombre</strong>
+                                                                            <small class="text-muted d-block">
+                                                                                @visita.FechaHoraIngreso.ToString("dd/MM/yyyy HH:mm")
+                                                                            </small>
+                                                                        </div>
+
+                                                                        <div class="mb-1">
+                                                                            @if (visita.MostrarVarios == true)
+                                                                            {
+                                                                                <div class="d-inline-block position-relative">
+                                                                                    <small class="toggle-varios-servicios text-dark d-block" style="cursor: pointer;" data-servicios='@Html.Raw(Json.Serialize(visita.ServiciosNombres ?? new List<string>()))'>
+                                                                                        Varios <i class="bi bi-caret-right-fill text-dark"></i>
+                                                                                    </small>
+                                                                                    <div class="varios-servicios-list bg-light border rounded p-2 position-absolute d-none shadow-sm"
+                                                                                        style="white-space: nowrap; z-index: 1000; min-width: 150px;">
+                                                                                    </div>
+                                                                                </div>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <small class="d-block">@(visita.Tipo?.ToString() ?? "Servicio")</small>
+                                                                            }
+
+                                                                            @if (visita.TieneServiciosEnCurso == true)
+                                                                            {
+                                                                                <small class="badge bg-info d-inline-block mt-1">En curso</small>
+                                                                            }
+                                                                            else if (visita.TieneServiciosPendientes == true)
+                                                                            {
+                                                                                <small class="badge bg-warning d-inline-block mt-1">Pendiente</small>
+                                                                            }
+                                                                        </div>
+
+                                                                        <div class="mt-1 text-end">
+                                                                            @if (visita.MontoPagado > 0)
+                                                                            {
+                                                                                <strong class="text-dark small d-block">
+                                                                                    $@visita.MontoPagado.ToString("F2")
+                                                                                </strong>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <small class="text-muted d-block">$0.00</small>
+                                                                            }
+                                                                            <small class="text-muted d-block">@visita.MetodoPago</small>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            }
                                                         </div>
                                                     </div>
                                                 }
@@ -326,10 +359,12 @@
 </div>
 
 <style>
-    /* Efectos modernos sin gradientes - manteniendo colores originales */
+    /* Estilos generales para historial de gestión (enfocado en mobile-first) */
     
     /* Cards principales */
     .historial-card {
+        border-radius: 1rem;
+        overflow: hidden;
     }
     
     .historial-card:hover {
@@ -389,6 +424,18 @@
         .card-body {
             padding: 1rem !important;
         }
+
+        .historial-card {
+            border-radius: 0.75rem;
+        }
+
+        .historial-card .card-header {
+            padding: 0.75rem 1rem;
+        }
+
+        .historial-card .card-header h4 {
+            font-size: 1.05rem;
+        }
     }
     
     @@media (max-width: 768px) {
@@ -402,11 +449,33 @@
         }
         
         .card-header h5 {
-            font-size: 1rem;
+            font-size: 0.95rem;
         }
-        
-        .visita-card-mobile {
+
+        .vehiculo-card {
             margin-bottom: 1rem;
+        }
+
+        .visita-card-mobile {
+            margin-bottom: 0.75rem;
+        }
+
+        .mobile-section-header h6 {
+            font-size: 0.9rem;
+        }
+
+        .mobile-pager .btn {
+            font-size: 0.8rem;
+        }
+
+        /* Ajustar paginación de DataTables cuando se vea en pantallas pequeñas (modo adaptativo) */
+        .dataTables_wrapper .dataTables_paginate {
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        .dataTables_wrapper .dataTables_paginate .pagination {
+            justify-content: center;
         }
     }
     
@@ -434,9 +503,104 @@
     }
 </style>
 
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        document.querySelectorAll(".toggle-varios-servicios").forEach(function (toggle) {
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            // Configuración común de idioma para DataTables
+            const datatableLanguage = {
+                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json",
+                "lengthMenu": "Mostrar _MENU_ registros por página",
+                "paginate": {
+                    "previous": "« Anterior",
+                    "next": "Siguiente »"
+                }
+            };
+
+            // Inicializar DataTables para tablas de Abonos y Visitas (solo vista desktop)
+            $('.datatable-abonos, .datatable-visitas').DataTable({
+                "pageLength": 5,
+                "lengthMenu": [5, 10, 25, 50],
+                "language": datatableLanguage,
+                "order": [],           // Sin orden inicial específico
+                "dom": 'lrtp',         // Oculta buscador y texto de información (usamos info: false)
+                "info": false,         // Oculta el texto "Mostrando X a Y de Z entradas"
+                "drawCallback": function () {
+                    // Forzar paginador: « Anterior [número actual] Siguiente »
+                    const api = this.api();
+                    const info = api.page.info();
+                    const currentPage = info.page + 1;
+
+                    const $wrapper = $(api.table().container());
+                    const $pagination = $wrapper.find('ul.pagination');
+
+                    if ($pagination.length) {
+                        // Eliminar cualquier botón numérico existente (incluyendo "...")
+                        $pagination.find('li')
+                            .not('.previous')
+                            .not('.next')
+                            .remove();
+
+                        // Crear el botón con el número de página actual
+                        const $current = $('<li class="paginate_button active"><a class="page-link" href="#">' + currentPage + '</a></li>');
+                        $current.insertBefore($pagination.find('li.next'));
+                    }
+                }
+            });
+
+            // Paginación simple para secciones móviles de Abonos y Visitas
+            const defaultPageSize = 5;
+            $('.mobile-paged-section').each(function () {
+                const $section = $(this);
+                const pageSize = parseInt($section.data('page-size')) || defaultPageSize;
+                const $items = $section.find('.mobile-item');
+                const totalItems = $items.length;
+                const totalPages = Math.ceil(totalItems / pageSize);
+                const $pager = $section.find('.mobile-pager');
+                const $pageIndicator = $section.find('.mobile-page-indicator');
+
+                if (totalPages <= 1) {
+                    // Si solo hay una página, mostramos todo y ocultamos el pager
+                    $items.removeClass('d-none');
+                    $pager.addClass('d-none');
+                    return;
+                }
+
+                let currentPage = 1;
+
+                const renderPage = () => {
+                    $items.each(function (index) {
+                        const page = Math.floor(index / pageSize) + 1;
+                        $(this).toggleClass('d-none', page !== currentPage);
+                    });
+
+                    $pageIndicator.text(currentPage);
+                    $pager.removeClass('d-none');
+                };
+
+                renderPage();
+
+                $section.find('.mobile-prev').on('click', function (e) {
+                    e.preventDefault();
+                    if (currentPage > 1) {
+                        currentPage--;
+                        renderPage();
+                    }
+                });
+
+                $section.find('.mobile-next').on('click', function (e) {
+                    e.preventDefault();
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        renderPage();
+                    }
+                });
+            });
+
+            document.querySelectorAll(".toggle-varios-servicios").forEach(function (toggle) {
             toggle.addEventListener("click", function (e) {
                 e.stopPropagation(); // evitar que se cierre al hacer clic en sí mismo
                 const container = this.closest(".d-inline-block");
@@ -526,21 +690,21 @@
             });
         });
 
-        // Cerrar si se hace clic fuera
-        document.addEventListener("click", function (e) {
-            if (!e.target.closest(".d-inline-block.position-relative")) {
-                document.querySelectorAll(".varios-servicios-list").forEach(function (list) {
-                    if (!list.classList.contains("d-none")) {
-                        list.classList.add("d-none");
-                        const icon = list.closest(".d-inline-block")?.querySelector("i");
-                        if (icon) {
-                            icon.classList.remove("bi-caret-left-fill");
-                            icon.classList.add("bi-caret-right-fill");
+            // Cerrar si se hace clic fuera
+            document.addEventListener("click", function (e) {
+                if (!e.target.closest(".d-inline-block.position-relative")) {
+                    document.querySelectorAll(".varios-servicios-list").forEach(function (list) {
+                        if (!list.classList.contains("d-none")) {
+                            list.classList.add("d-none");
+                            const icon = list.closest(".d-inline-block")?.querySelector("i");
+                            if (icon) {
+                                icon.classList.remove("bi-caret-left-fill");
+                                icon.classList.add("bi-caret-right-fill");
+                            }
                         }
-                    }
-                });
-            }
+                    });
+                }
+            });
         });
-    });
-</script>
-
+    </script>
+}

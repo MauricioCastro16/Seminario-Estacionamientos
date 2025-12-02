@@ -3,13 +3,123 @@ using Microsoft.EntityFrameworkCore;
 using estacionamientos.Data;
 using estacionamientos.Models;
 using System.Security.Claims;
+using System.Collections.Generic;
 
 namespace estacionamientos.Controllers
 {
+    // DTO para horarios - formato unificado para el frontend
+    public class HorarioDTO
+    {
+        public string TipoDia { get; set; } = string.Empty;
+        public string HoraInicio { get; set; } = string.Empty;
+        public string? HoraFin { get; set; }
+    }
+
+    // DTO para horarios agrupados
+    public class HorarioAgrupadoDTO
+    {
+        public string horaInicio { get; set; } = string.Empty;
+        public string horaFin { get; set; } = string.Empty;
+    }
+
     public class ConductorController : Controller
     {
         private readonly AppDbContext _context;
         public ConductorController(AppDbContext context) => _context = context;
+
+        // Método auxiliar para procesar un horario y convertirlo a DTO
+        // IMPORTANTE: Los horarios se guardan usando BuildDate que agrega un TimeSpan a una fecha base UTC (2000-01-01)
+        // Usar la MISMA lógica que HorarioController.ReadTime: date.TimeOfDay
+        private static TimeSpan ReadTime(DateTime date) => date.TimeOfDay;
+        
+        private HorarioDTO ProcesarHorario(Horario h)
+        {
+            try
+            {
+                if (h == null)
+                {
+                    return new HorarioDTO
+                    {
+                        TipoDia = "",
+                        HoraInicio = "00:00",
+                        HoraFin = "23:59"
+                    };
+                }
+
+                // Usar ReadTime igual que HorarioController - extrae el TimeSpan del DateTime
+                var timeOfDayIni = ReadTime(h.HorFyhIni);
+                var timeOfDayFin = h.HorFyhFin.HasValue ? ReadTime(h.HorFyhFin.Value) : (TimeSpan?)null;
+
+                // Convertir a string usando el mismo formato que HorarioController (hh:mm en formato 12h para display)
+                // Pero usamos HH:mm para formato 24h como se muestra en la vista del dueño
+                var horaInicio = $"{timeOfDayIni.Hours:D2}:{timeOfDayIni.Minutes:D2}";
+                var horaFin = timeOfDayFin.HasValue 
+                    ? $"{timeOfDayFin.Value.Hours:D2}:{timeOfDayFin.Value.Minutes:D2}"
+                    : "23:59"; // Si no hay hora fin, usar 23:59 como máximo
+
+                // Log automático
+                Console.WriteLine($"=== HORARIOS DEBUG ===");
+                Console.WriteLine($"ClaDiasID: {h.ClasificacionDias?.ClaDiasID ?? 0}");
+                Console.WriteLine($"TipoDia: {h.ClasificacionDias?.ClaDiasTipo ?? "NULL"}");
+                Console.WriteLine($"fechaOriginal: {h.HorFyhIni:yyyy-MM-dd HH:mm:ss} (Kind: {h.HorFyhIni.Kind})");
+                Console.WriteLine($"TimeOfDay raw: {timeOfDayIni}");
+                Console.WriteLine($"TimeOfDay horas: {timeOfDayIni.Hours}, minutos: {timeOfDayIni.Minutes}");
+                Console.WriteLine($"horaInicioConvertida: {horaInicio}");
+                Console.WriteLine($"horaFinConvertida: {horaFin}");
+
+                return new HorarioDTO
+                {
+                    TipoDia = h.ClasificacionDias?.ClaDiasTipo ?? "",
+                    HoraInicio = horaInicio,
+                    HoraFin = horaFin
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error procesando horario: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                return new HorarioDTO
+                {
+                    TipoDia = "",
+                    HoraInicio = "00:00",
+                    HoraFin = "23:59"
+                };
+            }
+        }
+
+        // Método auxiliar para determinar si un horario es Lunes-Viernes o Fin de Semana basado en ClaDiasID
+        // ID = 1 → Lunes a Viernes
+        // ID = 2 → Fin de semana
+        private static bool EsLunesViernes(int? claDiasID, string tipoDia)
+        {
+            if (claDiasID == 1) return true;
+            if (claDiasID == 2) return false;
+            
+            // Fallback a texto si no hay ID
+            if (string.IsNullOrWhiteSpace(tipoDia)) return false;
+            var tipoLower = tipoDia.ToLowerInvariant();
+            return tipoLower.Contains("ábil") || 
+                   tipoLower.Contains("habil") || 
+                   tipoLower.Contains("lunes") ||
+                   tipoLower.Contains("viernes") ||
+                   tipoLower.Contains("días hábiles") ||
+                   tipoLower.Contains("dias habiles");
+        }
+
+        private static bool EsFinSemana(int? claDiasID, string tipoDia)
+        {
+            if (claDiasID == 2) return true;
+            if (claDiasID == 1) return false;
+            
+            // Fallback a texto si no hay ID
+            if (string.IsNullOrWhiteSpace(tipoDia)) return false;
+            var tipoLower = tipoDia.ToLowerInvariant();
+            return (tipoLower.Contains("fin") && tipoLower.Contains("semana")) ||
+                   tipoLower.Contains("sábado") ||
+                   tipoLower.Contains("sabado") ||
+                   tipoLower.Contains("domingo") ||
+                   tipoLower.Contains("fines de semana");
+        }
 
         public async Task<IActionResult> Index()
             => View(await _context.Conductores.AsNoTracking().ToListAsync());
@@ -886,19 +996,20 @@ namespace estacionamientos.Controllers
         {
             try
             {
+                // INCLUIR horarios directamente en el query inicial - SIN AsNoTracking para asegurar carga correcta
                 var playas = await _context.Playas
+                    .Include(p => p.Plazas)
                     .Include(p => p.Horarios)
                         .ThenInclude(h => h.ClasificacionDias)
-                    .Include(p => p.Plazas)
                     .Where(p => p.PlyLat.HasValue && p.PlyLon.HasValue)
-                    .ToListAsync(); // Removido AsNoTracking para asegurar que las relaciones se carguen
+                    .ToListAsync();
 
-                // Calcular promedio de tarifas por hora para cada playa
-                var playasCercanas = new List<object>();
+                System.Diagnostics.Debug.WriteLine($"GetPlayasCercanas - Playas encontradas en BD: {playas.Count}");
+                
+                // FORZAR carga explícita de horarios para cada playa si no se cargaron
                 foreach (var p in playas)
                 {
-                    // Forzar carga explícita de horarios si no están cargados
-                    if (p.Horarios == null)
+                    if (p.Horarios == null || !p.Horarios.Any())
                     {
                         await _context.Entry(p)
                             .Collection(pl => pl.Horarios)
@@ -906,29 +1017,126 @@ namespace estacionamientos.Controllers
                             .Include(h => h.ClasificacionDias)
                             .LoadAsync();
                     }
-                    
-                    var valorPromedioHora = await CalcularPromedioTarifaHora(p.PlyID);
-                    var estaAbierto = EstaAbierto(p);
+                }
+
+                // Calcular promedio de tarifas por hora para cada playa
+                var playasCercanas = new List<object>();
+                foreach (var p in playas)
+                {
+                    try
+                    {
+                        // Convertir horarios a formato unificado DTO
+                        var horariosDto = new List<HorarioDTO>();
+                        try
+                        {
+                            if (p.Horarios != null && p.Horarios.Any())
+                            {
+                                foreach (var h in p.Horarios)
+                                {
+                                    if (h == null) continue;
+                                    
+                                    // Asegurar que ClasificacionDias esté cargado
+                                    if (h.ClasificacionDias == null)
+                                    {
+                                        await _context.Entry(h)
+                                            .Reference(x => x.ClasificacionDias)
+                                            .LoadAsync();
+                                    }
+                                    
+                                    // Procesar horario usando método auxiliar (sin conversiones UTC/Local)
+                                    var horarioDto = ProcesarHorario(h);
+                                    if (horarioDto != null)
+                                    {
+                                        horariosDto.Add(horarioDto);
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception exHorarios)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error procesando horarios para playa {p.PlyID}: {exHorarios.Message}");
+                            horariosDto = new List<HorarioDTO>(); // Continuar sin horarios (array vacío, NO null)
+                        }
+                        
+                        // Calcular promedio con manejo de errores
+                        decimal valorPromedioHora = 0;
+                        try
+                        {
+                            valorPromedioHora = await CalcularPromedioTarifaHora(p.PlyID);
+                        }
+                        catch (Exception exPromedio)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error en CalcularPromedioTarifaHora para playa {p.PlyID}: {exPromedio.Message}");
+                            valorPromedioHora = 0;
+                        }
+                        
+                        // Calcular estado abierto/cerrado con manejo de errores
+                        bool estaAbierto = false;
+                        try
+                        {
+                            estaAbierto = EstaAbierto(p);
+                        }
+                        catch (Exception exEstaAbierto)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error en EstaAbierto para playa {p.PlyID}: {exEstaAbierto.Message}");
+                            estaAbierto = false; // Por defecto, asumir cerrado si hay error
+                        }
+                        
+                        // Calcular disponibilidad con manejo de errores
+                        int disponibilidad = 0;
+                        try
+                        {
+                            disponibilidad = CalcularDisponibilidad(p);
+                        }
+                        catch (Exception exDisponibilidad)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error en CalcularDisponibilidad para playa {p.PlyID}: {exDisponibilidad.Message}");
+                            disponibilidad = 0;
+                        }
+                        
+                        // Calcular distancia con manejo de errores
+                        double distancia = 0;
+                        try
+                        {
+                            distancia = CalcularDistancia(lat, lon, p.PlyLat!.Value, p.PlyLon!.Value);
+                        }
+                        catch (Exception exDistancia)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error en CalcularDistancia para playa {p.PlyID}: {exDistancia.Message}");
+                            distancia = 0;
+                        }
+                        
                     playasCercanas.Add(new
                     {
                         p.PlyID,
-                        plyNom = p.PlyNom,
-                        plyDir = p.PlyDir,
-                        plyTipoPiso = p.PlyTipoPiso,
+                            plyNom = p.PlyNom ?? "",
+                            plyDir = p.PlyDir ?? "",
+                            plyTipoPiso = p.PlyTipoPiso ?? "",
                         plyValProm = valorPromedioHora,
                         plyLat = p.PlyLat,
                         plyLon = p.PlyLon,
-                        distancia = CalcularDistancia(lat, lon, p.PlyLat!.Value, p.PlyLon!.Value),
-                        disponibilidad = CalcularDisponibilidad(p),
-                        estaAbierto = estaAbierto
-                    });
+                            distancia = distancia,
+                            disponibilidad = disponibilidad,
+                            estaAbierto = estaAbierto,
+                            horarios = horariosDto // Incluir horarios en formato unificado
+                        });
+                    }
+                    catch (Exception exPlaya)
+                    {
+                        // Si hay error procesando una playa, loguear y continuar con la siguiente
+                        System.Diagnostics.Debug.WriteLine($"Error procesando playa {p.PlyID}: {exPlaya.Message} - {exPlaya.StackTrace}");
+                        // Continuar con la siguiente playa en lugar de fallar todo
+                        continue;
+                    }
                 }
 
+                System.Diagnostics.Debug.WriteLine($"GetPlayasCercanas - Total playas encontradas: {playas.Count}, Playas procesadas: {playasCercanas.Count}");
                 return Json(playasCercanas);
             }
             catch (Exception ex)
             {
-                return Json(new { error = ex.Message });
+                System.Diagnostics.Debug.WriteLine($"GetPlayasCercanas - ERROR: {ex.Message} - {ex.StackTrace}");
+                return Json(new { error = ex.Message, stackTrace = ex.StackTrace });
             }
         }
         // --------- FAVORITOS: DTO interno ---------
@@ -1311,7 +1519,7 @@ namespace estacionamientos.Controllers
         }
 
 
-        // Endpoint temporal para debug de horarios
+        // Endpoint temporal para debug de horarios - MEJORADO para ver en navegador
         [HttpGet]
         public async Task<IActionResult> DebugHorariosPlaya(int id)
         {
@@ -1323,12 +1531,39 @@ namespace estacionamientos.Controllers
                     .FirstOrDefaultAsync(p => p.PlyID == id);
 
                 if (playa == null)
-                    return Json(new { error = "Playa no encontrada" });
+                    return Json(new { error = "Playa no encontrada", playaID = id });
 
                 var ahora = DateTime.Now;
                 var tipoDia = (ahora.DayOfWeek >= DayOfWeek.Monday && ahora.DayOfWeek <= DayOfWeek.Friday) 
                     ? "Hábil" 
                     : "Fin de semana";
+
+                // Información DETALLADA de cada horario - CONSISTENTE con GetDetallePlaya
+                // NO hacer conversiones UTC/Local, usar solo TimeOfDay
+                var horariosDetalle = playa.Horarios != null && playa.Horarios.Any()
+                    ? playa.Horarios.Select(h => 
+                    {
+                        // Usar TimeOfDay directamente - SIN conversiones
+                        var timeOfDayIni = h.HorFyhIni.TimeOfDay;
+                        var timeOfDayFin = h.HorFyhFin?.TimeOfDay;
+                        
+                        return new
+                        {
+                            claDiasID = h.ClasificacionDias?.ClaDiasID ?? 0,
+                            tipoDia = h.ClasificacionDias?.ClaDiasTipo ?? "NULL",
+                            // VALORES RAW desde la BD
+                            fechaOriginal = h.HorFyhIni.ToString("yyyy-MM-dd HH:mm:ss"),
+                            horFyhIniKind = h.HorFyhIni.Kind.ToString(),
+                            timeOfDay = timeOfDayIni.ToString(@"hh\:mm\:ss"),
+                            horFyhFinRaw = h.HorFyhFin?.ToString("yyyy-MM-dd HH:mm:ss") ?? "NULL",
+                            horFyhFinTimeOfDay = timeOfDayFin?.ToString(@"hh\:mm\:ss") ?? "NULL",
+                            // VALORES CONVERTIDOS (usando TimeOfDay directamente)
+                            horaInicioConvertida = timeOfDayIni.ToString(@"HH\:mm"),
+                            horaFinConvertida = timeOfDayFin != null ? timeOfDayFin.Value.ToString(@"HH\:mm") : "23:59",
+                            coincide = h.ClasificacionDias?.ClaDiasTipo?.Equals(tipoDia, StringComparison.OrdinalIgnoreCase) == true
+                        };
+                    }).ToList()
+                    : new List<object>().Select(x => new { claDiasID = 0, tipoDia = "", fechaOriginal = "", horFyhIniKind = "", timeOfDay = "", horFyhFinRaw = "", horFyhFinTimeOfDay = "", horaInicioConvertida = "", horaFinConvertida = "", coincide = false }).ToList();
 
                 return Json(new
                 {
@@ -1338,13 +1573,7 @@ namespace estacionamientos.Controllers
                     diaActual = ahora.DayOfWeek.ToString(),
                     tipoDiaBuscado = tipoDia,
                     totalHorarios = playa.Horarios?.Count ?? 0,
-                    horarios = playa.Horarios?.Select(h => new
-                    {
-                        tipoDia = h.ClasificacionDias?.ClaDiasTipo ?? "NULL",
-                        horaInicio = h.HorFyhIni.TimeOfDay.ToString(@"hh\:mm"),
-                        horaFin = h.HorFyhFin?.TimeOfDay.ToString(@"hh\:mm") ?? "NULL",
-                        coincide = h.ClasificacionDias?.ClaDiasTipo?.Equals(tipoDia, StringComparison.OrdinalIgnoreCase) == true
-                    }).ToList(),
+                    horarios = horariosDetalle,
                     estaAbierto = EstaAbierto(playa)
                 });
             }
@@ -1360,14 +1589,28 @@ namespace estacionamientos.Controllers
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine($"GetDetallePlaya - Recibido ID: {id} (tipo: {id.GetType()})");
+                
+                if (id <= 0)
+                {
+                    return Json(new { error = "ID de playa inválido" });
+                }
+                
+                // INCLUIR horarios directamente en el query inicial - SIN AsNoTracking para asegurar carga correcta
                 var playa = await _context.Playas
                     .Include(p => p.Plazas)
                     .Include(p => p.Horarios)
                         .ThenInclude(h => h.ClasificacionDias)
                     .FirstOrDefaultAsync(p => p.PlyID == id);
                     
-                // Asegurar que los horarios estén cargados
-                if (playa != null && playa.Horarios == null)
+                if (playa == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"GetDetallePlaya - Playa con ID {id} no encontrada");
+                    return Json(new { error = "Playa no encontrada" });
+                }
+                
+                // FORZAR carga explícita de horarios si no se cargaron
+                if (playa.Horarios == null || !playa.Horarios.Any())
                 {
                     await _context.Entry(playa)
                         .Collection(p => p.Horarios)
@@ -1375,71 +1618,341 @@ namespace estacionamientos.Controllers
                         .Include(h => h.ClasificacionDias)
                         .LoadAsync();
                 }
-
-                if (playa == null)
-                    return Json(new { error = "Playa no encontrada" });
+                
+                System.Diagnostics.Debug.WriteLine($"GetDetallePlaya - Playa encontrada: {playa.PlyNom}, Horarios: {playa.Horarios?.Count ?? 0}");
+                
+                // DEBUG: Verificar que los horarios se cargaron correctamente
+                if (playa.Horarios != null && playa.Horarios.Any())
+                {
+                    System.Diagnostics.Debug.WriteLine($"GetDetallePlaya - Primer horario sample: HorFyhIni={playa.Horarios.First().HorFyhIni}, TimeOfDay={playa.Horarios.First().HorFyhIni.TimeOfDay}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"GetDetallePlaya - ⚠️ No hay horarios cargados para la playa {playa.PlyID}");
+                }
 
                 // Calcular promedio de tarifas por hora
                 var valorPromedioHora = await CalcularPromedioTarifaHora(playa.PlyID);
 
-                // Preparar información de horarios - solo "Lunes a Viernes" y "Sábado Domingo"
-                var horariosLunesViernes = new List<object>();
-                var horariosFinSemana = new List<object>();
+                // Convertir todos los horarios a formato unificado DTO
+                Console.WriteLine("=== HORARIOS DEBUG ===");
+                Console.WriteLine($"GetDetallePlaya - Total horarios en BD: {playa.Horarios?.Count ?? 0}");
                 
-                if (playa.Horarios != null)
+                var horariosDto = new List<HorarioDTO>();
+                if (playa.Horarios != null && playa.Horarios.Any())
+                {
+                    System.Diagnostics.Debug.WriteLine($"GetDetallePlaya - Procesando {playa.Horarios.Count} horarios");
+                    foreach (var h in playa.Horarios)
+                    {
+                        try
+                        {
+                            if (h == null) continue;
+                            
+                            // Asegurar que ClasificacionDias esté cargado
+                            if (h.ClasificacionDias == null)
+                            {
+                                await _context.Entry(h)
+                                    .Reference(x => x.ClasificacionDias)
+                                    .LoadAsync();
+                            }
+                            
+                            Console.WriteLine($"  Procesando horario - ClaDiasID: {h.ClasificacionDias?.ClaDiasID ?? 0}, TipoDia: {h.ClasificacionDias?.ClaDiasTipo ?? "NULL"}");
+                            
+                            // Procesar horario usando método auxiliar (sin conversiones UTC/Local)
+                            var horarioDto = ProcesarHorario(h);
+                            if (horarioDto != null && !string.IsNullOrWhiteSpace(horarioDto.HoraInicio))
+                            {
+                                horariosDto.Add(horarioDto);
+                                Console.WriteLine($"  ✅ Horario agregado a DTO - TipoDia: {horarioDto.TipoDia}, Inicio: {horarioDto.HoraInicio}, Fin: {horarioDto.HoraFin}");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"  ⚠️ Horario NO agregado - HoraInicio vacía o null");
+                            }
+                        }
+                        catch (Exception exHorario)
+                        {
+                            Console.WriteLine($"  ❌ Error procesando horario: {exHorario.Message}");
+                            System.Diagnostics.Debug.WriteLine($"Error procesando horario individual en GetDetallePlaya: {exHorario.Message} - {exHorario.StackTrace}");
+                            // Continuar con el siguiente horario
+                            continue;
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ GetDetallePlaya - No hay horarios o la colección es null");
+                    System.Diagnostics.Debug.WriteLine($"GetDetallePlaya - No hay horarios o la colección es null");
+                }
+                
+                Console.WriteLine($"GetDetallePlaya - Horarios procesados: {horariosDto.Count}");
+                System.Diagnostics.Debug.WriteLine($"GetDetallePlaya - Horarios cargados: {playa.Horarios?.Count ?? 0}, HorariosDTO: {horariosDto.Count}");
+
+                // DEBUG: Información detallada de los horarios para diagnóstico
+                var debugHorarios = new List<object>();
+                if (playa.Horarios != null && playa.Horarios.Any())
                 {
                     foreach (var h in playa.Horarios)
                     {
-                        var tipoDia = h.ClasificacionDias?.ClaDiasTipo ?? "";
-                        
-                        // Convertir a hora local antes de extraer TimeOfDay
-                        DateTime inicioLocal = h.HorFyhIni.Kind == DateTimeKind.Utc 
-                            ? h.HorFyhIni.ToLocalTime() 
-                            : h.HorFyhIni;
-                        DateTime? finLocal = h.HorFyhFin.HasValue
-                            ? (h.HorFyhFin.Value.Kind == DateTimeKind.Utc 
-                                ? h.HorFyhFin.Value.ToLocalTime() 
-                                : h.HorFyhFin.Value)
-                            : null;
-                        
-                        var horarioInfo = new
+                        try
                         {
-                            horaInicio = inicioLocal.TimeOfDay.ToString(@"hh\:mm"),
-                            horaFin = finLocal?.TimeOfDay.ToString(@"hh\:mm") ?? "Sin fin"
-                        };
-                        
-                        if (tipoDia.Equals("Hábil", StringComparison.OrdinalIgnoreCase))
-                        {
-                            horariosLunesViernes.Add(horarioInfo);
+                            var timeOfDayIni = h.HorFyhIni.TimeOfDay;
+                            var timeOfDayFin = h.HorFyhFin?.TimeOfDay;
+                            
+                            debugHorarios.Add(new
+                            {
+                                claDiasID = h.ClasificacionDias?.ClaDiasID ?? 0,
+                                tipoDia = h.ClasificacionDias?.ClaDiasTipo ?? "NULL",
+                                fechaOriginal = h.HorFyhIni.ToString("yyyy-MM-dd HH:mm:ss"),
+                                horFyhIniKind = h.HorFyhIni.Kind.ToString(),
+                                timeOfDay = $"{timeOfDayIni.Hours:D2}:{timeOfDayIni.Minutes:D2}:{timeOfDayIni.Seconds:D2}",
+                                horaInicioConvertida = $"{timeOfDayIni.Hours:D2}:{timeOfDayIni.Minutes:D2}",
+                                horFyhFinRaw = h.HorFyhFin?.ToString("yyyy-MM-dd HH:mm:ss") ?? "NULL",
+                                horFyhFinTimeOfDay = timeOfDayFin.HasValue 
+                                    ? $"{timeOfDayFin.Value.Hours:D2}:{timeOfDayFin.Value.Minutes:D2}:{timeOfDayFin.Value.Seconds:D2}"
+                                    : "NULL",
+                                horaFinConvertida = timeOfDayFin.HasValue 
+                                    ? $"{timeOfDayFin.Value.Hours:D2}:{timeOfDayFin.Value.Minutes:D2}"
+                                    : "23:59"
+                            });
                         }
-                        else if (tipoDia.Equals("Fin de semana", StringComparison.OrdinalIgnoreCase))
+                        catch (Exception ex)
                         {
-                            horariosFinSemana.Add(horarioInfo);
+                            Console.WriteLine($"Error creando debugHorarios para horario: {ex.Message}");
+                            // Continuar con el siguiente horario
+                            continue;
                         }
                     }
                 }
 
+                // Agrupaciones por tipo de día usando ClaDiasID directamente desde los horarios originales
+                // PROCESAR DIRECTAMENTE DESDE LOS HORARIOS ORIGINALES - NO FILTRAR
+                var horariosLV = new List<HorarioAgrupadoDTO>();
+                var horariosFS = new List<HorarioAgrupadoDTO>();
+                
+                Console.WriteLine($"=== AGRUPACIÓN HORARIOS ===");
+                Console.WriteLine($"Total horarios en BD para agrupar: {playa.Horarios?.Count ?? 0}");
+                
+                if (playa.Horarios != null && playa.Horarios.Any())
+                {
+                    foreach (var horarioOriginal in playa.Horarios)
+                    {
+                        try
+                        {
+                            // Asegurar que ClasificacionDias esté cargado
+                            if (horarioOriginal.ClasificacionDias == null)
+                            {
+                                await _context.Entry(horarioOriginal)
+                                    .Reference(x => x.ClasificacionDias)
+                                    .LoadAsync();
+                            }
+                            
+                            var claDiasID = horarioOriginal.ClasificacionDias?.ClaDiasID;
+                            var tipoDia = horarioOriginal.ClasificacionDias?.ClaDiasTipo ?? "";
+                            
+                            // LOG DETALLADO DEL HORARIO ORIGINAL ANTES DE PROCESAR
+                            Console.WriteLine($"  === PROCESANDO HORARIO ORIGINAL ===");
+                            Console.WriteLine($"  ClaDiasID: {claDiasID}, TipoDia: {tipoDia}");
+                            Console.WriteLine($"  HorFyhIni RAW: {horarioOriginal.HorFyhIni}");
+                            Console.WriteLine($"  HorFyhIni Kind: {horarioOriginal.HorFyhIni.Kind}");
+                            Console.WriteLine($"  HorFyhIni ToString: {horarioOriginal.HorFyhIni:yyyy-MM-dd HH:mm:ss}");
+                            
+                            // Usar ReadTime igual que HorarioController - ANTES de ProcesarHorario
+                            var timeOfDayIni = ReadTime(horarioOriginal.HorFyhIni);
+                            var timeOfDayFin = horarioOriginal.HorFyhFin.HasValue ? ReadTime(horarioOriginal.HorFyhFin.Value) : (TimeSpan?)null;
+                            
+                            Console.WriteLine($"  TimeOfDay Inicio: {timeOfDayIni} (Horas: {timeOfDayIni.Hours}, Minutos: {timeOfDayIni.Minutes}, TotalHoras: {timeOfDayIni.TotalHours})");
+                            if (timeOfDayFin.HasValue)
+                            {
+                                Console.WriteLine($"  TimeOfDay Fin: {timeOfDayFin.Value} (Horas: {timeOfDayFin.Value.Hours}, Minutos: {timeOfDayFin.Value.Minutes})");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"  TimeOfDay Fin: NULL");
+                            }
+                            
+                            // Procesar el horario para obtener las horas - SIEMPRE procesar, no filtrar
+                            var horarioDto = ProcesarHorario(horarioOriginal);
+                            
+                            // Validar que tenga horas válidas
+                            if (string.IsNullOrWhiteSpace(horarioDto.HoraInicio) || (horarioDto.HoraInicio == "00:00" && timeOfDayIni.TotalHours > 0))
+                            {
+                                Console.WriteLine($"  ⚠️ ADVERTENCIA: Horario procesado tiene horaInicio='{horarioDto.HoraInicio}' pero TimeOfDay tiene {timeOfDayIni.TotalHours} horas");
+                                // Corregir usando el TimeOfDay directo
+                                horarioDto.HoraInicio = $"{timeOfDayIni.Hours:D2}:{timeOfDayIni.Minutes:D2}";
+                            }
+                            if (string.IsNullOrWhiteSpace(horarioDto.HoraFin))
+                            {
+                                if (timeOfDayFin.HasValue)
+                                {
+                                    horarioDto.HoraFin = $"{timeOfDayFin.Value.Hours:D2}:{timeOfDayFin.Value.Minutes:D2}";
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"  ⚠️ Horario sin horaFin, usando 23:59");
+                                    horarioDto.HoraFin = "23:59";
+                                }
+                            }
+                            
+                            Console.WriteLine($"  ✅ Horario procesado FINAL - Inicio: {horarioDto.HoraInicio}, Fin: {horarioDto.HoraFin}");
+                            
+                            if (EsLunesViernes(claDiasID, tipoDia))
+                            {
+                                horariosLV.Add(new HorarioAgrupadoDTO
+                                {
+                                    horaInicio = horarioDto.HoraInicio,
+                                    horaFin = horarioDto.HoraFin
+                                });
+                                Console.WriteLine($"  ✅ Agregado a L-V: {horarioDto.HoraInicio} - {horarioDto.HoraFin}");
+                            }
+                            else if (EsFinSemana(claDiasID, tipoDia))
+                            {
+                                horariosFS.Add(new HorarioAgrupadoDTO
+                                {
+                                    horaInicio = horarioDto.HoraInicio,
+                                    horaFin = horarioDto.HoraFin
+                                });
+                                Console.WriteLine($"  ✅ Agregado a F-S: {horarioDto.HoraInicio} - {horarioDto.HoraFin}");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"  ⚠️ Horario NO clasificado - ClaDiasID: {claDiasID}, TipoDia: {tipoDia}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"  ❌ Error procesando horario para agrupar: {ex.Message}");
+                            continue;
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"  ⚠️ No hay horarios para agrupar");
+                }
+                
+                Console.WriteLine($"=== RESUMEN AGRUPACIÓN ===");
+                Console.WriteLine($"Horarios L-V: {horariosLV.Count}");
+                Console.WriteLine($"Horarios F-S: {horariosFS.Count}");
+                foreach (var h in horariosLV)
+                {
+                    Console.WriteLine($"  L-V: {h.horaInicio} - {h.horaFin}");
+                }
+                foreach (var h in horariosFS)
+                {
+                    Console.WriteLine($"  F-S: {h.horaInicio} - {h.horaFin}");
+                }
+
+                // Asegurar que las plazas estén cargadas para calcular disponibilidad
+                if (playa.Plazas == null)
+                {
+                    await _context.Entry(playa)
+                        .Collection(p => p.Plazas)
+                        .LoadAsync();
+                }
+
+                // Calcular disponibilidad
+                var disponibilidad = CalcularDisponibilidad(playa);
+
                 // Calcular estado abierto/cerrado
                 var estaAbierto = EstaAbierto(playa);
 
-                return Json(new
+                // Construir resultado asegurando que todos los campos estén presentes
+                // GARANTIZAR que los arrays nunca sean null - usar arrays vacíos si no hay datos
+                var resultado = new
                 {
                     plyID = playa.PlyID,
-                    plyNom = playa.PlyNom,
-                    plyDir = playa.PlyDir,
-                    plyTipoPiso = playa.PlyTipoPiso,
+                    plyNom = playa.PlyNom ?? "",
+                    plyDir = playa.PlyDir ?? "",
+                    plyTipoPiso = playa.PlyTipoPiso ?? "",
                     plyValProm = valorPromedioHora,
                     plyLat = playa.PlyLat,
                     plyLon = playa.PlyLon,
-                    disponibilidad = CalcularDisponibilidad(playa),
+                    disponibilidad = disponibilidad,
                     estaAbierto = estaAbierto,
-                    horariosLunesViernes = horariosLunesViernes,
-                    horariosFinSemana = horariosFinSemana
-                });
+                    horarios = horariosDto ?? new List<HorarioDTO>(), // Formato unificado - nunca null
+                    horariosLunesViernes = horariosLV, // Ya garantizado que no es null
+                    horariosFinSemana = horariosFS, // Ya garantizado que no es null
+                    // DEBUG: Información detallada para diagnóstico (solo en desarrollo)
+                    _debugHorarios = debugHorarios
+                };
+                
+                // LOG FINAL CRÍTICO - Verificar qué se está enviando
+                Console.WriteLine($"=== JSON FINAL QUE SE ENVÍA ===");
+                Console.WriteLine($"horariosLunesViernes.Count: {horariosLV.Count}");
+                Console.WriteLine($"horariosFinSemana.Count: {horariosFS.Count}");
+                Console.WriteLine($"horarios.Count: {horariosDto.Count}");
+                
+                if (horariosLV.Count > 0)
+                {
+                    Console.WriteLine($"PRIMER HORARIO L-V: horaInicio='{horariosLV[0].horaInicio}', horaFin='{horariosLV[0].horaFin}'");
+                    Console.WriteLine($"TODOS HORARIOS L-V:");
+                    foreach (var h in horariosLV)
+                    {
+                        Console.WriteLine($"  - horaInicio='{h.horaInicio}', horaFin='{h.horaFin}'");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ NO HAY HORARIOS L-V PARA ENVIAR");
+                }
+                
+                if (horariosFS.Count > 0)
+                {
+                    Console.WriteLine($"PRIMER HORARIO F-S: horaInicio='{horariosFS[0].horaInicio}', horaFin='{horariosFS[0].horaFin}'");
+                    Console.WriteLine($"TODOS HORARIOS F-S:");
+                    foreach (var h in horariosFS)
+                    {
+                        Console.WriteLine($"  - horaInicio='{h.horaInicio}', horaFin='{h.horaFin}'");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ NO HAY HORARIOS F-S PARA ENVIAR");
+                }
+
+                // Log para debug
+                Console.WriteLine($"=== RESUMEN FINAL ===");
+                Console.WriteLine($"PlayID: {playa.PlyID}");
+                Console.WriteLine($"Total horarios DTO: {horariosDto.Count}");
+                Console.WriteLine($"Horarios L-V: {horariosLV.Count}");
+                Console.WriteLine($"Horarios F-S: {horariosFS.Count}");
+                Console.WriteLine($"Esta abierto: {estaAbierto}");
+                
+                System.Diagnostics.Debug.WriteLine($"GetDetallePlaya - PlayID: {playa.PlyID}, Total horarios: {horariosDto.Count}, L-V: {horariosLV.Count}, F-S: {horariosFS.Count}, Abierto: {estaAbierto}");
+                
+                // Log detallado de horarios
+                Console.WriteLine("  Horarios DTO:");
+                foreach (var h in horariosDto)
+                {
+                    Console.WriteLine($"    - TipoDia='{h.TipoDia}', Inicio='{h.HoraInicio}', Fin='{h.HoraFin}'");
+                    System.Diagnostics.Debug.WriteLine($"  Horario: TipoDia='{h.TipoDia}', Inicio='{h.HoraInicio}', Fin='{h.HoraFin}'");
+                }
+                
+                Console.WriteLine("  Horarios L-V agrupados:");
+                foreach (var h in horariosLV)
+                {
+                    Console.WriteLine($"    - Inicio='{h.horaInicio}', Fin='{h.horaFin}'");
+                    System.Diagnostics.Debug.WriteLine($"  LV: Inicio='{h.horaInicio}', Fin='{h.horaFin}'");
+                }
+                
+                Console.WriteLine("  Horarios F-S agrupados:");
+                foreach (var h in horariosFS)
+                {
+                    Console.WriteLine($"    - Inicio='{h.horaInicio}', Fin='{h.horaFin}'");
+                    System.Diagnostics.Debug.WriteLine($"  FS: Inicio='{h.horaInicio}', Fin='{h.horaFin}'");
+                }
+
+                return Json(resultado);
             }
             catch (Exception ex)
             {
-                return Json(new { error = ex.Message });
+                // Retornar error detallado para debug
+                return Json(new { 
+                    error = ex.Message, 
+                    stackTrace = ex.StackTrace,
+                    innerException = ex.InnerException?.Message 
+                });
             }
         }
 
@@ -1466,80 +1979,99 @@ namespace estacionamientos.Controllers
             return (int)Math.Round((double)plazasDisponibles / totalPlazas * 100);
         }
 
-        private static bool EstaAbierto(PlayaEstacionamiento playa)
+        private bool EstaAbierto(PlayaEstacionamiento playa)
         {
             try
             {
+                // FORZAR carga de horarios SIEMPRE (sin condiciones)
+                _context.Entry(playa)
+                    .Collection(p => p.Horarios)
+                    .Query()
+                    .Include(h => h.ClasificacionDias)
+                    .Load();
+                
                 // Verificar que existan horarios
                 if (playa.Horarios == null || !playa.Horarios.Any())
                 {
                     return false;
                 }
 
-                // Hora actual del sistema (local)
+                // Hora actual del sistema - usar TimeOfDay directamente
                 var ahora = DateTime.Now;
-                var ahoraTimeOfDay = ahora.TimeOfDay;
+                var actual = ahora.TimeOfDay;
                 var diaActual = ahora.DayOfWeek;
                 
-                // Determinar tipo de día según la base de datos
-                // "Hábil" = Lunes a Viernes (1-5)
-                // "Fin de semana" = Sábado y Domingo (0, 6)
-                string tipoDiaBuscado = (diaActual >= DayOfWeek.Monday && diaActual <= DayOfWeek.Friday) 
-                    ? "Hábil" 
-                    : "Fin de semana";
+                // Determinar si hoy es día hábil (Lunes a Viernes) o fin de semana (Sábado / Domingo)
+                bool esDiaHabil = diaActual >= DayOfWeek.Monday && diaActual <= DayOfWeek.Friday;
                 
-                // Buscar horarios del día actual - asegurarse de que ClasificacionDias esté cargado
-                var horariosRelevantes = playa.Horarios
-                    .Where(h => h.ClasificacionDias != null && 
-                               !string.IsNullOrWhiteSpace(h.ClasificacionDias.ClaDiasTipo) &&
-                               h.ClasificacionDias.ClaDiasTipo.Equals(tipoDiaBuscado, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
+                // Buscar horarios del día actual usando ClaDiasID
+                var horariosRelevantes = new List<Horario>();
+                
+                foreach (var h in playa.Horarios)
+                {
+                    // Asegurar que ClasificacionDias esté cargado
+                    if (h.ClasificacionDias == null)
+                    {
+                        _context.Entry(h)
+                            .Reference(x => x.ClasificacionDias)
+                            .Load();
+                    }
+                    
+                    var tipoDia = h.ClasificacionDias?.ClaDiasTipo ?? string.Empty;
+                    var tipoDiaID = h.ClasificacionDias?.ClaDiasID;
+                    
+                    // Usar ClaDiasID para determinar el tipo (1 = L-V, 2 = F-S)
+                    bool esHabilHorario = EsLunesViernes(tipoDiaID, tipoDia);
+                    bool esFinSemanaHorario = EsFinSemana(tipoDiaID, tipoDia);
+
+                    if (esDiaHabil && esHabilHorario)
+                    {
+                        horariosRelevantes.Add(h);
+                        var inicioStr = h.HorFyhIni.TimeOfDay.ToString(@"HH\:mm");
+                        var finStr = h.HorFyhFin != null ? h.HorFyhFin.Value.TimeOfDay.ToString(@"HH\:mm") : "23:59";
+                        System.Diagnostics.Debug.WriteLine($"EstaAbierto - Agregado horario HÁBIL: {inicioStr} - {finStr}");
+                    }
+                    else if (!esDiaHabil && esFinSemanaHorario)
+                    {
+                        horariosRelevantes.Add(h);
+                        var inicioStr = h.HorFyhIni.TimeOfDay.ToString(@"HH\:mm");
+                        var finStr = h.HorFyhFin != null ? h.HorFyhFin.Value.TimeOfDay.ToString(@"HH\:mm") : "23:59";
+                        System.Diagnostics.Debug.WriteLine($"EstaAbierto - Agregado horario FIN DE SEMANA: {inicioStr} - {finStr}");
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"EstaAbierto - Horarios relevantes encontrados: {horariosRelevantes.Count}");
 
                 if (!horariosRelevantes.Any())
                 {
+                    System.Diagnostics.Debug.WriteLine($"EstaAbierto - No hay horarios relevantes para el día actual");
                     return false;
                 }
 
                 // Verificar si la hora actual está dentro de algún rango horario
+                // Comparar TimeOfDay directamente, SIN conversiones
                 foreach (var horario in horariosRelevantes)
                 {
-                    // Los horarios están guardados con fecha base 2000-01-01 en UTC
-                    // Pero pueden tener timezone offset. Necesitamos extraer solo la hora local
-                    // Convertir a hora local si está en UTC
-                    DateTime horarioInicioLocal = horario.HorFyhIni.Kind == DateTimeKind.Utc 
-                        ? horario.HorFyhIni.ToLocalTime() 
-                        : horario.HorFyhIni;
+                    // Usar TimeOfDay directamente - NO hacer conversiones
+                    var inicio = horario.HorFyhIni.TimeOfDay;
+                    var fin = horario.HorFyhFin != null 
+                        ? horario.HorFyhFin.Value.TimeOfDay
+                        : new TimeSpan(23, 59, 0);
                     
-                    DateTime? horarioFinLocal = horario.HorFyhFin.HasValue
-                        ? (horario.HorFyhFin.Value.Kind == DateTimeKind.Utc 
-                            ? horario.HorFyhFin.Value.ToLocalTime() 
-                            : horario.HorFyhFin.Value)
-                        : null;
+                    System.Diagnostics.Debug.WriteLine($"EstaAbierto - Comparando: actual={actual}, inicio={inicio}, fin={fin}");
                     
-                    // Extraer solo la parte de hora (TimeOfDay)
-                    var horaInicio = horarioInicioLocal.TimeOfDay;
-                    var horaFin = horarioFinLocal?.TimeOfDay;
+                    // Comparación directa: actual >= inicio && actual <= fin
+                    bool dentro = actual >= inicio && actual <= fin;
                     
-                    // Si no hay hora fin, asumir que cierra a las 23:59:59
-                    if (!horaFin.HasValue)
+                    if (inicio > fin)
                     {
-                        horaFin = new TimeSpan(23, 59, 59);
+                        // Horario que cruza medianoche (ej: 22:00 - 06:00)
+                        dentro = actual >= inicio || actual <= fin;
                     }
                     
-                    // Comparar hora actual con rango de horario
-                    // Horario normal: inicio <= ahora <= fin
-                    bool estaDentro = ahoraTimeOfDay >= horaInicio && ahoraTimeOfDay <= horaFin.Value;
-                    
-                    // Si el horario cruza medianoche (inicio > fin), usar lógica especial
-                    if (horaInicio > horaFin.Value)
+                    if (dentro)
                     {
-                        // Horario que cruza medianoche (ej: 22:00 - 02:00)
-                        // Está abierto si: ahora >= inicio O ahora <= fin
-                        estaDentro = ahoraTimeOfDay >= horaInicio || ahoraTimeOfDay <= horaFin.Value;
-                    }
-                    
-                    if (estaDentro)
-                    {
+                        System.Diagnostics.Debug.WriteLine($"EstaAbierto - Playa ABIERTA (dentro del rango {inicio} - {fin})");
                         return true;
                     }
                 }

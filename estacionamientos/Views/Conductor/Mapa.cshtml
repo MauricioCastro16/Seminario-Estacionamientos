@@ -28,7 +28,8 @@
 
         .main-content{ background:transparent; padding-top:0; position:relative; z-index:1; }
         .main-header{ background:rgba(255,255,255,.95); backdrop-filter:blur(10px); }
-        .main-header, .main-content, .mobile-sidebar, .sidebar-overlay, .navbar, .sidebar{ position:relative !important; z-index:1000 !important; }
+        /* Importante: no sobreescribir posicionamiento del sidebar y overlay móviles */
+        .main-header, .main-content, .navbar, .sidebar { position:relative !important; z-index:1000 !important; }
         .main-footer, .footer{ position:relative !important; z-index:100 !important; }
 
         .main-header, .navbar{
@@ -510,7 +511,7 @@
             <div class="info-row"><span class="info-label">Tipo de piso:</span><span class="info-value" id="tipoPiso">Hormigón</span></div>
             <div class="info-row"><span class="info-label">Dirección:</span><span class="info-value" id="direccion">Av. Principal 123</span></div>
             <div class="info-row"><span class="info-label">Valor promedio:</span><span class="info-value" id="valorPromedio">$500/hora</span></div>
-            <div class="info-row mt-3" id="horariosSection" style="display:none;"><span class="info-label">Horarios de atención:</span><div class="info-value" id="horariosInfo" style="font-size:.9em;"></div></div>
+            <div class="info-row mt-3" id="horariosSection"><span class="info-label">Horarios de atención:</span><div class="info-value" id="horariosInfo" style="font-size:.9em;"></div></div>
             <div class="info-row mt-3" id="tarifasSection" style="display:none; flex-direction:column; align-items:flex-start;">
                 <span class="info-label" style="margin-bottom:8px;">Tarifas:</span>
                 <div class="info-value" id="tarifasInfo" style="font-size:.9em; width:100%;"></div>
@@ -904,18 +905,117 @@
             return L.divIcon({ className, html:'P', iconSize:[30,30], iconAnchor:[15,15] });
         }
 
+        // Calcula si una playa está abierta en base a los horarios enviados por el backend
+        // Usa la hora local del navegador, así queda alineado con lo que ve el conductor
+        function calcularEstadoDesdeHorarios(origen){
+            if (!origen) return null;
+
+            const ahora = new Date();
+            const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
+            const diaSemana = ahora.getDay(); // 0=Domingo, 1=Lunes,...,6=Sábado
+            const esDiaHabil = diaSemana >= 1 && diaSemana <= 5;
+
+            let franjas = [];
+
+            // 1) Preferir arrays agrupados si existen (GetDetallePlaya)
+            if (Array.isArray(origen.horariosLunesViernes) || Array.isArray(origen.horariosFinSemana)){
+                if (esDiaHabil && Array.isArray(origen.horariosLunesViernes)) {
+                    franjas = origen.horariosLunesViernes;
+                } else if (!esDiaHabil && Array.isArray(origen.horariosFinSemana)) {
+                    franjas = origen.horariosFinSemana;
+                }
+            }
+
+            // 2) Si no hay agrupados, intentar con el array unificado
+            if ((!Array.isArray(franjas) || franjas.length === 0) && Array.isArray(origen.horarios)) {
+                const todos = origen.horarios;
+                // Intentar filtrar por tipo de día si la info está disponible
+                let filtrados = todos.filter(h => {
+                    const tipo = (h.TipoDia || h.tipoDia || '').toLowerCase();
+                    const esLV = tipo.includes('ábil') || tipo.includes('habil') || tipo.includes('lunes') || tipo.includes('viernes');
+                    const esFS = (tipo.includes('fin') && tipo.includes('semana')) ||
+                                 tipo.includes('sábado') || tipo.includes('sabado') || tipo.includes('domingo');
+                    return esDiaHabil ? esLV : esFS;
+                });
+                if (filtrados.length === 0) filtrados = todos; // Fallback: usar todos
+                franjas = filtrados;
+            }
+
+            if (!Array.isArray(franjas) || franjas.length === 0) return null;
+
+            const dentroDeAlgunaFranja = franjas.some(h => {
+                const inicioStr = h.horaInicio || h.HoraInicio || h.horaInicio || h.HoraInicio || '';
+                const finStr = h.horaFin || h.HoraFin || h.horaFin || h.HoraFin || '23:59';
+                if (!inicioStr) return false;
+
+                const [hIni, mIni] = inicioStr.split(':').map(x => parseInt(x, 10));
+                const [hFin, mFin] = finStr.split(':').map(x => parseInt(x, 10));
+                if (isNaN(hIni) || isNaN(mIni) || isNaN(hFin) || isNaN(mFin)) return false;
+
+                const iniMin = hIni * 60 + mIni;
+                const finMin = hFin * 60 + mFin;
+
+                // Rango normal en el mismo día
+                if (iniMin <= finMin) {
+                    return minutosAhora >= iniMin && minutosAhora <= finMin;
+                }
+                // Rango que cruza medianoche (ej: 22:00 - 06:00)
+                return minutosAhora >= iniMin || minutosAhora <= finMin;
+            });
+
+            return dentroDeAlgunaFranja;
+        }
+
         function buildPopupContent(playa, isSearchMode = false){
             const favorito = esFavorita(playa);
             const botonFavorito = favorito 
                 ? `<button class="btn btn-sm btn-eliminar-favorito flex-fill" onclick="window.eliminarFavoritaDesdePopup('${favorito.apodo}', ${playa.plyID})">Eliminar favorito</button>`
                 : `<button class="btn btn-sm btn-primary flex-fill" onclick="window.agregarFavoritaDesdePopup(${playa.plyID})"><i class="fa-solid fa-star" style="color:white;"></i> Favorito</button>`;
 
+            // Procesar horarios para el popup
+            let horariosHtml = '';
+            if (playa.horarios && Array.isArray(playa.horarios) && playa.horarios.length > 0) {
+                // Agrupar horarios por tipo de día
+                const horariosLV = playa.horarios.filter(h => {
+                    const tipo = (h.TipoDia || h.tipoDia || '').toLowerCase();
+                    return tipo.includes('ábil') || tipo.includes('habil') || tipo.includes('lunes') || tipo.includes('viernes');
+                });
+                const horariosFS = playa.horarios.filter(h => {
+                    const tipo = (h.TipoDia || h.tipoDia || '').toLowerCase();
+                    return (tipo.includes('fin') && tipo.includes('semana')) || tipo.includes('sábado') || tipo.includes('sabado') || tipo.includes('domingo');
+                });
+                
+                if (horariosLV.length > 0) {
+                    const horariosLVStr = horariosLV.map(h => {
+                        const inicio = h.HoraInicio || h.horaInicio || '';
+                        const fin = h.HoraFin || h.horaFin || 'Sin fin';
+                        return `${inicio} - ${fin}`;
+                    }).join(', ');
+                    horariosHtml += `<p style="margin:5px 0;font-size:13px;"><strong>L-V:</strong> ${horariosLVStr}</p>`;
+                }
+                if (horariosFS.length > 0) {
+                    const horariosFSStr = horariosFS.map(h => {
+                        const inicio = h.HoraInicio || h.horaInicio || '';
+                        const fin = h.HoraFin || h.horaFin || 'Sin fin';
+                        return `${inicio} - ${fin}`;
+                    }).join(', ');
+                    horariosHtml += `<p style="margin:5px 0;font-size:13px;"><strong>S-D:</strong> ${horariosFSStr}</p>`;
+                }
+            }
+
+            // Calcular estado abierto/cerrado usando horarios si están disponibles
+            const abiertoCalculado = calcularEstadoDesdeHorarios(playa);
+            const estaAbierto = (typeof abiertoCalculado === 'boolean')
+                ? abiertoCalculado
+                : !!playa.estaAbierto;
+
             return `
               <div style="min-width:220px;">
                 <h6 style="margin:0 0 10px;color:#2c3e50;">${playa.plyNom}</h6>
                 <p style="margin:5px 0;font-size:14px;"><strong>Dirección:</strong> ${playa.plyDir}</p>
                 <p style="margin:5px 0;font-size:14px;"><strong>Disponibilidad:</strong> ${playa.disponibilidad}%</p>
-                <p style="margin:5px 0;font-size:14px;"><strong>Estado:</strong> ${playa.estaAbierto ? 'Abierto' : 'Cerrado'}</p>
+                <p style="margin:5px 0;font-size:14px;"><strong>Estado:</strong> ${estaAbierto ? 'Abierto' : 'Cerrado'}</p>
+                ${horariosHtml}
                 ${isSearchMode ? `<p style="margin:5px 0;font-size:14px;color:#dc3545;"><strong>📍 Distancia:</strong> ${Number(playa.distancia||0).toFixed(2)} km</p>` : ''}
                 ${isSearchMode ? '<p style="margin:5px 0;font-size:12px;color:#dc3545;font-weight:bold;">🔍 Uno de los 3 más cercanos</p>' : ''}
                 <div class="d-flex gap-1 mt-2 flex-wrap">
@@ -951,6 +1051,12 @@
                 if (playa.plyLat == null || playa.plyLon == null || isNaN(playa.plyLat) || isNaN(playa.plyLon)){
                     console.warn(`⚠️ Coordenadas inválidas para ${playa.plyNom}: lat=${playa.plyLat}, lon=${playa.plyLon}`);
                     return;
+                }
+
+                // Recalcular estado abierto/cerrado en el cliente usando horarios
+                const abiertoCalculado = calcularEstadoDesdeHorarios(playa);
+                if (typeof abiertoCalculado === 'boolean') {
+                    playa.estaAbierto = abiertoCalculado;
                 }
 
                 const icon = crearIconoPlaya(playa, isSearchMode);
@@ -1535,15 +1641,21 @@
 
         // === Helpers del popup de la playa ===
         window.seleccionarPlayaDesdePopup = function (plyID) {
-        const playa = playas.find(p => p.plyID === plyID);
-        if (!playa) return;
+            console.log('🔘 seleccionarPlayaDesdePopup llamado con plyID:', plyID);
+            const playa = playas.find(p => p.plyID === plyID);
+            if (!playa) {
+                console.error('❌ No se encontró playa con ID:', plyID);
+                console.log('📋 Playas disponibles:', playas.map(p => ({ id: p.plyID, nombre: p.plyNom })));
+                return;
+            }
+            console.log('✅ Playa encontrada:', playa);
 
-        // Abrir el popup del marcador si existe
-        const mk = playaIdToMarker.get(plyID);
-        if (mk) mk.openPopup();
+            // Abrir el popup del marcador si existe
+            const mk = playaIdToMarker.get(plyID);
+            if (mk) mk.openPopup();
 
-        // Mostrar el detalle en el footer
-        seleccionarPlaya(playa);
+            // Mostrar el detalle en el footer
+            seleccionarPlaya(playa);
         };
 
         window.agregarFavoritaDesdePopup = function(plyID){
@@ -1643,6 +1755,15 @@
         }
 
         function seleccionarPlaya(playa){
+            console.log('🚀 seleccionarPlaya INICIADA');
+            console.log('📦 playa recibida:', playa);
+            console.log('🆔 playa.plyID:', playa?.plyID, 'tipo:', typeof playa?.plyID);
+            
+            if (!playa || !playa.plyID) {
+                console.error('❌ ERROR: playa o playa.plyID es inválido');
+                return;
+            }
+            
             playaSeleccionada = playa;
             map.setView([playa.plyLat, playa.plyLon], 16);
 
@@ -1663,15 +1784,47 @@
             $('#valoracionesInfo').hide();
             $('#playaInfo').show();
 
+            console.log('🔵 Llamando GetDetallePlaya con ID:', playa.plyID, 'tipo:', typeof playa.plyID);
             $.get('/Conductor/GetDetallePlaya', { id: playa.plyID })
              .done(detalle => {
+                 // Debug: verificar qué datos se reciben
+                 console.log('🟢 === DATOS RECIBIDOS DE GetDetallePlaya ===');
+                 console.log('📋 detalle completo:', detalle);
+                 
+                 // DEBUG ESPECÍFICO DE HORARIOS
+                 if (detalle._debugHorarios) {
+                     console.log('🔍 === DEBUG HORARIOS RAW ===');
+                     console.table(detalle._debugHorarios);
+                     console.log('📊 JSON completo de debug:', JSON.stringify(detalle._debugHorarios, null, 2));
+                 } else {
+                     console.warn('⚠️ NO HAY _debugHorarios en la respuesta');
+                 }
+                 
+                 console.log('📅 horariosLunesViernes:', detalle.horariosLunesViernes);
+                 console.log('📅 horariosFinSemana:', detalle.horariosFinSemana);
+                 console.log('📅 horarios (unificado):', detalle.horarios);
+                 console.log('tipo horariosLunesViernes:', typeof detalle.horariosLunesViernes);
+                 console.log('es array?', Array.isArray(detalle.horariosLunesViernes));
+                 
+                 // Verificar si hay error en la respuesta
+                 if (detalle.error) {
+                     console.error('Error en GetDetallePlaya:', detalle.error);
+                     mostrarDetallePlayaBasico(playa);
+                     cargarTarifasYServicios(playa.plyID);
+                     $('#bottomMenu').addClass('show');
+                     openMarkerPopup(playa);
+                     return;
+                 }
+                 
                  mostrarDetallePlaya(detalle);
                  cargarTarifasYServicios(playa.plyID);
                  $('#bottomMenu').addClass('show');
                  // abrir popup (marker o temporal)
                  openMarkerPopup({ ...detalle, plyLat: detalle.plyLat ?? playa.plyLat, plyLon: detalle.plyLon ?? playa.plyLon });
              })
-             .fail(() => {
+             .fail((jqXHR, textStatus, errorThrown) => {
+                 console.error('Error en llamada a GetDetallePlaya:', textStatus, errorThrown);
+                 console.error('Response:', jqXHR.responseText);
                  mostrarDetallePlayaBasico(playa);
                  cargarTarifasYServicios(playa.plyID);
                  $('#bottomMenu').addClass('show');
@@ -1680,19 +1833,186 @@
         }
 
         function mostrarDetallePlaya(detalle){
-            $('#playaNombre').text(detalle.plyNom);
-            $('#estadoBadge').text(detalle.estaAbierto ? 'Abierto' : 'Cerrado').removeClass('open closed').addClass(detalle.estaAbierto ? 'open' : 'closed');
-            const ocupacion = 100 - detalle.disponibilidad;
-            $('#disponibilidadTexto').text(ocupacion + '% ocupado'); $('#disponibilidadBarra').css('width', ocupacion + '%');
-            $('#tipoPiso').text(detalle.plyTipoPiso); $('#direccion').text(detalle.plyDir);
-            $('#valorPromedio').text('$' + (parseFloat(detalle.plyValProm || 0).toFixed(2)) + '/hora');
+            console.log('mostrarDetallePlaya recibió:', detalle);
+            
+            // Validar que detalle tenga los campos necesarios
+            if (!detalle) {
+                console.error('detalle es null o undefined');
+                return;
+            }
+            
+            $('#playaNombre').text(detalle.plyNom || 'Sin nombre');
+            
+            // Estado - recalcular en base a horarios para que coincida con lo que ve el conductor
+            const calculadoDesdeHorarios = calcularEstadoDesdeHorarios(detalle);
+            const estaAbierto = (typeof calculadoDesdeHorarios === 'boolean')
+                ? calculadoDesdeHorarios
+                : (detalle.estaAbierto === true || detalle.estaAbierto === 'true');
+            $('#estadoBadge').text(estaAbierto ? 'Abierto' : 'Cerrado').removeClass('open closed').addClass(estaAbierto ? 'open' : 'closed');
+            
+            // Ocupación - validar que disponibilidad sea un número válido
+            const disponibilidad = parseFloat(detalle.disponibilidad);
+            if (isNaN(disponibilidad)) {
+                console.warn('disponibilidad no es un número válido:', detalle.disponibilidad);
+                $('#disponibilidadTexto').text('0% ocupado');
+                $('#disponibilidadBarra').css('width', '0%');
+            } else {
+                const ocupacion = Math.max(0, Math.min(100, 100 - disponibilidad));
+                $('#disponibilidadTexto').text(ocupacion + '% ocupado');
+                $('#disponibilidadBarra').css('width', ocupacion + '%');
+            }
+            
+            $('#tipoPiso').text(detalle.plyTipoPiso || 'No especificado');
+            $('#direccion').text(detalle.plyDir || 'Sin dirección');
+            
+            // Valor promedio
+            const valorProm = parseFloat(detalle.plyValProm || 0);
+            $('#valorPromedio').text('$' + valorProm.toFixed(2) + '/hora');
 
-            let horariosHtml = '<div style="margin-top:5px;">', tiene=false;
-            if (detalle.horariosLunesViernes?.length){ tiene=true; horariosHtml += '<div style="margin-bottom:5px;"><strong>Lunes a Viernes:</strong> ' + detalle.horariosLunesViernes.map(h=>`${h.horaInicio} - ${h.horaFin}`).join(', ') + '</div>'; }
-            if (detalle.horariosFinSemana?.length){ tiene=true; horariosHtml += '<div style="margin-bottom:5px;"><strong>Sábado Domingo:</strong> ' + detalle.horariosFinSemana.map(h=>`${h.horaInicio} - ${h.horaFin}`).join(', ') + '</div>'; }
-            horariosHtml += '</div>';
-            $('#horariosInfo').html(tiene ? horariosHtml : '<span style="color:#dc3545;">No hay horarios configurados</span>');
-            $('#horariosSection').show(); $('#debugInfoSection').hide(); $('#playaInfo').show();
+            // Horarios de atención - SIEMPRE mostrar esta sección
+            console.log('=== HORARIOS DEBUG ===');
+            console.log('detalle completo:', JSON.stringify(detalle, null, 2));
+            console.log('horarios:', detalle.horarios);
+            console.log('horariosLunesViernes:', detalle.horariosLunesViernes);
+            console.log('horariosFinSemana:', detalle.horariosFinSemana);
+            console.log('tipo de horariosLunesViernes:', typeof detalle.horariosLunesViernes);
+            console.log('es array?', Array.isArray(detalle.horariosLunesViernes));
+            console.log('length horariosLunesViernes:', detalle.horariosLunesViernes?.length);
+            console.log('length horariosFinSemana:', detalle.horariosFinSemana?.length);
+            console.log('length horarios:', detalle.horarios?.length);
+            
+            let horariosHtml = '';
+            let tiene = false;
+            
+            // Procesar horarios - primero intentar con arrays agrupados, luego con array unificado
+            let horariosLV = [];
+            let horariosFS = [];
+            
+            // Opción 1: Si vienen agrupados (GetDetallePlaya)
+            if (detalle.horariosLunesViernes && Array.isArray(detalle.horariosLunesViernes)) {
+                horariosLV = detalle.horariosLunesViernes;
+            }
+            if (detalle.horariosFinSemana && Array.isArray(detalle.horariosFinSemana)) {
+                horariosFS = detalle.horariosFinSemana;
+            }
+            
+            // Opción 2: Si viene array unificado (GetPlayasCercanas o GetDetallePlaya con horarios)
+            if ((horariosLV.length === 0 && horariosFS.length === 0) && detalle.horarios && Array.isArray(detalle.horarios) && detalle.horarios.length > 0) {
+                console.log('📋 Usando array unificado de horarios, total:', detalle.horarios.length);
+                horariosLV = detalle.horarios.filter(h => {
+                    const tipo = (h.TipoDia || h.tipoDia || '').toLowerCase();
+                    const esLV = tipo.includes('ábil') || tipo.includes('habil') || tipo.includes('lunes') || tipo.includes('viernes');
+                    if (esLV) {
+                        console.log('  ✅ Horario L-V encontrado:', h);
+                    }
+                    return esLV;
+                });
+                horariosFS = detalle.horarios.filter(h => {
+                    const tipo = (h.TipoDia || h.tipoDia || '').toLowerCase();
+                    const esFS = (tipo.includes('fin') && tipo.includes('semana')) || tipo.includes('sábado') || tipo.includes('sabado') || tipo.includes('domingo');
+                    if (esFS) {
+                        console.log('  ✅ Horario F-S encontrado:', h);
+                    }
+                    return esFS;
+                });
+                console.log('📋 Después de filtrar - L-V:', horariosLV.length, 'F-S:', horariosFS.length);
+            }
+            
+            // Opción 3: Si aún no hay horarios, mostrar todos los horarios disponibles sin agrupar
+            if (horariosLV.length === 0 && horariosFS.length === 0 && detalle.horarios && Array.isArray(detalle.horarios) && detalle.horarios.length > 0) {
+                console.log('⚠️ No se pudieron agrupar horarios, mostrando todos sin agrupar');
+                // Mostrar todos los horarios sin agrupar
+                const todosHorarios = detalle.horarios.map(h => {
+                    const tipo = h.TipoDia || h.tipoDia || 'Sin clasificar';
+                    const inicio = h.HoraInicio || h.horaInicio || '';
+                    const fin = h.HoraFin || h.horaFin || 'Sin fin';
+                    return `${tipo}: ${inicio} - ${fin}`;
+                }).filter(h => h && h.length > 0).join('<br>');
+                
+                if (todosHorarios && todosHorarios.length > 0) {
+                    horariosHtml = '<div>' + todosHorarios + '</div>';
+                    tiene = true;
+                    console.log('✅ Horarios mostrados sin agrupar:', todosHorarios);
+                }
+            }
+            
+            // Procesar Lunes a Viernes
+            if (horariosLV.length > 0) {
+                tiene = true;
+                console.log('📋 Procesando horarios L-V:', horariosLV);
+                const horariosLVStr = horariosLV.map(h => {
+                    console.log('  - Horario L-V objeto completo:', JSON.stringify(h));
+                    // Intentar todas las posibles propiedades (minúscula, mayúscula, camelCase)
+                    const inicio = h.horaInicio || h.HoraInicio || h.horaInicio || '';
+                    const fin = h.horaFin || h.HoraFin || h.horaFin || 'Sin fin';
+                    console.log(`  - Extraído: inicio='${inicio}', fin='${fin}'`);
+                    if (!inicio || inicio === '') {
+                        console.warn('  ⚠️ ADVERTENCIA: horaInicio está vacía para horario L-V:', h);
+                        return null; // Filtrar este elemento
+                    }
+                    return `${inicio} - ${fin}`;
+                }).filter(h => h !== null).join(', ');
+                
+                if (horariosLVStr && horariosLVStr.length > 0) {
+                    horariosHtml += '<div style="margin-bottom:8px;"><strong>Lunes a Viernes:</strong> ' + horariosLVStr + '</div>';
+                    console.log('✅ Agregado Lunes a Viernes:', horariosLVStr);
+                } else {
+                    console.warn('⚠️ No se pudo construir string de horarios L-V');
+                }
+            } else {
+                console.log('⚠️ No hay horarios L-V para procesar (array vacío)');
+            }
+            
+            // Procesar Fin de Semana
+            if (horariosFS.length > 0) {
+                tiene = true;
+                console.log('📋 Procesando horarios F-S:', horariosFS);
+                const horariosFSStr = horariosFS.map(h => {
+                    console.log('  - Horario F-S objeto completo:', JSON.stringify(h));
+                    // Intentar todas las posibles propiedades (minúscula, mayúscula, camelCase)
+                    const inicio = h.horaInicio || h.HoraInicio || h.horaInicio || '';
+                    const fin = h.horaFin || h.HoraFin || h.horaFin || 'Sin fin';
+                    console.log(`  - Extraído: inicio='${inicio}', fin='${fin}'`);
+                    if (!inicio || inicio === '') {
+                        console.warn('  ⚠️ ADVERTENCIA: horaInicio está vacía para horario F-S:', h);
+                        return null; // Filtrar este elemento
+                    }
+                    return `${inicio} - ${fin}`;
+                }).filter(h => h !== null).join(', ');
+                
+                if (horariosFSStr && horariosFSStr.length > 0) {
+                    horariosHtml += '<div style="margin-bottom:8px;"><strong>Sábado Domingo:</strong> ' + horariosFSStr + '</div>';
+                    console.log('✅ Agregado Sábado Domingo:', horariosFSStr);
+                } else {
+                    console.warn('⚠️ No se pudo construir string de horarios F-S');
+                }
+            } else {
+                console.log('⚠️ No hay horarios F-S para procesar (array vacío)');
+            }
+            
+            console.log('tiene horarios?', tiene);
+            console.log('horariosHtml final:', horariosHtml);
+            console.log('horariosHtml length:', horariosHtml.length);
+            console.log('horariosLV después de procesar:', horariosLV);
+            console.log('horariosFS después de procesar:', horariosFS);
+            
+            // Mostrar horarios o mensaje de "No hay horarios configurados"
+            if (tiene && horariosHtml && horariosHtml.trim().length > 0) {
+                $('#horariosInfo').html(horariosHtml);
+                console.log('✅ Horarios mostrados correctamente en el DOM');
+            } else {
+                console.warn('⚠️ No se encontraron horarios para mostrar');
+                console.warn('  - tiene:', tiene);
+                console.warn('  - horariosHtml:', horariosHtml);
+                console.warn('  - horariosHtml length:', horariosHtml ? horariosHtml.length : 0);
+                $('#horariosInfo').html('<span style="color:#dc3545;">No hay horarios configurados</span>');
+            }
+            
+            // SIEMPRE mostrar la sección de horarios (después de Valor promedio)
+            $('#horariosSection').show();
+            console.log('Sección de horarios mostrada, visible?', $('#horariosSection').is(':visible'));
+            $('#debugInfoSection').hide();
+            $('#playaInfo').show();
         }
 
         function cargarTarifasYServicios(plyID){
@@ -3559,6 +3879,43 @@
             filter: invert(1);
         }
     </style>
+
+    <script>
+        // Refuerzo específico para que el botón de menú móvil funcione también en la vista de mapa
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                const openSidebarBtn = document.getElementById('openSidebar');
+                const closeSidebarBtn = document.getElementById('closeSidebar');
+                const sidebar = document.getElementById('mobileSidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+
+                if (!openSidebarBtn || !sidebar || !overlay) {
+                    return;
+                }
+
+                const openSidebar = function () {
+                    sidebar.classList.add('active');
+                    overlay.classList.add('active');
+                    document.body.classList.add('sidebar-open');
+                };
+
+                const closeSidebar = function () {
+                    sidebar.classList.remove('active');
+                    overlay.classList.remove('active');
+                    document.body.classList.remove('sidebar-open');
+                };
+
+                openSidebarBtn.addEventListener('click', openSidebar);
+                if (closeSidebarBtn) {
+                    closeSidebarBtn.addEventListener('click', closeSidebar);
+                }
+                overlay.addEventListener('click', closeSidebar);
+            } catch (e) {
+                console.error('Error inicializando el menú móvil en el mapa:', e);
+            }
+        });
+    </script>
+
 </body>
 </html>
 </html>
