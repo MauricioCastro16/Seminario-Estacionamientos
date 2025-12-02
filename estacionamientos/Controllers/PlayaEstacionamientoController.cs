@@ -178,7 +178,22 @@ namespace estacionamientos.Controllers
                     EF.Functions.ILike(p.PlyDir!, pat)));
             }
 
-            vm.Playas = await query.OrderBy(p => p.PlyNom).ToListAsync();
+            var playas = await query.OrderBy(p => p.PlyNom).ToListAsync();
+
+            // Para cada playa en estado Oculto, verificar qué falta
+            foreach (var playa in playas.Where(p => p.PlyEstado == EstadoPlaya.Oculto))
+            {
+                var tieneMetodoPago = await _context.AceptaMetodosPago
+                    .AnyAsync(a => a.PlyID == playa.PlyID && a.AmpHab);
+                var tienePlaza = await _context.Plazas
+                    .AnyAsync(p => p.PlyID == playa.PlyID);
+
+                // Guardar información en ViewBag para usar en la vista
+                ViewData[$"FaltaMetodoPago_{playa.PlyID}"] = !tieneMetodoPago;
+                ViewData[$"FaltaPlaza_{playa.PlyID}"] = !tienePlaza;
+            }
+
+            vm.Playas = playas;
 
             if (!vm.HayFiltros && Request.QueryString.HasValue)
                 return RedirectToAction(nameof(Index));
@@ -216,7 +231,6 @@ namespace estacionamientos.Controllers
 
         public async Task<IActionResult> DetailsPlayero(int id)
         {
-
             var playa = await _context.Playas
                 .Include(p => p.Horarios)
                     .ThenInclude(h => h.ClasificacionDias)
@@ -228,6 +242,46 @@ namespace estacionamientos.Controllers
             ViewBag.Clasificaciones = await _context.ClasificacionesDias
                 .AsNoTracking()
                 .OrderBy(c => c.ClaDiasID)
+                .ToListAsync();
+
+            // Métodos de pago aceptados
+            ViewBag.MetodosPago = await _context.AceptaMetodosPago
+                .Include(a => a.MetodoPago)
+                .Where(a => a.PlyID == id && a.AmpHab)
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Plazas de la playa
+            ViewBag.Plazas = await _context.Plazas
+                .Include(p => p.Clasificaciones)
+                    .ThenInclude(pc => pc.Clasificacion)
+                .Where(p => p.PlyID == id)
+                .OrderBy(p => p.PlzNum)
+                .Select(p => new
+                {
+                    p.PlyID,
+                    p.PlzNum,
+                    p.PlzNombre,
+                    p.PlzTecho,
+                    p.PlzAlt,
+                    p.PlzHab,
+                    PlzOcupada = _context.Ocupaciones.Any(o => o.PlyID == p.PlyID && o.PlzNum == p.PlzNum && o.OcufFyhFin == null),
+                    Clasificaciones = p.Clasificaciones.Select(pc => pc.Clasificacion.ClasVehTipo).ToList()
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Tarifas vigentes
+            var ahora = DateTime.UtcNow;
+            ViewBag.Tarifas = await _context.TarifasServicio
+                .Include(t => t.ServicioProveido)
+                    .ThenInclude(sp => sp.Servicio)
+                .Include(t => t.ClasificacionVehiculo)
+                .Where(t => t.PlyID == id 
+                    && t.TasFecIni <= ahora 
+                    && (t.TasFecFin == null || t.TasFecFin >= ahora)
+                    && t.ServicioProveido.SerProvHab)
+                .AsNoTracking()
                 .ToListAsync();
 
             SetBreadcrumb(
@@ -264,6 +318,9 @@ namespace estacionamientos.Controllers
 
             // Asignar el PlyID calculado al modelo de la playa
             model.PlyID = nextPlyId;
+            
+            // Guardar como Oculto por defecto
+            model.PlyEstado = EstadoPlaya.Oculto;
 
             // Agregar la nueva playa a la base de datos
             _context.Playas.Add(model);
@@ -284,6 +341,114 @@ namespace estacionamientos.Controllers
 
             await _context.SaveChangesAsync();
 
+            return RedirectToAction(nameof(Index));
+        }
+
+        /// <summary>
+        /// Verifica si una playa tiene al menos 1 método de pago habilitado y 1 plaza,
+        /// y actualiza el estado a Vigente si cumple los requisitos.
+        /// </summary>
+        public async Task VerificarYActualizarEstado(int plyID)
+        {
+            var playa = await _context.Playas.FindAsync(plyID);
+            if (playa == null) return;
+
+            // Verificar si tiene al menos 1 método de pago habilitado
+            var tieneMetodoPago = await _context.AceptaMetodosPago
+                .AnyAsync(a => a.PlyID == plyID && a.AmpHab);
+
+            // Verificar si tiene al menos 1 plaza
+            var tienePlaza = await _context.Plazas
+                .AnyAsync(p => p.PlyID == plyID);
+
+            // Si cumple ambos requisitos, actualizar a Vigente
+            if (tieneMetodoPago && tienePlaza && playa.PlyEstado == EstadoPlaya.Oculto)
+            {
+                playa.PlyEstado = EstadoPlaya.Vigente;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        /// <summary>
+        /// Cambia el estado de una playa (Oculto <-> Vigente).
+        /// Solo permite cambiar a Vigente si cumple los requisitos.
+        /// Solo permite cambiar a Oculto si no tiene ocupaciones activas, turnos abiertos o abonos vigentes.
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Duenio")]
+        public async Task<IActionResult> ToggleEstado(int plyID, bool nuevoEstado)
+        {
+            // Verificar que el usuario sea dueño de la playa
+            int usuNU = 0;
+            int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out usuNU);
+
+            var esMia = await _context.AdministraPlayas
+                .AnyAsync(a => a.PlyID == plyID && a.DueNU == usuNU);
+            
+            if (!esMia)
+                return Forbid();
+
+            var playa = await _context.Playas.FindAsync(plyID);
+            if (playa == null)
+                return NotFound();
+
+            // Si se intenta cambiar a Vigente, verificar requisitos
+            if (nuevoEstado && playa.PlyEstado == EstadoPlaya.Oculto)
+            {
+                var tieneMetodoPago = await _context.AceptaMetodosPago
+                    .AnyAsync(a => a.PlyID == plyID && a.AmpHab);
+                
+                var tienePlaza = await _context.Plazas
+                    .AnyAsync(p => p.PlyID == plyID);
+
+                if (!tieneMetodoPago || !tienePlaza)
+                {
+                    TempData["ErrorMessage"] = "No se puede poner en estado Vigente. La playa debe tener al menos 1 método de pago habilitado y 1 plaza configurada.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+
+            // Si se intenta cambiar a Oculto, verificar que no tenga relaciones activas
+            if (!nuevoEstado && playa.PlyEstado == EstadoPlaya.Vigente)
+            {
+                var ahora = DateTime.UtcNow;
+                var razones = new List<string>();
+
+                // Verificar ocupaciones activas
+                var tieneOcupacionesActivas = await _context.Ocupaciones
+                    .AnyAsync(o => o.PlyID == plyID && o.OcufFyhFin == null);
+                if (tieneOcupacionesActivas)
+                    razones.Add("ocupaciones activas");
+
+                // Verificar turnos abiertos
+                var tieneTurnosAbiertos = await _context.Turnos
+                    .AnyAsync(t => t.PlyID == plyID && t.TurFyhFin == null);
+                if (tieneTurnosAbiertos)
+                    razones.Add("turnos de playeros abiertos");
+
+                // Verificar abonos activos (abonos con estado Activo o que no hayan finalizado)
+                var tieneAbonosActivos = await _context.Abonos
+                    .AnyAsync(a => a.PlyID == plyID && 
+                        (a.EstadoPago == EstadoPago.Activo || 
+                         (a.AboFyhFin == null || a.AboFyhFin > ahora)));
+                if (tieneAbonosActivos)
+                    razones.Add("abonos vigentes");
+
+                if (razones.Count > 0)
+                {
+                    var mensaje = "No se puede poner en estado Oculto. La playa tiene: " + 
+                        string.Join(", ", razones) + ".";
+                    TempData["ErrorMessage"] = mensaje;
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+
+            // Cambiar el estado
+            playa.PlyEstado = nuevoEstado ? EstadoPlaya.Vigente : EstadoPlaya.Oculto;
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = $"Estado de la playa actualizado a {(nuevoEstado ? "Vigente" : "Oculto")}.";
             return RedirectToAction(nameof(Index));
         }
 

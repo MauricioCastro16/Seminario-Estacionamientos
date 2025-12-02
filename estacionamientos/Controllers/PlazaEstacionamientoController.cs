@@ -242,7 +242,36 @@ namespace estacionamientos.Controllers
             }
 
             await _ctx.SaveChangesAsync();
+
+            // Verificar y actualizar estado de la playa
+            await VerificarYActualizarEstadoPlaya(plyID);
+
             return RedirectToAction(nameof(ConfigurarPlazas), new { plyID = plyID });
+        }
+
+        /// <summary>
+        /// Verifica si una playa tiene al menos 1 método de pago habilitado y 1 plaza,
+        /// y actualiza el estado a Vigente si cumple los requisitos.
+        /// </summary>
+        private async Task VerificarYActualizarEstadoPlaya(int plyID)
+        {
+            var playa = await _ctx.Playas.FindAsync(plyID);
+            if (playa == null) return;
+
+            // Verificar si tiene al menos 1 método de pago habilitado
+            var tieneMetodoPago = await _ctx.AceptaMetodosPago
+                .AnyAsync(a => a.PlyID == plyID && a.AmpHab);
+
+            // Verificar si tiene al menos 1 plaza
+            var tienePlaza = await _ctx.Plazas
+                .AnyAsync(p => p.PlyID == plyID);
+
+            // Si cumple ambos requisitos, actualizar a Vigente
+            if (tieneMetodoPago && tienePlaza && playa.PlyEstado == estacionamientos.Models.EstadoPlaya.Oculto)
+            {
+                playa.PlyEstado = estacionamientos.Models.EstadoPlaya.Vigente;
+                await _ctx.SaveChangesAsync();
+            }
         }
 
         [HttpPost]

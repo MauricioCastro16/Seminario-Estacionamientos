@@ -7,6 +7,9 @@
         .OrderBy(h => h.ClaDiasID)
         .ThenBy(h => h.HorFyhIni)
         .ToList();
+    var metodosPago = ViewBag.MetodosPago as IEnumerable<estacionamientos.Models.AceptaMetodoPago> ?? Enumerable.Empty<estacionamientos.Models.AceptaMetodoPago>();
+    var plazas = ViewBag.Plazas as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var tarifas = ViewBag.Tarifas as IEnumerable<estacionamientos.Models.TarifaServicio> ?? Enumerable.Empty<estacionamientos.Models.TarifaServicio>();
 }
 
 <div class="card shadow-sm mt-4">
@@ -20,57 +23,242 @@
         </p>
 
         <div class="d-flex flex-wrap gap-2 mb-4">
-            <a asp-controller="AceptaMetodoPago" asp-action="Lista" asp-route-plyID="@Model.PlyID"
-               class="btn btn-outline-primary btn-sm">
+            <button type="button" 
+                    class="btn btn-outline-primary btn-sm" 
+                    id="btnHorarios"
+                    onclick="toggleSection('horarios')">
+                <i class="fa-regular fa-clock"></i> Horarios de atención
+            </button>
+            <button type="button" 
+                    class="btn btn-outline-primary btn-sm" 
+                    id="btnMetodosPago"
+                    onclick="toggleSection('metodosPago')">
                 <i class="fa-regular fa-credit-card"></i> Métodos de pago
-            </a>
-            <a asp-controller="Playero" asp-action="Plazas" asp-route-id="@Model.PlyID"
-               class="btn btn-outline-primary btn-sm">
+            </button>
+            <button type="button" 
+                    class="btn btn-outline-primary btn-sm" 
+                    id="btnPlazas"
+                    onclick="toggleSection('plazas')">
                 <i class="fa-solid fa-grip"></i> Plazas
-            </a>
-            <a asp-controller="TarifaServicio" asp-action="VigentesPlayero" asp-route-plyId="@Model.PlyID"
-               class="btn btn-outline-primary btn-sm">
+            </button>
+            <button type="button" 
+                    class="btn btn-outline-primary btn-sm" 
+                    id="btnTarifas"
+                    onclick="toggleSection('tarifas')">
                 <i class="fa-solid fa-money-bills"></i> Tarifas vigentes
-            </a>
+            </button>
         </div>
 
-        <h6 class="mb-2">Horarios de atencion</h6>
-        <small class="text-muted d-block mb-3">Horarios expresados en hora local</small>
+        <!-- Sección Horarios -->
+        <div id="horariosSection" class="d-none mb-4">
+            <h6 class="mb-2">Horarios de atencion</h6>
+            <small class="text-muted d-block mb-3">Horarios expresados en hora local</small>
 
-        @if (clasifs.Count == 0)
-        {
-            <div class="text-muted">Sin clasificaciones disponibles.</div>
-        }
-        else
-        {
-            foreach (var cla in clasifs)
+            @if (clasifs.Count == 0)
             {
-                var franjas = horarios.Where(h => h.ClaDiasID == cla.ClaDiasID).ToList();
-                <div class="mb-3">
-                    <div class="fw-semibold">@cla.ClaDiasTipo</div>
-                    @if (!string.IsNullOrWhiteSpace(cla.ClaDiasDesc))
-                    {
-                        <div class="text-muted small">@cla.ClaDiasDesc</div>
-                    }
+                <div class="text-muted">Sin clasificaciones disponibles.</div>
+            }
+            else
+            {
+                foreach (var cla in clasifs)
+                {
+                    var franjas = horarios.Where(h => h.ClaDiasID == cla.ClaDiasID).ToList();
+                    <div class="mb-3">
+                        <div class="fw-semibold">@cla.ClaDiasTipo</div>
+                        @if (!string.IsNullOrWhiteSpace(cla.ClaDiasDesc))
+                        {
+                            <div class="text-muted small">@cla.ClaDiasDesc</div>
+                        }
 
-                    @if (franjas.Count == 0)
-                    {
-                        <div class="text-muted small">Sin horario definido.</div>
-                    }
-                    else
-                    {
-                        <div class="d-flex flex-wrap gap-2 mt-2">
-                            @foreach (var fr in franjas)
-                            {
-                                var fin = fr.HorFyhFin.HasValue ? fr.HorFyhFin.Value.ToString("HH:mm") : "--:--";
-                                <span class="badge rounded-pill text-bg-light border">
-                                    @fr.HorFyhIni.ToString("HH:mm") - @fin
-                                </span>
-                            }
-                        </div>
-                    }
+                        @if (franjas.Count == 0)
+                        {
+                            <div class="text-muted small">Sin horario definido.</div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                @foreach (var fr in franjas)
+                                {
+                                    var fin = fr.HorFyhFin.HasValue ? fr.HorFyhFin.Value.ToString("HH:mm") : "--:--";
+                                    <span class="badge rounded-pill text-bg-light border">
+                                        @fr.HorFyhIni.ToString("HH:mm") - @fin
+                                    </span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+
+        <!-- Sección Métodos de Pago -->
+        <div id="metodosPagoSection" class="d-none mb-4">
+            <h6 class="mb-2">Métodos de pago aceptados:</h6>
+            @if (!metodosPago.Any())
+            {
+                <div class="alert alert-warning mt-2">
+                    Esta playa aún no tiene métodos de pago cargados.
                 </div>
             }
-        }
+            else
+            {
+                <ul class="list-group mt-2">
+                    @foreach (var acepta in metodosPago)
+                    {
+                        var nombre = acepta.MetodoPago?.MepNom?.ToLower() ?? "";
+                        string icon = "fa-wallet";
+                        if (nombre.Contains("efectivo")) icon = "fa-money-bill";
+                        else if (nombre.Contains("crédito")) icon = "fa-credit-card";
+                        else if (nombre.Contains("débito")) icon = "fa-credit-card";
+                        else if (nombre.Contains("transfer")) icon = "fa-building-columns";
+                        else if (nombre.Contains("qr")) icon = "fa-qrcode";
+
+                        <li class="list-group-item d-flex align-items-center">
+                            <i class="fas @icon text-primary me-2 fs-5"></i>
+                            @(acepta.MetodoPago?.MepNom ?? "Sin nombre")
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+
+        <!-- Sección Plazas -->
+        <div id="plazasSection" class="d-none mb-4">
+            <h6 class="mb-2">Plazas de la playa:</h6>
+            @if (!plazas.Any())
+            {
+                <div class="alert alert-info mt-2">
+                    No hay plazas registradas en esta playa.
+                </div>
+            }
+            else
+            {
+                <table class="table table-hover align-middle mt-2">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Número</th>
+                            <th>Nombre</th>
+                            <th>Clasificación</th>
+                            <th>Techo</th>
+                            <th>Altura</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-center">Habilitada</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (dynamic plaza in plazas)
+                        {
+                            <tr>
+                                <td>@plaza.PlzNum</td>
+                                <td>@(plaza.PlzNombre?.ToString() ?? "-")</td>
+                                <td>
+                                    @if (plaza.Clasificaciones != null && ((IEnumerable<string>)plaza.Clasificaciones).Any())
+                                    {
+                                        @string.Join(", ", (IEnumerable<string>)plaza.Clasificaciones)
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">–</span>
+                                    }
+                                </td>
+                                <td>@((plaza.PlzTecho == true) ? "Sí" : "No")</td>
+                                <td>@plaza.PlzAlt</td>
+                                <td class="text-center">
+                                    @if (plaza.PlzOcupada == true)
+                                    {
+                                        <span class="fw-bold text-danger">Ocupada</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="fw-bold text-success">Libre</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (plaza.PlzHab == true)
+                                    {
+                                        <span class="badge bg-success">Habilitada</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Deshabilitada</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        <!-- Sección Tarifas -->
+        <div id="tarifasSection" class="d-none mb-4">
+            <h6 class="mb-2">Tarifas vigentes:</h6>
+            @if (!tarifas.Any())
+            {
+                <div class="alert alert-warning mt-2">
+                    Esta playa aún no tiene tarifas vigentes cargadas.
+                </div>
+            }
+            else
+            {
+                <table class="table table-hover mt-2">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%">Servicio</th>
+                            <th style="width: 20%">Clase vehículo</th>
+                            <th style="width: 10%">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var grupo in tarifas.GroupBy(t => t.ServicioProveido.Servicio.SerNom))
+                        {
+                            var rowCount = grupo.Count();
+                            var first = true;
+
+                            foreach (var item in grupo)
+                            {
+                                <tr>
+                                    @if (first)
+                                    {
+                                        <td rowspan="@rowCount" class="align-middle fw-bold bg-light border-end">
+                                            @grupo.Key
+                                        </td>
+                                        first = false;
+                                    }
+
+                                    <td>@item.ClasificacionVehiculo.ClasVehTipo</td>
+                                    <td>$@item.TasMonto.ToString("N2")</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
     </div>
 </div>
+
+<script>
+    function toggleSection(sectionName) {
+        const sections = {
+            horarios: { section: 'horariosSection', btn: 'btnHorarios', icon: 'fa-regular fa-clock', label: 'Horarios de atención', hideLabel: 'Ocultar horarios' },
+            metodosPago: { section: 'metodosPagoSection', btn: 'btnMetodosPago', icon: 'fa-regular fa-credit-card', label: 'Métodos de pago', hideLabel: 'Ocultar métodos de pago' },
+            plazas: { section: 'plazasSection', btn: 'btnPlazas', icon: 'fa-solid fa-grip', label: 'Plazas', hideLabel: 'Ocultar plazas' },
+            tarifas: { section: 'tarifasSection', btn: 'btnTarifas', icon: 'fa-solid fa-money-bills', label: 'Tarifas vigentes', hideLabel: 'Ocultar tarifas' }
+        };
+
+        const config = sections[sectionName];
+        if (!config) return;
+
+        const section = document.getElementById(config.section);
+        const btn = document.getElementById(config.btn);
+        
+        if (section.classList.contains('d-none')) {
+            section.classList.remove('d-none');
+            btn.innerHTML = `<i class="${config.icon}"></i> ${config.hideLabel}`;
+        } else {
+            section.classList.add('d-none');
+            btn.innerHTML = `<i class="${config.icon}"></i> ${config.label}`;
+        }
+    }
+</script>

@@ -54,6 +54,24 @@ namespace estacionamientos.Controllers
         private Task<bool> VehiculoExiste(string pat)
             => _ctx.Vehiculos.AnyAsync(v => v.VehPtnt == pat);
 
+        // Validar que exista al menos una tarifa de estacionamiento vigente para la clasificación del vehículo
+        private async Task<bool> ExisteTarifaEstacionamiento(int plyID, int clasVehID)
+        {
+            var ahora = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            
+            return await _ctx.ServiciosProveidos
+                .Include(sp => sp.Servicio)
+                .Include(sp => sp.Tarifas)
+                .AnyAsync(sp =>
+                    sp.PlyID == plyID &&
+                    sp.SerProvHab &&
+                    sp.Servicio.SerTipo == "Estacionamiento" &&
+                    sp.Tarifas.Any(t =>
+                        t.ClasVehID == clasVehID &&
+                        t.TasFecIni <= ahora &&
+                        (t.TasFecFin == null || t.TasFecFin >= ahora)));
+        }
+
         // ===========================
         // Lógica de cobro 
         // ===========================
@@ -232,34 +250,145 @@ namespace estacionamientos.Controllers
             // Traer servicios de tipo Estacionamiento habilitados
             var servicios = await _ctx.ServiciosProveidos
                 .Include(sp => sp.Servicio)
-                .Include(sp => sp.Tarifas.Where(t =>
-                    t.ClasVehID == ocupacion.Vehiculo!.ClasVehID &&
-                    t.TasFecIni <= ocufFyhFin &&
-                    (t.TasFecFin == null || t.TasFecFin >= ocufFyhIni)))
+                .Include(sp => sp.Tarifas)
                 .Where(sp => sp.PlyID == plyID &&
                             sp.SerProvHab &&
                             sp.Servicio.SerTipo == "Estacionamiento")
                 .ToListAsync();
 
             // Cargar tarifas vigentes
+            // IMPORTANTE: La tarifa debe estar vigente AL MOMENTO DEL COBRO (ahora)
+            // Y además debe haberse superpuesto con el período de ocupación
+            var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             var tarifas = new List<(ServicioProveido sp, decimal monto, int minutos)>();
+            
             foreach (var sp in servicios)
             {
-                var tarifa = sp.Tarifas
-                    .Where(t => t.ClasVehID == ocupacion.Vehiculo!.ClasVehID &&
-                                t.TasFecIni <= ocufFyhFin &&
-                                (t.TasFecFin == null || t.TasFecFin >= ocufFyhIni))
+                // Buscar tarifas que estén vigentes EN EL MOMENTO ACTUAL del cobro
+                // y que también se hayan superpuesto con el período de ocupación
+                var tarifasVigentesAhora = sp.Tarifas
+                    .Where(t => 
+                        t.ClasVehID == ocupacion.Vehiculo!.ClasVehID &&
+                        // CRÍTICO: La tarifa debe estar vigente EN EL MOMENTO DEL COBRO
+                        t.TasFecIni <= fechaActual &&
+                        (t.TasFecFin == null || t.TasFecFin >= fechaActual))
                     .OrderByDescending(t => t.TasFecIni)
+                    .ToList();
+
+                // De las tarifas vigentes ahora, buscar la que se superponga con el período de ocupación
+                var tarifa = tarifasVigentesAhora
+                    .Where(t =>
+                        // Verificar que la tarifa se haya superpuesto con el período de ocupación
+                        t.TasFecIni <= ocufFyhFin &&
+                        (t.TasFecFin == null || t.TasFecFin >= ocufFyhIni))
                     .FirstOrDefault();
+
+                // Si no encontró una tarifa que se superponga con el período completo,
+                // pero hay tarifas vigentes ahora, usar la más reciente (al menos está vigente ahora)
+                if (tarifa == null && tarifasVigentesAhora.Any())
+                {
+                    // Esto puede pasar si la tarifa comenzó después del inicio de la ocupación
+                    // En ese caso, usamos la tarifa vigente actual más reciente
+                    tarifa = tarifasVigentesAhora.FirstOrDefault();
+                }
 
                 if (tarifa != null && sp.Servicio.SerDuracionMinutos.HasValue)
                 {
                     tarifas.Add((sp, tarifa.TasMonto, sp.Servicio.SerDuracionMinutos.Value));
+            }
+            }
+
+            // Verificar si el vehículo pertenece a un abono activo Y está en la plaza del abono
+            // Un abono es válido si: no está cancelado, no está finalizado, y está dentro del rango de fechas
+            var fechaActualDate = fechaActual.Date;
+            
+            // Normalizar la patente para comparación case-insensitive
+            var vehPtntNormalized = (vehPtnt?.Trim().ToUpperInvariant() ?? string.Empty);
+            
+            // Validar que exista al menos una tarifa vigente AL MOMENTO DEL COBRO
+            // Esta validación es crítica: no podemos cobrar si no hay tarifas vigentes ahora (excepto si es abonado)
+            // Primero verificamos si es abonado para evitar el error innecesario
+            var abonosFiltrados = await _ctx.Abonos
+                .Include(a => a.Vehiculos)
+                .Where(a => a.EstadoPago != EstadoPago.Cancelado &&
+                           a.EstadoPago != EstadoPago.Finalizado &&
+                           // Verificar que la fecha actual esté dentro del rango del abono
+                           a.AboFyhIni.Date <= fechaActualDate &&
+                           (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate) &&
+                           a.PlyID == plyID &&
+                           a.PlzNum == plzNum) // Verificar que está en la plaza del abono
+                .ToListAsync();
+            
+            // Comparar patentes de forma case-insensitive en memoria
+            var esAbonado = abonosFiltrados.Any(a => 
+                a.Vehiculos.Any(v => v.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized));
+            
+            // Solo validar tarifas si NO es abonado
+            if (!esAbonado && !tarifas.Any())
+            {
+                throw new InvalidOperationException(
+                    "No existen tarifas de estacionamiento vigentes aplicables.");
+            }
+
+            // Extender beneficio por período de gracia de ABONO (diario/semanal/mensual) si corresponde
+            if (!esAbonado)
+            {
+                // Candidatos fuera de rango de fechas pero en la misma plaza
+                var candidatos = await _ctx.Abonos
+                    .Include(a => a.Vehiculos)
+                    .Include(a => a.Periodos)
+                    .Where(a => a.EstadoPago != EstadoPago.Cancelado &&
+                                a.PlyID == plyID &&
+                                a.PlzNum == plzNum)
+                    .ToListAsync();
+
+                // Identificar servicios de abono por nombre
+                var serviciosAbono = await _ctx.Servicios
+                    .Where(s => s.SerNom == "Abono por 1 día" || s.SerNom == "Abono por 1 semana" || s.SerNom == "Abono por 1 mes")
+                    .Select(s => new { s.SerID, s.SerNom })
+                    .ToListAsync();
+
+                foreach (var ab in candidatos)
+                {
+                    var pertenece = ab.Vehiculos.Any(v => v.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized);
+                    if (!pertenece) continue;
+
+                    // Determinar duración típica del abono a partir del primer período
+                    var primerPeriodo = ab.Periodos.OrderBy(p => p.PeriodoNumero).FirstOrDefault();
+                    if (primerPeriodo == null) continue;
+                    var diasPeriodo = Math.Max(1, (int)(primerPeriodo.PeriodoFechaFin.Date - primerPeriodo.PeriodoFechaInicio.Date).TotalDays);
+                    string etiquetaAbono = diasPeriodo switch { <= 1 => "Abono por 1 día", <= 7 => "Abono por 1 semana", _ => "Abono por 1 mes" };
+                    var ser = serviciosAbono.FirstOrDefault(s => s.SerNom == etiquetaAbono);
+                    if (ser == null) continue;
+
+                    // Buscar la tarifa vigente por servicio (gracia común para todas las clases)
+                    var tarifa = await _ctx.TarifasServicio
+                        .Where(t => t.PlyID == plyID && t.SerID == ser.SerID)
+                        .OrderByDescending(t => t.TasFecIni)
+                        .FirstOrDefaultAsync();
+
+                    if (tarifa == null || !tarifa.TasGraciaValor.HasValue || string.IsNullOrWhiteSpace(tarifa.TasGraciaUnidad))
+                        continue;
+
+                    // Calcular ventana de gracia desde el fin del abono (o fin del último período)
+                    var baseFin = (ab.AboFyhFin?.Date) ?? ab.Periodos.Max(p => p.PeriodoFechaFin.Date);
+                    DateTime finGracia = tarifa.TasGraciaUnidad switch
+                    {
+                        "minutos" => baseFin.AddMinutes(tarifa.TasGraciaValor.Value),
+                        "horas" => baseFin.AddHours(tarifa.TasGraciaValor.Value),
+                        _ => baseFin.AddDays(tarifa.TasGraciaValor.Value)
+                    };
+
+                    if (fechaActualDate <= finGracia.Date)
+                    {
+                        esAbonado = true; // dentro del período de gracia del abono
+                        break;
+                    }
                 }
             }
 
-            // Determinar si se debe cobrar estacionamiento (si tiene minutos a cobrar)
-            bool debeCobrarEstacionamiento = minutosACobrar > 0;
+            // Determinar si se debe cobrar estacionamiento (si tiene minutos a cobrar y NO está cubierto por abono)
+            bool debeCobrarEstacionamiento = minutosACobrar > 0 && !esAbonado;
 
             // Buscar referencias a fracción (30min) y hora (60min)
             var fraccion = tarifas.FirstOrDefault(t => t.minutos == 30);
@@ -682,6 +811,36 @@ namespace estacionamientos.Controllers
             var fechaActualDate = fechaActual.Date;
             var vehPtntNormalized = vehPtnt?.Trim().ToUpperInvariant() ?? string.Empty;
 
+            // Obtener o crear el vehículo para obtener su clasificación
+            var vehiculo = await _ctx.Vehiculos.FirstOrDefaultAsync(v => v.VehPtnt == vehPtnt);
+            int clasVehID = 0;
+            
+            if (vehiculo != null)
+            {
+                clasVehID = vehiculo.ClasVehID;
+            }
+            else
+            {
+                // Si el vehículo no existe, no podemos validar la tarifa
+                // En este caso, no permitimos el ingreso porque no sabemos su clasificación
+                TempData["Error"] = $"El vehículo con patente {vehPtnt} no existe. Debe crear el vehículo primero o usar el formulario de ingreso completo.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (clasVehID == 0)
+            {
+                TempData["Error"] = $"El vehículo con patente {vehPtnt} no tiene una clasificación asignada. Debe asignar una clasificación primero.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Validar que exista al menos una tarifa de estacionamiento para esta clasificación de vehículo
+            var existeTarifa = await ExisteTarifaEstacionamiento(plyID, clasVehID);
+            if (!existeTarifa)
+            {
+                TempData["Error"] = $"No se puede registrar el ingreso. No existen tarifas aplicables ";
+                return RedirectToAction(nameof(Index));
+            }
+
             // Verificar si la plaza tiene un abono activo
             var abonoActivo = await _ctx.Abonos
                 .Include(a => a.Vehiculos)
@@ -769,9 +928,16 @@ namespace estacionamientos.Controllers
 
             // Calcular el cobro antes de confirmar el egreso
             var fechaEgreso = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
-            var cobroVM = await CalcularCobro(plyID, plzNum, vehPtnt, ocup.OcufFyhIni, fechaEgreso);
-            
-            return View("CobroEgreso", cobroVM);
+            try
+            {
+                var cobroVM = await CalcularCobro(plyID, plzNum, vehPtnt, ocup.OcufFyhIni, fechaEgreso);
+                return View("CobroEgreso", cobroVM);
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["Error"] = ex.Message;
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         [HttpPost]
@@ -788,14 +954,41 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Usar las fechas reales de la ocupación y la fecha actual para el egreso
-            var fechaEgreso = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            // Usar las fechas del modelo (que ya se mostraron al usuario) en lugar de recalcular
+            // Esto asegura que el cálculo y la fecha guardada coincidan con lo mostrado
             var fechaInicioReal = ocup.OcufFyhIni;
+            var fechaEgreso = DateTime.SpecifyKind(model.OcufFyhFin, DateTimeKind.Utc);
+            
+            // Validar que la fecha de egreso del modelo sea válida (no muy antigua ni en el futuro)
+            var ahora = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var diferenciaMaxima = TimeSpan.FromHours(1); // Permitir hasta 1 hora de diferencia
+            if (Math.Abs((fechaEgreso - ahora).TotalMinutes) > diferenciaMaxima.TotalMinutes)
+            {
+                // Si la fecha del modelo es muy diferente a la actual, usar la fecha actual
+                // Esto puede pasar si el usuario dejó el formulario abierto por mucho tiempo
+                fechaEgreso = ahora;
+            }
+            
+            // Validar que la fecha de egreso sea posterior a la de inicio
+            if (fechaEgreso < fechaInicioReal)
+            {
+                TempData["Error"] = "La fecha de egreso no puede ser anterior a la fecha de ingreso.";
+                return RedirectToAction(nameof(Index));
+            }
 
-            // Recalcular el modelo para obtener EsAbonado actualizado usando las fechas reales
-            var cobroVM = await CalcularCobro(model.PlyID, model.PlzNum, model.VehPtnt, 
-                fechaInicioReal, fechaEgreso);
-            cobroVM.MepID = model.MepID; // Mantener la selección del usuario
+            // Recalcular el modelo para obtener EsAbonado actualizado usando las fechas del modelo
+            CobroEgresoVM cobroVM;
+            try
+            {
+                cobroVM = await CalcularCobro(model.PlyID, model.PlzNum, model.VehPtnt, 
+                    fechaInicioReal, fechaEgreso);
+                cobroVM.MepID = model.MepID; // Mantener la selección del usuario
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["Error"] = ex.Message;
+                return RedirectToAction(nameof(Index));
+            }
             
             // Validar que el método de pago esté seleccionado solo si hay algo que cobrar
             if (cobroVM.TotalCobro > 0 && cobroVM.MepID == 0)
@@ -859,8 +1052,8 @@ namespace estacionamientos.Controllers
 
                 _ctx.MovimientosPlayeros.Add(movimientoPlayero);
 
-                // Actualizar la ocupación con la fecha de fin y asociar el pago
-                ocup.OcufFyhFin = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+                // Actualizar la ocupación con la fecha de fin del modelo (coincide con el cálculo mostrado)
+                ocup.OcufFyhFin = fechaEgreso;
                 _ctx.Ocupaciones.Update(ocup);
                 await _ctx.SaveChangesAsync();
 
@@ -1184,14 +1377,55 @@ namespace estacionamientos.Controllers
 
             if (string.IsNullOrWhiteSpace(model.VehPtnt))
             {
-                TempData["Error"] = "Debe ingresar la patente del vehículo.";
-                return RedirectToAction(nameof(Create));
+                ModelState.AddModelError("VehPtnt", "Debe ingresar la patente del vehículo.");
+                await LoadSelects(model.PlyID, model.PlzNum, model.VehPtnt);
+                ViewBag.Clasificaciones = new SelectList(
+                    await _ctx.ClasificacionesVehiculo
+                        .OrderBy(c => c.ClasVehTipo)
+                        .ToListAsync(),
+                    "ClasVehID", "ClasVehTipo", ClasVehID
+                );
+                ViewBag.PlayaNombre = await _ctx.Playas
+                    .Where(p => p.PlyID == model.PlyID)
+                    .Select(p => p.PlyNom)
+                    .FirstOrDefaultAsync();
+                return View(model);
             }
 
             if (ClasVehID == 0)
             {
-                TempData["Error"] = "Debe seleccionar una clasificación válida.";
-                return RedirectToAction(nameof(Index));
+                ModelState.AddModelError("ClasVehID", "Debe seleccionar una clasificación válida.");
+                await LoadSelects(model.PlyID, model.PlzNum, model.VehPtnt);
+                ViewBag.Clasificaciones = new SelectList(
+                    await _ctx.ClasificacionesVehiculo
+                        .OrderBy(c => c.ClasVehTipo)
+                        .ToListAsync(),
+                    "ClasVehID", "ClasVehTipo", ClasVehID
+                );
+                ViewBag.PlayaNombre = await _ctx.Playas
+                    .Where(p => p.PlyID == model.PlyID)
+                    .Select(p => p.PlyNom)
+                    .FirstOrDefaultAsync();
+                return View(model);
+            }
+
+            // Validar que exista al menos una tarifa de estacionamiento para esta clasificación de vehículo
+            var existeTarifa = await ExisteTarifaEstacionamiento(model.PlyID, ClasVehID);
+            if (!existeTarifa)
+            {
+                ModelState.AddModelError("", "No se puede registrar el ingreso. No existen tarifas aplicables");
+                await LoadSelects(model.PlyID, model.PlzNum, model.VehPtnt);
+                ViewBag.Clasificaciones = new SelectList(
+                    await _ctx.ClasificacionesVehiculo
+                        .OrderBy(c => c.ClasVehTipo)
+                        .ToListAsync(),
+                    "ClasVehID", "ClasVehTipo", ClasVehID
+                );
+                ViewBag.PlayaNombre = await _ctx.Playas
+                    .Where(p => p.PlyID == model.PlyID)
+                    .Select(p => p.PlyNom)
+                    .FirstOrDefaultAsync();
+                return View(model);
             }
 
             var plazaValida = await _ctx.Plazas
@@ -1204,8 +1438,19 @@ namespace estacionamientos.Controllers
 
             if (!plazaValida)
             {
-                TempData["Error"] = "La plaza seleccionada no es válida para esta clasificación.";
-                return RedirectToAction(nameof(Index));
+                ModelState.AddModelError("PlzNum", "La plaza seleccionada no es válida para esta clasificación.");
+                await LoadSelects(model.PlyID, model.PlzNum, model.VehPtnt);
+                ViewBag.Clasificaciones = new SelectList(
+                    await _ctx.ClasificacionesVehiculo
+                        .OrderBy(c => c.ClasVehTipo)
+                        .ToListAsync(),
+                    "ClasVehID", "ClasVehTipo", ClasVehID
+                );
+                ViewBag.PlayaNombre = await _ctx.Playas
+                    .Where(p => p.PlyID == model.PlyID)
+                    .Select(p => p.PlyNom)
+                    .FirstOrDefaultAsync();
+                return View(model);
             }
 
             // Verificar si la plaza está ocupada
@@ -1268,15 +1513,38 @@ namespace estacionamientos.Controllers
                 else
                 {
                     // La plaza está ocupada por otro vehículo (no del mismo abono o uno de los vehículos no tiene abono activo)
-                    TempData["Error"] = "La plaza ya está ocupada por otro vehículo.";
-                    return RedirectToAction(nameof(Index));
+                    ModelState.AddModelError("PlzNum", "La plaza ya está ocupada por otro vehículo.");
+                    await LoadSelects(model.PlyID, null, model.VehPtnt);
+                    ViewBag.Clasificaciones = new SelectList(
+                        await _ctx.ClasificacionesVehiculo
+                            .OrderBy(c => c.ClasVehTipo)
+                            .ToListAsync(),
+                        "ClasVehID", "ClasVehTipo", ClasVehID
+                    );
+                    ViewBag.PlayaNombre = await _ctx.Playas
+                        .Where(p => p.PlyID == model.PlyID)
+                        .Select(p => p.PlyNom)
+                        .FirstOrDefaultAsync();
+                    model.PlzNum = null; // Limpiar la plaza seleccionada
+                    return View(model);
                 }
             }
 
             if (model.PlzNum.HasValue && !await PlazaExiste(model.PlyID, model.PlzNum.Value))
             {
-                TempData["Error"] = "La plaza no existe en la playa seleccionada.";
-                return RedirectToAction(nameof(Index));
+                ModelState.AddModelError("PlzNum", "La plaza no existe en la playa seleccionada.");
+                await LoadSelects(model.PlyID, model.PlzNum, model.VehPtnt);
+                ViewBag.Clasificaciones = new SelectList(
+                    await _ctx.ClasificacionesVehiculo
+                        .OrderBy(c => c.ClasVehTipo)
+                        .ToListAsync(),
+                    "ClasVehID", "ClasVehTipo", ClasVehID
+                );
+                ViewBag.PlayaNombre = await _ctx.Playas
+                    .Where(p => p.PlyID == model.PlyID)
+                    .Select(p => p.PlyNom)
+                    .FirstOrDefaultAsync();
+                return View(model);
             }
 
             var patenteOcupada = await _ctx.Ocupaciones.AnyAsync(o =>

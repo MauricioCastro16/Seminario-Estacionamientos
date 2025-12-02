@@ -252,7 +252,10 @@
                 <!-- Mobile Menu Button -->
                 @if (!isAuthPage)
                 {
-                    <button id="openSidebar" class="btn-mobile-menu d-lg-none" type="button">
+                    <button id="openSidebar"
+                            class="btn-mobile-menu d-lg-none"
+                            type="button"
+                            onclick="document.getElementById('mobileSidebar')?.classList.add('active'); document.getElementById('sidebarOverlay')?.classList.add('active'); document.body.classList.add('sidebar-open');">
                         <i class="bi bi-list"></i>
                     </button>
                 }

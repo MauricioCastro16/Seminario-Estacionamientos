@@ -168,16 +168,15 @@
                             }
 
                             <!-- Detalles -->
-                            <a asp-action="Details"
-                               asp-route-plyID="@s.PlyID"
-                               asp-route-serID="@s.SerID"
-                               asp-route-vehPtnt="@s.VehPtnt"
-                               asp-route-servExFyHIni="@s.ServExFyHIni.ToString("o")"
-                               class="btn btn-outline-primary btn-sm"
-                               title="Ver detalles"
-                               style="min-width: 38px;">
+                            <button type="button" 
+                                    class="btn btn-outline-primary btn-sm" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#detallesModal"
+                                    onclick="cargarDetalles(@s.PlyID, @s.SerID, '@s.VehPtnt', '@s.ServExFyHIni.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")')"
+                                    title="Ver detalles"
+                                    style="min-width: 38px;">
                                 <i class="fa-solid fa-eye"></i>
-                            </a>
+                            </button>
 
                         </div>
                     </td>
@@ -187,3 +186,159 @@
         </tbody>
     </table>
 </div>
+
+<div class="modal fade" id="detallesModal" tabindex="-1" aria-labelledby="detallesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detallesModalLabel">
+                    <i class="fa fa-eye me-2"></i>
+                    Detalles de Servicio Extra
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="detallesContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function cargarDetalles(plyID, serID, vehPtnt, servExFyHIni) {
+        // Mostrar spinner
+        document.getElementById('detallesContent').innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        `;
+        
+        // Hacer petición AJAX
+        const url = `/ServicioExtraRealizado/DetallesJson?plyID=${plyID}&serID=${serID}&vehPtnt=${vehPtnt}&servExFyHIni=${encodeURIComponent(servExFyHIni)}`;
+        console.log('Cargando detalles:', url);
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Datos recibidos:', data);
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                mostrarDetalles(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('detallesContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fa fa-exclamation-triangle me-2"></i>
+                        Error al cargar los detalles: ${error.message}
+                        <br><small class="text-muted">URL: ${url}</small>
+                    </div>
+                `;
+            });
+    }
+    
+    function mostrarDetalles(data) {
+        const horaInicio = new Date(data.servExFyHIni).toLocaleString();
+        const estaRetirado = data.pago != null;
+        
+        let comentarioHtml = '';
+        if (data.servExComp && data.servExComp.trim() !== '') {
+            comentarioHtml = `
+                <tr>
+                    <td><strong>Comentario:</strong></td>
+                    <td>${data.servExComp}</td>
+                </tr>
+            `;
+        }
+
+        const estadoBadgeClass = data.servExEstado?.toLowerCase() === 'pendiente' ? 'bg-warning' :
+                                 data.servExEstado?.toLowerCase() === 'en curso' ? 'bg-info' :
+                                 data.servExEstado?.toLowerCase() === 'completado' ? 'bg-success' :
+                                 data.servExEstado?.toLowerCase() === 'cancelado' ? 'bg-danger' : 'bg-secondary';
+
+        let pagoInfo = '';
+        if (data.pago) {
+            pagoInfo = `
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <h6 class="text-primary">Información de Pago</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Número de Pago:</strong></td>
+                                <td>${data.pago.pagNum}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Método de Pago:</strong></td>
+                                <td>${data.pago.metodoPago}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Monto:</strong></td>
+                                <td class="fw-bold text-success">$${data.pago.pagMonto.toFixed(2)}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        document.getElementById('detallesContent').innerHTML = `
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <h6 class="text-primary">Información del Servicio</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Servicio:</strong></td>
+                            <td>${data.servicioNombre}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Patente:</strong></td>
+                            <td>${data.vehPtnt}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tipo de vehículo:</strong></td>
+                            <td>${data.clasificacionVehiculo}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Estado:</strong></td>
+                            <td><span class="badge ${estadoBadgeClass}">${data.servExEstado}</span></td>
+                        </tr>
+                        ${comentarioHtml}
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-primary">Información de Cobro</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Hora de inicio:</strong></td>
+                            <td>${horaInicio}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Retirado:</strong></td>
+                            <td>
+                                ${estaRetirado 
+                                    ? '<span class="badge bg-success">Sí</span>' 
+                                    : '<span class="badge bg-secondary">No</span>'}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            ${pagoInfo}
+        `;
+    }
+</script>

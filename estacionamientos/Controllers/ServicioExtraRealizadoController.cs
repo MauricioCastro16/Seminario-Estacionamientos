@@ -362,23 +362,52 @@ namespace estacionamientos.Controllers
             }
         }
 
-        // 🔹 GET: Detalles de un servicio extra realizado
-        public async Task<IActionResult> Details(int plyID, int serID, string vehPtnt, DateTime servExFyHIni)
+        // 🔹 GET: Detalles de un servicio extra realizado (JSON para modal)
+        public async Task<IActionResult> DetallesJson(int plyID, int serID, string vehPtnt, DateTime servExFyHIni)
         {
-            SetBreadcrumb(
-                new BreadcrumbItem { Title = "Servicios Extra", Url = Url.Action("Index", "ServicioExtraRealizado")! },
-                new BreadcrumbItem { Title = "Detalles", Url = Url.Action("Details", "ServicioExtraRealizado")! }
-            );
-            var item = await _ctx.ServiciosExtrasRealizados
+            // Normalizar la fecha de inicio a UTC
+            var fechaInicioUTC = DateTime.SpecifyKind(servExFyHIni, DateTimeKind.Utc);
+            
+            var servicio = await _ctx.ServiciosExtrasRealizados
                 .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
-                .Include(s => s.Vehiculo)
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Playa)
+                .Include(s => s.Vehiculo).ThenInclude(v => v.Clasificacion)
+                .Include(s => s.Pago).ThenInclude(p => p.MetodoPago)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.PlyID == plyID && s.SerID == serID && s.VehPtnt == vehPtnt && s.ServExFyHIni == servExFyHIni);
+                .Where(s => s.PlyID == plyID && s.SerID == serID && s.VehPtnt == vehPtnt)
+                .Where(s => Math.Abs((s.ServExFyHIni - fechaInicioUTC).TotalMinutes) < 1) // Diferencia menor a 1 minuto
+                .FirstOrDefaultAsync();
 
-            if (item == null) return NotFound();
+            if (servicio == null)
+            {
+                return Json(new { error = "Servicio extra no encontrado" });
+            }
 
-            return View(item);
+            var resultado = new
+            {
+                plyID = servicio.PlyID,
+                serID = servicio.SerID,
+                vehPtnt = servicio.VehPtnt,
+                servExFyHIni = servicio.ServExFyHIni,
+                servExFyHFin = servicio.ServExFyHFin,
+                servExEstado = servicio.ServExEstado,
+                servExComp = servicio.ServExComp ?? "",
+                servicioNombre = servicio.ServicioProveido?.Servicio?.SerNom ?? "No especificado",
+                clasificacionVehiculo = servicio.Vehiculo?.Clasificacion?.ClasVehTipo ?? "No especificada",
+                pago = servicio.Pago != null
+                    ? new
+                    {
+                        pagNum = servicio.Pago.PagNum,
+                        metodoPago = servicio.Pago.MetodoPago?.MepNom ?? "No especificado",
+                        pagMonto = servicio.Pago.PagMonto,
+                        pagFyh = servicio.Pago.PagFyh
+                    }
+                    : null
+            };
+
+            return Json(resultado);
         }
+
 
         // 🔹 POST: Cambiar estado de un servicio extra (Playero)
         [HttpPost]

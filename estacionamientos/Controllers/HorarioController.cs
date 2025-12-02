@@ -283,10 +283,13 @@ namespace estacionamientos.Controllers
             if (!await OwnsPlayaAsync(dueNu.Value, plyID))
                 return NotFound();
 
+            // Normalizar el parámetro de ruta a UTC para que coincida con la PK y el tipo 'timestamptz'
+            var horFyhIniUtc = EnsureUtc(horFyhIni);
+
             var horario = await _ctx.Horarios
                 .Include(h => h.Playa)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(h => h.PlyID == plyID && h.ClaDiasID == claDiasID && h.HorFyhIni == horFyhIni);
+                .FirstOrDefaultAsync(h => h.PlyID == plyID && h.ClaDiasID == claDiasID && h.HorFyhIni == horFyhIniUtc);
 
             if (horario is null) return NotFound();
 
@@ -326,8 +329,11 @@ namespace estacionamientos.Controllers
             if (model.HoraCierre <= model.HoraApertura)
                 ModelState.AddModelError(nameof(model.HoraCierre), "La hora de cierre debe ser posterior a la hora de apertura.");
 
+            // Normalizar el parámetro de ruta a UTC para que coincida con la PK y el tipo 'timestamptz'
+            var horFyhIniUtc = EnsureUtc(horFyhIni);
+
             var existente = await _ctx.Horarios
-                .FirstOrDefaultAsync(h => h.PlyID == plyID && h.ClaDiasID == claDiasID && h.HorFyhIni == horFyhIni);
+                .FirstOrDefaultAsync(h => h.PlyID == plyID && h.ClaDiasID == claDiasID && h.HorFyhIni == horFyhIniUtc);
 
             if (existente is null) return NotFound();
 
@@ -382,11 +388,14 @@ namespace estacionamientos.Controllers
             if (!await OwnsPlayaAsync(dueNu.Value, plyID))
                 return NotFound();
 
+            // Normalizar a UTC para coincidir con la PK y el tipo 'timestamptz'
+            var horFyhIniUtc = EnsureUtc(horFyhIni);
+
             var horario = await _ctx.Horarios
                 .Include(h => h.Playa)
                 .Include(h => h.ClasificacionDias)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(h => h.PlyID == plyID && h.ClaDiasID == claDiasID && h.HorFyhIni == horFyhIni);
+                .FirstOrDefaultAsync(h => h.PlyID == plyID && h.ClaDiasID == claDiasID && h.HorFyhIni == horFyhIniUtc);
 
             return horario is null ? NotFound() : View(horario);
         }
@@ -400,8 +409,11 @@ namespace estacionamientos.Controllers
             if (!await OwnsPlayaAsync(dueNu.Value, plyID))
                 return NotFound();
 
+            // Normalizar a UTC para coincidir con la PK y el tipo 'timestamptz'
+            var horFyhIniUtc = EnsureUtc(horFyhIni);
+
             var horario = await _ctx.Horarios
-                .FirstOrDefaultAsync(h => h.PlyID == plyID && h.ClaDiasID == claDiasID && h.HorFyhIni == horFyhIni);
+                .FirstOrDefaultAsync(h => h.PlyID == plyID && h.ClaDiasID == claDiasID && h.HorFyhIni == horFyhIniUtc);
 
             if (horario is null) return NotFound();
 

@@ -58,6 +58,7 @@ namespace estacionamientos.Controllers
             ViewBag.PlaNU = new SelectList(await playerosQuery.ToListAsync(), "UsuNU", "UsuNyA", plaSel);
 
             var playasQuery = _ctx.Playas.AsNoTracking()
+                .Where(p => p.PlyEstado == EstadoPlaya.Vigente) // Solo playas vigentes
                 .OrderBy(p => p.PlyCiu).ThenBy(p => p.PlyDir)
                 .Select(p => new { p.PlyID, Nombre = p.PlyNom + " (" + p.PlyCiu + ")" });
 
@@ -167,14 +168,46 @@ namespace estacionamientos.Controllers
             }
             
             // Obtener desglose de pagos por método de pago durante ESE turno específico
-            // Incluye TODOS los pagos de la playa durante el turno:
+            // Incluye SOLO los pagos realizados por el playero del turno durante ese turno:
             // - Pagos de estacionamiento (Ocupaciones)
-            // - Pagos de abonos
+            // - Pagos de abonos (tanto pagos principales como pagos de períodos)
+            // 🔹 Obtener IDs de pagos relacionados con abonos en esta playa durante el turno
+            var pagosAbonosIds = await _ctx.Abonos
+                .Include(a => a.Pago)
+                .Where(a => a.PlyID == plyID
+                        && a.PagNum > 0
+                        && a.Pago.PagFyh >= turno.TurFyhIni
+                        && (turno.TurFyhFin == null || a.Pago.PagFyh <= turno.TurFyhFin))
+                .Select(a => a.PagNum)
+                .ToListAsync();
+            
+            var pagosPeriodosAbonosIds = await _ctx.PeriodosAbono
+                .Include(p => p.Pago)
+                .Where(p => p.PlyID == plyID
+                        && p.PagNum != null
+                        && p.PeriodoPagado
+                        && p.Pago != null
+                        && p.Pago.PagFyh >= turno.TurFyhIni
+                        && (turno.TurFyhFin == null || p.Pago.PagFyh <= turno.TurFyhFin))
+                .Select(p => p.PagNum!.Value)
+                .ToListAsync();
+            
+            var todosPagosAbonosIds = pagosAbonosIds.Concat(pagosPeriodosAbonosIds).Distinct().ToList();
+            
             var desglosePagos = await _ctx.Pagos
                 .Include(p => p.MetodoPago)
                 .Where(p => p.PlyID == plyID 
-                        && p.PagFyh >= turno.TurFyhIni 
-                        && (turno.TurFyhFin == null || p.PagFyh <= turno.TurFyhFin)
+                        && (
+                            // Pagos del playero del turno
+                            (p.PlaNU == plaNU 
+                             && p.PagFyh >= turno.TurFyhIni 
+                             && (turno.TurFyhFin == null || p.PagFyh <= turno.TurFyhFin))
+                            ||
+                            // O pagos de abonos relacionados (aunque PlaNU no coincida, si el pago fue durante el turno)
+                            (todosPagosAbonosIds.Contains(p.PagNum)
+                             && p.PagFyh >= turno.TurFyhIni 
+                             && (turno.TurFyhFin == null || p.PagFyh <= turno.TurFyhFin))
+                        )
                         && p.PagMonto > 0)  // 🔹 Excluir pagos de $0.00
                 .AsNoTracking()
                 .ToListAsync();
@@ -253,6 +286,16 @@ namespace estacionamientos.Controllers
                 if (!await TrabajaEnAsync(model.PlyID, plaNU))
                     ModelState.AddModelError(string.Empty, "No trabajás en esa playa.");
 
+                // Verificar que la playa esté en estado Vigente
+                var playa = await _ctx.Playas
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PlyID == model.PlyID);
+                
+                if (playa == null)
+                    ModelState.AddModelError(string.Empty, "La playa no existe.");
+                else if (playa.PlyEstado != EstadoPlaya.Vigente)
+                    ModelState.AddModelError(string.Empty, "Solo se pueden iniciar turnos en playas vigentes.");
+
                 // SIEMPRE guardar turnos en UTC
                 model.TurFyhIni = DateTime.UtcNow;
             }
@@ -260,6 +303,16 @@ namespace estacionamientos.Controllers
             {
                 if (!await TrabajaEnAsync(model.PlyID, model.PlaNU))
                     ModelState.AddModelError(string.Empty, "El playero no trabaja en esa playa.");
+
+                // Verificar que la playa esté en estado Vigente
+                var playa = await _ctx.Playas
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PlyID == model.PlyID);
+                
+                if (playa == null)
+                    ModelState.AddModelError(string.Empty, "La playa no existe.");
+                else if (playa.PlyEstado != EstadoPlaya.Vigente)
+                    ModelState.AddModelError(string.Empty, "Solo se pueden iniciar turnos en playas vigentes.");
 
                 model.TurFyhIni = model.TurFyhIni == default ? DateTime.UtcNow : ToUtc(model.TurFyhIni);
             }
@@ -334,16 +387,48 @@ namespace estacionamientos.Controllers
             ViewBag.NowLocal = DateTime.Now;
             
             // 🔹 Calcular efectivo esperado para mostrar en la vista
-            // Incluye TODOS los pagos de efectivo de la playa durante el turno:
+            // Incluye SOLO los pagos de efectivo realizados por el playero del turno durante ese turno:
             // - Pagos de estacionamiento (Ocupaciones)
-            // - Pagos de abonos
+            // - Pagos de abonos (tanto pagos principales como pagos de períodos)
             if (User.IsInRole("Playero"))
             {
+                // 🔹 Obtener IDs de pagos relacionados con abonos en esta playa durante el turno
+                var pagosAbonosIdsEfectivo = await _ctx.Abonos
+                    .Include(a => a.Pago)
+                    .Where(a => a.PlyID == item.PlyID
+                            && a.PagNum > 0
+                            && a.Pago.PagFyh >= item.TurFyhIni
+                            && (item.TurFyhFin == null || a.Pago.PagFyh <= item.TurFyhFin))
+                    .Select(a => a.PagNum)
+                    .ToListAsync();
+                
+                var pagosPeriodosAbonosIdsEfectivo = await _ctx.PeriodosAbono
+                    .Include(p => p.Pago)
+                    .Where(p => p.PlyID == item.PlyID
+                            && p.PagNum != null
+                            && p.PeriodoPagado
+                            && p.Pago != null
+                            && p.Pago.PagFyh >= item.TurFyhIni
+                            && (item.TurFyhFin == null || p.Pago.PagFyh <= item.TurFyhFin))
+                    .Select(p => p.PagNum!.Value)
+                    .ToListAsync();
+                
+                var todosPagosAbonosIdsEfectivo = pagosAbonosIdsEfectivo.Concat(pagosPeriodosAbonosIdsEfectivo).Distinct().ToList();
+                
                 var esperado = await _ctx.Pagos
                     .Include(p => p.MetodoPago)
                     .Where(p => p.PlyID == item.PlyID
-                            && p.PagFyh >= item.TurFyhIni
-                            && (item.TurFyhFin == null || p.PagFyh <= item.TurFyhFin)
+                            && (
+                                // Pagos del playero del turno
+                                (p.PlaNU == item.PlaNU 
+                                 && p.PagFyh >= item.TurFyhIni
+                                 && (item.TurFyhFin == null || p.PagFyh <= item.TurFyhFin))
+                                ||
+                                // O pagos de abonos relacionados (aunque PlaNU no coincida, si el pago fue durante el turno)
+                                (todosPagosAbonosIdsEfectivo.Contains(p.PagNum)
+                                 && p.PagFyh >= item.TurFyhIni
+                                 && (item.TurFyhFin == null || p.PagFyh <= item.TurFyhFin))
+                            )
                             && p.MetodoPago.MepNom == "Efectivo"
                             && p.PagMonto > 0)  // 🔹 Excluir pagos de $0.00
                     .SumAsync(p => (decimal?)p.PagMonto) ?? 0m;
@@ -477,17 +562,49 @@ namespace estacionamientos.Controllers
                 return NotFound();
 
             // 💰 Pagos del método seleccionado
-            // Incluye TODOS los pagos de la playa durante el turno:
+            // Incluye SOLO los pagos realizados por el playero del turno durante ese turno:
             // - Pagos de estacionamiento (Ocupaciones)
-            // - Pagos de abonos
+            // - Pagos de abonos (tanto pagos principales como pagos de períodos)
+            // 🔹 Obtener IDs de pagos relacionados con abonos en esta playa durante el turno
+            var pagosAbonosIdsMetodo = await _ctx.Abonos
+                .Include(a => a.Pago)
+                .Where(a => a.PlyID == plyID
+                        && a.PagNum > 0
+                        && a.Pago.PagFyh >= turno.TurFyhIni
+                        && (turno.TurFyhFin == null || a.Pago.PagFyh <= turno.TurFyhFin))
+                .Select(a => a.PagNum)
+                .ToListAsync();
+            
+            var pagosPeriodosAbonosIdsMetodo = await _ctx.PeriodosAbono
+                .Include(p => p.Pago)
+                .Where(p => p.PlyID == plyID
+                        && p.PagNum != null
+                        && p.PeriodoPagado
+                        && p.Pago != null
+                        && p.Pago.PagFyh >= turno.TurFyhIni
+                        && (turno.TurFyhFin == null || p.Pago.PagFyh <= turno.TurFyhFin))
+                .Select(p => p.PagNum!.Value)
+                .ToListAsync();
+            
+            var todosPagosAbonosIdsMetodo = pagosAbonosIdsMetodo.Concat(pagosPeriodosAbonosIdsMetodo).Distinct().ToList();
+            
             var pagos = await _ctx.Pagos
                 .AsNoTracking()
                 .Include(p => p.Playa)
                 .Include(p => p.MetodoPago)
                 .Where(p => p.PlyID == plyID
                         && p.MepID == mepID
-                        && p.PagFyh >= turno.TurFyhIni
-                        && (turno.TurFyhFin == null || p.PagFyh <= turno.TurFyhFin)
+                        && (
+                            // Pagos del playero del turno
+                            (p.PlaNU == plaNU 
+                             && p.PagFyh >= turno.TurFyhIni
+                             && (turno.TurFyhFin == null || p.PagFyh <= turno.TurFyhFin))
+                            ||
+                            // O pagos de abonos relacionados (aunque PlaNU no coincida, si el pago fue durante el turno)
+                            (todosPagosAbonosIdsMetodo.Contains(p.PagNum)
+                             && p.PagFyh >= turno.TurFyhIni
+                             && (turno.TurFyhFin == null || p.PagFyh <= turno.TurFyhFin))
+                        )
                         && p.PagMonto > 0)  // 🔹 Excluir pagos de $0.00
                 .OrderByDescending(p => p.PagFyh)
                 .ToListAsync();

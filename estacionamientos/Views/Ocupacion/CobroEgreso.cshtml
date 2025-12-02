@@ -1,10 +1,64 @@
 @model estacionamientos.Models.ViewModels.CobroEgresoVM
+@using System
 
 @{
     ViewData["Title"] = "Cobro de Egreso";
+    
+    // Helper para convertir fechas UTC a zona horaria de Córdoba
+    DateTime ToCba(DateTime dt)
+    {
+        if (dt.Kind == DateTimeKind.Unspecified)
+            dt = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+        if (dt.Kind == DateTimeKind.Local)
+            dt = dt.ToUniversalTime();
+
+        try
+        {
+            var tz = TimeZoneInfo.FindSystemTimeZoneById("America/Argentina/Cordoba");
+            return TimeZoneInfo.ConvertTimeFromUtc(dt, tz);
+        }
+        catch
+        {
+            // Fallback si la zona horaria no está disponible
+            return dt.ToLocalTime();
+        }
+    }
 }
 
 <div class="container my-4">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Error:</strong>
+            <ul class="mb-0 mt-2">
+                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
     <div class="card shadow-sm border-0">
         <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
             <h4 class="mb-0">
@@ -45,11 +99,32 @@
                         <tbody>
                             <tr>
                                 <th class="w-40">Ingreso:</th>
-                                <td>@Model.OcufFyhIni.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <!-- Mostrar ambas variantes por compatibilidad: ToCba (si existe helper) y ToLocalTime como fallback -->
+                                <td>
+                                    @if (Model.OcufFyhIni != DateTime.MinValue)
+                                    {
+                                        @(
+                                            typeof(estacionamientos.Views.Shared.DisplayHelpers)
+                                                .GetMethod("ToCba") != null 
+                                                ? estacionamientos.Views.Shared.DisplayHelpers.ToCba(Model.OcufFyhIni).ToString("dd/MM/yyyy HH:mm")
+                                                : Model.OcufFyhIni.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                         )
+                                    }
+                                </td>
                             </tr>
                             <tr>
                                 <th>Egreso:</th>
-                                <td>@Model.OcufFyhFin.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    @if (Model.OcufFyhFin.HasValue)
+                                    {
+                                        @(
+                                            typeof(estacionamientos.Views.Shared.DisplayHelpers)
+                                                .GetMethod("ToCba") != null 
+                                                ? estacionamientos.Views.Shared.DisplayHelpers.ToCba(Model.OcufFyhFin.Value).ToString("dd/MM/yyyy HH:mm")
+                                                : Model.OcufFyhFin.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                         )
+                                    }
+                                </td>
                             </tr>
                             <tr>
                                 <th>Duración:</th>
