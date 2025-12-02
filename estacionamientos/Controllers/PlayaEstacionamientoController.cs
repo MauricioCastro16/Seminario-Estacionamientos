@@ -308,7 +308,7 @@ namespace estacionamientos.Controllers
             if (!ModelState.IsValid) return View(model);
 
             // Calcular el siguiente PlyID disponible dinámicamente
-            int nextPlyId = Math.Max(1, (await _context.Playas.MaxAsync(p => p.PlyID)) + 1);
+            int nextPlyId = Math.Max(1, (await _context.Playas.AnyAsync() ? await _context.Playas.MaxAsync(p => p.PlyID) : 0) + 1);
 
             // Verificar que no haya colisión con el valor de PlyID
             while (await _context.Playas.AnyAsync(p => p.PlyID == nextPlyId))

@@ -18,13 +18,41 @@ string Required(string key) =>
     Environment.GetEnvironmentVariable(key)
     ?? throw new InvalidOperationException($"Falta la variable de entorno {key}.");
 
+var dbHost = Required("DB_HOST");
+var dbPort = Required("DB_PORT");
+var dbName = Required("DB_NAME");
+var dbUser = Required("DB_USER");
+var dbPassword = Required("DB_PASSWORD");
+
+// Determinar SSL Mode por defecto según el host (permite override vía DB_SSLMODE)
+var sslModeEnv = Environment.GetEnvironmentVariable("DB_SSLMODE");
+string sslMode;
+if (!string.IsNullOrWhiteSpace(sslModeEnv))
+{
+    sslMode = sslModeEnv;
+}
+else
+{
+    // Si apunta a Render u otro host externo, exigir SSL; si es localhost, deshabilitar
+    if (dbHost.Contains("render.com", StringComparison.OrdinalIgnoreCase) ||
+        dbHost.Contains("dpg-", StringComparison.OrdinalIgnoreCase))
+    {
+        sslMode = "Require";
+    }
+    else
+    {
+        sslMode = "Disable";
+    }
+}
+
 var cs =
-    $"Host={Required("DB_HOST")};" +
-    $"Port={Required("DB_PORT")};" +
-    $"Database={Required("DB_NAME")};" +
-    $"Username={Required("DB_USER")};" +
-    $"Password={Required("DB_PASSWORD")};" +
-    $"SSL Mode={(Environment.GetEnvironmentVariable("DB_SSLMODE") ?? "Disable")};" +
+    $"Host={dbHost};" +
+    $"Port={dbPort};" +
+    $"Database={dbName};" +
+    $"Username={dbUser};" +
+    $"Password={dbPassword};" +
+    $"SSL Mode={sslMode};" +
+    $"Trust Server Certificate=true;" +
     $"Include Error Detail=true";
 
 builder.Services.AddControllersWithViews();
