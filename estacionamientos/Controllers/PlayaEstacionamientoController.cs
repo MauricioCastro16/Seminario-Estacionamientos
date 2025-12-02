@@ -180,8 +180,8 @@ namespace estacionamientos.Controllers
 
             var playas = await query.OrderBy(p => p.PlyNom).ToListAsync();
 
-            // Para cada playa en borrador, verificar qué falta
-            foreach (var playa in playas.Where(p => p.PlyEstado == EstadoPlaya.Borrador))
+            // Para cada playa en estado Oculto, verificar qué falta
+            foreach (var playa in playas.Where(p => p.PlyEstado == EstadoPlaya.Oculto))
             {
                 var tieneMetodoPago = await _context.AceptaMetodosPago
                     .AnyAsync(a => a.PlyID == playa.PlyID && a.AmpHab);
@@ -319,8 +319,8 @@ namespace estacionamientos.Controllers
             // Asignar el PlyID calculado al modelo de la playa
             model.PlyID = nextPlyId;
             
-            // Guardar como Borrador por defecto
-            model.PlyEstado = EstadoPlaya.Borrador;
+            // Guardar como Oculto por defecto
+            model.PlyEstado = EstadoPlaya.Oculto;
 
             // Agregar la nueva playa a la base de datos
             _context.Playas.Add(model);
@@ -362,7 +362,7 @@ namespace estacionamientos.Controllers
                 .AnyAsync(p => p.PlyID == plyID);
 
             // Si cumple ambos requisitos, actualizar a Vigente
-            if (tieneMetodoPago && tienePlaza && playa.PlyEstado == EstadoPlaya.Borrador)
+            if (tieneMetodoPago && tienePlaza && playa.PlyEstado == EstadoPlaya.Oculto)
             {
                 playa.PlyEstado = EstadoPlaya.Vigente;
                 await _context.SaveChangesAsync();
@@ -370,9 +370,9 @@ namespace estacionamientos.Controllers
         }
 
         /// <summary>
-        /// Cambia el estado de una playa (Borrador <-> Vigente).
+        /// Cambia el estado de una playa (Oculto <-> Vigente).
         /// Solo permite cambiar a Vigente si cumple los requisitos.
-        /// Solo permite cambiar a Borrador si no tiene ocupaciones activas, turnos abiertos o abonos vigentes.
+        /// Solo permite cambiar a Oculto si no tiene ocupaciones activas, turnos abiertos o abonos vigentes.
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -394,7 +394,7 @@ namespace estacionamientos.Controllers
                 return NotFound();
 
             // Si se intenta cambiar a Vigente, verificar requisitos
-            if (nuevoEstado && playa.PlyEstado == EstadoPlaya.Borrador)
+            if (nuevoEstado && playa.PlyEstado == EstadoPlaya.Oculto)
             {
                 var tieneMetodoPago = await _context.AceptaMetodosPago
                     .AnyAsync(a => a.PlyID == plyID && a.AmpHab);
@@ -404,12 +404,12 @@ namespace estacionamientos.Controllers
 
                 if (!tieneMetodoPago || !tienePlaza)
                 {
-                    TempData["ErrorMessage"] = "No se puede cambiar a Vigente. La playa debe tener al menos 1 método de pago habilitado y 1 plaza configurada.";
+                    TempData["ErrorMessage"] = "No se puede poner en estado Vigente. La playa debe tener al menos 1 método de pago habilitado y 1 plaza configurada.";
                     return RedirectToAction(nameof(Index));
                 }
             }
 
-            // Si se intenta cambiar a Borrador, verificar que no tenga relaciones activas
+            // Si se intenta cambiar a Oculto, verificar que no tenga relaciones activas
             if (!nuevoEstado && playa.PlyEstado == EstadoPlaya.Vigente)
             {
                 var ahora = DateTime.UtcNow;
@@ -437,7 +437,7 @@ namespace estacionamientos.Controllers
 
                 if (razones.Count > 0)
                 {
-                    var mensaje = "No se puede cambiar a Borrador. La playa tiene: " + 
+                    var mensaje = "No se puede poner en estado Oculto. La playa tiene: " + 
                         string.Join(", ", razones) + ".";
                     TempData["ErrorMessage"] = mensaje;
                     return RedirectToAction(nameof(Index));
@@ -445,10 +445,10 @@ namespace estacionamientos.Controllers
             }
 
             // Cambiar el estado
-            playa.PlyEstado = nuevoEstado ? EstadoPlaya.Vigente : EstadoPlaya.Borrador;
+            playa.PlyEstado = nuevoEstado ? EstadoPlaya.Vigente : EstadoPlaya.Oculto;
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = $"Estado de la playa actualizado a {(nuevoEstado ? "Vigente" : "Borrador")}.";
+            TempData["SuccessMessage"] = $"Estado de la playa actualizado a {(nuevoEstado ? "Vigente" : "Oculto")}.";
             return RedirectToAction(nameof(Index));
         }
 

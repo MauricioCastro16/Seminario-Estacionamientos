@@ -229,7 +229,7 @@ namespace estacionamientos.Controllers
             var playa = await _context.Playas.FindAsync(vm.PlayaId);
             if (playa != null && playa.PlyEstado != EstadoPlaya.Vigente)
             {
-                ModelState.AddModelError(nameof(vm.PlayaId), "No se pueden asignar playeros a playas que estén en estado Borrador. La playa debe estar Vigente (tener al menos 1 método de pago y 1 plaza configurada).");
+                ModelState.AddModelError(nameof(vm.PlayaId), "No se pueden asignar playeros a playas que estén en estado Oculto. La playa debe estar Vigente (tener al menos 1 método de pago y 1 plaza configurada).");
             }
 
             if (!ModelState.IsValid)
@@ -351,7 +351,7 @@ namespace estacionamientos.Controllers
             var playa = await _context.Playas.FindAsync(vm.PlayaId);
             if (playa != null && playa.PlyEstado != EstadoPlaya.Vigente)
             {
-                ModelState.AddModelError(nameof(vm.PlayaId), "No se pueden asignar playeros a playas que estén en estado Borrador. La playa debe estar Vigente (tener al menos 1 método de pago y 1 plaza configurada).");
+                ModelState.AddModelError(nameof(vm.PlayaId), "No se pueden asignar playeros a playas que estén en estado Oculto. La playa debe estar Vigente (tener al menos 1 método de pago y 1 plaza configurada).");
             }
 
             // 2) ¿ya está vigente en ESTA playa?

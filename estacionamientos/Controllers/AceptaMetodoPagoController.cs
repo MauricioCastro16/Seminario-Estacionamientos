@@ -152,7 +152,7 @@ namespace estacionamientos.Controllers
                 .AnyAsync(p => p.PlyID == plyID);
 
             // Si cumple ambos requisitos, actualizar a Vigente
-            if (tieneMetodoPago && tienePlaza && playa.PlyEstado == estacionamientos.Models.EstadoPlaya.Borrador)
+            if (tieneMetodoPago && tienePlaza && playa.PlyEstado == estacionamientos.Models.EstadoPlaya.Oculto)
             {
                 playa.PlyEstado = estacionamientos.Models.EstadoPlaya.Vigente;
                 await _ctx.SaveChangesAsync();
