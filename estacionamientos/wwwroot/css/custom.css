@@ -308,7 +308,7 @@
     }
 
     .plazas-grid-compacted {
-        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
         gap: 6px;
         margin: 0 auto; /* centra horizontalmente */
         padding: 0 4px; 
@@ -373,9 +373,11 @@
     }
 
     .plaza-card-compacted {
-        text-wrap: nowrap;
         aspect-ratio: 1/1;
         overflow: hidden;
+        width: 100%;
+        white-space: nowrap;
+        text-overflow: ellipsis;
         position: relative;
     }
     .plaza-card-compacted > .plaza-title {

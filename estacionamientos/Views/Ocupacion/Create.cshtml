@@ -563,7 +563,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${p.ocupada ? '<div class="small text-muted mt-1">Ocupada</div>' : ''}
                 ${p.hab === false ? '<div class="small text-muted mt-1">Inhabilitada</div>' : ''}
                 ${(p.hab !== false && !p.ocupada && p.compatible === false) ? '<div class="small mt-1">No compatible</div>' : ''}
-                ${(p.tieneAbonoActivo && !p.disponible) ? '<div class="small text-warning mt-1">Reservada para abonados</div>' : ''}
+                ${(p.tieneAbonoActivo && !p.disponible) ? '<div class="small text-warning fw-bold mt-1">Reservada para abonados</div>' : ''}
             `;
 
             // Una plaza es seleccionable si está habilitada, no ocupada, es compatible y está disponible (incluyendo validación de abono)
