@@ -776,20 +776,15 @@
                           return;
                       }
                       
-                      if (!tipoVehiculo) {
-                          // Si no hay tipo de vehículo, mostrar todas las playas
-                          console.log('ℹ️ Sin tipo de vehículo, mostrando todas las playas');
-                          playas = todasLasPlayas;
-                          mostrarPlayasEnMapa();
-                          // Actualizar popups de favoritos después de cargar las playas
-                          actualizarPopupsMarcadores();
-                          $('#loading').hide();
-                          return;
-                      }
-                      
-                      // Filtrar playas que tienen servicios/tarifas para el tipo de vehículo
-                      console.log('🔍 Filtrando playas por tipo de vehículo:', tipoVehiculo);
-                      filtrarPlayasPorTipoVehiculo(todasLasPlayas, tipoVehiculo);
+                      // Mostrar todas las playas sin filtrar por tipo de vehículo
+                      // El filtrado por tipo de vehículo se puede hacer opcionalmente más adelante
+                      console.log('ℹ️ Mostrando todas las playas disponibles:', todasLasPlayas.length);
+                      console.log('📍 Coordenadas de las playas:', todasLasPlayas.map(p => ({ nombre: p.plyNom, lat: p.plyLat, lon: p.plyLon })));
+                      playas = todasLasPlayas;
+                      mostrarPlayasEnMapa();
+                      // Actualizar popups de favoritos después de cargar las playas
+                      actualizarPopupsMarcadores();
+                      $('#loading').hide();
                   })
              .fail((xhr, status, err) => {
                  console.error('❌ Error al cargar playas:', { xhr, status, err, responseText: xhr?.responseText });
@@ -902,7 +897,17 @@
             if (esResultadoBusqueda) className += ' search-result';
             else if (!playa.estaAbierto) className += ' closed';
             else if (playa.disponibilidad > 50) className += ' available';
-            return L.divIcon({ className, html:'P', iconSize:[30,30], iconAnchor:[15,15] });
+            
+            // Crear icono con HTML - siempre azul para playas normales, rojo para resultados de búsqueda
+            const colorFondo = esResultadoBusqueda ? '#dc3545' : '#3498db'; // Azul para todas las playas normales
+            const html = `<div style="background-color: ${colorFondo}; color: white; border: 2px solid white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.3); cursor: pointer;">P</div>`;
+            
+            return L.divIcon({ 
+                className: className, 
+                html: html, 
+                iconSize: [30, 30], 
+                iconAnchor: [15, 15] 
+            });
         }
 
         // Calcula si una playa está abierta en base a los horarios enviados por el backend
@@ -1047,11 +1052,36 @@
             playaIdToMarker.clear();
 
             let marcadoresCreados = 0;
+            const bounds = [];
+            
             playasAMostrar.forEach(playa => {
                 if (playa.plyLat == null || playa.plyLon == null || isNaN(playa.plyLat) || isNaN(playa.plyLon)){
                     console.warn(`⚠️ Coordenadas inválidas para ${playa.plyNom}: lat=${playa.plyLat}, lon=${playa.plyLon}`);
                     return;
                 }
+
+                // Convertir coordenadas si están en formato incorrecto (sin punto decimal)
+                let lat = parseFloat(playa.plyLat);
+                let lon = parseFloat(playa.plyLon);
+                
+                // Si las coordenadas son muy grandes (sin punto decimal), convertirlas
+                if (Math.abs(lat) > 1000) {
+                    lat = lat / 1000000;
+                    console.log(`⚠️ Coordenada lat corregida para ${playa.plyNom}: ${playa.plyLat} -> ${lat}`);
+                }
+                if (Math.abs(lon) > 1000) {
+                    lon = lon / 1000000;
+                    console.log(`⚠️ Coordenada lon corregida para ${playa.plyNom}: ${playa.plyLon} -> ${lon}`);
+                }
+                
+                // Validar que las coordenadas estén en el rango válido
+                if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+                    console.error(`❌ Coordenadas fuera de rango para ${playa.plyNom}: lat=${lat}, lon=${lon}`);
+                    return;
+                }
+
+                // Log de coordenadas para debugging
+                console.log(`📍 Creando marcador para ${playa.plyNom}: lat=${lat}, lon=${lon}`);
 
                 // Recalcular estado abierto/cerrado en el cliente usando horarios
                 const abiertoCalculado = calcularEstadoDesdeHorarios(playa);
@@ -1060,7 +1090,15 @@
                 }
 
                 const icon = crearIconoPlaya(playa, isSearchMode);
-                const marker = L.marker([playa.plyLat, playa.plyLon], { icon }).addTo(map);
+                const marker = L.marker([lat, lon], { icon }).addTo(map);
+                
+                // Verificar que el marcador se agregó correctamente
+                if (marker) {
+                    console.log(`✅ Marcador agregado para ${playa.plyNom} en [${lat}, ${lon}]`);
+                    bounds.push([lat, lon]);
+                } else {
+                    console.error(`❌ Error al crear marcador para ${playa.plyNom}`);
+                }
 
                 const popupContent = buildPopupContent(playa, isSearchMode);
                 marker.bindPopup(popupContent);
@@ -1078,6 +1116,47 @@
             });
             
             console.log('✅ Marcadores creados:', marcadoresCreados, 'de', playasAMostrar.length);
+            
+            // Si hay marcadores y no estamos en modo búsqueda, ajustar el mapa para mostrar todas las playas
+            if (bounds.length > 0 && !isSearchMode && parkingMarkers.length > 0) {
+                try {
+                    // Usar los marcadores creados para ajustar el mapa
+                    const group = new L.featureGroup(parkingMarkers);
+                    const boundsGroup = group.getBounds();
+                    
+                    // Validar que los bounds sean válidos
+                    if (boundsGroup && boundsGroup.isValid && boundsGroup.isValid()) {
+                        map.fitBounds(boundsGroup.pad(0.1), { maxZoom: 16 });
+                        console.log('🗺️ Mapa ajustado para mostrar todas las playas');
+                    } else {
+                        console.warn('⚠️ Bounds inválidos, usando coordenadas individuales');
+                        // Fallback: usar las coordenadas directamente
+                        if (bounds.length > 0) {
+                            const latLngs = bounds.map(b => L.latLng(b[0], b[1]));
+                            const boundsLatLng = L.latLngBounds(latLngs);
+                            if (boundsLatLng && boundsLatLng.isValid && boundsLatLng.isValid()) {
+                                map.fitBounds(boundsLatLng.pad(0.1), { maxZoom: 16 });
+                                console.log('🗺️ Mapa ajustado usando coordenadas corregidas');
+                            } else {
+                                // Último fallback: centrar en la primera playa
+                                map.setView([bounds[0][0], bounds[0][1]], 14);
+                                console.log('🗺️ Mapa centrado en primera playa');
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Error al ajustar mapa:', e);
+                    // Si falla, al menos centrar en la primera playa
+                    if (bounds.length > 0) {
+                        try {
+                            map.setView([bounds[0][0], bounds[0][1]], 14);
+                            console.log('🗺️ Mapa centrado en primera playa (fallback)');
+                        } catch (e2) {
+                            console.error('❌ Error al centrar mapa:', e2);
+                        }
+                    }
+                }
+            }
         }
 
         function openMarkerPopup(playaLike){
