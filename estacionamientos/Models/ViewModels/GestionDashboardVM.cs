@@ -56,6 +56,7 @@ public class GestionServicioCatalogoVM
 {
     public string Servicio { get; set; } = string.Empty;
     public bool Habilitado { get; set; }
+    public Dictionary<int, bool> EstadoPorPlaya { get; set; } = new(); // PlyID -> Habilitado
 }
 
 public class GestionMovimientoResumenVM

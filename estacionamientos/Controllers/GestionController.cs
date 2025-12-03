@@ -163,17 +163,33 @@ public class GestionController(AppDbContext ctx) : BaseController
             .Distinct()
             .CountAsync();
 
-        var serviciosDisponibles = await _ctx.ServiciosProveidos
+        // Obtener servicios con información de playa
+        var serviciosConPlaya = await _ctx.ServiciosProveidos
             .AsNoTracking()
             .Include(sp => sp.Servicio)
             .Where(sp => playasIds.Contains(sp.PlyID))
-            .Select(sp => new GestionServicioCatalogoVM
+            .Select(sp => new
             {
                 Servicio = sp.Servicio.SerNom,
+                PlyID = sp.PlyID,
                 Habilitado = sp.SerProvHab
             })
-            .OrderBy(sp => sp.Servicio)
             .ToListAsync();
+
+        // Agrupar por nombre de servicio y crear diccionario de estados por playa
+        var serviciosDisponibles = serviciosConPlaya
+            .GroupBy(sp => sp.Servicio)
+            .Select(g => new GestionServicioCatalogoVM
+            {
+                Servicio = g.Key,
+                Habilitado = g.Any(sp => sp.Habilitado), // Si al menos una playa lo tiene habilitado
+                EstadoPorPlaya = playasIds.ToDictionary(
+                    plyId => plyId,
+                    plyId => g.Any(sp => sp.PlyID == plyId && sp.Habilitado)
+                )
+            })
+            .OrderBy(sp => sp.Servicio)
+            .ToList();
 
         var serviciosActivos = serviciosDisponibles.Count(sp => sp.Habilitado);
 

@@ -132,11 +132,15 @@
                 </div>
                 <div class="col-12 col-md-6 col-xl-3">
                     <div class="gestion-card shadow-sm">
-                        <div class="card-icon bg-danger-subtle text-danger"><i class="fas fa-door-closed"></i></div>
+                        @{
+                            var estaAbierta = Model.EnVivo.EstadoOperativo == "Abierta";
+                            var iconoClase = estaAbierta ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger";
+                            var iconoFa = estaAbierta ? "fa-door-open" : "fa-door-closed";
+                        }
+                        <div class="card-icon @iconoClase"><i class="fas @iconoFa"></i></div>
                         <div>
                             <div class="card-label">Estado</div>
                             <div class="card-value">@Model.EnVivo.EstadoOperativo</div>
-                            <div class="card-extra">@Model.EnVivo.PlazasFueraServicio fuera</div>
                         </div>
                     </div>
                 </div>
@@ -254,14 +258,21 @@
                     <i class="fas fa-list me-2 text-primary"></i>Catálogo
                 </div>
                 <div class="card-body">
-                    @if (Model.EnVivo.ServiciosDisponibles.Any())
+                    @if (Model.EnVivo.ServiciosDisponibles.Any() && Model.PlayasSeleccionadas.Any())
                     {
+                        var playasSeleccionadasInfo = Model.PlayasDisponibles
+                            .Where(p => Model.PlayasSeleccionadas.Contains(p.PlyID))
+                            .OrderBy(p => p.PlayaNombre)
+                            .ToList();
                         <div class="table-responsive">
                             <table class="table table-sm align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Servicio</th>
-                                        <th>Estado</th>
+                                        @foreach (var playa in playasSeleccionadasInfo)
+                                        {
+                                            <th class="text-center">@playa.PlayaNombre</th>
+                                        }
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -269,7 +280,20 @@
                                     {
                                         <tr>
                                             <td>@item.Servicio</td>
-                                            <td>@(item.Habilitado ? "Habilitado" : "Suspendido")</td>
+                                            @foreach (var playa in playasSeleccionadasInfo)
+                                            {
+                                                var habilitado = item.EstadoPorPlaya.GetValueOrDefault(playa.PlyID, false);
+                                                <td class="text-center">
+                                                    @if (habilitado)
+                                                    {
+                                                        <span class="text-success" title="Habilitado">✓</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-danger" title="No habilitado">✗</span>
+                                                    }
+                                                </td>
+                                            }
                                         </tr>
                                     }
                                 </tbody>
