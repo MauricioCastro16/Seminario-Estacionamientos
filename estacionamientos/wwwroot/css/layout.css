@@ -122,6 +122,26 @@ body.sidebar-open {
     margin-right: 0.5rem;
 }
 
+/* Badge de alerta de abonos en menú desktop - círculo pequeño */
+/* Solo mostrar el punto cuando NO tenga la clase d-none (controlada por JS) */
+.main-header .navbar-nav .nav-link #abonosAlertBadgeDesktop:not(.d-none),
+.main-header .navbar-nav .nav-link .abonos-alert-badge:not(.d-none) {
+    flex: 0 0 auto !important;
+    width: 8px !important;
+    height: 8px !important;
+    min-width: 8px !important;
+    min-height: 8px !important;
+    max-width: 8px !important;
+    max-height: 8px !important;
+    background-color: #b8860b !important;
+    border-radius: 50% !important;
+    margin-left: 8px !important;
+    vertical-align: middle !important;
+    display: inline-block !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+}
+
 /* ===== USER MENU ===== */
 .user-menu {
     padding: 0.5rem !important;
@@ -528,6 +548,26 @@ body.sidebar-open {
 
 .sidebar-nav .nav-link span {
     flex: 1;
+}
+
+/* Badge de alerta de abonos - círculo pequeño (sidebar móvil) */
+/* Solo mostrar el punto cuando NO tenga la clase d-none (controlada por JS) */
+.sidebar-nav .nav-link #abonosAlertBadge:not(.d-none),
+.sidebar-nav .nav-link .abonos-alert-badge:not(.d-none) {
+    flex: 0 0 auto !important;
+    width: 8px !important;
+    height: 8px !important;
+    min-width: 8px !important;
+    min-height: 8px !important;
+    max-width: 8px !important;
+    max-height: 8px !important;
+    background-color: #b8860b !important;
+    border-radius: 50% !important;
+    margin-left: 8px !important;
+    vertical-align: middle !important;
+    display: inline-block !important;
+    padding: 0 !important;
+    line-height: 1 !important;
 }
 
 /* ===== SIDEBAR FOOTER ===== */
