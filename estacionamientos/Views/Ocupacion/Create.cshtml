@@ -290,6 +290,50 @@ document.addEventListener("DOMContentLoaded", () => {
                 window.plazaAbonoID = data.plazaAbonoID;
                 window.plazaAbonoNum = data.plazaAbonoNum;
 
+                // Si es un abono programado (aún no comenzó)
+                if (data.esAbonadoProgramado === true) {
+                    window.esAbonado = false; // No cobrar como abono, aún no comenzó
+                    
+                    msg.textContent = data.message;
+                    msg.style.display = "block";
+                    msg.className = "alert alert-info mt-3";
+                    msg.style.textAlign = "center";
+                    msg.style.backgroundColor = "#cfe2ff";
+                    msg.style.color = "#084298";
+                    msg.style.border = "1px solid #b6d4fe";
+                    msg.style.borderRadius = "8px";
+
+                    // Habilitar campos para que seleccione cualquier plaza
+                    habilitarCampos(true);
+
+                    // Prellenar valores
+                    if (data.clasVehID) selClas.value = data.clasVehID;
+                    if (data.techada === true) document.getElementById("techadaSi").checked = true;
+                    else document.getElementById("techadaNo").checked = true;
+                    if (data.piso !== null) selPiso.innerHTML = `<option value="${data.piso}">Piso ${data.piso}</option>`;
+
+                    // Setear hidden para POST
+                    document.getElementById("HiddenClasVehID").value = data.clasVehID;
+                    document.getElementById("HiddenTechada").value = data.techada;
+                    document.getElementById("HiddenPiso").value = data.piso;
+                    
+                    // NO setear la plaza del abono, dejar que el usuario seleccione cualquier plaza
+                    document.getElementById("HiddenPlaza").value = "";
+                    hiddenPlz.value = "";
+
+                    // Deshabilitar botón hasta que seleccione una plaza
+                    btn.disabled = true;
+                    
+                    // Cargar plazas disponibles después de un pequeño delay para asegurar que los campos estén configurados
+                    setTimeout(() => {
+                        // Usar la función global si está disponible
+                        if (typeof window.fetchPlazasYPrepararPisos === 'function') {
+                            window.fetchPlazasYPrepararPisos(false, null);
+                        }
+                    }, 200);
+                    return;
+                }
+
                 // Verificar si la plaza del abono está ocupada
                 if (data.plazaOcupada) {
                     // La plaza está ocupada, permitir seleccionar otra plaza
@@ -563,7 +607,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${p.ocupada ? '<div class="small text-muted mt-1">Ocupada</div>' : ''}
                 ${p.hab === false ? '<div class="small text-muted mt-1">Inhabilitada</div>' : ''}
                 ${(p.hab !== false && !p.ocupada && p.compatible === false) ? '<div class="small mt-1">No compatible</div>' : ''}
-                ${(p.tieneAbonoActivo && !p.disponible) ? '<div class="small text-warning mt-1">Reservada para abonados</div>' : ''}
+                ${(p.tieneAbonoActivo && !p.disponible) ? '<div class="small text-warning fw-bold mt-1">Reservada para abonados</div>' : ''}
             `;
 
             // Una plaza es seleccionable si está habilitada, no ocupada, es compatible y está disponible (incluyendo validación de abono)

@@ -122,6 +122,10 @@ namespace estacionamientos.Controllers
             var fechaEgresoUtc = DateTime.SpecifyKind(ocufFyhFin, DateTimeKind.Utc);
             var fechaEgresoDate = fechaEgresoUtc.Date;
             
+            // Normalizar fecha actual para comparaciones (disponible en todo el método)
+            var fechaActualUtc = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var fechaActualDate = fechaActualUtc.Date;
+            
             // Normalizar la patente para comparación case-insensitive
             var vehPtntNormalized = (vehPtnt?.Trim().ToUpperInvariant() ?? string.Empty);
             
@@ -134,6 +138,7 @@ namespace estacionamientos.Controllers
             
             // Verificar si el vehículo pertenece a un abono y calcular período de cobertura
             // Solo considerar abonos que estén vigentes al momento del ingreso
+            // IMPORTANTE: Si un abono terminó por fecha, debe tratarse como Cancelado
             var fechaIngresoDate = ocufFyhIni.Date;
             var abonosFiltrados = await _ctx.Abonos
                 .Include(a => a.Vehiculos)
@@ -153,6 +158,8 @@ namespace estacionamientos.Controllers
             {
                 var perteneceAlAbono = abono.Vehiculos.Any(v => v.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized);
                 if (!perteneceAlAbono) continue;
+                
+                // El abono ya está filtrado por fecha de ingreso en la consulta, así que está vigente
                 
                 tieneAbono = true;
                 
@@ -313,7 +320,8 @@ namespace estacionamientos.Controllers
 
             // Verificar si el vehículo pertenece a un abono activo Y está en la plaza del abono
             // Un abono es válido si: no está cancelado, no está finalizado, y está dentro del rango de fechas
-            var fechaActualDate = fechaActual.Date;
+            // Un abono solo está activo si la fecha actual es >= fecha de inicio (ya comenzó)
+            // (fechaActualDate ya está declarada al inicio del método)
             
             // Validar que exista al menos una tarifa vigente AL MOMENTO DEL COBRO
             // Esta validación es crítica: no podemos cobrar si no hay tarifas vigentes ahora (excepto si es abonado)
@@ -323,7 +331,8 @@ namespace estacionamientos.Controllers
                 .Where(a => a.EstadoPago != EstadoPago.Cancelado &&
                            a.EstadoPago != EstadoPago.Finalizado &&
                            // Verificar que la fecha actual esté dentro del rango del abono
-                           a.AboFyhIni.Date <= fechaActualDate &&
+                           // La fecha actual debe ser >= fecha de inicio (el abono ya comenzó)
+                           fechaActualDate >= a.AboFyhIni.Date &&
                            (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate) &&
                            a.PlyID == plyID &&
                            a.PlzNum == plzNum) // Verificar que está en la plaza del abono
@@ -341,15 +350,17 @@ namespace estacionamientos.Controllers
             }
 
             // Extender beneficio por período de gracia de ABONO (diario/semanal/mensual) si corresponde
+            // Solo aplicar período de gracia si el abono ya comenzó (fecha actual >= fecha de inicio)
             if (!esAbonado)
             {
-                // Candidatos fuera de rango de fechas pero en la misma plaza
+                // Candidatos de abonos que ya comenzaron (para período de gracia)
                 var candidatos = await _ctx.Abonos
                     .Include(a => a.Vehiculos)
                     .Include(a => a.Periodos)
                     .Where(a => a.EstadoPago != EstadoPago.Cancelado &&
                                 a.PlyID == plyID &&
-                                a.PlzNum == plzNum)
+                                a.PlzNum == plzNum &&
+                                fechaActualDate >= a.AboFyhIni.Date)
                     .ToListAsync();
 
                 // Identificar servicios de abono por nombre
@@ -362,6 +373,10 @@ namespace estacionamientos.Controllers
                 {
                     var pertenece = ab.Vehiculos.Any(v => v.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized);
                     if (!pertenece) continue;
+                    
+                    // Solo aplicar período de gracia si el abono ya comenzó
+                    if (fechaActualDate < ab.AboFyhIni.Date)
+                        continue;
 
                     // Determinar duración típica del abono a partir del primer período
                     var primerPeriodo = ab.Periodos.OrderBy(p => p.PeriodoNumero).FirstOrDefault();
@@ -784,12 +799,13 @@ namespace estacionamientos.Controllers
             var dictAbonoVigente = new Dictionary<string, bool>();
 
             // Cargar todos los abonos vigentes con sus vehículos en memoria
+            // Un abono solo está activo si la fecha actual es >= fecha de inicio (ya comenzó)
             var abonosVigentes = await _ctx.Abonos
                 .Include(a => a.Vehiculos)
                 .AsNoTracking()
                 .Where(a => a.EstadoPago != EstadoPago.Cancelado
                           && a.EstadoPago != EstadoPago.Finalizado
-                          && a.AboFyhIni.Date <= fechaActualDate
+                          && fechaActualDate >= a.AboFyhIni.Date
                           && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate))
                 .ToListAsync();
 
@@ -1272,11 +1288,12 @@ namespace estacionamientos.Controllers
                                                         && o.OcufFyhFin == null),
                     
                     // Verificar si tiene un abono activo
+                    // Un abono solo está activo si la fecha actual es >= fecha de inicio (ya comenzó)
                     tieneAbonoActivo = _ctx.Abonos.Any(a => a.PlyID == p.PlyID
                                                             && a.PlzNum == p.PlzNum
                                                             && a.EstadoPago != EstadoPago.Cancelado
                                                             && a.EstadoPago != EstadoPago.Finalizado
-                                                            && a.AboFyhIni.Date <= fechaActualDate
+                                                            && fechaActualDate >= a.AboFyhIni.Date
                                                             && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate))
                 });
 
@@ -1303,7 +1320,7 @@ namespace estacionamientos.Controllers
                                               && v.PlyID == plyID  // Filtrar por playa actual
                                               && v.Abono.EstadoPago != EstadoPago.Cancelado
                                               && v.Abono.EstadoPago != EstadoPago.Finalizado
-                                              && v.Abono.AboFyhIni.Date <= fechaActualDate
+                                              && fechaActualDate >= v.Abono.AboFyhIni.Date
                                               && (v.Abono.AboFyhFin == null || v.Abono.AboFyhFin.Value.Date >= fechaActualDate));
                 
                 if (vehiculoAbonado != null)
@@ -1517,6 +1534,10 @@ namespace estacionamientos.Controllers
             if (ocupacionActual != null)
             {
                 // Verificar si el vehículo que está ocupando la plaza pertenece a un abono activo EN ESTA PLAYA Y PLAZA
+                // Un abono solo está activo si la fecha actual es >= fecha de inicio (ya comenzó)
+                var fechaActualUtc = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+                var fechaActualDate = fechaActualUtc.Date;
+                
                 var vehiculoOcupante = ocupacionActual.VehPtnt;
                 var fechaActualDateValidacion = DateTime.UtcNow.Date;
                 var abonoOcupante = await _ctx.VehiculosAbonados
@@ -1532,6 +1553,7 @@ namespace estacionamientos.Controllers
                     .FirstOrDefaultAsync();
 
                 // Verificar si el vehículo que intenta ingresar pertenece a un abono activo EN ESTA PLAYA Y PLAZA
+                // IMPORTANTE: Solo considerar abonos vigentes (no vencidos por fecha)
                 var abonoVehiculoIngreso = await _ctx.VehiculosAbonados
                     .Include(va => va.Abono)
                     .Where(va => va.VehPtnt == model.VehPtnt &&
