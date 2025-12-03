@@ -141,17 +141,19 @@ public class GestionController(AppDbContext ctx) : BaseController
             .ToListAsync();
 
         var plazasOcupadas = ocupacionesActivas.Count;
+        // Ocupaciones que iniciaron Y finalizaron en el mismo día (estadía completa del día)
         var ocupacionesHoyCompletas = await _ctx.Ocupaciones
             .AsNoTracking()
             .Where(o => playasIds.Contains(o.PlyID)
-                        && o.OcufFyhIni >= hoyInicioUtc
+                        && o.OcufFyhFin != null  // Debe tener fecha de fin
+                        && o.OcufFyhIni >= hoyInicioUtc  // Entró hoy
                         && o.OcufFyhIni <= hoyFinUtc
-                        && o.OcufFyhFin != null
-                        && o.OcufFyhFin >= hoyInicioUtc
+                        && o.OcufFyhFin >= hoyInicioUtc  // Salió hoy
                         && o.OcufFyhFin <= hoyFinUtc)
             .Select(o => new { o.OcufFyhIni, o.OcufFyhFin })
             .ToListAsync();
 
+        // Calcular promedio de estadía en minutos (solo ocupaciones completas del día)
         var promedioActiva = ocupacionesHoyCompletas.Any()
             ? ocupacionesHoyCompletas.Average(o => (o.OcufFyhFin!.Value - o.OcufFyhIni).TotalMinutes)
             : 0d;
@@ -269,28 +271,88 @@ public class GestionController(AppDbContext ctx) : BaseController
             .OrderByDescending(c => c.Value)
             .ToList();
 
+        // Obtener valoraciones relacionadas con ocupaciones del día de hoy (misma lógica que rango de fechas)
         var valoracionesRecientes = new List<GestionValoracionRecienteVM>();
-        if (playasIds.Count == 1)
+        
+        // Obtener vehículos que tuvieron ocupaciones hoy
+        var vehiculosConOcupaciones = await _ctx.Ocupaciones
+            .AsNoTracking()
+            .Where(o => playasIds.Contains(o.PlyID) && 
+                       o.OcufFyhIni >= hoyInicioUtc && 
+                       o.OcufFyhIni <= hoyFinUtc)
+            .Select(o => o.VehPtnt)
+            .Distinct()
+            .ToListAsync();
+
+        if (vehiculosConOcupaciones.Any())
         {
-            var plyId = playasIds[0];
-            var valoracionesRaw = await _ctx.Valoraciones
+            // Obtener conductores de esos vehículos
+            var conductoresConOcupaciones = await _ctx.Conduces
                 .AsNoTracking()
-                .Include(v => v.Conductor)
-                .Where(v => v.PlyID == plyId)
-                .OrderByDescending(v => v.ConNU)
-                .Take(5)
+                .Where(c => vehiculosConOcupaciones.Contains(c.VehPtnt))
+                .Select(c => c.ConNU)
+                .Distinct()
                 .ToListAsync();
-            
-            valoracionesRecientes = valoracionesRaw
-                .Select(v => new GestionValoracionRecienteVM
-                {
-                    Estrellas = v.ValNumEst,
-                    Favorito = v.ValFav,
-                    FechaUtc = null,
-                    Comentario = v.ValComentario,
-                    ConductorNombre = v.Conductor?.UsuNyA ?? "Conductor desconocido"
-                })
-                .ToList();
+
+            if (conductoresConOcupaciones.Any())
+            {
+                // Obtener valoraciones de esos conductores para las playas seleccionadas
+                var valoracionesRaw = await _ctx.Valoraciones
+                    .AsNoTracking()
+                    .Include(v => v.Conductor)
+                    .Where(v => playasIds.Contains(v.PlyID) && 
+                               conductoresConOcupaciones.Contains(v.ConNU))
+                    .ToListAsync();
+
+                // Obtener la última ocupación de cada conductor por playa en el rango
+                var ocupacionesConConductores = await _ctx.Ocupaciones
+                    .AsNoTracking()
+                    .Include(o => o.Vehiculo)
+                    .ThenInclude(v => v!.Conducciones)
+                    .Where(o => playasIds.Contains(o.PlyID) && 
+                               o.OcufFyhIni >= hoyInicioUtc && 
+                               o.OcufFyhIni <= hoyFinUtc)
+                    .ToListAsync();
+
+                var ocupacionesPorConductor = ocupacionesConConductores
+                    .SelectMany(o => o.Vehiculo!.Conducciones.Select(c => new
+                    {
+                        PlyID = o.PlyID,
+                        ConNU = c.ConNU,
+                        Fecha = o.OcufFyhIni
+                    }))
+                    .GroupBy(o => new { o.PlyID, o.ConNU })
+                    .Select(g => new
+                    {
+                        g.Key.PlyID,
+                        g.Key.ConNU,
+                        Fecha = g.Max(o => o.Fecha)
+                    })
+                    .ToList();
+
+                valoracionesRecientes = valoracionesRaw
+                    .Select(v =>
+                    {
+                        var ocupacion = ocupacionesPorConductor
+                            .FirstOrDefault(o => o.PlyID == v.PlyID && o.ConNU == v.ConNU);
+                        
+                        // Si no hay ocupación relacionada, usar la fecha de fin del día como referencia
+                        var fechaValoracion = ocupacion != null 
+                            ? ocupacion.Fecha 
+                            : hoyFinUtc;
+                        
+                        return new GestionValoracionRecienteVM
+                        {
+                            Estrellas = v.ValNumEst,
+                            Favorito = v.ValFav,
+                            FechaUtc = fechaValoracion,
+                            Comentario = v.ValComentario,
+                            ConductorNombre = v.Conductor?.UsuNyA ?? "Conductor desconocido"
+                        };
+                    })
+                    .OrderByDescending(v => v.FechaUtc ?? DateTime.MinValue)
+                    .ToList();
+            }
         }
 
         var valoracionesLista = await _ctx.Playas
@@ -472,6 +534,91 @@ public class GestionController(AppDbContext ctx) : BaseController
                         (a.AboFyhFin == null || a.AboFyhFin >= desdeUtc))
             .CountAsync();
 
+        // Obtener valoraciones relacionadas con ocupaciones en el rango de fechas
+        var valoracionesRecientes = new List<GestionValoracionRecienteVM>();
+        
+        // Obtener vehículos que tuvieron ocupaciones en el rango de fechas
+        var vehiculosConOcupaciones = await _ctx.Ocupaciones
+            .AsNoTracking()
+            .Where(o => playasIds.Contains(o.PlyID) && 
+                       o.OcufFyhIni >= desdeUtc && 
+                       o.OcufFyhIni <= hastaUtc)
+            .Select(o => o.VehPtnt)
+            .Distinct()
+            .ToListAsync();
+
+        if (vehiculosConOcupaciones.Any())
+        {
+            // Obtener conductores de esos vehículos
+            var conductoresConOcupaciones = await _ctx.Conduces
+                .AsNoTracking()
+                .Where(c => vehiculosConOcupaciones.Contains(c.VehPtnt))
+                .Select(c => c.ConNU)
+                .Distinct()
+                .ToListAsync();
+
+            if (conductoresConOcupaciones.Any())
+            {
+                // Obtener valoraciones de esos conductores para las playas seleccionadas
+                var valoracionesRaw = await _ctx.Valoraciones
+                    .AsNoTracking()
+                    .Include(v => v.Conductor)
+                    .Where(v => playasIds.Contains(v.PlyID) && 
+                               conductoresConOcupaciones.Contains(v.ConNU))
+                    .ToListAsync();
+
+                // Obtener la última ocupación de cada conductor por playa en el rango
+                // Primero obtenemos las ocupaciones con sus vehículos y conductores
+                var ocupacionesConConductores = await _ctx.Ocupaciones
+                    .AsNoTracking()
+                    .Include(o => o.Vehiculo)
+                    .ThenInclude(v => v!.Conducciones)
+                    .Where(o => playasIds.Contains(o.PlyID) && 
+                               o.OcufFyhIni >= desdeUtc && 
+                               o.OcufFyhIni <= hastaUtc)
+                    .ToListAsync();
+
+                var ocupacionesPorConductor = ocupacionesConConductores
+                    .SelectMany(o => o.Vehiculo!.Conducciones.Select(c => new
+                    {
+                        PlyID = o.PlyID,
+                        ConNU = c.ConNU,
+                        Fecha = o.OcufFyhIni
+                    }))
+                    .GroupBy(o => new { o.PlyID, o.ConNU })
+                    .Select(g => new
+                    {
+                        g.Key.PlyID,
+                        g.Key.ConNU,
+                        Fecha = g.Max(o => o.Fecha)
+                    })
+                    .ToList();
+
+                valoracionesRecientes = valoracionesRaw
+                    .Select(v =>
+                    {
+                        var ocupacion = ocupacionesPorConductor
+                            .FirstOrDefault(o => o.PlyID == v.PlyID && o.ConNU == v.ConNU);
+                        
+                        // Si no hay ocupación relacionada, usar la fecha de fin del rango como referencia
+                        var fechaValoracion = ocupacion != null 
+                            ? ocupacion.Fecha 
+                            : hastaUtc;
+                        
+                        return new GestionValoracionRecienteVM
+                        {
+                            Estrellas = v.ValNumEst,
+                            Favorito = v.ValFav,
+                            FechaUtc = fechaValoracion,
+                            Comentario = v.ValComentario,
+                            ConductorNombre = v.Conductor?.UsuNyA ?? "Conductor desconocido"
+                        };
+                    })
+                    .OrderByDescending(v => v.FechaUtc ?? DateTime.MinValue)
+                    .ToList();
+            }
+        }
+
         return new GestionHistoricoVM
         {
             DesdeUtc = desdeUtc,
@@ -490,7 +637,8 @@ public class GestionController(AppDbContext ctx) : BaseController
             ClasificacionVehiculos = clasificacionVehiculos,
             TopPatentes = topPatentes,
             PlayerosActivos = playerosActivos,
-            ServiciosExtraPorTipo = serviciosExtraPorTipo
+            ServiciosExtraPorTipo = serviciosExtraPorTipo,
+            ValoracionesRecientes = valoracionesRecientes
         };
     }
 }

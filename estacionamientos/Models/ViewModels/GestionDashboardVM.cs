@@ -120,6 +120,7 @@ public class GestionHistoricoVM
     public List<GestionSerieValorVM> TopPatentes { get; set; } = new();
     public List<GestionSerieValorVM> PlayerosActivos { get; set; } = new();
     public List<GestionSerieValorVM> ServiciosExtraPorTipo { get; set; } = new();
+    public List<GestionValoracionRecienteVM> ValoracionesRecientes { get; set; } = new();
 }
 
 public class GestionDashboardVM

@@ -26,7 +26,7 @@
                     <input type="hidden" name="playasIds" value="@id" />
                 }
                 <button type="submit" class="btn @(esEnVivo ? "btn-primary" : "btn-outline-primary")">
-                    <i class="fa-solid fa-wave-square fa-beat-fade me-2"></i>En vivo
+                    <span class="live-indicator me-2"></span>En vivo
                 </button>
             </form>
             <form method="get" asp-controller="Gestion" asp-action="Index">
@@ -341,9 +341,7 @@
                         <div class="list-group list-group-flush">
                             @foreach (var val in Model.EnVivo.ValoracionesRecientes)
                             {
-                                var fechaTexto = val.FechaUtc.HasValue
-                                    ? val.FechaUtc.Value.ToLocalTime().ToString("dd/MM HH:mm")
-                                    : "Reciente";
+                                var fechaTexto = "Hoy";
                                 <div class="list-group-item">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <div class="flex-grow-1">
@@ -593,6 +591,60 @@
                 </div>
             </div>
         </section>
+
+        <section class="mb-4">
+            <h5 class="section-title">Experiencia del cliente</h5>
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    @if (Model.Historico.ValoracionesRecientes.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var val in Model.Historico.ValoracionesRecientes)
+                            {
+                                var fechaTexto = val.FechaUtc.HasValue
+                                    ? val.FechaUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                    : Model.Historico.HastaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <div class="text-warning">
+                                                    @for (var i = 0; i < val.Estrellas; i++)
+                                                    {
+                                                        <i class="fas fa-star"></i>
+                                                    }
+                                                </div>
+                                                @if (val.Favorito)
+                                                {
+                                                    <span class="badge bg-warning text-dark">
+                                                        <i class="fas fa-star"></i> Favorito
+                                                    </span>
+                                                }
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(val.ConductorNombre))
+                                            {
+                                                <div class="fw-semibold text-primary mb-1">
+                                                    <i class="fas fa-user me-1"></i>@val.ConductorNombre
+                                                </div>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(val.Comentario))
+                                            {
+                                                <div class="text-muted small mb-2" style="white-space: pre-wrap;">@val.Comentario</div>
+                                            }
+                                        </div>
+                                        <div class="text-muted small ms-3">@fechaTexto</div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted">No hay reseñas en el período seleccionado.</div>
+                    }
+                </div>
+            </div>
+        </section>
     }
 </div>
 
@@ -806,5 +858,25 @@ else
     }
     .pie-chart-wrapper {
         max-height: 220px;
+    }
+    .live-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        background-color: #dc3545;
+        border-radius: 50%;
+        animation: pulse 2s ease-in-out infinite;
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+    }
+    @@keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+        }
     }
 </style>
