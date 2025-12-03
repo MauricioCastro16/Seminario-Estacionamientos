@@ -252,6 +252,7 @@ namespace estacionamientos.Controllers
                 .ToListAsync();
 
             // Plazas de la playa
+            var hoy = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc).Date;
             ViewBag.Plazas = await _context.Plazas
                 .Include(p => p.Clasificaciones)
                     .ThenInclude(pc => pc.Clasificacion)
@@ -266,6 +267,13 @@ namespace estacionamientos.Controllers
                     p.PlzAlt,
                     p.PlzHab,
                     PlzOcupada = _context.Ocupaciones.Any(o => o.PlyID == p.PlyID && o.PlzNum == p.PlzNum && o.OcufFyhFin == null),
+                    TieneAbonoActivo = _context.Abonos.Any(a =>
+                        a.PlyID == p.PlyID &&
+                        a.PlzNum == p.PlzNum &&
+                        a.EstadoPago != estacionamientos.Models.EstadoPago.Cancelado &&
+                        a.EstadoPago != estacionamientos.Models.EstadoPago.Finalizado &&
+                        a.AboFyhIni.Date <= hoy &&
+                        (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= hoy)),
                     Clasificaciones = p.Clasificaciones.Select(pc => pc.Clasificacion.ClasVehTipo).ToList()
                 })
                 .AsNoTracking()

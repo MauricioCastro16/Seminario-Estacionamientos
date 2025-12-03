@@ -174,13 +174,36 @@
                                     }
                                 </td>
                                 <td class="text-center">
-                                    @if (plaza.PlzHab == true)
+                                    @if (User.IsInRole("Playero"))
                                     {
-                                        <span class="badge bg-success">Habilitada</span>
+                                        bool plzHab = plaza.PlzHab == true;
+                                        bool ocupada = plaza.PlzOcupada == true;
+                                        bool tieneAbonoActivo = (plaza.TieneAbonoActivo as bool?) == true;
+                                        bool puedeToggle = !ocupada && !tieneAbonoActivo;
+
+                                        <form asp-controller="Playero" asp-action="ToggleHabilitada" method="post" class="d-inline">
+                                            <input type="hidden" name="PlyID" value="@plaza.PlyID" />
+                                            <input type="hidden" name="PlzNum" value="@plaza.PlzNum" />
+
+                                            <div class="form-check form-switch d-flex justify-content-center">
+                                                <input class="form-check-input" type="checkbox"
+                                                       onchange="this.form.submit();"
+                                                       @(plzHab ? "checked" : "")
+                                                       @(!puedeToggle ? "disabled" : "")
+                                                       title="@(tieneAbonoActivo ? "No se puede deshabilitar: tiene un abono activo" : (ocupada ? "No se puede deshabilitar: está ocupada" : ""))" />
+                                            </div>
+                                        </form>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-secondary">Deshabilitada</span>
+                                        if (plaza.PlzHab == true)
+                                        {
+                                            <span class="badge bg-success">Habilitada</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Deshabilitada</span>
+                                        }
                                     }
                                 </td>
                             </tr>
