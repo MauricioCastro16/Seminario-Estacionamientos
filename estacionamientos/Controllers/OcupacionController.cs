@@ -133,11 +133,16 @@ namespace estacionamientos.Controllers
             bool cobrarTarifaPostAbono = playa?.PlyCobrarTarifaPostAbono ?? false;
             
             // Verificar si el vehículo pertenece a un abono y calcular período de cobertura
+            // Solo considerar abonos que estén vigentes al momento del ingreso
+            var fechaIngresoDate = ocufFyhIni.Date;
             var abonosFiltrados = await _ctx.Abonos
                 .Include(a => a.Vehiculos)
                 .Where(a => a.EstadoPago != EstadoPago.Cancelado &&
+                           a.EstadoPago != EstadoPago.Finalizado &&
                            a.PlyID == plyID &&
-                           a.PlzNum == plzNum)
+                           a.PlzNum == plzNum &&
+                           a.AboFyhIni.Date <= fechaIngresoDate &&
+                           (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaIngresoDate))
                 .ToListAsync();
             
             // Variables para calcular qué horas están cubiertas por el abono
@@ -855,7 +860,9 @@ namespace estacionamientos.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Verificar si la plaza tiene un abono activo
+            // Verificar si la plaza tiene un abono activo y vigente
+            // Un abono está activo solo si: no está cancelado, no está finalizado, Y no ha terminado por fecha
+            // IMPORTANTE: Si un abono terminó por fecha, debe tratarse como Cancelado
             var abonoActivo = await _ctx.Abonos
                 .Include(a => a.Vehiculos)
                 .AsNoTracking()
@@ -868,14 +875,45 @@ namespace estacionamientos.Controllers
 
             if (abonoActivo != null)
             {
-                // La plaza tiene abono activo, verificar que el vehículo pertenezca a ese abono
+                // La plaza tiene abono activo y vigente, verificar que el vehículo pertenezca a ese abono
                 var vehiculoPerteneceAbono = abonoActivo.Vehiculos
                     .Any(v => v.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized);
 
                 if (!vehiculoPerteneceAbono)
                 {
-                    TempData["Error"] = $"La plaza {plzNum} está reservada para vehículos abonados. Este vehículo no está asociado al abono de esta plaza.";
+                    TempData["Error"] = $"La plaza {plzNum} está reservada para vehículos abonados. Este vehículo no está asociado al abono vigente de esta plaza.";
                     return RedirectToAction(nameof(Index));
+                }
+            }
+            else
+            {
+                // La plaza NO tiene abono activo. Verificar si el vehículo tiene un abono asociado a esta plaza
+                // Si lo tiene pero ya terminó por fecha, debe ser tratado como vehículo normal (no abonado)
+                var abonoVehiculo = await _ctx.VehiculosAbonados
+                    .Include(va => va.Abono)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(va => va.VehPtnt.Trim().ToUpperInvariant() == vehPtntNormalized
+                                              && va.PlyID == plyID
+                                              && va.PlzNum == plzNum);
+
+                if (abonoVehiculo != null)
+                {
+                    // El vehículo tiene un abono asociado a esta plaza, pero no está activo
+                    // Verificar si terminó por fecha (debe tratarse como Cancelado)
+                    var abonoTerminoPorFecha = abonoVehiculo.Abono.AboFyhFin.HasValue 
+                                               && abonoVehiculo.Abono.AboFyhFin.Value.Date < fechaActualDate;
+
+                    if (abonoTerminoPorFecha)
+                    {
+                        // El abono terminó por fecha, debe tratarse como Cancelado - vehículo normal
+                        // Permitir ingreso como vehículo normal (se cobrará normalmente)
+                    }
+                    else
+                    {
+                        // El abono no terminó por fecha pero la plaza no lo tiene activo
+                        // Puede ser que el estado sea Cancelado/Finalizado o haya inconsistencia
+                        // En cualquier caso, tratar como vehículo normal
+                    }
                 }
             }
 
@@ -1480,6 +1518,7 @@ namespace estacionamientos.Controllers
             {
                 // Verificar si el vehículo que está ocupando la plaza pertenece a un abono activo EN ESTA PLAYA Y PLAZA
                 var vehiculoOcupante = ocupacionActual.VehPtnt;
+                var fechaActualDateValidacion = DateTime.UtcNow.Date;
                 var abonoOcupante = await _ctx.VehiculosAbonados
                     .Include(va => va.Abono)
                     .Where(va => va.VehPtnt == vehiculoOcupante &&
@@ -1487,7 +1526,8 @@ namespace estacionamientos.Controllers
                                va.PlzNum == model.PlzNum!.Value &&  // Filtrar por plaza actual
                                va.Abono.EstadoPago != EstadoPago.Cancelado &&
                                va.Abono.EstadoPago != EstadoPago.Finalizado &&
-                               (va.Abono.AboFyhFin == null || va.Abono.AboFyhFin >= DateTime.UtcNow))
+                               va.Abono.AboFyhIni.Date <= fechaActualDateValidacion &&
+                               (va.Abono.AboFyhFin == null || va.Abono.AboFyhFin.Value.Date >= fechaActualDateValidacion))
                     .Select(va => new { va.PlyID, va.PlzNum, va.AboFyhIni })
                     .FirstOrDefaultAsync();
 
@@ -1499,7 +1539,8 @@ namespace estacionamientos.Controllers
                                va.PlzNum == model.PlzNum!.Value &&  // Filtrar por plaza actual
                                va.Abono.EstadoPago != EstadoPago.Cancelado &&
                                va.Abono.EstadoPago != EstadoPago.Finalizado &&
-                               (va.Abono.AboFyhFin == null || va.Abono.AboFyhFin >= DateTime.UtcNow))
+                               va.Abono.AboFyhIni.Date <= fechaActualDateValidacion &&
+                               (va.Abono.AboFyhFin == null || va.Abono.AboFyhFin.Value.Date >= fechaActualDateValidacion))
                     .Select(va => new { va.PlyID, va.PlzNum, va.AboFyhIni })
                     .FirstOrDefaultAsync();
 

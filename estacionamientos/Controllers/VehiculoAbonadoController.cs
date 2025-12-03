@@ -65,11 +65,31 @@ namespace estacionamientos.Controllers
 
             var vehiculoAbonado = await query.FirstOrDefaultAsync();
 
-            if (vehiculoAbonado?.Abono == null || vehiculoAbonado.Abono.EstadoPago != EstadoPago.Activo)
-                return Json(new { success = false });
-
             if (vehiculoAbonado == null || vehiculoAbonado.Abono == null || vehiculoAbonado.Vehiculo == null)
                 return Json(new { success = false });
+
+            // Verificar estado del abono
+            // IMPORTANTE: Si el abono terminó por fecha, debe tratarse como Cancelado (no existe más)
+            var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var fechaActualDate = fechaActual.Date;
+
+            // Un abono está vigente solo si:
+            // 1. No está Cancelado ni Finalizado
+            // 2. La fecha actual está dentro del rango del abono (no ha vencido por fecha)
+            var abonoVencidoPorFecha = vehiculoAbonado.Abono.AboFyhFin.HasValue 
+                                       && vehiculoAbonado.Abono.AboFyhFin.Value.Date < fechaActualDate;
+
+            var abonoNoVigente = vehiculoAbonado.Abono.EstadoPago == EstadoPago.Cancelado
+                                 || vehiculoAbonado.Abono.EstadoPago == EstadoPago.Finalizado
+                                 || vehiculoAbonado.Abono.AboFyhIni.Date > fechaActualDate
+                                 || abonoVencidoPorFecha;
+
+            if (abonoNoVigente)
+            {
+                // El abono no está vigente (cancelado, finalizado, programado futuro, o vencido por fecha)
+                // Tratarlo como si no existiera - no devolver información de abonado
+                return Json(new { success = false });
+            }
 
             var abonado = vehiculoAbonado.Abono.Abonado?.AboNom ?? "(sin nombre)";
             var clasificacionId = vehiculoAbonado.Vehiculo.ClasVehID;

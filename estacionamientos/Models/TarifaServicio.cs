@@ -8,6 +8,7 @@ namespace estacionamientos.Models
     {
         // PK compuesta
         public int PlyID { get; set; }
+        [Required(ErrorMessage = "Debe seleccionar un servicio")]
         public int SerID { get; set; }
         public int ClasVehID { get; set; }
         [Required]

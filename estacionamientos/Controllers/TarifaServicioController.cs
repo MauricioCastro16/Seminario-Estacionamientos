@@ -457,6 +457,24 @@ namespace estacionamientos.Controllers
         {
             try
             {
+                // Limpiar error de binding del campo SerID y agregar mensaje personalizado en español
+                if (ModelState.ContainsKey("SerID"))
+                {
+                    var serIDErrors = ModelState["SerID"].Errors;
+                    if (serIDErrors.Any(e => e.ErrorMessage.Contains("invalid") || e.ErrorMessage.Contains("The value")))
+                    {
+                        ModelState.Remove("SerID");
+                        if (model.SerID == 0)
+                        {
+                            ModelState.AddModelError("SerID", "Debe seleccionar un servicio");
+                        }
+                    }
+                }
+                else if (model.SerID == 0)
+                {
+                    ModelState.AddModelError("SerID", "Debe seleccionar un servicio");
+                }
+
                 model.TasFecIni = ToUtc(model.TasFecIni);
                 if (model.TasFecFin.HasValue)
                     model.TasFecFin = ToUtc(model.TasFecFin.Value);
