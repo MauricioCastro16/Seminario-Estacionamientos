@@ -98,6 +98,8 @@ public class GestionEnVivoVM
     public List<GestionServicioCatalogoVM> ServiciosDisponibles { get; set; } = new();
     public List<GestionMovimientoResumenVM> MovimientosUltimaHora { get; set; } = new();
     public List<GestionValoracionRecienteVM> ValoracionesRecientes { get; set; } = new();
+    public List<GestionSerieValorVM> OcupacionPorHora { get; set; } = new();
+    public List<GestionSerieValorVM> RotacionPorHora { get; set; } = new();
     public bool AlertaSinPlayeros => PlayerosActivos == 0;
 }
 

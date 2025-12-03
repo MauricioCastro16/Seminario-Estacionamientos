@@ -210,6 +210,59 @@ public class GestionController(AppDbContext ctx) : BaseController
             .Where(o => playasIds.Contains(o.PlyID) && o.OcufFyhFin != null && o.OcufFyhFin >= haceUnaHoraUtc)
             .CountAsync();
 
+        // Calcular ocupación y rotación por hora del día actual
+        var ocupacionesHoy = await _ctx.Ocupaciones
+            .AsNoTracking()
+            .Where(o => playasIds.Contains(o.PlyID) && o.OcufFyhIni >= hoyInicioUtc && o.OcufFyhIni <= hoyFinUtc)
+            .Select(o => new { o.OcufFyhIni, o.OcufFyhFin })
+            .ToListAsync();
+
+        // Inicializar todas las horas del día (00-23) con 0
+        var ocupacionPorHora = Enumerable.Range(0, 24)
+            .Select(h => new GestionSerieValorVM
+            {
+                Label = $"{h:D2}:00",
+                Value = 0
+            })
+            .ToList();
+
+        var rotacionPorHora = Enumerable.Range(0, 24)
+            .Select(h => new GestionSerieValorVM
+            {
+                Label = $"{h:D2}:00",
+                Value = 0
+            })
+            .ToList();
+
+        // Agrupar entradas por hora
+        var entradasPorHora = ocupacionesHoy
+            .GroupBy(o => o.OcufFyhIni.ToLocalTime().Hour)
+            .ToList();
+
+        foreach (var grupo in entradasPorHora)
+        {
+            var hora = grupo.Key;
+            if (hora >= 0 && hora < 24)
+            {
+                ocupacionPorHora[hora].Value = grupo.Count();
+            }
+        }
+
+        // Agrupar egresos por hora
+        var egresosPorHora = ocupacionesHoy
+            .Where(o => o.OcufFyhFin.HasValue)
+            .GroupBy(o => o.OcufFyhFin!.Value.ToLocalTime().Hour)
+            .ToList();
+
+        foreach (var grupo in egresosPorHora)
+        {
+            var hora = grupo.Key;
+            if (hora >= 0 && hora < 24)
+            {
+                rotacionPorHora[hora].Value = grupo.Count();
+            }
+        }
+
         var movimientosHora = await _ctx.MovimientosPlayeros
             .AsNoTracking()
             .Where(m => playasIds.Contains(m.PlyID) && m.FechaMov >= haceUnaHoraUtc)
@@ -396,7 +449,9 @@ public class GestionController(AppDbContext ctx) : BaseController
             PlazasNoHabilitadas = plazasNoHab,
             ServiciosDisponibles = serviciosDisponibles,
             MovimientosUltimaHora = movimientosHora,
-            ValoracionesRecientes = valoracionesRecientes
+            ValoracionesRecientes = valoracionesRecientes,
+            OcupacionPorHora = ocupacionPorHora,
+            RotacionPorHora = rotacionPorHora
         };
     }
 
