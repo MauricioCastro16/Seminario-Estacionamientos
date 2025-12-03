@@ -81,11 +81,11 @@
                                                                 <tr>
                                                                     <td>@abono.PlayaNombre</td>
                                                                     <td>@abono.PlazaNumero</td>
-                                                                    <td>@abono.FechaHoraIngreso.ToString("dd/MM/yyyy")</td>
+                                                                    <td>@abono.FechaHoraIngreso.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                                                                     <td>
                                                                         @if (abono.FechaHoraEgreso != null)
                                                                         {
-                                                                            @(((DateTime)abono.FechaHoraEgreso).ToString("dd/MM/yyyy"))
+                                                                            @(((DateTime)abono.FechaHoraEgreso).ToLocalTime().ToString("dd/MM/yyyy HH:mm"))
                                                                         }
                                                                         else
                                                                         {
@@ -135,7 +135,7 @@
                                                             {
                                                                 <tr class="visita-row" data-servicios='@Html.Raw(Json.Serialize(visita.ServiciosNombres ?? new List<string>()))' style="cursor: @(visita.MostrarVarios == true ? "pointer" : "default");">
                                                                     <td>@visita.PlayaNombre</td>
-                                                                    <td>@visita.FechaHoraIngreso.ToString("dd/MM/yyyy HH:mm")</td>
+                                                                    <td>@visita.FechaHoraIngreso.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                                                                     <td>
                                                                         @if (visita.MostrarVarios == true)
                                                                         {
@@ -220,12 +220,12 @@
                                                                                 <strong class="small d-block mb-1">@abono.PlayaNombre</strong>
                                                                                 <small class="text-muted d-block">Plaza @abono.PlazaNumero</small>
                                                                                 <small class="text-muted d-block">
-                                                                                    Inicio: @abono.FechaHoraIngreso.ToString("dd/MM/yyyy")
+                                                                                    Inicio: @abono.FechaHoraIngreso.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                                                                 </small>
                                                                                 @if (abono.FechaHoraEgreso != null)
                                                                                 {
                                                                                     <small class="text-muted d-block">
-                                                                                        Fin: @(((DateTime)abono.FechaHoraEgreso).ToString("dd/MM/yyyy"))
+                                                                                        Fin: @(((DateTime)abono.FechaHoraEgreso).ToLocalTime().ToString("dd/MM/yyyy HH:mm"))
                                                                                     </small>
                                                                                 }
                                                                                 else
@@ -274,7 +274,7 @@
                                                                         <div class="mb-1">
                                                                             <strong class="small d-block mb-1">@visita.PlayaNombre</strong>
                                                                             <small class="text-muted d-block">
-                                                                                @visita.FechaHoraIngreso.ToString("dd/MM/yyyy HH:mm")
+                                                                                @visita.FechaHoraIngreso.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                                                             </small>
                                                                         </div>
 
