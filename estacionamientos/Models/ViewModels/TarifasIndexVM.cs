@@ -5,6 +5,7 @@ namespace estacionamientos.Models.ViewModels
         public string? Q { get; set; }
         public string FilterBy { get; set; } = "todos";
         public string? SelectedOption { get; set; }
+        public string? FechaHasta { get; set; }
         public string? Remove { get; set; }
 
         // Filtros acumulados
@@ -21,6 +22,7 @@ namespace estacionamientos.Models.ViewModels
             FilterBy != "todos" ||
             !string.IsNullOrWhiteSpace(Q) ||
             !string.IsNullOrWhiteSpace(SelectedOption) ||
+            !string.IsNullOrWhiteSpace(FechaHasta) ||
             Servicios.Count > 0 || Clases.Count > 0 || Todos.Count > 0 || 
             Montos.Count > 0 || FechasDesde.Count > 0 || FechasHasta.Count > 0;
     }
