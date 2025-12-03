@@ -65,10 +65,15 @@ namespace estacionamientos.Controllers
 
             var vehiculoAbonado = await query.FirstOrDefaultAsync();
 
-            if (vehiculoAbonado?.Abono == null || vehiculoAbonado.Abono.EstadoPago != EstadoPago.Activo)
+            if (vehiculoAbonado == null || vehiculoAbonado.Abono == null)
                 return Json(new { success = false });
 
-            if (vehiculoAbonado == null || vehiculoAbonado.Abono == null || vehiculoAbonado.Vehiculo == null)
+            // Verificar estado del abono
+            var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+            var fechaActualDate = fechaActual.Date;
+            
+            if (vehiculoAbonado.Abono.EstadoPago != EstadoPago.Activo &&
+                vehiculoAbonado.Abono.EstadoPago != EstadoPago.Pendiente)
                 return Json(new { success = false });
 
             var abonado = vehiculoAbonado.Abono.Abonado?.AboNom ?? "(sin nombre)";
@@ -86,6 +91,43 @@ namespace estacionamientos.Controllers
             var plazaNum = plaza?.PlzNum ?? 0;
             var plazaNombre = plaza?.PlzNombre ?? "(sin nombre)";
 
+            // Verificar si el abono ya comenzó
+            bool abonoYaComenzo = fechaActualDate >= vehiculoAbonado.Abono.AboFyhIni.Date;
+            bool abonoFinalizado = vehiculoAbonado.Abono.AboFyhFin.HasValue && 
+                                   fechaActualDate > vehiculoAbonado.Abono.AboFyhFin.Value.Date;
+
+            // Si el abono finalizó, no mostrar información
+            if (abonoFinalizado)
+                return Json(new { success = false });
+
+            // Si el abono es programado (aún no comenzó), devolver información para autocompletar
+            if (!abonoYaComenzo)
+            {
+                // Para abonos programados, usar la fecha UTC directamente (sin convertir a local)
+                // para evitar que cambie el día por diferencias de zona horaria
+                // La fecha es conceptual (el día 7), no un momento específico
+                var fechaInicioUtc = vehiculoAbonado.Abono.AboFyhIni.Kind == DateTimeKind.Utc 
+                    ? vehiculoAbonado.Abono.AboFyhIni 
+                    : DateTime.SpecifyKind(vehiculoAbonado.Abono.AboFyhIni, DateTimeKind.Utc);
+                var fechaInicioFormateada = fechaInicioUtc.ToString("dd/MM/yyyy");
+                
+                return Json(new
+                {
+                    success = true,
+                    esAbonadoProgramado = true,
+                    message = $"La patente {vehiculoAbonado.VehPtnt} pertenece al abonado {abonado}. Su abono comienza el {fechaInicioFormateada}. En esta estancia se le cobrará por hora.",
+                    clasVehID = clasificacionId,
+                    clasificacionNombre = vehiculoAbonado.Vehiculo?.Clasificacion?.ClasVehTipo ?? "(sin tipo)",
+                    techada,
+                    piso,
+                    plaza = plazaNum,
+                    esAbonado = false, // No es abonado aún porque no comenzó
+                    fechaInicioAbono = fechaInicioFormateada,
+                    plazaAbonoID = vehiculoAbonado.Abono.PlyID,
+                    plazaAbonoNum = vehiculoAbonado.Abono.PlzNum
+                });
+            }
+
             var existeOtroVehiculo = await _ctx.VehiculosAbonados
                 .AsNoTracking()
                 .AnyAsync(v => v.Abono != null && v.Abono.PlyID == vehiculoAbonado.Abono.PlyID && v.Abono.PlzNum == vehiculoAbonado.Abono.PlzNum && v.VehPtnt != vehiculoAbonado.VehPtnt);
@@ -100,6 +142,7 @@ namespace estacionamientos.Controllers
             return Json(new
             {
                 success = true,
+                esAbonadoProgramado = false,
                 message = $"La patente {vehiculoAbonado.VehPtnt} pertenece al abonado {abonado}, plaza {plazaNombre}.",
                 clasVehID = clasificacionId,
                 clasificacionNombre = vehiculoAbonado.Vehiculo.Clasificacion?.ClasVehTipo ?? "(sin tipo)",

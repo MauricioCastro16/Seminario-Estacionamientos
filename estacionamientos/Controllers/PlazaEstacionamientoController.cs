@@ -101,7 +101,7 @@ namespace estacionamientos.Controllers
                 .Where(a => a.PlyID == plyID
                          && a.EstadoPago != estacionamientos.Models.EstadoPago.Cancelado
                          && a.EstadoPago != estacionamientos.Models.EstadoPago.Finalizado
-                         && a.AboFyhIni.Date <= fechaActualDate
+                         && fechaActualDate >= a.AboFyhIni.Date
                          && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate))
                 .ToListAsync();
 
@@ -300,12 +300,13 @@ namespace estacionamientos.Controllers
             var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             var fechaActualDate = fechaActual.Date;
             
+            // Un abono solo está activo si la fecha actual es >= fecha de inicio (ya comenzó)
             var tieneAbonoActivo = await _ctx.Abonos
                 .AnyAsync(a => a.PlyID == plyID 
                             && a.PlzNum == plzNum
                             && a.EstadoPago != estacionamientos.Models.EstadoPago.Cancelado
                             && a.EstadoPago != estacionamientos.Models.EstadoPago.Finalizado
-                            && a.AboFyhIni.Date <= fechaActualDate
+                            && fechaActualDate >= a.AboFyhIni.Date
                             && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate));
 
             if (tieneAbonoActivo)
@@ -373,12 +374,13 @@ namespace estacionamientos.Controllers
             var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             var fechaActualDate = fechaActual.Date;
             
+            // Un abono solo está activo si la fecha actual es >= fecha de inicio (ya comenzó)
             var tieneAbonoActivo = await _ctx.Abonos
                 .AnyAsync(a => a.PlyID == plyID 
                             && a.PlzNum == plzNum
                             && a.EstadoPago != estacionamientos.Models.EstadoPago.Cancelado
                             && a.EstadoPago != estacionamientos.Models.EstadoPago.Finalizado
-                            && a.AboFyhIni.Date <= fechaActualDate
+                            && fechaActualDate >= a.AboFyhIni.Date
                             && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate));
 
             if (tieneAbonoActivo)
@@ -411,12 +413,13 @@ namespace estacionamientos.Controllers
             var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             var fechaActualDate = fechaActual.Date;
             
+            // Un abono solo está activo si la fecha actual es >= fecha de inicio (ya comenzó)
             var tieneAbonoActivo = await _ctx.Abonos
                 .AnyAsync(a => a.PlyID == plyID 
                             && a.PlzNum == plzNum
                             && a.EstadoPago != estacionamientos.Models.EstadoPago.Cancelado
                             && a.EstadoPago != estacionamientos.Models.EstadoPago.Finalizado
-                            && a.AboFyhIni.Date <= fechaActualDate
+                            && fechaActualDate >= a.AboFyhIni.Date
                             && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActualDate));
 
             if (tieneAbonoActivo && plaza.PlzHab)

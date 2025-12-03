@@ -346,6 +346,31 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Modal de Errores de Validación -->
+                    <div class="modal fade" id="erroresValidacionModal" tabindex="-1" aria-labelledby="erroresValidacionModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered modal-lg">
+                            <div class="modal-content border-0 shadow-lg">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="erroresValidacionModalLabel">
+                                        <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Errores de Validación
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="mb-3"><strong>Por favor, corrija los siguientes errores antes de continuar:</strong></p>
+                                    <ul id="listaErrores" class="list-unstyled mb-0">
+                                        <!-- Los errores se mostrarán aquí -->
+                                    </ul>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                                        <i class="bi bi-check-circle me-1"></i>Entendido
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 
             
         </div>
@@ -1315,39 +1340,90 @@
          
          // Función para validar el formulario antes de abrir el modal
          function validarFormulario() {
-             const serID = document.getElementById('SerID').value;
-             const clasVehID = document.getElementById('ClasVehID').value;
-             const periodos = document.getElementById('Periodos').value;
-             const aboDNI = document.querySelector('input[name="AboDNI"]').value;
-             const aboNom = document.querySelector('input[name="AboNom"]').value;
-             const selectedPlzNum = document.getElementById('PlzNumAbono').value;
+             const errores = [];
              
+             // 1. Validar tipo de abono
+             const serID = document.getElementById('SerID').value;
              if (!serID) {
-                 alert('Debe seleccionar un tipo de abono');
-                 return false;
+                 errores.push('Debe seleccionar un tipo de abono');
              }
+             
+             // 2. Validar clasificación de vehículo
+             const clasVehID = document.getElementById('ClasVehID').value;
              if (!clasVehID) {
-                 alert('Debe seleccionar una clasificación de vehículo');
-                 return false;
+                 errores.push('Debe seleccionar una clasificación de vehículo');
              }
+             
+             // 3. Validar períodos
+             const periodos = document.getElementById('Periodos').value;
              if (!periodos || periodos < 1) {
-                 alert('Debe ingresar una cantidad válida de períodos');
-                 return false;
+                 errores.push('Debe ingresar una cantidad válida de períodos (mínimo 1)');
              }
+             
+             // 4. Validar DNI del abonado (debe tener entre 7 y 11 caracteres)
+             const aboDNI = document.querySelector('input[name="AboDNI"]').value?.trim() || '';
              if (!aboDNI) {
-                 alert('Debe ingresar el DNI del abonado');
-                 return false;
+                 errores.push('Debe ingresar el DNI del abonado');
+             } else if (aboDNI.length < 7 || aboDNI.length > 11) {
+                 errores.push('El DNI del abonado debe tener entre 7 y 11 caracteres');
              }
+             
+             // 5. Validar nombre del abonado
+             const aboNom = document.querySelector('input[name="AboNom"]').value?.trim() || '';
              if (!aboNom) {
-                 alert('Debe ingresar el nombre del abonado');
-                 return false;
+                 errores.push('Debe ingresar el nombre del abonado');
              }
+             
+             // 6. Validar selección de plaza
+             const selectedPlzNum = document.getElementById('PlzNumAbono').value;
              if (!selectedPlzNum || selectedPlzNum === "0") {
-                 alert('Debe seleccionar una plaza para el abono');
+                 errores.push('Debe seleccionar una plaza para el abono');
+             }
+             
+             // 7. Validar vehículos
+             const vehiculosList = document.getElementById('vehiculos-list');
+             const vehiculosItems = vehiculosList ? vehiculosList.querySelectorAll('.vehiculo-item') : [];
+             
+             if (vehiculosItems.length === 0) {
+                 errores.push('Debe agregar al menos un vehículo para el abono');
+             } else {
+                 // Validar que todos los vehículos tengan patente completa
+                 vehiculosItems.forEach((item, index) => {
+                     const patenteInput = item.querySelector('input[name*="VehPtnt"]');
+                     const patente = patenteInput ? patenteInput.value?.trim() || '' : '';
+                     if (!patente) {
+                         errores.push(`El vehículo ${index + 1} no tiene patente ingresada`);
+                     } else if (patente.length < 6) {
+                         errores.push(`La patente del vehículo ${index + 1} está incompleta (mínimo 6 caracteres)`);
+                     }
+                 });
+             }
+             
+             // Si hay errores, mostrarlos en el modal
+             if (errores.length > 0) {
+                 mostrarErroresValidacion(errores);
                  return false;
              }
              
              return true;
+         }
+         
+         // Función para mostrar errores en el modal
+         function mostrarErroresValidacion(errores) {
+             const listaErrores = document.getElementById('listaErrores');
+             listaErrores.innerHTML = '';
+             
+             errores.forEach(error => {
+                 const li = document.createElement('li');
+                 li.className = 'mb-2 p-2 border-start border-danger border-3 ps-3';
+                 li.style.backgroundColor = '#fff5f5';
+                 li.innerHTML = `<i class="bi bi-x-circle-fill text-danger me-2"></i><span>${error}</span>`;
+                 listaErrores.appendChild(li);
+             });
+             
+             // Mostrar el modal
+             const modal = new bootstrap.Modal(document.getElementById('erroresValidacionModal'));
+             modal.show();
          }
 
          // Función para abrir el modal de pagos
@@ -1636,51 +1712,49 @@
          const btnConfirmarAbono = document.getElementById('btnConfirmarAbono');
          if (btnConfirmarAbono) {
              btnConfirmarAbono.addEventListener('click', function(e) {
+                 e.preventDefault(); // Prevenir el submit por defecto
+                 
                  // Limpiar errores previos
                  limpiarTodosLosErrores();
                  
-                 let hayErrores = false;
+                 const errores = [];
                  
                  // 1. Validar tipo de abono
                  const serID = document.getElementById('SerID').value;
                  if (!serID) {
-                     mostrarErrorCampo(document.getElementById('SerID'), 'Debe seleccionar un tipo de abono.');
-                     hayErrores = true;
+                     errores.push('Debe seleccionar un tipo de abono');
                  }
 
                  // 2. Validar clasificación de vehículo
                  const clasVehID = document.getElementById('ClasVehID').value;
                  if (!clasVehID) {
-                     mostrarErrorCampo(document.getElementById('ClasVehID'), 'Debe seleccionar una clasificación de vehículo.');
-                     hayErrores = true;
+                     errores.push('Debe seleccionar una clasificación de vehículo');
                  }
 
                  // 3. Validar períodos
                  const periodos = document.getElementById('Periodos').value;
                  if (!periodos || periodos < 1) {
-                     mostrarErrorCampo(document.getElementById('Periodos'), 'Debe ingresar una cantidad válida de períodos.');
-                     hayErrores = true;
+                     errores.push('Debe ingresar una cantidad válida de períodos (mínimo 1)');
                  }
 
-                 // 4. Validar DNI del abonado
-                 const aboDNI = document.querySelector('input[name="AboDNI"]').value;
-                 if (!aboDNI || !aboDNI.trim()) {
-                     mostrarErrorCampo(document.querySelector('input[name="AboDNI"]'), 'Debe ingresar el DNI del abonado.');
-                     hayErrores = true;
+                 // 4. Validar DNI del abonado (debe tener entre 7 y 11 caracteres)
+                 const aboDNI = document.querySelector('input[name="AboDNI"]').value?.trim() || '';
+                 if (!aboDNI) {
+                     errores.push('Debe ingresar el DNI del abonado');
+                 } else if (aboDNI.length < 7 || aboDNI.length > 11) {
+                     errores.push('El DNI del abonado debe tener entre 7 y 11 caracteres');
                  }
 
                 // 5. Validar nombre del abonado
-                const aboNom = document.querySelector('input[name="AboNom"]').value;
-                if (!aboNom || !aboNom.trim()) {
-                    mostrarErrorCampo(document.querySelector('input[name="AboNom"]'), 'Debe ingresar el nombre del abonado.');
-                    hayErrores = true;
+                const aboNom = document.querySelector('input[name="AboNom"]').value?.trim() || '';
+                if (!aboNom) {
+                    errores.push('Debe ingresar el nombre del abonado');
                 }
 
                 // 6. Validar fecha de inicio
                 const fechaInicio = document.querySelector('input[name="AboFyhIni"]').value;
                 if (!fechaInicio) {
-                    mostrarErrorCampo(document.querySelector('input[name="AboFyhIni"]'), 'Debe seleccionar una fecha de inicio.');
-                    hayErrores = true;
+                    errores.push('Debe seleccionar una fecha de inicio');
                 } else {
                     // Validar que la fecha no sea anterior a la fecha actual
                     const fechaSeleccionada = new Date(fechaInicio + 'T00:00:00Z');
@@ -1688,38 +1762,38 @@
                     const fechaHoy = new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()));
                     
                     if (fechaSeleccionada < fechaHoy) {
-                        mostrarErrorCampo(document.querySelector('input[name="AboFyhIni"]'), 'La fecha de inicio no puede ser anterior a la fecha actual.');
-                        hayErrores = true;
+                        errores.push('La fecha de inicio no puede ser anterior a la fecha actual');
                     }
                 }
 
                  // 7. Validar selección de plaza
                  const selectedPlzNum = document.getElementById('PlzNumAbono').value;
                  if (!selectedPlzNum || selectedPlzNum === "0") {
-                     mostrarErrorPlaza('Debe seleccionar una plaza para el abono.');
-                     hayErrores = true;
+                     errores.push('Debe seleccionar una plaza para el abono');
                  }
 
                  // 8. Validar vehículos
                  const vehiculosList = document.getElementById('vehiculos-list');
-                 const vehiculosItems = vehiculosList.querySelectorAll('.vehiculo-item');
+                 const vehiculosItems = vehiculosList ? vehiculosList.querySelectorAll('.vehiculo-item') : [];
                  
                  if (vehiculosItems.length === 0) {
-                     mostrarErrorVehiculos('Debe agregar al menos un vehículo para el abono.');
-                     hayErrores = true;
+                     errores.push('Debe agregar al menos un vehículo para el abono');
                  } else {
-                     // Validar que todos los vehículos tengan patente
+                     // Validar que todos los vehículos tengan patente completa
                      vehiculosItems.forEach((item, index) => {
                          const patenteInput = item.querySelector('input[name*="VehPtnt"]');
-                         if (!patenteInput || !patenteInput.value.trim()) {
-                             mostrarErrorVehiculoIndividual(item, 'La patente es obligatoria.');
-                             hayErrores = true;
+                         const patente = patenteInput ? patenteInput.value?.trim() || '' : '';
+                         if (!patente) {
+                             errores.push(`El vehículo ${index + 1} no tiene patente ingresada`);
+                         } else if (patente.length < 6) {
+                             errores.push(`La patente del vehículo ${index + 1} está incompleta (mínimo 6 caracteres)`);
                          }
                      });
                  }
                  
-                 if (hayErrores) {
-                     e.preventDefault(); // Solo prevenir si hay errores
+                 // Si hay errores, mostrarlos en el modal
+                 if (errores.length > 0) {
+                     mostrarErroresValidacion(errores);
                      return;
                  }
                  
