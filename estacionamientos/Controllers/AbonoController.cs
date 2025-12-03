@@ -341,16 +341,55 @@ namespace estacionamientos.Controllers
                 System.Diagnostics.Debug.WriteLine($"SelectedPlzNum value: {model.SelectedPlzNum}");
             }
 
-            // ✅ Verificar disponibilidad de plaza para las fechas seleccionadas
+            // ✅ Verificar que la plaza no esté ocupada por un vehículo
+            // NO se puede crear ningún abono (ni activo ni programado) si la plaza está ocupada por un vehículo
+            if (model.SelectedPlzNum.HasValue)
+            {
+                var plazaOcupadaPorVehiculo = await _ctx.Ocupaciones
+                    .AnyAsync(o => o.PlyID == model.PlyID && 
+                                  o.PlzNum == model.SelectedPlzNum.Value && 
+                                  o.OcufFyhFin == null);
+
+                if (plazaOcupadaPorVehiculo)
+                {
+                    TempData["Error"] = $"No se puede registrar un abono. La plaza {model.SelectedPlzNum.Value} está actualmente ocupada por un vehículo. Debe liberar la plaza primero.";
+                    await LoadSelects(model.PlyID);
+                    return View(model);
+                }
+            }
+
+            // ✅ Verificar disponibilidad de plaza para las fechas seleccionadas (incluyendo abonos programados)
             if (model.SelectedPlzNum.HasValue && model.AboFyhIni != default && model.AboFyhFin.HasValue)
             {
-                var disponible = await _ctx.Abonos
-                    .Where(a => a.PlyID == model.PlyID && a.PlzNum == model.SelectedPlzNum && a.EstadoPago != EstadoPago.Cancelado)
-                    .AllAsync(a => a.AboFyhFin < model.AboFyhIni);
+                var fechaInicioUTC = DateTime.SpecifyKind(model.AboFyhIni, DateTimeKind.Utc);
+                var fechaFinUTC = model.AboFyhFin.HasValue ? DateTime.SpecifyKind(model.AboFyhFin.Value, DateTimeKind.Utc) : (DateTime?)null;
+                var fechaInicioDate = fechaInicioUTC.Date;
+                var fechaFinDate = fechaFinUTC?.Date;
 
-                if (!disponible)
+                // Buscar abonos que se solapen con el período seleccionado (activos o programados)
+                var abonosSolapados = await _ctx.Abonos
+                    .Where(a => a.PlyID == model.PlyID && 
+                               a.PlzNum == model.SelectedPlzNum.Value && 
+                               a.EstadoPago != EstadoPago.Cancelado &&
+                               // Verificar solapamiento: el abono existente se solapa si:
+                               // - Su inicio está antes o igual al fin del nuevo abono Y
+                               // - Su fin (si tiene) está después o igual al inicio del nuevo abono
+                               (fechaFinDate == null || a.AboFyhIni.Date <= fechaFinDate.Value) &&
+                               (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaInicioDate))
+                    .OrderBy(a => a.AboFyhIni)
+                    .Select(a => new { 
+                        a.AboFyhIni, 
+                        a.AboFyhFin, 
+                        a.Abonado.AboNom,
+                        esProgramado = a.AboFyhIni.Date > DateTime.UtcNow.Date
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (abonosSolapados != null)
                 {
-                    TempData["Error"] = "La plaza seleccionada está ocupada en ese período. Seleccione otra o elija una fecha posterior.";
+                    var fechaFinExistente = abonosSolapados.AboFyhFin?.ToString("dd/MM/yyyy") ?? "Sin fecha de fin";
+                    var tipoAbono = abonosSolapados.esProgramado ? "programado" : "activo";
+                    TempData["Error"] = $"La plaza {model.SelectedPlzNum.Value} tiene un abono {tipoAbono} desde {abonosSolapados.AboFyhIni:dd/MM/yyyy} hasta {fechaFinExistente}. Las fechas seleccionadas se solapan con ese período.";
                     await LoadSelects(model.PlyID);
                     return View(model);
                 }
@@ -528,20 +567,33 @@ namespace estacionamientos.Controllers
                 abono.AboFyhIni = inicioUtc;
                 abono.AboFyhFin = finUtc;
 
-                // ✅ Nueva validación: impedir superposición con el PRÓXIMO abono programado en la misma plaza
+                // ✅ Validación completa: verificar solapamiento con TODOS los abonos (activos y programados)
                 if (model.SelectedPlzNum.HasValue && abono.AboFyhFin.HasValue)
                 {
-                    var proximoAbono = await _ctx.Abonos
+                    var fechaInicioDate = inicioUtc.Date;
+                    var fechaFinDate = finUtc.Date;
+
+                    var abonosSolapados = await _ctx.Abonos
                         .Where(a => a.PlyID == model.PlyID
                                     && a.PlzNum == model.SelectedPlzNum.Value
                                     && a.EstadoPago != EstadoPago.Cancelado
-                                    && a.AboFyhIni > abono.AboFyhIni)
+                                    && // Verificar solapamiento completo
+                                    (fechaFinDate >= a.AboFyhIni.Date) &&
+                                    (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaInicioDate))
                         .OrderBy(a => a.AboFyhIni)
+                        .Select(a => new { 
+                            a.AboFyhIni, 
+                            a.AboFyhFin, 
+                            a.Abonado.AboNom,
+                            esProgramado = a.AboFyhIni.Date > DateTime.UtcNow.Date
+                        })
                         .FirstOrDefaultAsync();
 
-                    if (proximoAbono != null && abono.AboFyhFin.Value >= proximoAbono.AboFyhIni)
+                    if (abonosSolapados != null)
                     {
-                        TempData["Error"] = $"No se puede registrar el abono. La plaza tiene un abono programado a partir del {proximoAbono.AboFyhIni:dd/MM/yyyy}.";
+                        var fechaFinExistente = abonosSolapados.AboFyhFin?.ToString("dd/MM/yyyy") ?? "Sin fecha de fin";
+                        var tipoAbono = abonosSolapados.esProgramado ? "programado" : "activo";
+                        TempData["Error"] = $"La plaza {model.SelectedPlzNum.Value} tiene un abono {tipoAbono} desde {abonosSolapados.AboFyhIni:dd/MM/yyyy} hasta {fechaFinExistente}. Las fechas seleccionadas se solapan con ese período.";
                         await LoadSelects(model.PlyID);
                         return View(model);
                     }
@@ -611,10 +663,13 @@ namespace estacionamientos.Controllers
             _ctx.Abonos.Add(abono);
             await _ctx.SaveChangesAsync();
 
-            // Marcar plaza como ocupada por abono (sin crear Ocupacion)
+            // Marcar plaza como ocupada por abono SOLO si el abono ya comenzó (no es programado)
+            // Si es programado, la plaza no se marca como ocupada hasta que llegue la fecha de inicio
+            var esProgramado = fechaSeleccionada > DateTime.UtcNow.Date;
             var plaza = await _ctx.Plazas.FirstOrDefaultAsync(p => p.PlyID == model.PlyID && p.PlzNum == abono.PlzNum);
-            if (plaza != null)
+            if (plaza != null && !esProgramado)
             {
+                // Solo marcar como ocupada si el abono ya comenzó (no es programado)
                 plaza.PlzOcupada = true;
                 _ctx.Update(plaza);
                 await _ctx.SaveChangesAsync();
@@ -961,13 +1016,88 @@ namespace estacionamientos.Controllers
                     );
                 }
                 
+                // ✅ Validar que la plaza no esté ocupada por un vehículo
+                if (model.SelectedPlzNum > 0)
+                {
+                    var plazaOcupadaPorVehiculo = await _ctx.Ocupaciones
+                        .AnyAsync(o => o.PlyID == model.PlyID && 
+                                      o.PlzNum == model.SelectedPlzNum && 
+                                      o.OcufFyhFin == null);
+
+                    if (plazaOcupadaPorVehiculo)
+                    {
+                        await transaction.RollbackAsync();
+                        return Json(new { 
+                            success = false, 
+                            message = $"No se puede registrar el abono. La plaza {model.SelectedPlzNum} está actualmente ocupada por un vehículo." 
+                        });
+                    }
+                }
+
+                // Calcular fecha de fin para validaciones
+                DateTime? fechaFinCalculada = null;
+                if (model.SerID > 0 && model.Periodos > 0)
+                {
+                    var servicio = await _ctx.Servicios.AsNoTracking().FirstOrDefaultAsync(s => s.SerID == model.SerID);
+                    if (servicio != null)
+                    {
+                        var inicioUtc = DateTime.SpecifyKind(fechaInicioConHoraConfirmar, DateTimeKind.Utc);
+                        if (servicio.SerDuracionMinutos.HasValue)
+                        {
+                            fechaFinCalculada = CalcularFechaFinPorMinutos(inicioUtc, servicio.SerDuracionMinutos.Value, model.Periodos);
+                        }
+                        else
+                        {
+                            fechaFinCalculada = CalcularFechaFinPeriodo(inicioUtc, model.SerID.ToString(), model.Periodos);
+                        }
+                    }
+                }
+                else if (model.AboFyhFin.HasValue)
+                {
+                    fechaFinCalculada = DateTime.SpecifyKind(model.AboFyhFin.Value, DateTimeKind.Utc);
+                }
+
+                // ✅ Validar solapamiento con abonos existentes (activos y programados)
+                if (model.SelectedPlzNum > 0 && fechaFinCalculada.HasValue)
+                {
+                    var fechaInicioDate = fechaInicioConHoraConfirmar.Date;
+                    var fechaFinDate = fechaFinCalculada.Value.Date;
+
+                    var abonosSolapados = await _ctx.Abonos
+                        .Where(a => a.PlyID == model.PlyID && 
+                                   a.PlzNum == model.SelectedPlzNum && 
+                                   a.EstadoPago != EstadoPago.Cancelado &&
+                                   // Verificar solapamiento
+                                   (fechaFinDate >= a.AboFyhIni.Date) &&
+                                   (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaInicioDate))
+                        .OrderBy(a => a.AboFyhIni)
+                        .Select(a => new { 
+                            a.AboFyhIni, 
+                            a.AboFyhFin, 
+                            a.Abonado.AboNom,
+                            esProgramado = a.AboFyhIni.Date > DateTime.UtcNow.Date
+                        })
+                        .FirstOrDefaultAsync();
+
+                    if (abonosSolapados != null)
+                    {
+                        await transaction.RollbackAsync();
+                        var fechaFinExistente = abonosSolapados.AboFyhFin?.ToString("dd/MM/yyyy") ?? "Sin fecha de fin";
+                        var tipoAbono = abonosSolapados.esProgramado ? "programado" : "activo";
+                        return Json(new { 
+                            success = false, 
+                            message = $"La plaza {model.SelectedPlzNum} tiene un abono {tipoAbono} desde {abonosSolapados.AboFyhIni:dd/MM/yyyy} hasta {fechaFinExistente}. Las fechas seleccionadas se solapan con ese período." 
+                        });
+                    }
+                }
+
                 Console.WriteLine($"Creando abono: PlyID={model.PlyID}, PlzNum={model.SelectedPlzNum}, AboFyhIni={fechaInicioConHoraConfirmar}");
                 var abono = new Abono
                 {
                     PlyID = model.PlyID,
                     PlzNum = model.SelectedPlzNum,
                     AboFyhIni = DateTime.SpecifyKind(fechaInicioConHoraConfirmar, DateTimeKind.Utc),
-                    AboFyhFin = model.AboFyhFin.HasValue ? DateTime.SpecifyKind(model.AboFyhFin.Value, DateTimeKind.Utc) : null,
+                    AboFyhFin = model.AboFyhFin.HasValue ? DateTime.SpecifyKind(model.AboFyhFin.Value, DateTimeKind.Utc) : fechaFinCalculada,
                     AboMonto = model.AboMonto,
                     AboDNI = model.AboDNI,
                     PagNum = nuevoPagNum,
@@ -1101,12 +1231,15 @@ namespace estacionamientos.Controllers
                 {
                     var abonoExistente = abonosExistentes.First();
                     var fechaFinExistente = abonoExistente.AboFyhFin?.ToString("dd/MM/yyyy") ?? "Sin fecha de fin";
+                    var esProgramado = abonoExistente.AboFyhIni.Date > DateTime.UtcNow.Date;
+                    var tipoAbono = esProgramado ? "programado" : "activo";
                     
                     return Json(new { 
                         disponible = false, 
-                        mensaje = $"La plaza {plzNum} está ocupada por el abonado {abonoExistente.AboNom} desde {abonoExistente.AboFyhIni:dd/MM/yyyy} hasta {fechaFinExistente}. Puede programar un abono para después de esa fecha.",
+                        mensaje = $"La plaza {plzNum} tiene un abono {tipoAbono} del abonado {abonoExistente.AboNom} desde {abonoExistente.AboFyhIni:dd/MM/yyyy} hasta {fechaFinExistente}. Las fechas seleccionadas se solapan con ese período.",
                         fechaFinOcupacion = abonoExistente.AboFyhFin,
-                        estadoAbono = abonoExistente.EstadoPago.ToString()
+                        estadoAbono = abonoExistente.EstadoPago.ToString(),
+                        esProgramado = esProgramado
                     });
                 }
 
@@ -2100,19 +2233,35 @@ namespace estacionamientos.Controllers
                 }
 
                 // 🔹 Verificar disponibilidad de la plaza (excluyendo el abono actual)
-                var ocupada = await _ctx.Abonos.AnyAsync(a =>
-                    a.PlyID == request.plyID &&
-                    a.PlzNum == request.plzNum &&
-                    a.AboFyhIni != fechaUTC && // Excluir el abono actual
-                    a.EstadoPago != EstadoPago.Cancelado &&
-                    ((a.AboFyhIni <= fechaFinExtension && a.AboFyhFin >= fechaInicioExtension)));
+                // Buscar abonos que se solapen con el período de extensión
+                var fechaInicioDate = fechaInicioExtension.Date;
+                var fechaFinDate = fechaFinExtension.Date;
+                
+                var abonosSolapados = await _ctx.Abonos
+                    .Where(a => a.PlyID == request.plyID &&
+                               a.PlzNum == request.plzNum &&
+                               a.AboFyhIni != fechaUTC && // Excluir el abono actual
+                               a.EstadoPago != EstadoPago.Cancelado &&
+                               // Verificar solapamiento completo
+                               (fechaFinDate >= a.AboFyhIni.Date) &&
+                               (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaInicioDate))
+                    .OrderBy(a => a.AboFyhIni)
+                    .Select(a => new { 
+                        a.AboFyhIni, 
+                        a.AboFyhFin, 
+                        a.Abonado.AboNom,
+                        esProgramado = a.AboFyhIni.Date > DateTime.UtcNow.Date
+                    })
+                    .FirstOrDefaultAsync();
 
-                if (ocupada)
+                if (abonosSolapados != null)
                 {
+                    var fechaFinExistente = abonosSolapados.AboFyhFin?.ToString("dd/MM/yyyy") ?? "Sin fecha de fin";
+                    var tipoAbono = abonosSolapados.esProgramado ? "programado" : "activo";
                     return Json(new
                     {
                         success = false,
-                        message = "La plaza está ocupada en las fechas seleccionadas.",
+                        message = $"La plaza tiene un abono {tipoAbono} desde {abonosSolapados.AboFyhIni:dd/MM/yyyy} hasta {fechaFinExistente}. Las fechas de extensión se solapan con ese período.",
                         redirect = true
                     });
                 }
@@ -2250,15 +2399,34 @@ namespace estacionamientos.Controllers
                 fechaInicioNueva = DateTime.SpecifyKind(fechaInicioNueva, DateTimeKind.Utc);
                 var fechaFinNueva = CalcularFechaFin(fechaInicioNueva, request.tipoExtension, request.cantidadPeriodos);
 
-                var plazaOcupada = await _ctx.Abonos
-                    .AnyAsync(a => a.PlyID == request.plyID && a.PlzNum == request.plzNum &&
-                                 a.EstadoPago != EstadoPago.Cancelado &&
-                                 ((a.AboFyhIni <= fechaInicioNueva && a.AboFyhFin >= fechaInicioNueva) ||
-                                  (a.AboFyhIni <= fechaFinNueva && a.AboFyhFin >= fechaFinNueva)));
+                // Validar solapamiento con abonos existentes (activos y programados)
+                var fechaInicioDate = fechaInicioNueva.Date;
+                var fechaFinDate = fechaFinNueva.Date;
+                
+                var abonosSolapados = await _ctx.Abonos
+                    .Where(a => a.PlyID == request.plyID && 
+                               a.PlzNum == request.plzNum &&
+                               a.EstadoPago != EstadoPago.Cancelado &&
+                               // Verificar solapamiento completo
+                               (fechaFinDate >= a.AboFyhIni.Date) &&
+                               (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaInicioDate))
+                    .OrderBy(a => a.AboFyhIni)
+                    .Select(a => new { 
+                        a.AboFyhIni, 
+                        a.AboFyhFin, 
+                        a.Abonado.AboNom,
+                        esProgramado = a.AboFyhIni.Date > DateTime.UtcNow.Date
+                    })
+                    .FirstOrDefaultAsync();
 
-                if (plazaOcupada)
+                if (abonosSolapados != null)
                 {
-                    return Json(new { success = false, message = "La plaza está ocupada en el período solicitado." });
+                    var fechaFinExistente = abonosSolapados.AboFyhFin?.ToString("dd/MM/yyyy") ?? "Sin fecha de fin";
+                    var tipoAbono = abonosSolapados.esProgramado ? "programado" : "activo";
+                    return Json(new { 
+                        success = false, 
+                        message = $"La plaza tiene un abono {tipoAbono} desde {abonosSolapados.AboFyhIni:dd/MM/yyyy} hasta {fechaFinExistente}. Las fechas se solapan con ese período." 
+                    });
                 }
 
                 // Obtener el servicio correspondiente

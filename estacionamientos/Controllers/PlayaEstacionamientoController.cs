@@ -272,7 +272,7 @@ namespace estacionamientos.Controllers
                         a.PlzNum == p.PlzNum &&
                         a.EstadoPago != estacionamientos.Models.EstadoPago.Cancelado &&
                         a.EstadoPago != estacionamientos.Models.EstadoPago.Finalizado &&
-                        a.AboFyhIni.Date <= hoy &&
+                        hoy >= a.AboFyhIni.Date &&
                         (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= hoy)),
                     Clasificaciones = p.Clasificaciones.Select(pc => pc.Clasificacion.ClasVehTipo).ToList()
                 })

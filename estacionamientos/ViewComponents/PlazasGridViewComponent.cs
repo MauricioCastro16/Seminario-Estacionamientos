@@ -25,11 +25,12 @@ namespace estacionamientos.ViewComponents
             var fechaActual = DateTime.UtcNow.Date;
 
             // Buscar todas las plazas con abono activo en esta playa
+            // Un abono solo está activo si la fecha actual es >= fecha de inicio (ya comenzó)
             var abonosActivos = await _context.Abonos
                 .Where(a => a.PlyID == plyID
                     && a.EstadoPago != EstadoPago.Cancelado
                     && a.EstadoPago != EstadoPago.Finalizado
-                    && a.AboFyhIni.Date <= fechaActual
+                    && fechaActual >= a.AboFyhIni.Date
                     && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActual))
                 .Select(a => a.PlzNum)
                 .ToListAsync();
@@ -37,13 +38,14 @@ namespace estacionamientos.ViewComponents
             var abonosSet = new HashSet<int>(abonosActivos);
 
             // Cargar todos los abonos activos con sus vehículos para verificar después en memoria
+            // Un abono solo está activo si la fecha actual es >= fecha de inicio (ya comenzó)
             var abonosConVehiculos = await _context.Abonos
                 .Include(a => a.Vehiculos)
                 .AsNoTracking()
                 .Where(a => a.PlyID == plyID
                     && a.EstadoPago != EstadoPago.Cancelado
                     && a.EstadoPago != EstadoPago.Finalizado
-                    && a.AboFyhIni.Date <= fechaActual
+                    && fechaActual >= a.AboFyhIni.Date
                     && (a.AboFyhFin == null || a.AboFyhFin.Value.Date >= fechaActual))
                 .ToListAsync();
 
