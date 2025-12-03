@@ -122,16 +122,6 @@
                 </div>
                 <div class="col-12 col-md-6 col-xl-3">
                     <div class="gestion-card shadow-sm">
-                        <div class="card-icon bg-primary-subtle text-primary"><i class="fas fa-screwdriver-wrench"></i></div>
-                        <div>
-                            <div class="card-label">Servicios extra</div>
-                            <div class="card-value">@Model.EnVivo.ServiciosDisponibles.Count</div>
-                            <div class="card-extra">@Model.EnVivo.ServiciosExtrasActivos habilitados</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-6 col-xl-3">
-                    <div class="gestion-card shadow-sm">
                         @{
                             var estaAbierta = Model.EnVivo.EstadoOperativo == "Abierta";
                             var iconoClase = estaAbierta ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger";
@@ -150,15 +140,6 @@
                         <div>
                             <div class="card-label">Valoración promedio</div>
                             <div class="card-value">@Model.EnVivo.ValoracionPromedio.ToString("0.00")</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-6 col-xl-3">
-                    <div class="gestion-card shadow-sm">
-                        <div class="card-icon bg-primary-subtle text-primary"><i class="fas fa-id-card"></i></div>
-                        <div>
-                            <div class="card-label">Abonos activos</div>
-                            <div class="card-value">@Model.EnVivo.AbonosActivos</div>
                         </div>
                     </div>
                 </div>
@@ -184,7 +165,6 @@
                         <div>
                             <div class="card-label">Entradas (hoy)</div>
                             <div class="card-value">@Model.EnVivo.EntradasHoy</div>
-                            <div class="card-extra">@Model.EnVivo.RotacionesUltimaHora última hora</div>
                         </div>
                     </div>
                 </div>
@@ -303,30 +283,6 @@
                     else
                     {
                         <div class="text-muted">No hay servicios configurados.</div>
-                    }
-                </div>
-            </div>
-        </section>
-
-        <section class="mb-4">
-            <h5 class="section-title">Movimiento operativo (última hora)</h5>
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    @if (Model.EnVivo.MovimientosUltimaHora.Any())
-                    {
-                        <div class="d-flex flex-wrap gap-3">
-                            @foreach (var mov in Model.EnVivo.MovimientosUltimaHora)
-                            {
-                                <div class="badge bg-secondary-subtle text-secondary p-3">
-                                    <div class="small text-uppercase text-muted">@mov.Tipo</div>
-                                    <div class="fw-semibold fs-5">@mov.Conteo</div>
-                                </div>
-                            }
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="text-muted">Sin movimientos registrados en la última hora.</div>
                     }
                 </div>
             </div>
@@ -455,7 +411,6 @@
                         <div>
                             <div class="card-label">Egresos</div>
                             <div class="card-value">@Model.Historico.Egresos</div>
-                            <div class="card-extra">@Model.Historico.Reubicaciones reubicaciones</div>
                         </div>
                     </div>
                 </div>
@@ -465,7 +420,6 @@
                         <div>
                             <div class="card-label">Permanencia promedio</div>
                             <div class="card-value">@Model.Historico.PermanenciaPromedioMin.ToString("0.0") min</div>
-                            <div class="card-extra">@Model.Historico.VehiculosUnicos vehículos únicos</div>
                         </div>
                     </div>
                 </div>
@@ -576,18 +530,6 @@
                             }
                         </div>
                     </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="fas fa-thumbs-up me-2 text-success"></i>Calidad de servicio</span>
-                    <span class="badge bg-success-subtle text-success">Promedio: @Model.Historico.ValoracionPromedio.ToString("0.00")</span>
-                </div>
-                <div class="card-body">
-                    <div class="text-muted">Correlacioná este indicador con los picos operativos para detectar oportunidades de mejora.</div>
                 </div>
             </div>
         </section>

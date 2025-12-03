@@ -420,10 +420,8 @@ public class GestionController(AppDbContext ctx) : BaseController
                     : (o.OcufFyhFin!.Value - o.OcufFyhIni).TotalMinutes)
             : 0d;
 
-        var serviciosExtrasCompletados = await _ctx.ServiciosExtrasRealizados
-            .AsNoTracking()
-            .Where(s => playasIds.Contains(s.PlyID) && s.ServExFyHIni >= desdeUtc && s.ServExFyHIni <= hastaUtc && s.ServExFyHFin != null)
-            .CountAsync();
+        // Calcular servicios extra completados (se calculará después como suma de ServiciosExtraPorTipo)
+        // Primero se calcula ServiciosExtraPorTipo y luego se suma
 
         var vehiculosUnicos = ocupacionesRango.Select(o => o.VehPtnt).Distinct().Count();
         var llavesPromedio = ocupacionesRango.Where(o => o.OcuLlavDej).Count();
@@ -492,18 +490,39 @@ public class GestionController(AppDbContext ctx) : BaseController
                 .ToList();
         }
 
-        var playerosActivos = await _ctx.MovimientosPlayeros
+        // Obtener movimientos agrupados por playero
+        var movimientosPorPlayero = await _ctx.MovimientosPlayeros
             .AsNoTracking()
             .Where(m => playasIds.Contains(m.PlyID) && m.FechaMov >= desdeUtc && m.FechaMov <= hastaUtc)
             .GroupBy(m => m.PlaNU)
-            .Select(g => new GestionSerieValorVM
+            .Select(g => new
             {
-                Label = $"#{g.Key}",
-                Value = g.Count()
+                PlaNU = g.Key,
+                Conteo = g.Count()
             })
-            .OrderByDescending(g => g.Value)
+            .OrderByDescending(x => x.Conteo)
             .Take(5)
             .ToListAsync();
+
+        // Obtener nombres de los playeros
+        var playerosIds = movimientosPorPlayero.Select(m => m.PlaNU).ToList();
+        var playeros = await _ctx.Playeros
+            .AsNoTracking()
+            .Where(p => playerosIds.Contains(p.UsuNU))
+            .Select(p => new { p.UsuNU, p.UsuNyA })
+            .ToListAsync();
+
+        var playerosActivos = movimientosPorPlayero
+            .Select(m =>
+            {
+                var playero = playeros.FirstOrDefault(p => p.UsuNU == m.PlaNU);
+                return new GestionSerieValorVM
+                {
+                    Label = playero != null ? playero.UsuNyA : $"#{m.PlaNU}",
+                    Value = m.Conteo
+                };
+            })
+            .ToList();
 
         var serviciosExtraPorTipo = await _ctx.ServiciosExtrasRealizados
             .AsNoTracking()
@@ -518,6 +537,9 @@ public class GestionController(AppDbContext ctx) : BaseController
             })
             .OrderByDescending(g => g.Value)
             .ToListAsync();
+
+        // Calcular el total de servicios extra completados como suma de todos los tipos
+        var serviciosExtrasCompletados = serviciosExtraPorTipo.Sum(s => (int)s.Value);
 
         var valoracionesHistoricas = await _ctx.Playas
             .AsNoTracking()
