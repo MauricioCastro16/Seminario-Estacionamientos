@@ -430,9 +430,9 @@ public class GestionController(AppDbContext ctx) : BaseController
         var serviciosExtraPorTipo = await _ctx.ServiciosExtrasRealizados
             .AsNoTracking()
             .Include(s => s.ServicioProveido)
-            .ThenInclude(sp => sp.Servicio)
-            .Where(s => playasIds.Contains(s.PlyID) && s.ServExFyHIni >= desdeUtc && s.ServExFyHIni <= hastaUtc)
-            .GroupBy(s => s.ServicioProveido.Servicio.SerNom)
+            .ThenInclude(sp => sp!.Servicio)
+            .Where(s => playasIds.Contains(s.PlyID) && s.ServExFyHIni >= desdeUtc && s.ServExFyHIni <= hastaUtc && s.ServicioProveido != null && s.ServicioProveido.Servicio != null)
+            .GroupBy(s => s.ServicioProveido!.Servicio!.SerNom)
             .Select(g => new GestionSerieValorVM
             {
                 Label = g.Key,

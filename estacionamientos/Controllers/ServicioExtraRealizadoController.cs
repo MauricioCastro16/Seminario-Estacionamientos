@@ -329,7 +329,7 @@ namespace estacionamientos.Controllers
             try
             {
                 var lista = await _ctx.ServiciosExtrasRealizados
-                    .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                    .Include(s => s.ServicioProveido).ThenInclude(sp => sp!.Servicio)
                     .Include(s => s.Vehiculo)
                     .AsNoTracking()
                     .Where(s => s.PlyID == turno.PlyID)
@@ -369,10 +369,10 @@ namespace estacionamientos.Controllers
             var fechaInicioUTC = DateTime.SpecifyKind(servExFyHIni, DateTimeKind.Utc);
             
             var servicio = await _ctx.ServiciosExtrasRealizados
-                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
-                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Playa)
-                .Include(s => s.Vehiculo).ThenInclude(v => v.Clasificacion)
-                .Include(s => s.Pago).ThenInclude(p => p.MetodoPago)
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp!.Servicio)
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp!.Playa)
+                .Include(s => s.Vehiculo).ThenInclude(v => v!.Clasificacion)
+                .Include(s => s.Pago).ThenInclude(p => p!.MetodoPago)
                 .AsNoTracking()
                 .Where(s => s.PlyID == plyID && s.SerID == serID && s.VehPtnt == vehPtnt)
                 .Where(s => Math.Abs((s.ServExFyHIni - fechaInicioUTC).TotalMinutes) < 1) // Diferencia menor a 1 minuto
@@ -472,8 +472,8 @@ namespace estacionamientos.Controllers
 
             // Buscar el servicio extra
             var servicio = await _ctx.ServiciosExtrasRealizados
-                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
-                .Include(s => s.Vehiculo).ThenInclude(v => v.Clasificacion)
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp!.Servicio)
+                .Include(s => s.Vehiculo).ThenInclude(v => v!.Clasificacion)
                 .FirstOrDefaultAsync(s => s.PlyID == plyID && 
                                          s.SerID == serID && 
                                          s.VehPtnt == vehPtnt && 
@@ -520,8 +520,8 @@ namespace estacionamientos.Controllers
             int plyID, int serID, string vehPtnt, DateTime servExFyHIni, DateTime servExFyHFin)
         {
             var servicio = await _ctx.ServiciosExtrasRealizados
-                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
-                .Include(s => s.Vehiculo).ThenInclude(v => v.Clasificacion)
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp!.Servicio)
+                .Include(s => s.Vehiculo).ThenInclude(v => v!.Clasificacion)
                 .FirstOrDefaultAsync(s => s.PlyID == plyID &&
                                          s.SerID == serID &&
                                          s.VehPtnt == vehPtnt &&
@@ -556,7 +556,7 @@ namespace estacionamientos.Controllers
                 {
                     SerID = serID,
                     SerNom = servicio.ServicioProveido!.Servicio!.SerNom,
-                    SerTipo = servicio.ServicioProveido.Servicio.SerTipo,
+                    SerTipo = servicio.ServicioProveido!.Servicio!.SerTipo ?? "",
                     TarifaVigente = tarifa.TasMonto,
                     Cantidad = 1,
                     Subtotal = tarifa.TasMonto,

@@ -258,10 +258,10 @@ namespace estacionamientos.Controllers
 
                 var serviciosPorPago = _ctx.ServiciosExtrasRealizados
                     .AsNoTracking()
-                    .Where(s => s.PagNum != null)
+                    .Where(s => s.PagNum != null && s.ServicioProveido != null && s.ServicioProveido.Servicio != null)
                     .Include(s => s.ServicioProveido)
-                    .ThenInclude(sp => sp.Servicio)
-                    .Select(s => new { s.PlyID, s.PagNum, SerNom = s.ServicioProveido.Servicio.SerNom })
+                    .ThenInclude(sp => sp!.Servicio)
+                    .Select(s => new { s.PlyID, s.PagNum, SerNom = s.ServicioProveido!.Servicio!.SerNom })
                     .ToList()
                     .Where(x => clavesPagos.Any(k => k.PlyID == x.PlyID && k.PagNum == x.PagNum))
                     .GroupBy(x => new { x.PlyID, x.PagNum })

@@ -1159,9 +1159,9 @@ namespace estacionamientos.Controllers
                 // Buscar el abonado por DNI
                 var abonado = await _ctx.Abonados
                     .Include(a => a.Conductor)
-                        .ThenInclude(c => c.Conducciones)
+                        .ThenInclude(c => c!.Conducciones)
                             .ThenInclude(cond => cond.Vehiculo)
-                                .ThenInclude(v => v.Clasificacion)
+                                .ThenInclude(v => v!.Clasificacion)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(a => a.AboDNI == dniNormalizado);
 

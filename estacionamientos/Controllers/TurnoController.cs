@@ -638,9 +638,9 @@ namespace estacionamientos.Controllers
             // 💈 Servicios extras
             var serviciosExtras = (await _ctx.ServiciosExtrasRealizados
                 .AsNoTracking()
-                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
-                .Where(s => s.PagNum != null)
-                .Select(s => new { s.PlyID, PagNum = s.PagNum!.Value, SerNom = s.ServicioProveido.Servicio.SerNom })
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp!.Servicio)
+                .Where(s => s.PagNum != null && s.ServicioProveido != null && s.ServicioProveido.Servicio != null)
+                .Select(s => new { s.PlyID, PagNum = s.PagNum!.Value, SerNom = s.ServicioProveido!.Servicio!.SerNom })
                 .ToListAsync())
                 .Where(s => clavesPagos.Any(k => k.PlyID == s.PlyID && k.PagNum == s.PagNum))
                 .ToList();

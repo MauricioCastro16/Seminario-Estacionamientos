@@ -59,11 +59,11 @@ namespace estacionamientos.Controllers
             if (vehiculoAbonado?.Abono == null || vehiculoAbonado.Abono.EstadoPago != EstadoPago.Activo)
                 return Json(new { success = false });
 
-            if (vehiculoAbonado == null)
+            if (vehiculoAbonado == null || vehiculoAbonado.Abono == null || vehiculoAbonado.Vehiculo == null)
                 return Json(new { success = false });
 
-            var abonado = vehiculoAbonado.Abono?.Abonado?.AboNom ?? "(sin nombre)";
-            var clasificacionId = vehiculoAbonado.Vehiculo?.ClasVehID ?? 0;
+            var abonado = vehiculoAbonado.Abono.Abonado?.AboNom ?? "(sin nombre)";
+            var clasificacionId = vehiculoAbonado.Vehiculo.ClasVehID;
 
             // Buscar la plaza asociada en PlazaEstacionamiento
             var plaza = await _ctx.Plazas
@@ -79,7 +79,7 @@ namespace estacionamientos.Controllers
 
             var existeOtroVehiculo = await _ctx.VehiculosAbonados
                 .AsNoTracking()
-                .AnyAsync(v => v.Abono.PlyID == vehiculoAbonado.Abono.PlyID && v.Abono.PlzNum == vehiculoAbonado.Abono.PlzNum && v.VehPtnt != vehiculoAbonado.VehPtnt);
+                .AnyAsync(v => v.Abono != null && v.Abono.PlyID == vehiculoAbonado.Abono.PlyID && v.Abono.PlzNum == vehiculoAbonado.Abono.PlzNum && v.VehPtnt != vehiculoAbonado.VehPtnt);
 
             // Verificar si la plaza del abono está ocupada actualmente
             var plazaOcupada = await _ctx.Ocupaciones
@@ -93,7 +93,7 @@ namespace estacionamientos.Controllers
                 success = true,
                 message = $"La patente {vehiculoAbonado.VehPtnt} pertenece al abonado {abonado}, plaza {plazaNombre}.",
                 clasVehID = clasificacionId,
-                clasificacionNombre = vehiculoAbonado.Vehiculo?.Clasificacion?.ClasVehTipo ?? "(sin tipo)",
+                clasificacionNombre = vehiculoAbonado.Vehiculo.Clasificacion?.ClasVehTipo ?? "(sin tipo)",
                 techada,
                 piso,
                 plaza = plazaNum,

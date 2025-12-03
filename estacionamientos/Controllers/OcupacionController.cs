@@ -491,11 +491,12 @@ namespace estacionamientos.Controllers
             // 🔹 Agregar servicios extra pendientes de cobro (sin PagNum)
             // Estos servicios SIEMPRE se agregan, incluso si es abonado
             var serviciosExtras = await _ctx.ServiciosExtrasRealizados
-                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp!.Servicio)
                 .Where(s => s.VehPtnt == vehPtnt &&
                            s.PlyID == plyID &&
                            s.PagNum == null &&
-                           s.ServExEstado == "Completado")
+                           s.ServExEstado == "Completado" &&
+                           s.ServicioProveido != null)
                 .ToListAsync();
 
             var ahora = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
@@ -673,7 +674,7 @@ namespace estacionamientos.Controllers
             {
                 PlyID = plyID,
                 PlzNum = plzNum,
-                VehPtnt = vehPtnt,
+                VehPtnt = vehPtnt ?? string.Empty,
                 OcufFyhIni = DateTime.SpecifyKind(ocufFyhIni, DateTimeKind.Utc),
                 OcufFyhFin = DateTime.SpecifyKind(ocufFyhFin, DateTimeKind.Utc),
                 ClasVehID = ocupacion.Vehiculo!.ClasVehID,
@@ -803,10 +804,16 @@ namespace estacionamientos.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RegistrarIngreso(int plyID, int plzNum, string vehPtnt)
         {
+            if (string.IsNullOrWhiteSpace(vehPtnt))
+            {
+                TempData["Error"] = "La patente del vehículo es requerida.";
+                return RedirectToAction(nameof(Index));
+            }
+
             // Validar que si la plaza tiene un abono activo, solo permita vehículos abonados de esa plaza
             var fechaActual = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
             var fechaActualDate = fechaActual.Date;
-            var vehPtntNormalized = vehPtnt?.Trim().ToUpperInvariant() ?? string.Empty;
+            var vehPtntNormalized = vehPtnt.Trim().ToUpperInvariant();
 
             // Obtener o crear el vehículo para obtener su clasificación
             var vehiculo = await _ctx.Vehiculos.FirstOrDefaultAsync(v => v.VehPtnt == vehPtnt);
@@ -909,11 +916,12 @@ namespace estacionamientos.Controllers
 
             // 🔹 Validar que no haya servicios extra sin completar
             var serviciosExtraPendientes = await _ctx.ServiciosExtrasRealizados
-                .Include(s => s.ServicioProveido).ThenInclude(sp => sp.Servicio)
+                .Include(s => s.ServicioProveido).ThenInclude(sp => sp!.Servicio)
                 .Where(s => s.VehPtnt == vehPtnt &&
                            s.PlyID == plyID &&
                            s.ServExEstado != "Completado" &&
-                           s.ServExEstado != "Cancelado")
+                           s.ServExEstado != "Cancelado" &&
+                           s.ServicioProveido != null)
                 .ToListAsync();
 
             if (serviciosExtraPendientes.Any())
