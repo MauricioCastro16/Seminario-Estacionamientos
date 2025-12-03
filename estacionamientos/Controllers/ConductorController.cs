@@ -1007,14 +1007,47 @@ namespace estacionamientos.Controllers
             try
             {
                 // INCLUIR horarios directamente en el query inicial - SIN AsNoTracking para asegurar carga correcta
-                var playas = await _context.Playas
-                    .Include(p => p.Plazas)
-                    .Include(p => p.Horarios)
-                        .ThenInclude(h => h.ClasificacionDias)
-                    .Where(p => p.PlyLat.HasValue && p.PlyLon.HasValue)
-                    .ToListAsync();
+                // Filtrar playas que tengan coordenadas
+                // Primero intentar obtener solo playas Vigentes, si no hay ninguna, incluir también las Ocultas
+                var playasVigentesCount = await _context.Playas
+                    .CountAsync(p => p.PlyLat.HasValue && p.PlyLon.HasValue && p.PlyEstado == EstadoPlaya.Vigente);
+                
+                // Si no hay playas Vigentes, incluir también las Ocultas (para debugging/desarrollo)
+                var playas = playasVigentesCount > 0
+                    ? await _context.Playas
+                        .Include(p => p.Plazas)
+                        .Include(p => p.Horarios)
+                            .ThenInclude(h => h.ClasificacionDias)
+                        .Where(p => p.PlyLat.HasValue && p.PlyLon.HasValue && p.PlyEstado == EstadoPlaya.Vigente)
+                        .ToListAsync()
+                    : await _context.Playas
+                        .Include(p => p.Plazas)
+                        .Include(p => p.Horarios)
+                            .ThenInclude(h => h.ClasificacionDias)
+                        .Where(p => p.PlyLat.HasValue && p.PlyLon.HasValue && (p.PlyEstado == EstadoPlaya.Vigente || p.PlyEstado == EstadoPlaya.Oculto))
+                        .ToListAsync();
+                
+                if (playasVigentesCount == 0 && playas.Count > 0)
+                {
+                    Console.WriteLine("⚠️ No se encontraron playas Vigentes, mostrando también playas Ocultas para debugging");
+                }
 
                 System.Diagnostics.Debug.WriteLine($"GetPlayasCercanas - Playas encontradas en BD: {playas.Count}");
+                Console.WriteLine($"GetPlayasCercanas - Playas encontradas en BD: {playas.Count}");
+                
+                // Log adicional para debugging
+                if (playas.Count == 0)
+                {
+                    var todasPlayas = await _context.Playas.CountAsync();
+                    var playasConCoordenadas = await _context.Playas.CountAsync(p => p.PlyLat.HasValue && p.PlyLon.HasValue);
+                    var playasVigentes = await _context.Playas.CountAsync(p => p.PlyEstado == EstadoPlaya.Vigente);
+                    var playasOcultas = await _context.Playas.CountAsync(p => p.PlyEstado == EstadoPlaya.Oculto);
+                    
+                    Console.WriteLine($"DEBUG - Total playas en BD: {todasPlayas}");
+                    Console.WriteLine($"DEBUG - Playas con coordenadas: {playasConCoordenadas}");
+                    Console.WriteLine($"DEBUG - Playas Vigentes: {playasVigentes}");
+                    Console.WriteLine($"DEBUG - Playas Ocultas: {playasOcultas}");
+                }
                 
                 // FORZAR carga explícita de horarios para cada playa si no se cargaron
                 foreach (var p in playas)
@@ -1116,6 +1149,22 @@ namespace estacionamientos.Controllers
                             distancia = 0;
                         }
                         
+                    // Convertir coordenadas a formato decimal correcto si están almacenadas como enteros
+                    decimal? latCorrecta = p.PlyLat;
+                    decimal? lonCorrecta = p.PlyLon;
+                    
+                    // Si las coordenadas son muy grandes (sin punto decimal), convertirlas
+                    if (p.PlyLat.HasValue && Math.Abs(p.PlyLat.Value) > 1000)
+                    {
+                        latCorrecta = p.PlyLat.Value / 1000000m;
+                        Console.WriteLine($"⚠️ Coordenada lat corregida: {p.PlyLat.Value} -> {latCorrecta.Value}");
+                    }
+                    if (p.PlyLon.HasValue && Math.Abs(p.PlyLon.Value) > 1000)
+                    {
+                        lonCorrecta = p.PlyLon.Value / 1000000m;
+                        Console.WriteLine($"⚠️ Coordenada lon corregida: {p.PlyLon.Value} -> {lonCorrecta.Value}");
+                    }
+                    
                     playasCercanas.Add(new
                     {
                         p.PlyID,
@@ -1123,8 +1172,8 @@ namespace estacionamientos.Controllers
                             plyDir = p.PlyDir ?? "",
                             plyTipoPiso = p.PlyTipoPiso ?? "",
                         plyValProm = valorPromedioHora,
-                        plyLat = p.PlyLat,
-                        plyLon = p.PlyLon,
+                        plyLat = latCorrecta,
+                        plyLon = lonCorrecta,
                             distancia = distancia,
                             disponibilidad = disponibilidad,
                             estaAbierto = estaAbierto,

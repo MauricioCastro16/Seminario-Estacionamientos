@@ -612,7 +612,6 @@
                             dropdownInstance.toggle(); // Toggle del dropdown usando Bootstrap
                         });
                     } catch (e) {
-                        console.error('Error inicializando dropdown del usuario:', e);
                     }
                 }
             }, 500); // Esperar medio segundo para que todo esté inicializado
@@ -730,22 +729,17 @@
 
         function cargarPlayas(){
             $('#loading').show();
-            console.log('🔄 Iniciando carga de playas...', { conductorLat, conductorLon });
             
             // Primero obtener el tipo de vehículo
             $.get('/Conductor/GetVehiculoSeleccionado')
              .done(vehiculoData => {
-                 console.log('✅ Vehículo obtenido:', vehiculoData);
                  const tipoVehiculo = vehiculoData?.tipo || null;
                  
                  // Cargar todas las playas
             $.get('/Conductor/GetPlayasCercanas', { lat:conductorLat, lon:conductorLon, radioKm:50 })
                   .done(data => {
-                      console.log('✅ Respuesta del servidor:', data);
-                      
                       // Verificar si la respuesta tiene un error
                       if (data && data.error) {
-                          console.error('❌ Error del servidor:', data.error);
                           alert('Error al cargar playas: ' + data.error);
                           playas = [];
                           mostrarPlayasEnMapa();
@@ -756,10 +750,8 @@
                       
                       // Asegurar que data es un array
                       const todasLasPlayas = Array.isArray(data) ? data : [];
-                      console.log('✅ Playas obtenidas:', todasLasPlayas.length, 'playas');
                       
                       if (todasLasPlayas.length === 0) {
-                          console.warn('⚠️ No se encontraron playas');
                           playas = [];
                           mostrarPlayasEnMapa();
                           actualizarPopupsMarcadores();
@@ -767,43 +759,30 @@
                           return;
                       }
                       
-                      if (!tipoVehiculo) {
-                          // Si no hay tipo de vehículo, mostrar todas las playas
-                          console.log('ℹ️ Sin tipo de vehículo, mostrando todas las playas');
-                          playas = todasLasPlayas;
-                          mostrarPlayasEnMapa();
-                          // Actualizar popups de favoritos después de cargar las playas
-                          actualizarPopupsMarcadores();
-                          $('#loading').hide();
-                          return;
-                      }
-                      
-                      // Filtrar playas que tienen servicios/tarifas para el tipo de vehículo
-                      console.log('🔍 Filtrando playas por tipo de vehículo:', tipoVehiculo);
-                      filtrarPlayasPorTipoVehiculo(todasLasPlayas, tipoVehiculo);
+                      // Mostrar todas las playas sin filtrar por tipo de vehículo
+                      // El filtrado por tipo de vehículo se puede hacer opcionalmente más adelante
+                      playas = todasLasPlayas;
+                      mostrarPlayasEnMapa();
+                      // Actualizar popups de favoritos después de cargar las playas
+                      actualizarPopupsMarcadores();
+                      $('#loading').hide();
                   })
              .fail((xhr, status, err) => {
-                 console.error('❌ Error al cargar playas:', { xhr, status, err, responseText: xhr?.responseText });
                  alert('Error al cargar playas. Por favor, recarga la página. Detalles: ' + (err || status));
                  $('#loading').hide();
              });
              })
              .fail((xhr, status, err) => {
-                 console.warn('⚠️ No se pudo obtener vehículo, cargando todas las playas');
                  // Si no se puede obtener el vehículo, mostrar todas las playas
             $.get('/Conductor/GetPlayasCercanas', { lat:conductorLat, lon:conductorLon, radioKm:50 })
              .done(data => {
-                 console.log('✅ Respuesta del servidor (sin vehículo):', data);
-                 
                  // Verificar si la respuesta tiene un error
                  if (data && data.error) {
-                     console.error('❌ Error del servidor:', data.error);
                      alert('Error al cargar playas: ' + data.error);
                      playas = [];
                  } else {
                      // Asegurar que data es un array
                      playas = Array.isArray(data) ? data : [];
-                     console.log('✅ Playas obtenidas (sin vehículo):', playas.length, 'playas');
                  }
                  
                  mostrarPlayasEnMapa(); 
@@ -812,17 +791,13 @@
                  $('#loading').hide(); 
              })
              .fail((xhr, status, err) => {
-                 console.error('❌ Error al cargar playas (sin vehículo):', { xhr, status, err });
                  $('#loading').html('<div class="spinner"></div>Error al cargar playas: ' + (err || status));
              });
              });
         }
         
         function filtrarPlayasPorTipoVehiculo(todasLasPlayas, tipoVehiculo){
-            console.log('🔍 Filtrando playas por tipo de vehículo:', { total: todasLasPlayas.length, tipoVehiculo });
-            
             if (todasLasPlayas.length === 0) {
-                console.warn('⚠️ No hay playas para filtrar');
                 playas = [];
                 mostrarPlayasEnMapa();
                 // Actualizar popups de favoritos después de cargar las playas
@@ -847,7 +822,6 @@
                          
                          if (serviciosConTarifas.length > 0) {
                              playasFiltradas.push(playa);
-                             console.log('✅ Playa aceptada:', playa.plyNom, 'con', serviciosConTarifas.length, 'servicios');
                          }
                      }
                      
@@ -855,11 +829,8 @@
                      
                      // Cuando se hayan verificado todas las playas, mostrar las filtradas
                      if (verificadas === todasLasPlayas.length) {
-                         console.log('✅ Filtrado completado:', { filtradas: playasFiltradas.length, total: todasLasPlayas.length });
-                         
                          // Si no se encontraron playas filtradas, mostrar todas las playas como fallback
                          if (playasFiltradas.length === 0) {
-                             console.warn('⚠️ No se encontraron playas con tarifas para el tipo de vehículo. Mostrando todas las playas.');
                              playas = todasLasPlayas;
                          } else {
                              playas = playasFiltradas;
@@ -872,12 +843,10 @@
                      }
                  })
                  .fail((xhr, status, err) => {
-                     console.warn('⚠️ Error al verificar playa:', playa.plyNom, { xhr, status, err });
                      // En caso de error, incluir la playa de todas formas
                      playasFiltradas.push(playa);
                      verificadas++;
                      if (verificadas === todasLasPlayas.length) {
-                         console.log('✅ Filtrado completado (con errores):', { filtradas: playasFiltradas.length, total: todasLasPlayas.length });
                          playas = playasFiltradas;
                          mostrarPlayasEnMapa();
                          // Actualizar popups de favoritos después de cargar las playas
@@ -1021,26 +990,37 @@
 
         function mostrarPlayasEnMapa(){
             if (!map) {
-                console.error('❌ El mapa no está inicializado');
                 return;
             }
             
             const playasAMostrar = isSearchMode ? searchResults : playas;
-            console.log('🗺️ Mostrando playas en mapa:', { 
-                total: playasAMostrar.length, 
-                isSearchMode, 
-                playas: playas.length,
-                searchResults: searchResults.length 
-            });
             
             parkingMarkers.forEach(m => map.removeLayer(m));
             parkingMarkers = [];
             playaIdToMarker.clear();
 
             let marcadoresCreados = 0;
+            const bounds = [];
+            
             playasAMostrar.forEach(playa => {
                 if (playa.plyLat == null || playa.plyLon == null || isNaN(playa.plyLat) || isNaN(playa.plyLon)){
-                    console.warn(`⚠️ Coordenadas inválidas para ${playa.plyNom}: lat=${playa.plyLat}, lon=${playa.plyLon}`);
+                    return;
+                }
+
+                // Convertir coordenadas si están en formato incorrecto (sin punto decimal)
+                let lat = parseFloat(playa.plyLat);
+                let lon = parseFloat(playa.plyLon);
+                
+                // Si las coordenadas son muy grandes (sin punto decimal), convertirlas
+                if (Math.abs(lat) > 1000) {
+                    lat = lat / 1000000;
+                }
+                if (Math.abs(lon) > 1000) {
+                    lon = lon / 1000000;
+                }
+                
+                // Validar que las coordenadas estén en el rango válido
+                if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
                     return;
                 }
 
@@ -1051,7 +1031,12 @@
                 }
 
                 const icon = crearIconoPlaya(playa, isSearchMode);
-                const marker = L.marker([playa.plyLat, playa.plyLon], { icon }).addTo(map);
+                const marker = L.marker([lat, lon], { icon }).addTo(map);
+                
+                // Verificar que el marcador se agregó correctamente
+                if (marker) {
+                    bounds.push([lat, lon]);
+                }
 
                 const popupContent = buildPopupContent(playa, isSearchMode);
                 marker.bindPopup(popupContent);
@@ -1060,7 +1045,6 @@
                     // Solo abrir el popup, no abrir el footer automáticamente
                     marker.openPopup();
                 });
-                marker.on('popupopen', () => console.log('📋 Popup abierto para:', playa.plyNom));
 
                 if (playa.plyID != null) playaIdToMarker.set(playa.plyID, marker);
 
@@ -1068,7 +1052,40 @@
                 marcadoresCreados++;
             });
             
-            console.log('✅ Marcadores creados:', marcadoresCreados, 'de', playasAMostrar.length);
+            // Si hay marcadores y no estamos en modo búsqueda, ajustar el mapa para mostrar todas las playas
+            if (bounds.length > 0 && !isSearchMode && parkingMarkers.length > 0) {
+                try {
+                    // Usar los marcadores creados para ajustar el mapa
+                    const group = new L.featureGroup(parkingMarkers);
+                    const boundsGroup = group.getBounds();
+                    
+                    // Validar que los bounds sean válidos
+                    if (boundsGroup && boundsGroup.isValid && boundsGroup.isValid()) {
+                        map.fitBounds(boundsGroup.pad(0.1), { maxZoom: 16 });
+                    } else {
+                        // Fallback: usar las coordenadas directamente
+                        if (bounds.length > 0) {
+                            const latLngs = bounds.map(b => L.latLng(b[0], b[1]));
+                            const boundsLatLng = L.latLngBounds(latLngs);
+                            if (boundsLatLng && boundsLatLng.isValid && boundsLatLng.isValid()) {
+                                map.fitBounds(boundsLatLng.pad(0.1), { maxZoom: 16 });
+                            } else {
+                                // Último fallback: centrar en la primera playa
+                                map.setView([bounds[0][0], bounds[0][1]], 14);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Si falla, al menos centrar en la primera playa
+                    if (bounds.length > 0) {
+                        try {
+                            map.setView([bounds[0][0], bounds[0][1]], 14);
+                        } catch (e2) {
+                            // Error silencioso
+                        }
+                    }
+                }
+            }
         }
 
         function openMarkerPopup(playaLike){
@@ -1104,12 +1121,22 @@
             if (!favoritos?.length) return;
 
             favoritos.forEach(fav => {
-                const lat = parseFloat(fav.lat ?? fav.ubfLat ?? fav.UbfLat);
-                const lon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
-                if (isNaN(lat) || isNaN(lon)) return;
+                let lat = parseFloat(fav.lat ?? fav.ubfLat ?? fav.UbfLat);
+                let lon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
+                
+                // Convertir coordenadas si están en formato incorrecto (sin punto decimal)
+                if (Math.abs(lat) > 1000) {
+                    lat = lat / 1000000;
+                }
+                if (Math.abs(lon) > 1000) {
+                    lon = lon / 1000000;
+                }
+                
+                // Validar coordenadas
+                if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
 
                 const esPlaya = fav.tipo === 'Playa';
-                // Usar un z-index más alto para que esté por encima del marcador de búsqueda
+                // Usar un z-index más alto para que esté por encima del marcador de búsqueda y de las playas
                 const marker = L.marker([lat, lon], { icon:crearIconoFavorito(esPlaya), zIndexOffset:1000 })
                     .addTo(map);
 
@@ -1127,8 +1154,11 @@
                     if (!playa) {
                         playa = playas.find(p => {
                             if (!p.plyLat || !p.plyLon) return false;
-                            const playaLat = parseFloat(p.plyLat);
-                            const playaLon = parseFloat(p.plyLon);
+                            let playaLat = parseFloat(p.plyLat);
+                            let playaLon = parseFloat(p.plyLon);
+                            // Convertir coordenadas si están en formato incorrecto
+                            if (Math.abs(playaLat) > 1000) playaLat = playaLat / 1000000;
+                            if (Math.abs(playaLon) > 1000) playaLon = playaLon / 1000000;
                             if (isNaN(playaLat) || isNaN(playaLon)) return false;
                             // Buscar por coordenadas con tolerancia
                             return Math.abs(playaLat - lat) < 0.0001 && Math.abs(playaLon - lon) < 0.0001;
@@ -1632,14 +1662,10 @@
 
         // === Helpers del popup de la playa ===
         window.seleccionarPlayaDesdePopup = function (plyID) {
-            console.log('🔘 seleccionarPlayaDesdePopup llamado con plyID:', plyID);
             const playa = playas.find(p => p.plyID === plyID);
             if (!playa) {
-                console.error('❌ No se encontró playa con ID:', plyID);
-                console.log('📋 Playas disponibles:', playas.map(p => ({ id: p.plyID, nombre: p.plyNom })));
                 return;
             }
-            console.log('✅ Playa encontrada:', playa);
 
             // Abrir el popup del marcador si existe
             const mk = playaIdToMarker.get(plyID);
@@ -1671,6 +1697,8 @@
                                 marker.setPopupContent(buildPopupContent(playaActualizada, isSearchMode));
                             }
                         }
+                        // Actualizar los marcadores de favoritos para mostrar el ícono amarillo
+                        mostrarFavoritosEnMapa();
                         mostrarModalMensaje('Playa de estacionamiento agregada a favoritos correctamente.', 'success');
                     });
                 }).catch(() => {
@@ -1746,12 +1774,8 @@
         }
 
         function seleccionarPlaya(playa){
-            console.log('🚀 seleccionarPlaya INICIADA');
-            console.log('📦 playa recibida:', playa);
-            console.log('🆔 playa.plyID:', playa?.plyID, 'tipo:', typeof playa?.plyID);
             
             if (!playa || !playa.plyID) {
-                console.error('❌ ERROR: playa o playa.plyID es inválido');
                 return;
             }
             
@@ -1775,31 +1799,18 @@
             $('#valoracionesInfo').hide();
             $('#playaInfo').show();
 
-            console.log('🔵 Llamando GetDetallePlaya con ID:', playa.plyID, 'tipo:', typeof playa.plyID);
             $.get('/Conductor/GetDetallePlaya', { id: playa.plyID })
              .done(detalle => {
                  // Debug: verificar qué datos se reciben
-                 console.log('🟢 === DATOS RECIBIDOS DE GetDetallePlaya ===');
-                 console.log('📋 detalle completo:', detalle);
                  
                  // DEBUG ESPECÍFICO DE HORARIOS
                  if (detalle._debugHorarios) {
-                     console.log('🔍 === DEBUG HORARIOS RAW ===');
-                     console.table(detalle._debugHorarios);
-                     console.log('📊 JSON completo de debug:', JSON.stringify(detalle._debugHorarios, null, 2));
                  } else {
-                     console.warn('⚠️ NO HAY _debugHorarios en la respuesta');
                  }
                  
-                 console.log('📅 horariosLunesViernes:', detalle.horariosLunesViernes);
-                 console.log('📅 horariosFinSemana:', detalle.horariosFinSemana);
-                 console.log('📅 horarios (unificado):', detalle.horarios);
-                 console.log('tipo horariosLunesViernes:', typeof detalle.horariosLunesViernes);
-                 console.log('es array?', Array.isArray(detalle.horariosLunesViernes));
                  
                  // Verificar si hay error en la respuesta
                  if (detalle.error) {
-                     console.error('Error en GetDetallePlaya:', detalle.error);
                      mostrarDetallePlayaBasico(playa);
                      cargarTarifasYServicios(playa.plyID);
                      $('#bottomMenu').addClass('show');
@@ -1814,8 +1825,6 @@
                  openMarkerPopup({ ...detalle, plyLat: detalle.plyLat ?? playa.plyLat, plyLon: detalle.plyLon ?? playa.plyLon });
              })
              .fail((jqXHR, textStatus, errorThrown) => {
-                 console.error('Error en llamada a GetDetallePlaya:', textStatus, errorThrown);
-                 console.error('Response:', jqXHR.responseText);
                  mostrarDetallePlayaBasico(playa);
                  cargarTarifasYServicios(playa.plyID);
                  $('#bottomMenu').addClass('show');
@@ -1824,11 +1833,9 @@
         }
 
         function mostrarDetallePlaya(detalle){
-            console.log('mostrarDetallePlaya recibió:', detalle);
             
             // Validar que detalle tenga los campos necesarios
             if (!detalle) {
-                console.error('detalle es null o undefined');
                 return;
             }
             
@@ -1844,7 +1851,6 @@
             // Ocupación - validar que disponibilidad sea un número válido
             const disponibilidad = parseFloat(detalle.disponibilidad);
             if (isNaN(disponibilidad)) {
-                console.warn('disponibilidad no es un número válido:', detalle.disponibilidad);
                 $('#disponibilidadTexto').text('0% ocupado');
                 $('#disponibilidadBarra').css('width', '0%');
             } else {
@@ -1861,16 +1867,6 @@
             $('#valorPromedio').text('$' + valorProm.toFixed(2) + '/hora');
 
             // Horarios de atención - SIEMPRE mostrar esta sección
-            console.log('=== HORARIOS DEBUG ===');
-            console.log('detalle completo:', JSON.stringify(detalle, null, 2));
-            console.log('horarios:', detalle.horarios);
-            console.log('horariosLunesViernes:', detalle.horariosLunesViernes);
-            console.log('horariosFinSemana:', detalle.horariosFinSemana);
-            console.log('tipo de horariosLunesViernes:', typeof detalle.horariosLunesViernes);
-            console.log('es array?', Array.isArray(detalle.horariosLunesViernes));
-            console.log('length horariosLunesViernes:', detalle.horariosLunesViernes?.length);
-            console.log('length horariosFinSemana:', detalle.horariosFinSemana?.length);
-            console.log('length horarios:', detalle.horarios?.length);
             
             let horariosHtml = '';
             let tiene = false;
@@ -1889,12 +1885,10 @@
             
             // Opción 2: Si viene array unificado (GetPlayasCercanas o GetDetallePlaya con horarios)
             if ((horariosLV.length === 0 && horariosFS.length === 0) && detalle.horarios && Array.isArray(detalle.horarios) && detalle.horarios.length > 0) {
-                console.log('📋 Usando array unificado de horarios, total:', detalle.horarios.length);
                 horariosLV = detalle.horarios.filter(h => {
                     const tipo = (h.TipoDia || h.tipoDia || '').toLowerCase();
                     const esLV = tipo.includes('ábil') || tipo.includes('habil') || tipo.includes('lunes') || tipo.includes('viernes');
                     if (esLV) {
-                        console.log('  ✅ Horario L-V encontrado:', h);
                     }
                     return esLV;
                 });
@@ -1902,16 +1896,13 @@
                     const tipo = (h.TipoDia || h.tipoDia || '').toLowerCase();
                     const esFS = (tipo.includes('fin') && tipo.includes('semana')) || tipo.includes('sábado') || tipo.includes('sabado') || tipo.includes('domingo');
                     if (esFS) {
-                        console.log('  ✅ Horario F-S encontrado:', h);
                     }
                     return esFS;
                 });
-                console.log('📋 Después de filtrar - L-V:', horariosLV.length, 'F-S:', horariosFS.length);
             }
             
             // Opción 3: Si aún no hay horarios, mostrar todos los horarios disponibles sin agrupar
             if (horariosLV.length === 0 && horariosFS.length === 0 && detalle.horarios && Array.isArray(detalle.horarios) && detalle.horarios.length > 0) {
-                console.log('⚠️ No se pudieron agrupar horarios, mostrando todos sin agrupar');
                 // Mostrar todos los horarios sin agrupar
                 const todosHorarios = detalle.horarios.map(h => {
                     const tipo = h.TipoDia || h.tipoDia || 'Sin clasificar';
@@ -1923,22 +1914,17 @@
                 if (todosHorarios && todosHorarios.length > 0) {
                     horariosHtml = '<div>' + todosHorarios + '</div>';
                     tiene = true;
-                    console.log('✅ Horarios mostrados sin agrupar:', todosHorarios);
                 }
             }
             
             // Procesar Lunes a Viernes
             if (horariosLV.length > 0) {
                 tiene = true;
-                console.log('📋 Procesando horarios L-V:', horariosLV);
                 const horariosLVStr = horariosLV.map(h => {
-                    console.log('  - Horario L-V objeto completo:', JSON.stringify(h));
                     // Intentar todas las posibles propiedades (minúscula, mayúscula, camelCase)
                     const inicio = h.horaInicio || h.HoraInicio || h.horaInicio || '';
                     const fin = h.horaFin || h.HoraFin || h.horaFin || 'Sin fin';
-                    console.log(`  - Extraído: inicio='${inicio}', fin='${fin}'`);
                     if (!inicio || inicio === '') {
-                        console.warn('  ⚠️ ADVERTENCIA: horaInicio está vacía para horario L-V:', h);
                         return null; // Filtrar este elemento
                     }
                     return `${inicio} - ${fin}`;
@@ -1946,26 +1932,19 @@
                 
                 if (horariosLVStr && horariosLVStr.length > 0) {
                     horariosHtml += '<div style="margin-bottom:8px;"><strong>Lunes a Viernes:</strong> ' + horariosLVStr + '</div>';
-                    console.log('✅ Agregado Lunes a Viernes:', horariosLVStr);
                 } else {
-                    console.warn('⚠️ No se pudo construir string de horarios L-V');
                 }
             } else {
-                console.log('⚠️ No hay horarios L-V para procesar (array vacío)');
             }
             
             // Procesar Fin de Semana
             if (horariosFS.length > 0) {
                 tiene = true;
-                console.log('📋 Procesando horarios F-S:', horariosFS);
                 const horariosFSStr = horariosFS.map(h => {
-                    console.log('  - Horario F-S objeto completo:', JSON.stringify(h));
                     // Intentar todas las posibles propiedades (minúscula, mayúscula, camelCase)
                     const inicio = h.horaInicio || h.HoraInicio || h.horaInicio || '';
                     const fin = h.horaFin || h.HoraFin || h.horaFin || 'Sin fin';
-                    console.log(`  - Extraído: inicio='${inicio}', fin='${fin}'`);
                     if (!inicio || inicio === '') {
-                        console.warn('  ⚠️ ADVERTENCIA: horaInicio está vacía para horario F-S:', h);
                         return null; // Filtrar este elemento
                     }
                     return `${inicio} - ${fin}`;
@@ -1973,35 +1952,21 @@
                 
                 if (horariosFSStr && horariosFSStr.length > 0) {
                     horariosHtml += '<div style="margin-bottom:8px;"><strong>Sábado Domingo:</strong> ' + horariosFSStr + '</div>';
-                    console.log('✅ Agregado Sábado Domingo:', horariosFSStr);
                 } else {
-                    console.warn('⚠️ No se pudo construir string de horarios F-S');
                 }
             } else {
-                console.log('⚠️ No hay horarios F-S para procesar (array vacío)');
             }
             
-            console.log('tiene horarios?', tiene);
-            console.log('horariosHtml final:', horariosHtml);
-            console.log('horariosHtml length:', horariosHtml.length);
-            console.log('horariosLV después de procesar:', horariosLV);
-            console.log('horariosFS después de procesar:', horariosFS);
             
             // Mostrar horarios o mensaje de "No hay horarios configurados"
             if (tiene && horariosHtml && horariosHtml.trim().length > 0) {
                 $('#horariosInfo').html(horariosHtml);
-                console.log('✅ Horarios mostrados correctamente en el DOM');
             } else {
-                console.warn('⚠️ No se encontraron horarios para mostrar');
-                console.warn('  - tiene:', tiene);
-                console.warn('  - horariosHtml:', horariosHtml);
-                console.warn('  - horariosHtml length:', horariosHtml ? horariosHtml.length : 0);
                 $('#horariosInfo').html('<span style="color:#dc3545;">No hay horarios configurados</span>');
             }
             
             // SIEMPRE mostrar la sección de horarios (después de Valor promedio)
             $('#horariosSection').show();
-            console.log('Sección de horarios mostrada, visible?', $('#horariosSection').is(':visible'));
             $('#debugInfoSection').hide();
             $('#playaInfo').show();
         }
@@ -2717,25 +2682,48 @@
         }
 
         function irAPlayaFavorita(fav){
-            const lat = parseFloat(fav.lat ?? fav.ubfLat ?? fav.UbfLat);
-            const lon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
-            if (isNaN(lat) || isNaN(lon)) {
-                mostrarModalMensaje('Este favorito no tiene coordenadas válidas.', 'error');
-                return;
-            }
-
-            // Buscar la playa correspondiente
+            // Buscar la playa correspondiente primero
             let playa = null;
             // Primero intentar por plyID si está disponible (más confiable)
             if (fav.plyID) {
                 playa = playas.find(p => p.plyID === fav.plyID);
             }
+            
+            // Obtener coordenadas - preferir las de la playa encontrada, sino las del favorito
+            let lat, lon;
+            if (playa && playa.plyLat && playa.plyLon) {
+                // Usar coordenadas de la playa encontrada
+                lat = parseFloat(playa.plyLat);
+                lon = parseFloat(playa.plyLon);
+            } else {
+                // Usar coordenadas del favorito
+                lat = parseFloat(fav.lat ?? fav.ubfLat ?? fav.UbfLat);
+                lon = parseFloat(fav.lon ?? fav.ubfLon ?? fav.UbfLon);
+            }
+            
+            // Convertir coordenadas si están en formato incorrecto (sin punto decimal)
+            if (Math.abs(lat) > 1000) {
+                lat = lat / 1000000;
+            }
+            if (Math.abs(lon) > 1000) {
+                lon = lon / 1000000;
+            }
+            
+            // Validar coordenadas
+            if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+                mostrarModalMensaje('Este favorito no tiene coordenadas válidas.', 'error');
+                return;
+            }
+
             // Si no se encontró por ID, buscar por coordenadas
             if (!playa) {
                 playa = playas.find(p => {
                     if (!p.plyLat || !p.plyLon) return false;
-                    const playaLat = parseFloat(p.plyLat);
-                    const playaLon = parseFloat(p.plyLon);
+                    let playaLat = parseFloat(p.plyLat);
+                    let playaLon = parseFloat(p.plyLon);
+                    // Convertir coordenadas si están en formato incorrecto
+                    if (Math.abs(playaLat) > 1000) playaLat = playaLat / 1000000;
+                    if (Math.abs(playaLon) > 1000) playaLon = playaLon / 1000000;
                     if (isNaN(playaLat) || isNaN(playaLon)) return false;
                     // Buscar por coordenadas con tolerancia
                     return Math.abs(playaLat - lat) < 0.0001 && Math.abs(playaLon - lon) < 0.0001;
@@ -2760,7 +2748,7 @@
             // Asegurarse de que no se active el modo de búsqueda
             isSearchMode = false;
             
-            // Centrar el mapa con animación suave
+            // Centrar el mapa con animación suave usando las coordenadas corregidas
             map.flyTo([lat, lon], 16, {
                 animate: true,
                 duration: 0.8
@@ -3909,7 +3897,6 @@
                 }
                 overlay.addEventListener('click', closeSidebar);
             } catch (e) {
-                console.error('Error inicializando el menú móvil en el mapa:', e);
             }
         });
     </script>

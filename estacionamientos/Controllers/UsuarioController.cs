@@ -279,7 +279,8 @@ namespace estacionamientos.Controllers
                 UsuNomUsu = vm.UsuNomUsu,
                 UsuEmail = vm.UsuEmail,
                 UsuPswd = BCrypt.Net.BCrypt.HashPassword(vm.UsuPswd), // 🔐 Contraseña hasheada
-                UsuNumTel = vm.UsuNumTel
+                UsuNumTel = vm.UsuNumTel,
+                ConDNI = vm.ConDNI
             };
 
             _context.Conductores.Add(entity);
@@ -311,8 +312,18 @@ namespace estacionamientos.Controllers
             if (id != model.UsuNU) return BadRequest();
             if (!ModelState.IsValid) return View("Conductor/Edit", model);
 
-            _context.Entry(model).State = EntityState.Modified;
+            var conductor = await _context.Conductores.FindAsync(id);
+            if (conductor is null) return NotFound();
+
+            // Actualizar solo los campos editables, sin tocar la contraseña
+            conductor.UsuNyA = model.UsuNyA;
+            conductor.UsuNomUsu = model.UsuNomUsu;
+            conductor.UsuEmail = model.UsuEmail;
+            conductor.UsuNumTel = model.UsuNumTel;
+            conductor.ConDNI = model.ConDNI;
+
             await _context.SaveChangesAsync();
+            TempData["Msg"] = "Conductor actualizado correctamente.";
             return RedirectToAction(nameof(Index));
         }
 

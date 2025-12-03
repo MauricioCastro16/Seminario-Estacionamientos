@@ -640,19 +640,19 @@
 
                 // Mensaje si no hay movimientos visibles
                 let msg = document.getElementById('noMovimientosMsg');
-                const lista = document.getElementById('listaMovimientos');
+                const tablaMovimientos = document.getElementById('tablaMovimientos');
                 if (visibles === 0) {
-                    if (!msg) {
+                    if (!msg && tablaMovimientos) {
                         msg = document.createElement('div');
                         msg.id = 'noMovimientosMsg';
                         msg.className = 'text-center text-muted p-3';
                         msg.textContent = 'No hay movimientos que coincidan con los filtros.';
-                        lista.insertAdjacentElement('afterend', msg);
+                        tablaMovimientos.insertAdjacentElement('afterend', msg);
                     }
-                    lista.style.display = 'none';
+                    if (tablaMovimientos) tablaMovimientos.style.display = 'none';
                 } else {
                     if (msg) msg.remove();
-                    lista.style.display = '';
+                    if (tablaMovimientos) tablaMovimientos.style.display = '';
                 }
 
                 // Actualizar paginación
@@ -831,12 +831,17 @@
     <script>
     (function () {
         const datatableLanguage = {
-            url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json",
             lengthMenu: "Mostrar _MENU_ playeros",
             paginate: {
                 previous: "« Anterior",
                 next: "Siguiente »"
-            }
+            },
+            emptyTable: "No hay datos disponibles",
+            info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+            infoEmpty: "Mostrando 0 a 0 de 0 registros",
+            infoFiltered: "(filtrado de _MAX_ registros totales)",
+            search: "Buscar:",
+            zeroRecords: "No se encontraron registros"
         };
 
         const domLayout =
@@ -851,17 +856,60 @@
                 // evitar inicializar dos veces
                 if ($.fn.DataTable.isDataTable(selector)) return;
 
-                $(selector).DataTable({
+                const $table = $(selector);
+                
+                // Verificar que la tabla tenga la estructura correcta
+                const $thead = $table.find('thead tr');
+                const $tbody = $table.find('tbody');
+                
+                if ($thead.length === 0 || $thead.find('th').length === 0) {
+                    console.warn("La tabla no tiene encabezados válidos");
+                    return;
+                }
+
+                const colCount = $thead.find('th').length;
+                
+                // Verificar si hay filas válidas (sin colspan)
+                const $validRows = $tbody.find('tr').filter(function() {
+                    return $(this).find('td[colspan]').length === 0;
+                });
+                
+                // Si no hay filas válidas, no inicializar DataTables
+                if ($validRows.length === 0) {
+                    return;
+                }
+                
+                // Verificar que todas las filas válidas tengan el mismo número de columnas
+                let hasInvalidRows = false;
+                $validRows.each(function() {
+                    const $row = $(this);
+                    const tdCount = $row.find('td').length;
+                    if (tdCount !== colCount) {
+                        console.warn(`Fila con número incorrecto de columnas: ${tdCount} en lugar de ${colCount}`);
+                        hasInvalidRows = true;
+                    }
+                });
+                
+                if (hasInvalidRows) {
+                    console.warn("No se puede inicializar DataTables debido a filas con estructura incorrecta");
+                    return;
+                }
+
+                $table.DataTable({
                     dom: domLayout,
                     order: [[0, "asc"]],
                     pageLength: 10,
                     lengthMenu: [5, 10, 25, 50],
                     pagingType: "simple_numbers",
                     language: datatableLanguage,
-                    columnDefs: [{ "orderable": false, "targets": -1 }],
+                    columnDefs: [
+                        { "orderable": false, "targets": -1 },
+                        { "visible": false, "targets": [] } // No ocultar ninguna columna
+                    ],
                     searching: false,
-                    responsive: true,
+                    responsive: false,
                     info: false,
+                    autoWidth: false
                 });
             } catch (err) {
                 console.error("Error inicializando DataTable para", selector, err);

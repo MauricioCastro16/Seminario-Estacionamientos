@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Editar conductor";
 }
+
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="mb-0">@ViewData["Title"]</h1>
     <a asp-action="Index" class="btn btn-secondary">
@@ -10,39 +11,58 @@
 </div>
 <hr />
 
-<form asp-action="Edit" method="post">
-    @Html.AntiForgeryToken()
-    <input type="hidden" asp-for="UsuNU" />
+@if (TempData["Msg"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
 
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="EditConductor" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="UsuNU" />
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-    <div class="mb-3">
-        <label asp-for="UsuNyA" class="form-label">Nombre y apellido</label>
-        <input asp-for="UsuNyA" class="form-control" />
-        <span asp-validation-for="UsuNyA" class="text-danger"></span>
+            <div class="mb-3">
+                <label asp-for="UsuNyA" class="form-label">Nombre y apellido</label>
+                <input asp-for="UsuNyA" class="form-control" />
+                <span asp-validation-for="UsuNyA" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="UsuNomUsu" class="form-label">Nombre de usuario</label>
+                <input asp-for="UsuNomUsu" class="form-control" />
+                <span asp-validation-for="UsuNomUsu" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="UsuEmail" class="form-label">Correo electrónico</label>
+                <input asp-for="UsuEmail" class="form-control" />
+                <span asp-validation-for="UsuEmail" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="UsuNumTel" class="form-label">Teléfono</label>
+                <input asp-for="UsuNumTel" class="form-control" />
+                <span asp-validation-for="UsuNumTel" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="ConDNI" class="form-label">DNI</label>
+                <input asp-for="ConDNI" class="form-control" maxlength="8" pattern="[0-9]{8}" placeholder="12345678" />
+                <span asp-validation-for="ConDNI" class="text-danger"></span>
+                <small class="form-text text-muted">Debe contener exactamente 8 dígitos numéricos. Puede dejarse vacío si no se posee.</small>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <a asp-action="DetailsConductor" asp-route-id="@Model.UsuNU" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
     </div>
+</div>
 
-    <div class="mb-3">
-        <label asp-for="UsuEmail" class="form-label">Correo electrónico</label>
-        <input asp-for="UsuEmail" class="form-control" />
-        <span asp-validation-for="UsuEmail" class="text-danger"></span>
-    </div>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
 
-    <div class="mb-3">
-        <label asp-for="UsuPswd" class="form-label">Contraseña</label>
-        <input asp-for="UsuPswd" type="password" class="form-control" />
-        <span asp-validation-for="UsuPswd" class="text-danger"></span>
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="UsuNumTel" class="form-label">Teléfono</label>
-        <input asp-for="UsuNumTel" class="form-control" />
-        <span asp-validation-for="UsuNumTel" class="text-danger"></span>
-    </div>
-
-    <div class="d-flex gap-2">
-        <button class="btn btn-primary" type="submit">Guardar</button>
-    </div>
-</form>
-
-@section Scripts { <partial name="_ValidationScriptsPartial" /> }

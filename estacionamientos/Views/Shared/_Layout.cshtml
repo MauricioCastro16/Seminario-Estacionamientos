@@ -228,7 +228,7 @@
                     <i class="bi bi-key me-2"></i>
                     <span>Cambiar contraseña</span>
                 </a>
-                <button class="btn-logout" onclick="document.getElementById('logoutForm').submit();">
+                <button class="btn-logout" id="sidebarLogoutBtn">
                     <i class="bi bi-box-arrow-right me-2"></i>
                     <span>Cerrar sesión</span>
                 </button>
@@ -556,15 +556,59 @@
                 }
             });
 
+            // Función para limpiar todos los datos locales antes de logout
+            function limpiarDatosLocales() {
+                // Limpiar localStorage
+                try {
+                    localStorage.clear();
+                } catch (e) {
+                    console.warn('Error al limpiar localStorage:', e);
+                }
+                
+                // Limpiar sessionStorage
+                try {
+                    sessionStorage.clear();
+                } catch (e) {
+                    console.warn('Error al limpiar sessionStorage:', e);
+                }
+                
+                // Limpiar todas las cookies (además de las que se limpian en el servidor)
+                document.cookie.split(";").forEach(function(c) {
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                });
+            }
+
             // Handle logout button click
             const logoutLink = document.getElementById('logoutLink');
             if (logoutLink) {
                 logoutLink.addEventListener('click', function(e) {
                     e.preventDefault();
+                    limpiarDatosLocales();
                     const logoutForm = document.getElementById('logoutForm');
                     if (logoutForm) {
                         logoutForm.submit();
                     }
+                });
+            }
+
+            // Handle logout button click from sidebar
+            const sidebarLogoutBtn = document.querySelector('.btn-logout');
+            if (sidebarLogoutBtn) {
+                sidebarLogoutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    limpiarDatosLocales();
+                    const logoutForm = document.getElementById('logoutForm');
+                    if (logoutForm) {
+                        logoutForm.submit();
+                    }
+                });
+            }
+
+            // Limpiar datos locales cuando se envía el formulario de logout
+            const logoutForm = document.getElementById('logoutForm');
+            if (logoutForm) {
+                logoutForm.addEventListener('submit', function(e) {
+                    limpiarDatosLocales();
                 });
             }
 
