@@ -305,9 +305,9 @@ namespace estacionamientos.Controllers
                     // Obtener todas las ocupaciones de este vehículo con información relacionada
                     var ocupaciones = await _context.Ocupaciones
                         .Include(o => o.Plaza)
-                            .ThenInclude(p => p.Playa)
+                            .ThenInclude(p => p!.Playa)
                         .Include(o => o.Pago)
-                            .ThenInclude(p => p.MetodoPago)
+                            .ThenInclude(p => p!.MetodoPago)
                         .Where(o => o.VehPtnt == vehiculo.VehPtnt)
                         .OrderByDescending(o => o.OcufFyhIni)
                         .ToListAsync();
@@ -315,11 +315,11 @@ namespace estacionamientos.Controllers
                     // Obtener servicios extra realizados de este vehículo
                     var serviciosExtras = await _context.ServiciosExtrasRealizados
                         .Include(s => s.ServicioProveido)
-                            .ThenInclude(sp => sp.Servicio)
+                            .ThenInclude(sp => sp!.Servicio)
                         .Include(s => s.ServicioProveido)
-                            .ThenInclude(sp => sp.Playa)
+                            .ThenInclude(sp => sp!.Playa)
                         .Include(s => s.Pago)
-                            .ThenInclude(p => p.MetodoPago)
+                            .ThenInclude(p => p!.MetodoPago)
                         .Where(s => s.VehPtnt == vehiculo.VehPtnt)
                         .ToListAsync();
 
@@ -373,7 +373,7 @@ namespace estacionamientos.Controllers
                         // Calcular monto total (ocupación + servicios extra pagados del mismo pago)
                         var montoServicios = serviciosMismoPago
                             .Where(s => s.Pago != null)
-                            .Sum(s => s.Pago.PagMonto);
+                            .Sum(s => s.Pago!.PagMonto);
                         var montoTotal = (o.Pago?.PagMonto ?? 0) + montoServicios;
 
                         // Determinar si hay servicios en curso
@@ -1940,7 +1940,7 @@ namespace estacionamientos.Controllers
                 Console.WriteLine($"=== JSON FINAL QUE SE ENVÍA ===");
                 Console.WriteLine($"horariosLunesViernes.Count: {horariosLV.Count}");
                 Console.WriteLine($"horariosFinSemana.Count: {horariosFS.Count}");
-                Console.WriteLine($"horarios.Count: {horariosDto.Count}");
+                Console.WriteLine($"horarios.Count: {horariosDto?.Count ?? 0}");
                 
                 if (horariosLV.Count > 0)
                 {
@@ -1973,19 +1973,22 @@ namespace estacionamientos.Controllers
                 // Log para debug
                 Console.WriteLine($"=== RESUMEN FINAL ===");
                 Console.WriteLine($"PlayID: {playa.PlyID}");
-                Console.WriteLine($"Total horarios DTO: {horariosDto.Count}");
+                Console.WriteLine($"Total horarios DTO: {horariosDto?.Count ?? 0}");
                 Console.WriteLine($"Horarios L-V: {horariosLV.Count}");
                 Console.WriteLine($"Horarios F-S: {horariosFS.Count}");
                 Console.WriteLine($"Esta abierto: {estaAbierto}");
                 
-                System.Diagnostics.Debug.WriteLine($"GetDetallePlaya - PlayID: {playa.PlyID}, Total horarios: {horariosDto.Count}, L-V: {horariosLV.Count}, F-S: {horariosFS.Count}, Abierto: {estaAbierto}");
+                System.Diagnostics.Debug.WriteLine($"GetDetallePlaya - PlayID: {playa.PlyID}, Total horarios: {horariosDto?.Count ?? 0}, L-V: {horariosLV.Count}, F-S: {horariosFS.Count}, Abierto: {estaAbierto}");
                 
                 // Log detallado de horarios
                 Console.WriteLine("  Horarios DTO:");
-                foreach (var h in horariosDto)
+                if (horariosDto != null)
                 {
-                    Console.WriteLine($"    - TipoDia='{h.TipoDia}', Inicio='{h.HoraInicio}', Fin='{h.HoraFin}'");
-                    System.Diagnostics.Debug.WriteLine($"  Horario: TipoDia='{h.TipoDia}', Inicio='{h.HoraInicio}', Fin='{h.HoraFin}'");
+                    foreach (var h in horariosDto)
+                    {
+                        Console.WriteLine($"    - TipoDia='{h.TipoDia}', Inicio='{h.HoraInicio}', Fin='{h.HoraFin}'");
+                        System.Diagnostics.Debug.WriteLine($"  Horario: TipoDia='{h.TipoDia}', Inicio='{h.HoraInicio}', Fin='{h.HoraFin}'");
+                    }
                 }
                 
                 Console.WriteLine("  Horarios L-V agrupados:");

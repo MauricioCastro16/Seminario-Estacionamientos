@@ -258,6 +258,8 @@ namespace estacionamientos.Controllers
 
 
 
+            var fechaHastaValue = Request.Query["FechaHasta"].FirstOrDefault();
+
             var vm = new TarifasIndexVM
             {
                 Tarifas = lista,
@@ -269,7 +271,8 @@ namespace estacionamientos.Controllers
                 Montos = Montos ?? new(),
                 FechasDesde = FechasDesde ?? new(),
                 FechasHasta = FechasHasta ?? new(),
-                SelectedOption = selectedOption
+                SelectedOption = selectedOption,
+                FechaHasta = fechaHastaValue
             };
             // Pasamos el plyID a la vista para usarlo en el botón "Nueva Tarifa"
             ViewBag.PlyID = plyID;

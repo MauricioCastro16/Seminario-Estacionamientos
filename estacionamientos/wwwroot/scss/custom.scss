@@ -8,3 +8,8 @@ $theme-colors: map-merge($theme-colors, $colors);
 // Importa Bootstrap completo con la nueva configuración
 @import "node_modules/bootstrap/scss/bootstrap";
 
+// Color personalizado para el icono de cono
+.bi-cone-striped.text-warning {
+    color: #ff9b06 !important;
+}
+

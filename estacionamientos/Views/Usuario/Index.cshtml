@@ -10,38 +10,9 @@
 <h1>Usuarios</h1>
 
 <div class="mb-3">
-    <div class="dropdown d-inline-block">
-        <button class="btn btn-primary dropdown-toggle" type="button" id="agregarMenu"
-                data-bs-toggle="dropdown" aria-expanded="false">
-            Agregar usuario
-        </button>
-        <ul class="dropdown-menu" aria-labelledby="agregarMenu">
-            <li>
-                <a class="dropdown-item"
-                   asp-controller="Usuario" asp-action="CreateDuenio">
-                    Dueño
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item"
-                   asp-controller="Usuario" asp-action="CreateConductor">
-                    Conductor
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item"
-                   asp-controller="Usuario" asp-action="CreateAdministrador">
-                    Administrador
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item"
-                   asp-controller="Usuario" asp-action="CreatePlayero">
-                    Playero
-                </a>
-            </li>
-        </ul>
-    </div>
+    <a class="btn btn-primary" asp-controller="Usuario" asp-action="CreateDuenio">
+        Agregar dueño
+    </a>
 </div>
 
 @if (!Model.Duenios.Any() && 
@@ -101,7 +72,7 @@
                         <th class="text-center">Correo electrónico</th>
                         <th class="text-center">Nombre de usuario</th>
                         <th class="text-center">Teléfono</th>
-                        <th class="text-center">Acciones</th>
+                        <th class="text-center">DNI</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -113,22 +84,7 @@
                         <td>@c.UsuEmail</td>
                         <td>@c.UsuNomUsu</td>
                         <td>@c.UsuNumTel</td>
-                        <td>
-                            <a asp-controller="Usuario" asp-action="EditConductor" asp-route-id="@c.UsuNU" 
-                            class="btn btn-sm btn-outline-secondary me-1" title="Editar">
-                            <i class="fa-regular fa-pen-to-square"></i>
-                            </a>
-
-                            <a asp-controller="Usuario" asp-action="DetailsConductor" asp-route-id="@c.UsuNU" 
-                            class="btn btn-sm btn-outline-primary me-1" title="Detalles">
-                            <i class="fa-solid fa-eye"></i>
-                            </a>
-
-                            <a asp-controller="Usuario" asp-action="DeleteConductor" asp-route-id="@c.UsuNU" 
-                            class="btn btn-sm btn-outline-secondary" title="Eliminar">
-                            <i class="fa-regular fa-trash-can"></i>
-                            </a>
-                        </td>
+                        <td>@(c.ConDNI ?? "No especificado")</td>
                     </tr>
                 }
                 </tbody>
@@ -150,7 +106,6 @@
                         <th class="text-center">Correo electrónico</th>
                         <th class="text-center">Nombre de usuario</th>
                         <th class="text-center">Teléfono</th>
-                        <th class="text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -162,22 +117,6 @@
                         <td>@a.UsuEmail</td>
                         <td>@a.UsuNomUsu</td>
                         <td>@a.UsuNumTel</td>
-                        <td>
-                            <a asp-controller="Usuario" asp-action="EditAdministrador" asp-route-id="@a.UsuNU" 
-                            class="btn btn-sm btn-outline-secondary me-1" title="Editar">
-                            <i class="fa-regular fa-pen-to-square"></i>
-                            </a>
-
-                            <a asp-controller="Usuario" asp-action="DetailsAdministrador" asp-route-id="@a.UsuNU" 
-                            class="btn btn-sm btn-outline-primary me-1" title="Detalles">
-                            <i class="fa-solid fa-eye"></i>
-                            </a>
-
-                            <a asp-controller="Usuario" asp-action="DeleteAdministrador" asp-route-id="@a.UsuNU" 
-                            class="btn btn-sm btn-outline-secondary" title="Eliminar">
-                                    <i class="fa-regular fa-trash-can"></i>
-                            </a>
-                        </td>
                     </tr>
                 }
                 </tbody>
@@ -199,7 +138,6 @@
                         <th class="text-center">Correo electrónico</th>
                         <th class="text-center">Nombre de usuario</th>
                         <th class="text-center">Teléfono</th>
-                        <th class="text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -211,22 +149,6 @@
                             <td>@p.UsuEmail</td>
                             <td>@p.UsuNomUsu</td>
                             <td>@p.UsuNumTel</td>
-                            <td>
-                                <a asp-controller="Usuario" asp-action="EditPlayero" asp-route-id="@p.UsuNU" 
-                                class="btn btn-sm btn-outline-secondary me-1" title="Editar">
-                                        <i class="fa-regular fa-pen-to-square"></i>
-                                </a>
-
-                                <a asp-controller="Usuario" asp-action="DetailsPlayero" asp-route-id="@p.UsuNU" 
-                                class="btn btn-sm btn-outline-primary me-1" title="Detalles">
-                                <i class="fa-solid fa-eye"></i>
-                                </a>
-
-                                <a asp-controller="Usuario" asp-action="DeletePlayero" asp-route-id="@p.UsuNU" 
-                                class="btn btn-sm btn-outline-secondary" title="Eliminar">
-                                        <i class="fa-regular fa-trash-can"></i>
-                                </a>
-                            </td>
                         </tr>
                     }
                 </tbody>
@@ -315,14 +237,14 @@
                 // Duenios: La última columna (CUIT) SÍ es ordenable (true)
                 initIfExists('#dueniosTable', true); 
                 
-                // Conductores: La última columna (Acciones) NO es ordenable (false)
-                initIfExists('#conductoresTable', false); 
+                // Conductores: La última columna (DNI) SÍ es ordenable (true)
+                initIfExists('#conductoresTable', true); 
                 
-                // Administradores: La última columna (Acciones) NO es ordenable (false)
-                initIfExists('#administradoresTable', false);
+                // Administradores: La última columna (Teléfono) SÍ es ordenable (true)
+                initIfExists('#administradoresTable', true);
                 
-                // Playeros: La última columna (Acciones) NO es ordenable (false)
-                initIfExists('#playerosTable', false);
+                // Playeros: La última columna (Teléfono) SÍ es ordenable (true)
+                initIfExists('#playerosTable', true);
             });
         })();
     </script>
