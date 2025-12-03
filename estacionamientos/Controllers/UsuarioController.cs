@@ -134,10 +134,31 @@ namespace estacionamientos.Controllers
                 return View(vm);
             }
 
+            // Validación de unicidad de nombre de usuario
+            var nombreUsuarioEnUso = await _context.Usuarios
+                .AsNoTracking()
+                .AnyAsync(u => u.UsuNomUsu == vm.UsuNomUsu);
+            if (nombreUsuarioEnUso)
+            {
+                ModelState.AddModelError(nameof(vm.UsuNomUsu), "El nombre de usuario ya está en uso.");
+                return View(vm);
+            }
+
+            // Calcular el siguiente UsuNU disponible dinámicamente
+            int nextUsuNu = Math.Max(9, (await _context.Usuarios.AnyAsync() ? await _context.Usuarios.MaxAsync(u => u.UsuNU) : 0) + 1);
+
+            // Verificar que no haya colisión con el valor de UsuNU
+            while (await _context.Usuarios.AnyAsync(u => u.UsuNU == nextUsuNu))
+            {
+                nextUsuNu++;
+            }
+
             // Mapear VM -> entidad derivada (Duenio : Usuario)
             var duenio = new Duenio
             {
+                UsuNU = nextUsuNu,
                 UsuNyA = vm.UsuNyA,
+                UsuNomUsu = vm.UsuNomUsu,
                 UsuEmail = vm.UsuEmail,
                 // 🔐 Contraseña hasheada con BCrypt
                 UsuPswd = BCrypt.Net.BCrypt.HashPassword(vm.UsuPswd),
@@ -231,10 +252,31 @@ namespace estacionamientos.Controllers
                 return View(vm);
             }
 
+            // Validación de unicidad de nombre de usuario
+            var nombreUsuarioUsado = await _context.Usuarios
+                .AsNoTracking()
+                .AnyAsync(u => u.UsuNomUsu == vm.UsuNomUsu);
+            if (nombreUsuarioUsado)
+            {
+                ModelState.AddModelError(nameof(vm.UsuNomUsu), "El nombre de usuario ya está en uso.");
+                return View(vm);
+            }
+
+            // Calcular el siguiente UsuNU disponible dinámicamente
+            int nextUsuNu = Math.Max(9, (await _context.Usuarios.AnyAsync() ? await _context.Usuarios.MaxAsync(u => u.UsuNU) : 0) + 1);
+
+            // Verificar que no haya colisión con el valor de UsuNU
+            while (await _context.Usuarios.AnyAsync(u => u.UsuNU == nextUsuNu))
+            {
+                nextUsuNu++;
+            }
+
             // Map VM -> entidad derivada (Conductor : Usuario)
             var entity = new Conductor
             {
+                UsuNU = nextUsuNu,
                 UsuNyA = vm.UsuNyA,
+                UsuNomUsu = vm.UsuNomUsu,
                 UsuEmail = vm.UsuEmail,
                 UsuPswd = BCrypt.Net.BCrypt.HashPassword(vm.UsuPswd), // 🔐 Contraseña hasheada
                 UsuNumTel = vm.UsuNumTel
@@ -322,9 +364,30 @@ namespace estacionamientos.Controllers
                 return View(vm);
             }
 
+            // Validación de unicidad de nombre de usuario
+            var nombreUsuarioUsado = await _context.Usuarios
+                .AsNoTracking()
+                .AnyAsync(u => u.UsuNomUsu == vm.UsuNomUsu);
+            if (nombreUsuarioUsado)
+            {
+                ModelState.AddModelError(nameof(vm.UsuNomUsu), "El nombre de usuario ya está en uso.");
+                return View(vm);
+            }
+
+            // Calcular el siguiente UsuNU disponible dinámicamente
+            int nextUsuNu = Math.Max(9, (await _context.Usuarios.AnyAsync() ? await _context.Usuarios.MaxAsync(u => u.UsuNU) : 0) + 1);
+
+            // Verificar que no haya colisión con el valor de UsuNU
+            while (await _context.Usuarios.AnyAsync(u => u.UsuNU == nextUsuNu))
+            {
+                nextUsuNu++;
+            }
+
             var entity = new Administrador
             {
+                UsuNU = nextUsuNu,
                 UsuNyA = vm.UsuNyA,
+                UsuNomUsu = vm.UsuNomUsu,
                 UsuEmail = vm.UsuEmail,
                 UsuPswd = BCrypt.Net.BCrypt.HashPassword(vm.UsuPswd), // 🔐 Contraseña hasheada
                 UsuNumTel = vm.UsuNumTel

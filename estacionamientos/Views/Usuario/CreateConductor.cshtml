@@ -29,6 +29,12 @@
       </div>
 
       <div class="mb-3">
+        <label asp-for="UsuNomUsu" class="form-label">Nombre de usuario <span class="text-danger">*</span></label>
+        <input asp-for="UsuNomUsu" class="form-control" required />
+        <span asp-validation-for="UsuNomUsu" class="text-danger"></span>
+      </div>
+
+      <div class="mb-3">
         <label asp-for="UsuEmail" class="form-label">Correo electrónico</label>
         <input asp-for="UsuEmail" class="form-control" />
         <span asp-validation-for="UsuEmail" class="text-danger"></span>
