@@ -52,6 +52,13 @@
         <span asp-validation-for="UsuNumTel" class="text-danger"></span>
       </div>
 
+      <div class="mb-3">
+        <label asp-for="ConDNI" class="form-label">DNI <span class="text-danger">*</span></label>
+        <input asp-for="ConDNI" class="form-control" maxlength="8" pattern="[0-9]{8}" placeholder="12345678" required />
+        <span asp-validation-for="ConDNI" class="text-danger"></span>
+        <small class="form-text text-muted">Debe contener exactamente 8 dígitos numéricos.</small>
+      </div>
+
       <div class="d-flex gap-2">
         <button type="submit" class="btn btn-primary">Crear</button>
       </div>

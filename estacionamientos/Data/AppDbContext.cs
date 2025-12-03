@@ -198,6 +198,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             {
                 entity.ToTable("Conductor");   // PK/FK a Usuario.UsuNU (automático por TPT)
                 entity.HasBaseType<Usuario>();
+                
+                entity.Property(c => c.ConDNI)
+                    .HasColumnName("ConDNI")
+                    .HasMaxLength(8);
             });
         modelBuilder.Entity<Playero>(entity =>
             {

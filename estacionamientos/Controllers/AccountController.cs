@@ -198,7 +198,8 @@ namespace estacionamientos.Controllers
                 UsuNomUsu = model.UsuNomUsu,
                 UsuEmail = model.UsuEmail,
                 UsuPswd = BCrypt.Net.BCrypt.HashPassword(model.UsuPswd), // 🔐 Contraseña hasheada
-                UsuNumTel = model.UsuNumTel
+                UsuNumTel = model.UsuNumTel,
+                ConDNI = model.ConDNI
             };
 
             _ctx.Conductores.Add(conductor);

@@ -20,5 +20,11 @@ namespace estacionamientos.Models.ViewModels
 
         [StringLength(30), Phone]
         public string? UsuNumTel { get; set; }
+
+        [Required(ErrorMessage = "* El DNI es obligatorio.")]
+        [StringLength(8, MinimumLength = 8, ErrorMessage = "* El DNI debe tener exactamente 8 dígitos.")]
+        [RegularExpression(@"^\d{8}$", ErrorMessage = "* El DNI debe contener solo números y tener 8 dígitos.")]
+        [Display(Name = "DNI")]
+        public string ConDNI { get; set; } = string.Empty;
     }
 }

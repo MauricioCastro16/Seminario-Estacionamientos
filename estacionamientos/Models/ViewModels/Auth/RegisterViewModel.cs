@@ -37,6 +37,12 @@ namespace estacionamientos.Models.ViewModels.Auth
         [Display(Name = "Número de Teléfono (Opcional)")]
         public string? UsuNumTel { get; set; }
 
+        [Required(ErrorMessage = "* El DNI es obligatorio.")]
+        [StringLength(8, MinimumLength = 8, ErrorMessage = "* El DNI debe tener exactamente 8 dígitos.")]
+        [RegularExpression(@"^\d{8}$", ErrorMessage = "* El DNI debe contener solo números y tener 8 dígitos.")]
+        [Display(Name = "DNI")]
+        public string ConDNI { get; set; } = string.Empty;
+
         [Display(Name = "Acepto los términos y condiciones")]
         [MustBeTrue(ErrorMessage = "* Debe aceptar los términos y condiciones.")]
         public bool AcceptTerms { get; set; }
