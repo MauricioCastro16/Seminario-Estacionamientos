@@ -618,7 +618,17 @@
             }, 500); // Esperar medio segundo para que todo esté inicializado
 
             // Enter en búsqueda
-            $('#searchInput').keypress(function(e){ if(e.which === 13) buscarDireccion(); });
+            $('#searchInput').on('input', function () {
+                const tieneTexto = $(this).val().trim().length > 0;
+                $('#btnBuscar').prop('disabled', !tieneTexto);
+            }).keypress(function(e){
+                if(e.which === 13){
+                    const valor = $(this).val().trim();
+                    if (valor.length > 0) {
+                        buscarDireccion();
+                    }
+                }
+            });
 
             // Enter en búsqueda de ubicación favorita
             $('#inputDireccionUbicacion').keypress(function(e){ if(e.which === 13) buscarDireccionParaUbicacion(); });
@@ -642,40 +652,21 @@
             const panel = document.getElementById('favoritesPanel');
             const icon  = document.getElementById('favoritesToggleIcon');
             
-            // En mobile, ocultar completamente el panel (incluyendo el header)
-            if (window.innerWidth <= 768) {
-                if (panel.classList.contains('show') || panel.classList.contains('collapsed')) {
-                    // Ocultar completamente
-                    panel.classList.remove('show');
-                    panel.classList.remove('collapsed');
-                    if (icon) { 
-                        icon.classList.remove('fa-chevron-up'); 
-                        icon.classList.add('fa-chevron-down'); 
-                    }
-                } else {
-                    // Mostrar expandido
-                    panel.classList.add('show');
-                    panel.classList.remove('collapsed');
-                    if (icon) { 
-                        icon.classList.remove('fa-chevron-down'); 
-                        icon.classList.add('fa-chevron-up'); 
-                    }
+            // Alternar mostrar/ocultar completamente el panel de favoritos (mismo comportamiento en desktop y mobile)
+            if (panel.classList.contains('show')) {
+                panel.classList.remove('show');
+                panel.classList.remove('collapsed');
+                if (icon) { 
+                    icon.classList.remove('fa-chevron-up'); 
+                    icon = icon; // mantener chevron hacia abajo por defecto
+                    icon.classList.add('fa-chevron-down'); 
                 }
             } else {
-                // En desktop, mostrar/ocultar la sidebar
-                if (panel.classList.contains('show')) {
-                    panel.classList.remove('show');
-                    if (icon) { 
-                        icon.classList.remove('fa-chevron-up'); 
-                        icon.classList.add('fa-chevron-down'); 
-                    }
-                } else {
-                    panel.classList.add('show');
-                    panel.classList.remove('collapsed');
-                    if (icon) { 
-                        icon.classList.remove('fa-chevron-up'); 
-                        icon.classList.add('fa-chevron-down'); 
-                    }
+                panel.classList.add('show');
+                panel.classList.remove('collapsed');
+                if (icon) { 
+                    icon.classList.remove('fa-chevron-down'); 
+                    icon.classList.add('fa-chevron-up'); 
                 }
             }
         }
@@ -2278,7 +2269,14 @@
 
         function buscarDireccion(){
             const direccion = $('#searchInput').val().trim();
-            if (!direccion) return alert('Por favor ingresa una dirección');
+            if (!direccion) {
+                // Mostrar un mensaje amable en pantalla en lugar de alert de navegador
+                $('#filterText').text('Por favor escribí una dirección para buscar.');
+                $('#filterBadge').fadeIn(200);
+                // Ocultar el mensaje después de unos segundos
+                setTimeout(() => $('#filterBadge').fadeOut(300), 3000);
+                return;
+            }
             const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion + ', Resistencia, Chaco')}&limit=1`;
             $('#loading').show();
             $.get(url)

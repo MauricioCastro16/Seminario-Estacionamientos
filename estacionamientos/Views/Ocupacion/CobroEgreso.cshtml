@@ -99,32 +99,11 @@
                         <tbody>
                             <tr>
                                 <th class="w-40">Ingreso:</th>
-                                <!-- Mostrar ambas variantes por compatibilidad: ToCba (si existe helper) y ToLocalTime como fallback -->
-                                <td>
-                                    @if (Model.OcufFyhIni != DateTime.MinValue)
-                                    {
-                                        @(
-                                            typeof(estacionamientos.Views.Shared.DisplayHelpers)
-                                                .GetMethod("ToCba") != null 
-                                                ? estacionamientos.Views.Shared.DisplayHelpers.ToCba(Model.OcufFyhIni).ToString("dd/MM/yyyy HH:mm")
-                                                : Model.OcufFyhIni.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
-                                         )
-                                    }
-                                </td>
+                                <td>@ToCba(Model.OcufFyhIni).ToString("dd/MM/yyyy HH:mm")</td>
                             </tr>
                             <tr>
                                 <th>Egreso:</th>
-                                <td>
-                                    @if (Model.OcufFyhFin.HasValue)
-                                    {
-                                        @(
-                                            typeof(estacionamientos.Views.Shared.DisplayHelpers)
-                                                .GetMethod("ToCba") != null 
-                                                ? estacionamientos.Views.Shared.DisplayHelpers.ToCba(Model.OcufFyhFin.Value).ToString("dd/MM/yyyy HH:mm")
-                                                : Model.OcufFyhFin.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
-                                         )
-                                    }
-                                </td>
+                                <td>@ToCba(Model.OcufFyhFin).ToString("dd/MM/yyyy HH:mm")</td>
                             </tr>
                             <tr>
                                 <th>Duración:</th>

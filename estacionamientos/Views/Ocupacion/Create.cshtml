@@ -281,7 +281,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         try {
-            const resp = await fetch(`/VehiculoAbonado/VerificarPatente?patente=${encodeURIComponent(patente)}`);
+            const plyID = document.querySelector("input[name='PlyID']").value;
+            const resp = await fetch(`/VehiculoAbonado/VerificarPatente?patente=${encodeURIComponent(patente)}&plyID=${encodeURIComponent(plyID)}`);
             const data = await resp.json();
 
             if (data.success) {

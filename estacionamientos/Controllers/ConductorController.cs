@@ -27,6 +27,16 @@ namespace estacionamientos.Controllers
         private readonly AppDbContext _context;
         public ConductorController(AppDbContext context) => _context = context;
 
+        // DTO sencillo para notificar al conductor sobre sus abonos
+        public class AbonoResumenDTO
+        {
+            public bool TieneAbonosActivos { get; set; }
+            public int CantidadAbonosActivos { get; set; }
+            public int CantidadAbonosPorVencer { get; set; }
+            public int CantidadAbonosPendientesPago { get; set; }
+            public string MensajeResumen { get; set; } = string.Empty;
+        }
+
         // Método auxiliar para procesar un horario y convertirlo a DTO
         // IMPORTANTE: Los horarios se guardan usando BuildDate que agrega un TimeSpan a una fecha base UTC (2000-01-01)
         // Usar la MISMA lógica que HorarioController.ReadTime: date.TimeOfDay
@@ -2285,6 +2295,87 @@ namespace estacionamientos.Controllers
             catch (Exception ex)
             {
                 return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        // ==== Notificaciones de abonos para el conductor ====
+        // Devuelve un pequeño resumen para mostrar en la UI (badge y mensaje)
+        [HttpGet]
+        public async Task<IActionResult> GetAbonosResumen()
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrWhiteSpace(userId) || !int.TryParse(userId, out var conNu))
+                {
+                    return Json(new AbonoResumenDTO { TieneAbonosActivos = false, MensajeResumen = string.Empty });
+                }
+
+                var hoy = DateTime.UtcNow.Date;
+
+                // Obtener patentes de los vehículos que pertenecen al conductor (tabla Conduce)
+                var misPatentes = await _context.Conduces
+                    .Where(c => c.ConNU == conNu)
+                    .Select(c => c.VehPtnt.Trim().ToUpper())
+                    .ToListAsync();
+
+                if (!misPatentes.Any())
+                {
+                    return Json(new AbonoResumenDTO { TieneAbonosActivos = false, MensajeResumen = string.Empty });
+                }
+
+                // Abonos asociados a vehículos del conductor (por patente)
+                var abonos = await _context.Abonos
+                    .Include(a => a.Vehiculos)
+                    .Include(a => a.Periodos)
+                    .Include(a => a.Plaza).ThenInclude(p => p.Playa)
+                    .Where(a => a.EstadoPago != EstadoPago.Cancelado &&
+                                a.Vehiculos.Any(v => misPatentes.Contains(v.VehPtnt.ToUpper())))
+                    .ToListAsync();
+
+                if (!abonos.Any())
+                {
+                    return Json(new AbonoResumenDTO { TieneAbonosActivos = false, MensajeResumen = string.Empty });
+                }
+
+                // Periodos pendientes de pago (criterio riguroso):
+                // - No están pagados (PeriodoPagado == false)
+                // - Y ya terminaron (PeriodoFechaFin <= hoy)
+                var periodosPendientes = abonos
+                    .SelectMany(a => a.Periodos
+                        .Where(p => !p.PeriodoPagado && p.PeriodoFechaFin.Date <= hoy))
+                    .ToList();
+
+                // Contar cuántos abonos distintos tienen al menos un período pendiente
+                var abonosConPendientes = periodosPendientes
+                    .Select(p => new { p.PlyID, p.PlzNum, p.AboFyhIni })
+                    .Distinct()
+                    .ToList();
+
+                var dto = new AbonoResumenDTO
+                {
+                    // El puntito naranja SOLO debe aparecer si hay al menos un abono
+                    // que tenga períodos pendientes de pago.
+                    TieneAbonosActivos = abonosConPendientes.Any(),
+                    CantidadAbonosActivos = abonos.Count,
+                    CantidadAbonosPorVencer = 0,
+                    CantidadAbonosPendientesPago = abonosConPendientes.Count
+                };
+
+                if (dto.CantidadAbonosPendientesPago > 0)
+                {
+                    dto.MensajeResumen = $"Tenés {dto.CantidadAbonosPendientesPago} abono(s) con períodos sin pagar. Revisalos en la sección de Gestión.";
+                }
+
+                return Json(dto);
+            }
+            catch (Exception ex)
+            {
+                return Json(new AbonoResumenDTO
+                {
+                    TieneAbonosActivos = false,
+                    MensajeResumen = $"No se pudo cargar el estado de tus abonos. Detalle: {ex.Message}"
+                });
             }
         }
 

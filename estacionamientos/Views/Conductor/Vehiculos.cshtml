@@ -4,6 +4,7 @@
     ViewData["Title"] = "Mis Vehículos";
     var vehiculoFavorito = ViewBag.VehiculoFavorito as string;
     var conduces = ViewBag.Conduces as List<estacionamientos.Models.Conduce>;
+    var patentesDisponibles = Model?.Select(v => v.VehPtnt).ToList() ?? new List<string>();
 }
 
 <div class="container-fluid py-4">
@@ -427,6 +428,8 @@
 
 <script>
     let vehiculoActual = null;
+    // Patentes válidas para el conductor actual (se usa para validar lo que haya quedado en sessionStorage)
+    const patentesDisponibles = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(patentesDisponibles));
 
     function seleccionarVehiculo(patente) {
         fetch('/Conductor/SeleccionarVehiculo', {
@@ -746,15 +749,30 @@
 
         const vehiculoSeleccionado = sessionStorage.getItem('vehiculoSeleccionado');
         if (vehiculoSeleccionado) {
-            const vehiculo = JSON.parse(vehiculoSeleccionado);
-            mostrarDetalleVehiculo(vehiculo);
-            vehiculoActual = vehiculo;
-            return;
+            try {
+                const vehiculo = JSON.parse(vehiculoSeleccionado);
+                const patente = (vehiculo?.patente || '').toUpperCase();
+
+                // Si la patente NO está entre las patentes del conductor actual, limpiar el storage y no mostrar nada
+                if (!patente || !patentesDisponibles.some(p => p.toUpperCase() === patente)) {
+                    sessionStorage.removeItem('vehiculoSeleccionado');
+                } else {
+                    mostrarDetalleVehiculo(vehiculo);
+                    vehiculoActual = vehiculo;
+                    return;
+                }
+            } catch {
+                // Si hay algo corrupto en sessionStorage, lo limpiamos
+                sessionStorage.removeItem('vehiculoSeleccionado');
+            }
         }
         
         const vehiculoFavorito = '@vehiculoFavorito';
         if (vehiculoFavorito && vehiculoFavorito !== '') {
-            seleccionarVehiculo(vehiculoFavorito);
+            // Solo intentar seleccionar favorito si realmente pertenece al conductor (por seguridad)
+            if (patentesDisponibles.some(p => p.toUpperCase() === vehiculoFavorito.toUpperCase())) {
+                seleccionarVehiculo(vehiculoFavorito);
+            }
         }
 
     });

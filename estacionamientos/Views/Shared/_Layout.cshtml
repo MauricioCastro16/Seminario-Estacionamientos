@@ -170,10 +170,11 @@
                                 <span>Vehículos</span>
                             </a>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item position-relative">
                             <a class="nav-link" asp-controller="Conductor" asp-action="Gestion">
                                 <i class="bi bi-clock-history"></i>
                                 <span>Gestión</span>
+                                <span id="abonosAlertBadge" class="abonos-alert-badge d-none"></span>
                             </a>
                         </li>
                     }
@@ -319,9 +320,10 @@
                                     <i class="bi bi-car-front me-1"></i>Vehículos
                                 </a>
                             </li>
-                            <li class="nav-item">
+                            <li class="nav-item position-relative">
                                 <a class="nav-link" asp-controller="Conductor" asp-action="Gestion">
                                     <i class="bi bi-clock-history me-1"></i>Gestión
+                                    <span id="abonosAlertBadgeDesktop" class="abonos-alert-badge d-none"></span>
                                 </a>
                             </li>
                         }
@@ -592,5 +594,51 @@
 
     @await RenderSectionAsync("Scripts", required: false)
     @RenderSection("AceptaMetodoPagoScript", required: false)
+
+    @if (User.IsInRole("Conductor"))
+    {
+        <script>
+            // Cargar resumen de abonos para mostrar badge amarillo oscuro y mensaje en el menú de Gestión
+            (function () {
+                const badge = document.getElementById('abonosAlertBadge');
+                const badgeDesktop = document.getElementById('abonosAlertBadgeDesktop');
+                if (!badge && !badgeDesktop) return;
+
+                fetch('@Url.Action("GetAbonosResumen", "Conductor")')
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (data) {
+                        if (!data) return;
+                        // Solo mostrar si hay abonos pendientes de pago
+                        if (data.tieneAbonosActivos && data.cantidadAbonosPendientesPago > 0) {
+                            // Badge móvil
+                            if (badge) {
+                                badge.classList.remove('d-none');
+                                badge.setAttribute('title', 'Tiene abonos pendientes a pagar');
+                                // Inicializar tooltip de Bootstrap si está disponible
+                                if (typeof bootstrap !== 'undefined') {
+                                    new bootstrap.Tooltip(badge, {
+                                        placement: 'right',
+                                        title: 'Tiene abonos pendientes a pagar'
+                                    });
+                                }
+                            }
+                            // Badge escritorio
+                            if (badgeDesktop) {
+                                badgeDesktop.classList.remove('d-none');
+                                badgeDesktop.setAttribute('title', 'Tiene abonos pendientes a pagar');
+                                // Inicializar tooltip de Bootstrap si está disponible
+                                if (typeof bootstrap !== 'undefined') {
+                                    new bootstrap.Tooltip(badgeDesktop, {
+                                        placement: 'bottom',
+                                        title: 'Tiene abonos pendientes a pagar'
+                                    });
+                                }
+                            }
+                        }
+                    })
+                    .catch(function () { /* silencioso */ });
+            })();
+        </script>
+    }
 </body>
 </html>

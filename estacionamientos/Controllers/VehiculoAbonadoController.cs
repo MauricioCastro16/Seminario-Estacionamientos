@@ -42,19 +42,28 @@ namespace estacionamientos.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> VerificarPatente(string patente)
+        public async Task<IActionResult> VerificarPatente(string patente, int? plyID = null)
         {
             if (string.IsNullOrWhiteSpace(patente))
                 return Json(new { success = false });
 
             var normalized = patente.Trim().ToUpper();
 
-            var vehiculoAbonado = await _ctx.VehiculosAbonados
+            // Construir la consulta base
+            var query = _ctx.VehiculosAbonados
                 .Include(v => v.Abono)
                     .ThenInclude(a => a.Abonado)
                 .Include(v => v.Vehiculo)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(v => v.VehPtnt.ToUpper() == normalized);
+                .Where(v => v.VehPtnt.ToUpper() == normalized);
+
+            // Si se proporciona plyID, filtrar por playa para solo buscar abonos de esa playa
+            if (plyID.HasValue)
+            {
+                query = query.Where(v => v.PlyID == plyID.Value);
+            }
+
+            var vehiculoAbonado = await query.FirstOrDefaultAsync();
 
             if (vehiculoAbonado?.Abono == null || vehiculoAbonado.Abono.EstadoPago != EstadoPago.Activo)
                 return Json(new { success = false });

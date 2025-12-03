@@ -1409,14 +1409,15 @@ namespace estacionamientos.Controllers
                         }
                     }
 
-                    // 🔹 Usar la misma fecha de pago que se usó para el período
+                    // 🔹 Usar la fecha y hora actual como momento real del cobro
+                    // (el período sigue guardando su propia fecha conceptual en PeriodoFechaPago)
                     var pagoPeriodo = new Pago
                     {
                         PlyID = model.PlyID,
                         PagNum = nextPagNum,
                         MepID = model.MepID,
                         PagMonto = montoPorPeriodo,
-                        PagFyh = DateTime.SpecifyKind(fechaPagoUtc, DateTimeKind.Utc),
+                        PagFyh = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc),
                         PlaNU = plaNU
                     };
 
@@ -1908,11 +1909,14 @@ namespace estacionamientos.Controllers
                     }
                 }
                 
+                // 🔹 El pago debe registrar la FECHA/HORA REAL del cobro.
+                // Usamos DateTime.UtcNow para PagFyh, y mantenemos fechaPagoUtc solo como referencia
+                // para PeriodoFechaPago (fecha conceptual del período).
                 var pago = new Pago
                 {
                     PlyID = request.PlyID,
                     PagNum = nextPagNum,
-                    PagFyh = fechaPagoUtc,
+                    PagFyh = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc),
                     PagMonto = request.TotalPagar,
                     MepID = request.MetodoPago,
                     PlaNU = plaNU
@@ -1928,7 +1932,8 @@ namespace estacionamientos.Controllers
                     if (periodo != null)
                     {
                         periodo.PeriodoPagado = true;
-                        periodo.PeriodoFechaPago = DateTime.SpecifyKind(pago.PagFyh, DateTimeKind.Utc);
+                        // Guardar solo la fecha conceptual del pago usando fechaPagoUtc
+                        periodo.PeriodoFechaPago = fechaPagoUtc;
                         periodo.PeriodoFechaInicio = DateTime.SpecifyKind(periodo.PeriodoFechaInicio, DateTimeKind.Utc);
                         periodo.PeriodoFechaFin = DateTime.SpecifyKind(periodo.PeriodoFechaFin, DateTimeKind.Utc);
                         periodo.PagNum = pago.PagNum;

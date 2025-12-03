@@ -242,6 +242,14 @@ namespace estacionamientos.Controllers
                 // No tiene abono, cobrar todo el tiempo
                 minutosACobrar = (int)tiempoOcupacionTotal.TotalMinutes;
             }
+
+            // Si no es abonado y hubo al menos algunos segundos de ocupación,
+            // evitamos que quede en 0 minutos solo por redondeo hacia abajo.
+            // De esta forma, un vehículo NO abonado nunca tendrá "0 min" si realmente estuvo un tiempo estacionado.
+            if (!tieneAbono && minutosACobrar == 0 && tiempoOcupacionTotal.TotalSeconds > 0)
+            {
+                minutosACobrar = 1;
+            }
             
             var tiempoOcupacion = tiempoOcupacionTotal;
             var horasOcupacion = (int)tiempoOcupacion.TotalHours;
@@ -685,7 +693,9 @@ namespace estacionamientos.Controllers
                 ServiciosAplicables = serviciosAplicables,
                 TotalCobro = totalCobro,
                 MetodosPagoDisponibles = metodosPago,
-                EsAbonado = !debeCobrarEstacionamiento, // Si no se cobra estacionamiento, es porque es abonado
+                // Indica realmente si el vehículo pertenece a un abono activo
+                // (no depende de si se terminó cobrando o no por redondeos de tiempo).
+                EsAbonado = esAbonado,
                 TieneAbonoVencido = tieneAbonoVencido,
                 FechaFinAbono = fechaFinAbonoInfo.HasValue ? DateTime.SpecifyKind(fechaFinAbonoInfo.Value, DateTimeKind.Utc) : null,
                 FechaInicioCobroPorHora = fechaInicioCobroPorHora.HasValue ? DateTime.SpecifyKind(fechaInicioCobroPorHora.Value, DateTimeKind.Utc) : null,
@@ -1233,7 +1243,7 @@ namespace estacionamientos.Controllers
                 .OrderBy(x => x.piso).ThenBy(x => x.plzNum)
                 .ToListAsync();
 
-            // Verificar si el vehículo es abonado y a qué plaza pertenece
+            // Verificar si el vehículo es abonado y a qué plaza pertenece EN ESTA PLAYA
             int? plazaAbonoID = null;
             int? plazaAbonoNum = null;
             bool esAbonadoVehiculo = false;
@@ -1244,6 +1254,7 @@ namespace estacionamientos.Controllers
                     .Include(v => v.Abono)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(v => v.VehPtnt.ToUpper() == vehPtntNormalized
+                                              && v.PlyID == plyID  // Filtrar por playa actual
                                               && v.Abono.EstadoPago != EstadoPago.Cancelado
                                               && v.Abono.EstadoPago != EstadoPago.Finalizado
                                               && v.Abono.AboFyhIni.Date <= fechaActualDate
@@ -1459,21 +1470,25 @@ namespace estacionamientos.Controllers
 
             if (ocupacionActual != null)
             {
-                // Verificar si el vehículo que está ocupando la plaza pertenece a un abono activo
+                // Verificar si el vehículo que está ocupando la plaza pertenece a un abono activo EN ESTA PLAYA Y PLAZA
                 var vehiculoOcupante = ocupacionActual.VehPtnt;
                 var abonoOcupante = await _ctx.VehiculosAbonados
                     .Include(va => va.Abono)
                     .Where(va => va.VehPtnt == vehiculoOcupante &&
+                               va.PlyID == model.PlyID &&  // Filtrar por playa actual
+                               va.PlzNum == model.PlzNum!.Value &&  // Filtrar por plaza actual
                                va.Abono.EstadoPago != EstadoPago.Cancelado &&
                                va.Abono.EstadoPago != EstadoPago.Finalizado &&
                                (va.Abono.AboFyhFin == null || va.Abono.AboFyhFin >= DateTime.UtcNow))
                     .Select(va => new { va.PlyID, va.PlzNum, va.AboFyhIni })
                     .FirstOrDefaultAsync();
 
-                // Verificar si el vehículo que intenta ingresar pertenece a un abono activo
+                // Verificar si el vehículo que intenta ingresar pertenece a un abono activo EN ESTA PLAYA Y PLAZA
                 var abonoVehiculoIngreso = await _ctx.VehiculosAbonados
                     .Include(va => va.Abono)
                     .Where(va => va.VehPtnt == model.VehPtnt &&
+                               va.PlyID == model.PlyID &&  // Filtrar por playa actual
+                               va.PlzNum == model.PlzNum!.Value &&  // Filtrar por plaza actual
                                va.Abono.EstadoPago != EstadoPago.Cancelado &&
                                va.Abono.EstadoPago != EstadoPago.Finalizado &&
                                (va.Abono.AboFyhFin == null || va.Abono.AboFyhFin >= DateTime.UtcNow))
