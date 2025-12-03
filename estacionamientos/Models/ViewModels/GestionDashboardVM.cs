@@ -56,6 +56,7 @@ public class GestionServicioCatalogoVM
 {
     public string Servicio { get; set; } = string.Empty;
     public bool Habilitado { get; set; }
+    public Dictionary<int, bool> EstadoPorPlaya { get; set; } = new(); // PlyID -> Habilitado
 }
 
 public class GestionMovimientoResumenVM
@@ -97,6 +98,8 @@ public class GestionEnVivoVM
     public List<GestionServicioCatalogoVM> ServiciosDisponibles { get; set; } = new();
     public List<GestionMovimientoResumenVM> MovimientosUltimaHora { get; set; } = new();
     public List<GestionValoracionRecienteVM> ValoracionesRecientes { get; set; } = new();
+    public List<GestionSerieValorVM> OcupacionPorHora { get; set; } = new();
+    public List<GestionSerieValorVM> RotacionPorHora { get; set; } = new();
     public bool AlertaSinPlayeros => PlayerosActivos == 0;
 }
 
@@ -119,6 +122,7 @@ public class GestionHistoricoVM
     public List<GestionSerieValorVM> TopPatentes { get; set; } = new();
     public List<GestionSerieValorVM> PlayerosActivos { get; set; } = new();
     public List<GestionSerieValorVM> ServiciosExtraPorTipo { get; set; } = new();
+    public List<GestionValoracionRecienteVM> ValoracionesRecientes { get; set; } = new();
 }
 
 public class GestionDashboardVM

@@ -99,11 +99,21 @@
                         <tbody>
                             <tr>
                                 <th class="w-40">Ingreso:</th>
-                                <td>@ToCba(Model.OcufFyhIni).ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    @if (Model.OcufFyhIni != DateTime.MinValue)
+                                    {
+                                        @ToCba(Model.OcufFyhIni).ToString("dd/MM/yyyy HH:mm")
+                                    }
+                                </td>
                             </tr>
                             <tr>
                                 <th>Egreso:</th>
-                                <td>@ToCba(Model.OcufFyhFin).ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    @if (Model.OcufFyhFin != DateTime.MinValue)
+                                    {
+                                        @ToCba(Model.OcufFyhFin).ToString("dd/MM/yyyy HH:mm")
+                                    }
+                                </td>
                             </tr>
                             <tr>
                                 <th>Duración:</th>

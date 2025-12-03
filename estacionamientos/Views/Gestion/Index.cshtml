@@ -26,7 +26,7 @@
                     <input type="hidden" name="playasIds" value="@id" />
                 }
                 <button type="submit" class="btn @(esEnVivo ? "btn-primary" : "btn-outline-primary")">
-                    <i class="fa-solid fa-wave-square fa-beat-fade me-2"></i>En vivo
+                    <span class="live-indicator me-2"></span>En vivo
                 </button>
             </form>
             <form method="get" asp-controller="Gestion" asp-action="Index">
@@ -122,21 +122,15 @@
                 </div>
                 <div class="col-12 col-md-6 col-xl-3">
                     <div class="gestion-card shadow-sm">
-                        <div class="card-icon bg-primary-subtle text-primary"><i class="fas fa-screwdriver-wrench"></i></div>
-                        <div>
-                            <div class="card-label">Servicios extra</div>
-                            <div class="card-value">@Model.EnVivo.ServiciosDisponibles.Count</div>
-                            <div class="card-extra">@Model.EnVivo.ServiciosExtrasActivos habilitados</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-6 col-xl-3">
-                    <div class="gestion-card shadow-sm">
-                        <div class="card-icon bg-danger-subtle text-danger"><i class="fas fa-door-closed"></i></div>
+                        @{
+                            var estaAbierta = Model.EnVivo.EstadoOperativo == "Abierta";
+                            var iconoClase = estaAbierta ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger";
+                            var iconoFa = estaAbierta ? "fa-door-open" : "fa-door-closed";
+                        }
+                        <div class="card-icon @iconoClase"><i class="fas @iconoFa"></i></div>
                         <div>
                             <div class="card-label">Estado</div>
                             <div class="card-value">@Model.EnVivo.EstadoOperativo</div>
-                            <div class="card-extra">@Model.EnVivo.PlazasFueraServicio fuera</div>
                         </div>
                     </div>
                 </div>
@@ -146,15 +140,6 @@
                         <div>
                             <div class="card-label">Valoración promedio</div>
                             <div class="card-value">@Model.EnVivo.ValoracionPromedio.ToString("0.00")</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-6 col-xl-3">
-                    <div class="gestion-card shadow-sm">
-                        <div class="card-icon bg-primary-subtle text-primary"><i class="fas fa-id-card"></i></div>
-                        <div>
-                            <div class="card-label">Abonos activos</div>
-                            <div class="card-value">@Model.EnVivo.AbonosActivos</div>
                         </div>
                     </div>
                 </div>
@@ -180,7 +165,6 @@
                         <div>
                             <div class="card-label">Entradas (hoy)</div>
                             <div class="card-value">@Model.EnVivo.EntradasHoy</div>
-                            <div class="card-extra">@Model.EnVivo.RotacionesUltimaHora última hora</div>
                         </div>
                     </div>
                 </div>
@@ -200,6 +184,17 @@
                             <div class="card-label">Duración prom. activa</div>
                             <div class="card-value">@Model.EnVivo.DuracionPromedioActivaMin.ToString("0.0") min</div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-4">
+            <h5 class="section-title">Entradas y egresos por hora</h5>
+            <div class="row">
+                <div class="col-12">
+                    <div class="gestion-card shadow-sm">
+                        <canvas id="chartFlujoHora" style="max-height: 300px;"></canvas>
                     </div>
                 </div>
             </div>
@@ -254,14 +249,21 @@
                     <i class="fas fa-list me-2 text-primary"></i>Catálogo
                 </div>
                 <div class="card-body">
-                    @if (Model.EnVivo.ServiciosDisponibles.Any())
+                    @if (Model.EnVivo.ServiciosDisponibles.Any() && Model.PlayasSeleccionadas.Any())
                     {
+                        var playasSeleccionadasInfo = Model.PlayasDisponibles
+                            .Where(p => Model.PlayasSeleccionadas.Contains(p.PlyID))
+                            .OrderBy(p => p.PlayaNombre)
+                            .ToList();
                         <div class="table-responsive">
                             <table class="table table-sm align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Servicio</th>
-                                        <th>Estado</th>
+                                        @foreach (var playa in playasSeleccionadasInfo)
+                                        {
+                                            <th class="text-center">@playa.PlayaNombre</th>
+                                        }
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -269,7 +271,20 @@
                                     {
                                         <tr>
                                             <td>@item.Servicio</td>
-                                            <td>@(item.Habilitado ? "Habilitado" : "Suspendido")</td>
+                                            @foreach (var playa in playasSeleccionadasInfo)
+                                            {
+                                                var habilitado = item.EstadoPorPlaya.GetValueOrDefault(playa.PlyID, false);
+                                                <td class="text-center">
+                                                    @if (habilitado)
+                                                    {
+                                                        <span class="text-success" title="Habilitado">✓</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-danger" title="No habilitado">✗</span>
+                                                    }
+                                                </td>
+                                            }
                                         </tr>
                                     }
                                 </tbody>
@@ -285,30 +300,6 @@
         </section>
 
         <section class="mb-4">
-            <h5 class="section-title">Movimiento operativo (última hora)</h5>
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    @if (Model.EnVivo.MovimientosUltimaHora.Any())
-                    {
-                        <div class="d-flex flex-wrap gap-3">
-                            @foreach (var mov in Model.EnVivo.MovimientosUltimaHora)
-                            {
-                                <div class="badge bg-secondary-subtle text-secondary p-3">
-                                    <div class="small text-uppercase text-muted">@mov.Tipo</div>
-                                    <div class="fw-semibold fs-5">@mov.Conteo</div>
-                                </div>
-                            }
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="text-muted">Sin movimientos registrados en la última hora.</div>
-                    }
-                </div>
-            </div>
-        </section>
-
-        <section class="mb-4">
             <h5 class="section-title">Experiencia del cliente</h5>
             <div class="card shadow-sm">
                 <div class="card-body">
@@ -317,9 +308,7 @@
                         <div class="list-group list-group-flush">
                             @foreach (var val in Model.EnVivo.ValoracionesRecientes)
                             {
-                                var fechaTexto = val.FechaUtc.HasValue
-                                    ? val.FechaUtc.Value.ToLocalTime().ToString("dd/MM HH:mm")
-                                    : "Reciente";
+                                var fechaTexto = "Hoy";
                                 <div class="list-group-item">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <div class="flex-grow-1">
@@ -433,7 +422,6 @@
                         <div>
                             <div class="card-label">Egresos</div>
                             <div class="card-value">@Model.Historico.Egresos</div>
-                            <div class="card-extra">@Model.Historico.Reubicaciones reubicaciones</div>
                         </div>
                     </div>
                 </div>
@@ -443,7 +431,6 @@
                         <div>
                             <div class="card-label">Permanencia promedio</div>
                             <div class="card-value">@Model.Historico.PermanenciaPromedioMin.ToString("0.0") min</div>
-                            <div class="card-extra">@Model.Historico.VehiculosUnicos vehículos únicos</div>
                         </div>
                     </div>
                 </div>
@@ -460,26 +447,12 @@
         </section>
 
         <section class="mb-4">
-            <div class="row g-3">
-                <div class="col-12 col-lg-6">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header">
-                            <i class="fas fa-line-chart me-2 text-primary"></i>Ocupación diaria
-                        </div>
-                        <div class="card-body">
-                            <canvas id="chartOcupacionDiaria"></canvas>
-                        </div>
-                    </div>
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <i class="fas fa-chart-line me-2 text-primary"></i>Ocupación y Rotación diaria
                 </div>
-                <div class="col-12 col-lg-6">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header">
-                            <i class="fas fa-arrows-rotate me-2 text-info"></i>Rotación diaria
-                        </div>
-                        <div class="card-body">
-                            <canvas id="chartRotacionDiaria"></canvas>
-                        </div>
-                    </div>
+                <div class="card-body">
+                    <canvas id="chartOcupacionRotacion"></canvas>
                 </div>
             </div>
         </section>
@@ -559,13 +532,55 @@
         </section>
 
         <section class="mb-4">
+            <h5 class="section-title">Experiencia del cliente</h5>
             <div class="card shadow-sm">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="fas fa-thumbs-up me-2 text-success"></i>Calidad de servicio</span>
-                    <span class="badge bg-success-subtle text-success">Promedio: @Model.Historico.ValoracionPromedio.ToString("0.00")</span>
-                </div>
                 <div class="card-body">
-                    <div class="text-muted">Correlacioná este indicador con los picos operativos para detectar oportunidades de mejora.</div>
+                    @if (Model.Historico.ValoracionesRecientes.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var val in Model.Historico.ValoracionesRecientes)
+                            {
+                                var fechaTexto = val.FechaUtc.HasValue
+                                    ? val.FechaUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                    : Model.Historico.HastaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <div class="text-warning">
+                                                    @for (var i = 0; i < val.Estrellas; i++)
+                                                    {
+                                                        <i class="fas fa-star"></i>
+                                                    }
+                                                </div>
+                                                @if (val.Favorito)
+                                                {
+                                                    <span class="badge bg-warning text-dark">
+                                                        <i class="fas fa-star"></i> Favorito
+                                                    </span>
+                                                }
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(val.ConductorNombre))
+                                            {
+                                                <div class="fw-semibold text-primary mb-1">
+                                                    <i class="fas fa-user me-1"></i>@val.ConductorNombre
+                                                </div>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(val.Comentario))
+                                            {
+                                                <div class="text-muted small mb-2" style="white-space: pre-wrap;">@val.Comentario</div>
+                                            }
+                                        </div>
+                                        <div class="text-muted small ms-3">@fechaTexto</div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted">No hay reseñas en el período seleccionado.</div>
+                    }
                 </div>
             </div>
         </section>
@@ -600,52 +615,84 @@
                 return;
             }
 
-            const ocupacionCtx = document.getElementById('chartOcupacionDiaria');
-            const rotacionCtx = document.getElementById('chartRotacionDiaria');
+            const chartCtx = document.getElementById('chartOcupacionRotacion');
             const ocupacionLabels = @Html.Raw(JsonSerializer.Serialize(Model.Historico.OcupacionDiaria.Select(x => x.Label)));
             const ocupacionValores = @Html.Raw(JsonSerializer.Serialize(Model.Historico.OcupacionDiaria.Select(x => x.Value)));
             const rotacionLabels = @Html.Raw(JsonSerializer.Serialize(Model.Historico.RotacionDiaria.Select(x => x.Label)));
             const rotacionValores = @Html.Raw(JsonSerializer.Serialize(Model.Historico.RotacionDiaria.Select(x => x.Value)));
 
-            if (ocupacionCtx && ocupacionLabels.length) {
-                new Chart(ocupacionCtx, {
-                    type: 'line',
-                    data: {
-                        labels: ocupacionLabels,
-                        datasets: [{
-                            label: 'Entradas',
-                            data: ocupacionValores,
-                            borderColor: '#0d6efd',
-                            backgroundColor: 'rgba(13,110,253,0.12)',
-                            fill: true,
-                            tension: 0.3
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true } }
-                    }
-                });
-            }
+            if (chartCtx) {
+                // Crear un mapa de todas las fechas únicas
+                const allDates = new Set();
+                if (ocupacionLabels && ocupacionLabels.length > 0) {
+                    ocupacionLabels.forEach(date => allDates.add(date));
+                }
+                if (rotacionLabels && rotacionLabels.length > 0) {
+                    rotacionLabels.forEach(date => allDates.add(date));
+                }
+                const sortedDates = Array.from(allDates).sort();
 
-            if (rotacionCtx && rotacionLabels.length) {
-                new Chart(rotacionCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: rotacionLabels,
-                        datasets: [{
-                            label: 'Egresos',
-                            data: rotacionValores,
-                            backgroundColor: 'rgba(25,135,84,0.65)'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true } }
-                    }
-                });
+                // Crear mapas para acceso rápido
+                const ocupacionMap = new Map();
+                if (ocupacionLabels && ocupacionValores && ocupacionLabels.length === ocupacionValores.length) {
+                    ocupacionLabels.forEach((label, index) => {
+                        ocupacionMap.set(label, ocupacionValores[index] || 0);
+                    });
+                }
+                const rotacionMap = new Map();
+                if (rotacionLabels && rotacionValores && rotacionLabels.length === rotacionValores.length) {
+                    rotacionLabels.forEach((label, index) => {
+                        rotacionMap.set(label, rotacionValores[index] || 0);
+                    });
+                }
+
+                // Crear arrays de valores alineados con las fechas
+                const entradasValores = sortedDates.map(date => ocupacionMap.get(date) || 0);
+                const egresosValores = sortedDates.map(date => rotacionMap.get(date) || 0);
+
+                if (sortedDates.length > 0) {
+                    new Chart(chartCtx, {
+                        type: 'line',
+                        data: {
+                            labels: sortedDates,
+                            datasets: [
+                                {
+                                    label: 'Entradas',
+                                    data: entradasValores,
+                                    borderColor: '#0d6efd',
+                                    backgroundColor: 'rgba(13,110,253,0.12)',
+                                    fill: true,
+                                    tension: 0.3,
+                                    yAxisID: 'y'
+                                },
+                                {
+                                    label: 'Egresos',
+                                    data: egresosValores,
+                                    borderColor: '#198754',
+                                    backgroundColor: 'rgba(25,135,84,0.12)',
+                                    fill: true,
+                                    tension: 0.3,
+                                    yAxisID: 'y'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'top'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                }
             }
         });
     </script>
@@ -680,6 +727,95 @@ else
                 });
             }
         });
+
+        // Gráfico de flujo por hora (En vivo)
+        const chartFlujoCtx = document.getElementById('chartFlujoHora');
+        const ocupacionHoraLabels = @Html.Raw(JsonSerializer.Serialize(Model.EnVivo.OcupacionPorHora.Select(x => x.Label)));
+        const ocupacionHoraValores = @Html.Raw(JsonSerializer.Serialize(Model.EnVivo.OcupacionPorHora.Select(x => x.Value)));
+        const rotacionHoraLabels = @Html.Raw(JsonSerializer.Serialize(Model.EnVivo.RotacionPorHora.Select(x => x.Label)));
+        const rotacionHoraValores = @Html.Raw(JsonSerializer.Serialize(Model.EnVivo.RotacionPorHora.Select(x => x.Value)));
+
+        if (chartFlujoCtx) {
+            // Crear un mapa de todas las horas (00-23)
+            const allHours = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
+
+            // Crear mapas para acceso rápido
+            const ocupacionMap = new Map();
+            if (ocupacionHoraLabels && ocupacionHoraValores && ocupacionHoraLabels.length === ocupacionHoraValores.length) {
+                ocupacionHoraLabels.forEach((label, index) => {
+                    ocupacionMap.set(label, ocupacionHoraValores[index] || 0);
+                });
+            }
+            const rotacionMap = new Map();
+            if (rotacionHoraLabels && rotacionHoraValores && rotacionHoraLabels.length === rotacionHoraValores.length) {
+                rotacionHoraLabels.forEach((label, index) => {
+                    rotacionMap.set(label, rotacionHoraValores[index] || 0);
+                });
+            }
+
+            // Crear arrays de valores alineados con todas las horas (asegurar que sean números)
+            const entradasValores = allHours.map(hora => {
+                const valor = ocupacionMap.get(hora) || 0;
+                return typeof valor === 'number' ? valor : parseFloat(valor) || 0;
+            });
+            const egresosValores = allHours.map(hora => {
+                const valor = rotacionMap.get(hora) || 0;
+                return typeof valor === 'number' ? valor : parseFloat(valor) || 0;
+            });
+
+            // Calcular el máximo valor para configurar la escala
+            const maxEntradas = Math.max(...entradasValores, 0);
+            const maxEgresos = Math.max(...egresosValores, 0);
+            const maxValor = Math.max(maxEntradas, maxEgresos, 1);
+            const maxY = maxValor > 0 ? Math.ceil(maxValor * 1.1) : 10; // 10% más arriba del máximo, mínimo 10
+
+            new Chart(chartFlujoCtx, {
+                type: 'line',
+                data: {
+                    labels: allHours,
+                    datasets: [
+                        {
+                            label: 'Entradas',
+                            data: entradasValores,
+                            borderColor: '#0d6efd',
+                            backgroundColor: 'rgba(13,110,253,0.12)',
+                            fill: true,
+                            tension: 0.3,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Egresos',
+                            data: egresosValores,
+                            borderColor: '#198754',
+                            backgroundColor: 'rgba(25,135,84,0.12)',
+                            fill: true,
+                            tension: 0.3,
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: maxY,
+                            ticks: {
+                                stepSize: 1,
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        }
     </script>
 }
 
@@ -782,5 +918,25 @@ else
     }
     .pie-chart-wrapper {
         max-height: 220px;
+    }
+    .live-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        background-color: #dc3545;
+        border-radius: 50%;
+        animation: pulse 2s ease-in-out infinite;
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+    }
+    @@keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+        }
     }
 </style>
